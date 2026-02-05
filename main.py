@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from src.ingestor import YFinanceIngestor, CSVIngestor
 from src.signals import AHR999Signal, DistanceFromPeakSignal
 from src.analytics import AnalyticsEngine
@@ -152,9 +153,105 @@ def main():
                 
             print("=" * 65)
             
-            # BƯỚC 5: BIỂU ĐỒ (Đã bỏ qua theo yêu cầu)
-            # Quay lại menu chọn signal
-            input("\n[Enter] để quay lại menu...")
+            # BƯỚC 5: LỰA CHỌN SAU KHI XEM KẾT QUẢ
+            print("\nTùy chọn:")
+            print("1. Lưu kết quả ra file")
+            print("2. Quay lại menu")
+            
+            post_choice = input("Chọn (Mặc định quay lại): ")
+            
+            if post_choice == '1':
+                # Format: {YYMMDDhhmmss}_{Ticker}_{signal}.md
+                timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+                # Xử lý tên signal để an toàn cho file system (bỏ khoảng trắng, ký tự lạ)
+                safe_signal_name = strategy.name.replace(" ", "_").replace("/", "-")
+                filename = f"{timestamp}_{ticker}_{safe_signal_name}.md"
+                
+                try:
+                    with open(filename, "w", encoding="utf-8") as f:
+                        # Ghi lại toàn bộ nội dung đã in ra màn hình
+                        # Do code trước đó print trực tiếp, ở đây ta sẽ reconstruct lại nội dung cần thiết
+                        # Hoặc đơn giản là ghi các thông tin quan trọng nhất
+                        
+                        f.write(f"# TRADING STATISTICS REPORT\n")
+                        f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        f.write(f"Ticker: {ticker}\n")
+                        f.write(f"Strategy: {strategy.name}\n\n")
+                        
+                        f.write(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ\n")
+                        f.write(f"{'TOP TỆ NHẤT':<12} | {'NGƯỠNG':<15} | {'SỐ NGÀY':<15} | {'MAX DD LỊCH SỬ':<15} | {'GHI CHÚ'}\n")
+                        f.write("-" * 95 + "\n")
+                        
+                        for hist in stats_history:
+                             # Cần lấy lại dd_result tương ứng hoặc lưu lại từ vòng lặp trước
+                             # Để đơn giản, ta format lại từ stats_history nếu đủ info, 
+                             # nhưng stats_history thiếu days_info và note.
+                             # Cách tốt nhất là lưu buffer output string, nhưng sửa kiến trúc lớn.
+                             # Ở đây ta chấp nhận tính lại hoặc chỉ ghi Actual Status quan trọng nhất.
+                             # Tuy nhiên user yêu cầu "ghi lại kết quả", nên ta sẽ ghi phần Actual Status chi tiết.
+                             pass
+                        
+                        # Để chính xác và đầy đủ, ta sẽ ghi lại nội dung từ các biến đã tính
+                        # Viết lại bảng thống kê
+                        for index, row in stats_df.iterrows():
+                             thresh = row['Threshold']
+                             dd_result = AnalyticsEngine.analyze_drawdown_after_threshold(df['Close'], signal_series, thresh)
+                             
+                             if "Dist" in strategy.name:
+                                 display_thresh = f"{-thresh * 100:.2f}%"
+                             else:
+                                 display_thresh = f"{thresh:.4f}"
+                             
+                             days_info = f"{dd_result['days_in_zone']}/{dd_result['total_days']}"
+                             note = "Vùng đáy thế hệ" if row['Percentile'] <= 5 else "Vùng mua tốt"
+                             f.write(f"{row['Percentile']:>2}% {'(Hiếm)':<8} | {display_thresh:<15} | {days_info:<15} | {dd_result['formatted_drawdown']:<15} | {note}\n")
+
+                        f.write("-" * 95 + "\n\n")
+                        
+                        f.write("## HIỆN TRẠNG THỰC TẾ\n")
+                        f.write(f"1. Giá hiện tại: {current_status['current_price']:,.2f} USD\n")
+                        
+                        if "Dist" in strategy.name:
+                             f.write(f"2. Giá trị {strategy.name} hiện tại: {-current_status['current_signal']*100:.2f}%\n")
+                        else:
+                             f.write(f"2. Giá trị {strategy.name} hiện tại: {current_status['current_signal']:.4f}\n")
+                        
+                        rarity_note = f"(Nhóm {current_status['ref_percentile']}% tệ nhất)" if current_status['ref_percentile'] else "(An toàn)"
+                        f.write(f"3. Độ hiếm hiện tại: {current_status['rarity']:.2f}% {rarity_note}\n")
+                        
+                        next_idx = 4
+                        if add_info:
+                            f.write(f"{next_idx}. Ngày tham chiếu: {add_info['ref_date']}\n")
+                            next_idx += 1
+                            f.write(f"{next_idx}. Giá trị tham chiếu: {add_info['ref_value']}\n")
+                            next_idx += 1
+                            f.write(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {add_info['days_since_ref']}\n")
+                            next_idx += 1
+                            f.write(f"{next_idx}. Số ngày hiệu lực còn lại: {add_info['days_remaining']}\n")
+                            next_idx += 1
+
+                        if current_status['entry_date']:
+                            date_str = current_status['entry_date'].strftime('%Y-%m-%d')
+                            f.write(f"{next_idx}. Giá bắt đầu lọt vùng {current_status['ref_percentile']}%: {current_status['entry_price']:,.2f} USD (Ngày: {date_str})\n")
+                            next_idx += 1
+                            
+                            max_dd_display = -current_status['historical_max_dd_of_zone']
+                            dd_from_curr_display = ""
+                            if current_status.get('drawdown_from_current') is not None:
+                                dd_pct = -current_status['drawdown_from_current'] * 100
+                                dd_from_curr_display = f" | Cần giảm thêm {dd_pct:.2f}% từ giá hiện tại"
+                            
+                            f.write(f"{next_idx}. Target Drawdown tiềm năng: {current_status['target_price']:,.2f} USD (Mức giảm tệ nhất lịch sử {max_dd_display:.2f}%{dd_from_curr_display})\n")
+                        else:
+                            f.write(f"{next_idx}. Trạng thái: An toàn (Chưa lọt vùng rủi ro cao)\n")
+                            
+                    print(f"Đã lưu kết quả vào file: {filename}")
+                    input("\n[Enter] để quay lại menu...")
+                except Exception as e:
+                    print(f"Lỗi khi lưu file: {e}")
+                    input("\n[Enter] để quay lại menu...")
+            else:
+                 pass # Quay lại menu luôn
 
 if __name__ == "__main__":
     main()
