@@ -144,7 +144,7 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                         # st.divider()
 
                         # Section 3: Download Buttons
-                        st.subheader("💾 Tải về kết quả")
+                        st.subheader("Tải về kết quả")
                         col1, col2 = st.columns(2)
                         
                         # Button 1: Download Report (.md)
