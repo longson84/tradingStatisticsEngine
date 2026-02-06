@@ -1,0 +1,135 @@
+import os
+from datetime import datetime
+import pandas as pd
+from src.analytics import AnalyticsEngine
+
+class ReportGenerator:
+    def __init__(self, ticker, strategy, df, signal_series):
+        self.ticker = ticker
+        self.strategy = strategy
+        self.df = df
+        self.signal_series = signal_series
+        self.stats_df = None
+        self.stats_history = []
+        self.current_status = None
+        self.add_info = None
+
+    def calculate(self):
+        """Thực hiện toàn bộ các tính toán thống kê."""
+        # 1. Calculate Percentiles
+        self.stats_df = AnalyticsEngine.calculate_percentiles(self.signal_series, percentiles=[1, 5, 10, 20, 50])
+        
+        # 2. Calculate History
+        self.stats_history = []
+        for index, row in self.stats_df.iterrows():
+            thresh = row['Threshold']
+            dd_result = AnalyticsEngine.analyze_drawdown_after_threshold(
+                self.df['Close'], self.signal_series, thresh
+            )
+            self.stats_history.append({
+                'percentile': row['Percentile'],
+                'threshold': thresh,
+                'max_dd': dd_result['historical_max_drawdown'],
+                'dd_result': dd_result  # Store full result for display
+            })
+
+        # 3. Calculate Current Status
+        # AnalyticsEngine.get_detailed_current_status expects stats_history with keys 'percentile', 'threshold', 'max_dd'
+        self.current_status = AnalyticsEngine.get_detailed_current_status(
+            self.df['Close'], self.signal_series, self.stats_history
+        )
+
+        # 4. Additional Info
+        self.add_info = self.strategy.get_additional_info(self.df)
+
+    def generate_text_report(self):
+        """Tạo nội dung báo cáo dạng text (dùng cho print và save file)."""
+        if self.current_status is None:
+            self.calculate()
+            
+        lines = []
+        # Header
+        lines.append(f"# TRADING STATISTICS REPORT")
+        lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"Ticker: {self.ticker}")
+        lines.append(f"Strategy: {self.strategy.name}")
+        lines.append("")
+
+        # Risk History Table
+        lines.append(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ")
+        lines.append(f"{'TOP TỆ NHẤT':<12} | {'NGƯỠNG':<15} | {'SỐ NGÀY':<15} | {'MAX DD LỊCH SỬ':<15} | {'GHI CHÚ'}")
+        lines.append("-" * 95)
+
+        for item in self.stats_history:
+            row = item
+            dd_result = item['dd_result']
+            thresh = row['threshold']
+            
+            # Use strategy's format_value method
+            display_thresh = self.strategy.format_value(thresh)
+            
+            days_info = f"{dd_result['days_in_zone']}/{dd_result['total_days']}"
+            note = "Vùng đáy thế hệ" if row['percentile'] <= 5 else "Vùng mua tốt"
+            
+            lines.append(f"{row['percentile']:>2.0f}% {'(Hiếm)':<8} | {display_thresh:<15} | {days_info:<15} | {dd_result['formatted_drawdown']:<15} | {note}")
+        
+        lines.append("-" * 95)
+        lines.append("")
+
+        # Current Status
+        lines.append("## HIỆN TRẠNG THỰC TẾ")
+        lines.append(f"1. Giá hiện tại: {self.current_status['current_price']:,.2f} USD")
+        
+        display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
+        lines.append(f"2. Giá trị {self.strategy.name} hiện tại: {display_current_signal}")
+        
+        rarity_note = f"(Nhóm {self.current_status['ref_percentile']:.0f}% tệ nhất)" if self.current_status['ref_percentile'] else "(An toàn)"
+        lines.append(f"3. Độ hiếm hiện tại: {self.current_status['rarity']:.0f}% {rarity_note}")
+        
+        next_idx = 4
+        if self.add_info:
+            lines.append(f"{next_idx}. Ngày tham chiếu: {self.add_info['ref_date']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
+            next_idx += 1
+
+        if self.current_status['entry_date']:
+            date_str = self.current_status['entry_date'].strftime('%Y-%m-%d')
+            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}%: {self.current_status['entry_price']:,.2f} USD (Ngày: {date_str})")
+            next_idx += 1
+            
+            max_dd_display = -self.current_status['historical_max_dd_of_zone']
+            dd_from_curr_display = ""
+            if self.current_status.get('drawdown_from_current') is not None:
+                dd_pct = -self.current_status['drawdown_from_current'] * 100
+                dd_from_curr_display = f" | Cần giảm thêm {dd_pct:.2f}% từ giá hiện tại"
+            
+            lines.append(f"{next_idx}. Target Drawdown tiềm năng: {self.current_status['target_price']:,.2f} USD (Mức giảm tệ nhất lịch sử {max_dd_display:.2f}%{dd_from_curr_display})")
+        else:
+            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
+
+        return "\n".join(lines)
+    
+    def save_to_file(self):
+        """Lưu báo cáo ra file .md trong folder report"""
+        report_text = self.generate_text_report()
+        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+        
+        # Tạo folder report nếu chưa tồn tại
+        report_dir = os.path.join(os.getcwd(), "report")
+        os.makedirs(report_dir, exist_ok=True)
+        
+        filename = f"{timestamp}_{self.ticker}_{self.strategy.report_name}.md"
+        file_path = os.path.join(report_dir, filename)
+        
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(report_text)
+            return file_path
+        except Exception as e:
+            print(f"Lỗi khi lưu file: {e}")
+            return None

@@ -15,6 +15,12 @@ class SignalStrategy(ABC):
     def name(self) -> str:
         pass
 
+    @property
+    @abstractmethod
+    def report_name(self) -> str:
+        """Tên dùng để lưu file báo cáo (ngắn gọn, không dấu)."""
+        pass
+
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         """
         Trả về thông tin bổ sung:
@@ -24,6 +30,14 @@ class SignalStrategy(ABC):
         - days_remaining: Số ngày hiệu lực còn lại
         """
         return None
+        
+    def format_value(self, value: float) -> str:
+        """Format giá trị tín hiệu để hiển thị."""
+        return f"{value:.2f}"
+
+    def is_applicable(self, ticker: str) -> bool:
+        """Kiểm tra xem signal này có áp dụng được cho ticker này không."""
+        return True
 
 class AHR999Signal(SignalStrategy):
     def __init__(self):
@@ -32,6 +46,14 @@ class AHR999Signal(SignalStrategy):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def report_name(self) -> str:
+        return "AHR999"
+
+    def is_applicable(self, ticker: str) -> bool:
+        # AHR999 chỉ dành cho BTC
+        return ticker == "BTC-USD"
 
     def calculate(self, df: pd.DataFrame) -> pd.Series:
         # Clone để không ảnh hưởng dữ liệu gốc
@@ -51,13 +73,20 @@ class AHR999Signal(SignalStrategy):
         return ahr_values.dropna()
 
 class DistanceFromPeakSignal(SignalStrategy):
-    def __init__(self, window_days: int = 200):
+    def __init__(self, window_days: int = None):
         self.window = window_days
-        self._name = f"Dist_Peak_{window_days}D"
+        if window_days:
+            self._name = f"Khoảng cách đến đỉnh {window_days}D"
+        else:
+            self._name = "Khoảng cách từ đỉnh (Tùy chỉnh)"
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def report_name(self) -> str:
+        return f"Dist_Peak_{self.window}D"
 
     def calculate(self, df: pd.DataFrame) -> pd.Series:
         # Logic: (Giá / Max N ngày) - 1
@@ -65,6 +94,10 @@ class DistanceFromPeakSignal(SignalStrategy):
         rolling_max = df['Close'].rolling(window=self.window).max()
         signal = (df['Close'] / rolling_max) - 1
         return signal.dropna()
+        
+    def format_value(self, value: float) -> str:
+        """Override format cho Distance: Chuyển sang % dương."""
+        return f"{-value * 100:.2f}%"
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         """
