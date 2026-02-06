@@ -129,58 +129,60 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                 
                 # --- Display Results (Vertical Layout) ---
                 with results_container:
-                    st.divider()
-                    st.header(f"📊 {ticker}")
-                    
-                    # Section 1: Báo cáo chi tiết (Render Markdown)
-                    st.subheader("📝 Báo cáo phân tích")
-                    with st.expander("Xem chi tiết báo cáo", expanded=True):
+                    # Gói toàn bộ Ticker vào 1 Expander lớn
+                    with st.expander(f"📊 Kết quả phân tích: {ticker}", expanded=True):
+                        # Section 1: Báo cáo chi tiết (Render Markdown)
+                        st.subheader("📝 Báo cáo phân tích")
                         st.markdown(report_text)
-                    
-                    # Section 2: Biểu đồ
-                    st.subheader("📈 Biểu đồ tín hiệu")
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Section 3: Download Buttons
-                    st.subheader("💾 Tải về kết quả")
-                    col1, col2 = st.columns(2)
-                    
-                    # Button 1: Download Report (.md)
-                    timestamp = datetime.now().strftime("%y%m%d")
-                    md_filename = f"{timestamp}_{ticker}_Report.md"
-                    with col1:
-                        st.download_button(
-                            label="📥 Tải Báo Cáo (.md)",
-                            data=report_text,
-                            file_name=md_filename,
-                            mime="text/markdown",
-                            key=f"dl_md_{ticker}_{i}"
-                        )
-                    
-                    # Button 2: Download Chart (.png or .html)
-                    # Cố gắng convert sang PNG, nếu lỗi (do thiếu kaleido) thì fallback sang HTML
-                    with col2:
-                        try:
-                            # Tăng scale để ảnh nét hơn
-                            img_bytes = fig.to_image(format="png", width=1200, height=800, scale=2)
+                        
+                        st.divider()
+
+                        # Section 2: Biểu đồ (Cũng dùng Expander)
+                        with st.expander("📈 Xem Biểu đồ tín hiệu", expanded=True):
+                            st.plotly_chart(fig, use_container_width=True)
+                        
+                        st.divider()
+
+                        # Section 3: Download Buttons
+                        st.subheader("💾 Tải về kết quả")
+                        col1, col2 = st.columns(2)
+                        
+                        # Button 1: Download Report (.md)
+                        timestamp = datetime.now().strftime("%y%m%d")
+                        md_filename = f"{timestamp}_{ticker}_Report.md"
+                        with col1:
                             st.download_button(
-                                label="📥 Tải Biểu Đồ (.png)",
-                                data=img_bytes,
-                                file_name=f"{timestamp}_{ticker}_Chart.png",
-                                mime="image/png",
-                                key=f"dl_png_{ticker}_{i}"
+                                label="📥 Tải Báo Cáo (.md)",
+                                data=report_text,
+                                file_name=md_filename,
+                                mime="text/markdown",
+                                key=f"dl_md_{ticker}_{i}"
                             )
-                        except Exception as e:
-                            # Fallback sang HTML nếu không tạo được PNG
-                            html_bytes = fig.to_html()
-                            st.download_button(
-                                label="📥 Tải Biểu Đồ (.html)",
-                                data=html_bytes,
-                                file_name=f"{timestamp}_{ticker}_Chart.html",
-                                mime="text/html",
-                                key=f"dl_html_{ticker}_{i}"
-                            )
-                            st.caption("⚠️ Không thể tạo ảnh PNG (có thể thiếu thư viện hỗ trợ), đã chuyển sang tải HTML.")
+                        
+                        # Button 2: Download Chart (.png or .html)
+                        # Cố gắng convert sang PNG, nếu lỗi (do thiếu kaleido) thì fallback sang HTML
+                        with col2:
+                            try:
+                                # Tăng scale để ảnh nét hơn
+                                img_bytes = fig.to_image(format="png", width=1200, height=800, scale=2)
+                                st.download_button(
+                                    label="📥 Tải Biểu Đồ (.png)",
+                                    data=img_bytes,
+                                    file_name=f"{timestamp}_{ticker}_Chart.png",
+                                    mime="image/png",
+                                    key=f"dl_png_{ticker}_{i}"
+                                )
+                            except Exception as e:
+                                # Fallback sang HTML nếu không tạo được PNG
+                                html_bytes = fig.to_html()
+                                st.download_button(
+                                    label="📥 Tải Biểu Đồ (.html)",
+                                    data=html_bytes,
+                                    file_name=f"{timestamp}_{ticker}_Chart.html",
+                                    mime="text/html",
+                                    key=f"dl_html_{ticker}_{i}"
+                                )
+                                st.caption("⚠️ Không thể tạo ảnh PNG (có thể thiếu thư viện hỗ trợ), đã chuyển sang tải HTML.")
                     
             except Exception as e:
                 st.error(f"❌ Lỗi khi xử lý {ticker}: {str(e)}")
