@@ -132,8 +132,9 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                     # Gói toàn bộ Ticker vào 1 Expander lớn
                     with st.expander(f"📊 Kết quả phân tích: {ticker}", expanded=True):
                         # Section 1: Báo cáo chi tiết (Render Markdown)
-                        st.subheader("📝 Báo cáo phân tích")
-                        st.markdown(report_text)
+                        with st.expander("📝 Xem Báo Cáo Phân Tích", expanded=True):
+                        # st.subheader("📝 Báo cáo phân tích")
+                            st.markdown(report_text)
                         
                         st.divider()
 
