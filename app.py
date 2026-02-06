@@ -26,7 +26,7 @@ st.sidebar.header("Cấu hình")
 # 1. Ticker Input
 ticker_input_str = st.sidebar.text_input(
     "Nhập danh sách Ticker (cách nhau bởi dấu cách):",
-    value="BTC-USD ETH-USD",
+    value="BTC-USD",
     help="Ví dụ: BTC-USD ETH-USD MSFT AAPL"
 )
 
@@ -82,11 +82,19 @@ if selected_strategy_name and strategy_map[selected_strategy_name] == "CUSTOM_DI
 elif selected_strategy_name:
     final_strategy = strategy_map[selected_strategy_name]
 
-# 3. Save Options
-save_to_disk = st.sidebar.checkbox("Lưu báo cáo ra file (re/report)", value=True, help="Nếu chọn, báo cáo và biểu đồ sẽ được lưu vào thư mục 're' của dự án.")
+# 3. Save Options (Removed as per request)
+# save_to_disk = st.sidebar.checkbox("Lưu báo cáo ra file (re/report)", value=True)
 
 # --- Main Action ---
-if st.sidebar.button("🚀 Chạy Phân Tích", type="primary"):
+# Hàm wrapper để sử dụng st.cache_data
+@st.cache_data(ttl=3600) # Cache trong RAM 1 giờ để thao tác nhanh trên Cloud
+def load_data(ticker):
+    ingestor = YFinanceIngestor(ticker)
+    return ingestor.get_data()
+
+if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_state.get('submitted'):
+    st.session_state['submitted'] = True
+    
     if not tickers:
         st.error("Vui lòng nhập Ticker để bắt đầu.")
     elif not final_strategy:
@@ -99,16 +107,13 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary"):
         # Container for results
         results_container = st.container()
         
-        generated_reports = []
-        
         for i, ticker in enumerate(tickers):
             status_text.text(f"Đang xử lý {ticker} ({i+1}/{len(tickers)})...")
             
             try:
-                # 1. Ingest Data
+                # 1. Ingest Data (Đã có cache RAM)
                 with st.spinner(f"[{ticker}] Đang tải dữ liệu..."):
-                    ingestor = YFinanceIngestor(ticker)
-                    df = ingestor.get_data()
+                    df = load_data(ticker)
                 
                 # 2. Calculate Signal
                 with st.spinner(f"[{ticker}] Đang tính toán tín hiệu..."):
@@ -122,59 +127,60 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary"):
                 # 4. Visualization
                 fig = ChartVisualizer.create_chart(ticker, df, signal_series, final_strategy)
                 
-                # 5. Save to Disk (Optional)
-                saved_files_info = []
-                if save_to_disk:
-                    with st.spinner(f"[{ticker}] Đang lưu file..."):
-                        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-                        
-                        # Folders
-                        charts_dir = os.path.join(os.getcwd(), "re", "charts")
-                        os.makedirs(charts_dir, exist_ok=True)
-                        
-                        # Save HTML Chart
-                        chart_filename_html = f"{timestamp}_{ticker}_{final_strategy.report_name}_chart.html"
-                        chart_path_html = os.path.join(charts_dir, chart_filename_html)
-                        fig.write_html(chart_path_html)
-                        
-                        # Save PNG Chart
-                        chart_filename_png = f"{timestamp}_{ticker}_{final_strategy.report_name}_chart.png"
-                        chart_path_png = os.path.join(charts_dir, chart_filename_png)
-                        try:
-                            fig.write_image(chart_path_png)
-                        except Exception as e:
-                            st.warning(f"Không thể lưu ảnh PNG cho {ticker}: {e}")
-                            chart_filename_png = None
-                            
-                        # Store filenames in report object
-                        report_gen.chart_filename = chart_filename_html
-                        report_gen.image_filename = chart_filename_png
-                        
-                        # Save Markdown Report
-                        md_path = report_gen.save_to_file(chart_filename=chart_filename_html, image_filename=chart_filename_png)
-                        
-                        if md_path:
-                            saved_files_info.append(f"Report: `{os.path.basename(md_path)}`")
-                        saved_files_info.append(f"Chart: `{chart_filename_html}`")
-
-                # --- Display Results ---
+                # --- Display Results (Vertical Layout) ---
                 with results_container:
                     st.divider()
-                    st.subheader(f"📊 Kết quả cho: {ticker}")
+                    st.header(f"📊 {ticker}")
                     
-                    # Tabs for View
-                    tab1, tab2 = st.tabs(["Biểu đồ", "Báo cáo chi tiết"])
+                    # Section 1: Báo cáo chi tiết (Render Markdown)
+                    st.subheader("📝 Báo cáo phân tích")
+                    with st.expander("Xem chi tiết báo cáo", expanded=True):
+                        st.markdown(report_text)
                     
-                    with tab1:
-                        st.plotly_chart(fig, use_container_width=True)
+                    # Section 2: Biểu đồ
+                    st.subheader("📈 Biểu đồ tín hiệu")
+                    st.plotly_chart(fig, use_container_width=True)
                     
-                    with tab2:
-                        st.text_area(f"Báo cáo text - {ticker}", value=report_text, height=400)
-                        # Render markdown preview (optional, but text area keeps formatting better for copy-paste)
-                        # st.markdown(report_text)
+                    # Section 3: Download Buttons
+                    st.subheader("💾 Tải về kết quả")
+                    col1, col2 = st.columns(2)
                     
-                    if saved_files_info:
-                        st.success(f"✅ Đã lưu file: {', '.join(saved_files_info)}")
+                    # Button 1: Download Report (.md)
+                    timestamp = datetime.now().strftime("%y%m%d")
+                    md_filename = f"{timestamp}_{ticker}_Report.md"
+                    with col1:
+                        st.download_button(
+                            label="📥 Tải Báo Cáo (.md)",
+                            data=report_text,
+                            file_name=md_filename,
+                            mime="text/markdown",
+                            key=f"dl_md_{ticker}_{i}"
+                        )
+                    
+                    # Button 2: Download Chart (.png or .html)
+                    # Cố gắng convert sang PNG, nếu lỗi (do thiếu kaleido) thì fallback sang HTML
+                    with col2:
+                        try:
+                            # Tăng scale để ảnh nét hơn
+                            img_bytes = fig.to_image(format="png", width=1200, height=800, scale=2)
+                            st.download_button(
+                                label="📥 Tải Biểu Đồ (.png)",
+                                data=img_bytes,
+                                file_name=f"{timestamp}_{ticker}_Chart.png",
+                                mime="image/png",
+                                key=f"dl_png_{ticker}_{i}"
+                            )
+                        except Exception as e:
+                            # Fallback sang HTML nếu không tạo được PNG
+                            html_bytes = fig.to_html()
+                            st.download_button(
+                                label="📥 Tải Biểu Đồ (.html)",
+                                data=html_bytes,
+                                file_name=f"{timestamp}_{ticker}_Chart.html",
+                                mime="text/html",
+                                key=f"dl_html_{ticker}_{i}"
+                            )
+                            st.caption("⚠️ Không thể tạo ảnh PNG (có thể thiếu thư viện hỗ trợ), đã chuyển sang tải HTML.")
                     
             except Exception as e:
                 st.error(f"❌ Lỗi khi xử lý {ticker}: {str(e)}")
