@@ -57,8 +57,9 @@ class ReportGenerator:
 
         # Risk History Table
         lines.append(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ")
-        lines.append(f"{'TOP TỆ NHẤT':<12} | {'NGƯỠNG':<15} | {'SỐ NGÀY':<15} | {'MAX DD LỊCH SỬ':<15} | {'GHI CHÚ'}")
-        lines.append("-" * 95)
+        # Markdown Table Header
+        lines.append(f"| TOP TỆ NHẤT | NGƯỠNG | SỐ NGÀY | MAX DD LỊCH SỬ | GHI CHÚ |")
+        lines.append(f"| :--- | :--- | :--- | :--- | :--- |")
 
         for item in self.stats_history:
             row = item
@@ -71,9 +72,9 @@ class ReportGenerator:
             days_info = f"{dd_result['days_in_zone']}/{dd_result['total_days']}"
             note = "Vùng đáy thế hệ" if row['percentile'] <= 5 else "Vùng mua tốt"
             
-            lines.append(f"{row['percentile']:>2.0f}% {'(Hiếm)':<8} | {display_thresh:<15} | {days_info:<15} | {dd_result['formatted_drawdown']:<15} | {note}")
+            # Markdown Table Row
+            lines.append(f"| {row['percentile']:.0f}% (Hiếm) | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {note} |")
         
-        lines.append("-" * 95)
         lines.append("")
 
         # Current Status
