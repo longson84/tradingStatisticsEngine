@@ -132,17 +132,16 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                     # Gói toàn bộ Ticker vào 1 Expander lớn
                     with st.expander(f"📊 Kết quả phân tích: {ticker}", expanded=True):
                         # Section 1: Báo cáo chi tiết (Render Markdown)
-                        with st.expander("📝 Xem Báo Cáo Phân Tích", expanded=True):
-                        # st.subheader("📝 Báo cáo phân tích")
+                        with st.expander("📝 Báo Cáo Phân Tích", expanded=True):
                             st.markdown(report_text)
                         
-                        st.divider()
+                        # st.divider()
 
                         # Section 2: Biểu đồ (Cũng dùng Expander)
                         with st.expander("📈 Xem Biểu đồ tín hiệu", expanded=True):
                             st.plotly_chart(fig, use_container_width=True)
                         
-                        st.divider()
+                        # st.divider()
 
                         # Section 3: Download Buttons
                         st.subheader("💾 Tải về kết quả")
