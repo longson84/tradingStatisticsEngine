@@ -114,17 +114,33 @@ class ReportGenerator:
 
         return "\n".join(lines)
     
-    def save_to_file(self):
-        """Lưu báo cáo ra file .md trong folder report"""
+    def save_to_file(self, chart_filename: str = None, image_filename: str = None):
+        """Lưu báo cáo ra file .md trong folder re/report"""
         report_text = self.generate_text_report()
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
         
-        # Tạo folder report nếu chưa tồn tại
-        report_dir = os.path.join(os.getcwd(), "report")
+        # Tạo folder re/report nếu chưa tồn tại
+        report_dir = os.path.join(os.getcwd(), "re", "report")
         os.makedirs(report_dir, exist_ok=True)
         
         filename = f"{timestamp}_{self.ticker}_{self.strategy.report_name}.md"
         file_path = os.path.join(report_dir, filename)
+        
+        # Thêm biểu đồ vào cuối file report
+        report_text += f"\n\n## BIỂU ĐỒ\n"
+        
+        # 1. Nhúng ảnh tĩnh trực tiếp (hiển thị luôn trong Markdown)
+        if image_filename:
+            # Đường dẫn tương đối từ re/report sang re/charts
+            # image_filename dự kiến nằm trong re/charts
+            relative_image_path = f"../charts/{image_filename}"
+            report_text += f"![Biểu đồ phân tích]({relative_image_path})\n\n"
+            
+        # 2. Link đến biểu đồ tương tác HTML
+        if chart_filename:
+            # Đường dẫn tương đối từ re/report sang re/charts
+            relative_html_path = f"../charts/{chart_filename}"
+            report_text += f"Xem biểu đồ tương tác (Zoom/Pan): [{chart_filename}]({relative_html_path})\n"
         
         try:
             with open(file_path, "w", encoding="utf-8") as f:

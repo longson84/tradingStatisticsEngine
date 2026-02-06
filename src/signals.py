@@ -21,6 +21,14 @@ class SignalStrategy(ABC):
         """Tên dùng để lưu file báo cáo (ngắn gọn, không dấu)."""
         pass
 
+    @property
+    def visualization_config(self) -> dict:
+        """Cấu hình hiển thị biểu đồ: Ngưỡng và màu sắc."""
+        return {
+            "thresholds": [0.01, 0.05, 0.10], # 1%, 5%, 10%
+            "colors": ["green", "#ffd700", "red"] # Green, Gold (Yellow), Red
+        }
+
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         """
         Trả về thông tin bổ sung:

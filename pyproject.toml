@@ -5,6 +5,7 @@ description = "Trading Statistics Engine"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "kaleido>=1.2.0",
     "pandas>=3.0.0",
     "plotly>=6.5.2",
     "yfinance>=1.1.0",

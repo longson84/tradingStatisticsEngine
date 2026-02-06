@@ -1,8 +1,10 @@
 import sys
+import os
 from datetime import datetime
 from src.ingestor import YFinanceIngestor
 from src.signals import AHR999Signal, DistanceFromPeakSignal
 from src.report import ReportGenerator
+from src.visualizer import ChartVisualizer
 
 def get_ticker_input():
     print("\n" + "="*40)
@@ -114,6 +116,41 @@ def main():
                 report_gen.calculate()
                 report_text = report_gen.generate_text_report()
                 
+                # Visualization
+                print(f"[{ticker}] Đang tạo và hiển thị biểu đồ...")
+                fig = ChartVisualizer.create_chart(ticker, df, signal_series, strategy)
+                fig.show()
+                
+                # Save Chart (HTML + PNG)
+                timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+                
+                # Folder charts
+                charts_dir = os.path.join(os.getcwd(), "re", "charts")
+                os.makedirs(charts_dir, exist_ok=True)
+                
+                # 1. HTML
+                chart_filename_html = f"{timestamp}_{ticker}_{strategy.report_name}_chart.html"
+                chart_path_html = os.path.join(charts_dir, chart_filename_html)
+                fig.write_html(chart_path_html)
+                
+                # 2. Static Image (PNG)
+                chart_filename_png = f"{timestamp}_{ticker}_{strategy.report_name}_chart.png"
+                chart_path_png = os.path.join(charts_dir, chart_filename_png)
+                try:
+                    # Yêu cầu cài đặt kaleido: pip install kaleido
+                    # Không cần chỉ định engine="kaleido" nữa vì Plotly sẽ tự động nhận diện
+                    fig.write_image(chart_path_png)
+                    print(f"-> Đã lưu biểu đồ: {chart_filename_png} (PNG)")
+                except Exception as e:
+                    print(f"-> Không thể lưu ảnh tĩnh (cần cài kaleido): {e}")
+                    chart_filename_png = None
+
+                print(f"-> Đã lưu biểu đồ tương tác: {chart_filename_html}")
+                
+                # Store filenames in report object for linking
+                report_gen.chart_filename = chart_filename_html
+                report_gen.image_filename = chart_filename_png
+                
                 # Print report
                 print("\n" + "=" * 65)
                 print(f"KẾT QUẢ CHO: {ticker}")
@@ -135,7 +172,9 @@ def main():
             post_choice = input("Chọn (Mặc định quay lại): ")
             if post_choice == '1':
                 for report in generated_reports:
-                    filename = report.save_to_file()
+                    c_name = getattr(report, 'chart_filename', None)
+                    img_name = getattr(report, 'image_filename', None)
+                    filename = report.save_to_file(chart_filename=c_name, image_filename=img_name)
                     print(f"-> Đã lưu: {filename}")
             
             input("\n[Enter] để quay lại menu...")

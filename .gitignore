@@ -10,6 +10,5 @@ wheels/
 .venv
 
 
-# Data files
-data/
-report/
+# Report files
+re/

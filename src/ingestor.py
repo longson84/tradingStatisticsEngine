@@ -16,8 +16,8 @@ class YFinanceIngestor(DataIngestor):
     def __init__(self, ticker: str, start_date: str = "2015-01-01"):
         self.ticker = ticker
         self.start_date = start_date
-        # Tạo folder data riêng cho source này
-        self.source_dir = os.path.join(os.getcwd(), "data", "yfinance")
+        # Tạo folder data riêng cho source này trong folder re/data
+        self.source_dir = os.path.join(os.getcwd(), "re", "data", "yfinance")
         os.makedirs(self.source_dir, exist_ok=True)
 
     def get_data(self) -> pd.DataFrame:
