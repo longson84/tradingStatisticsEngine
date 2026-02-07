@@ -92,7 +92,7 @@ class ReportGenerator:
             
         lines = []
         # Header
-        lines.append(f"# TRADING STATISTICS REPORT")
+        lines.append(f"# Trading Statistics Report")
         lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
         lines.append(f"Ticker: {self.ticker}  ")
         
@@ -104,7 +104,7 @@ class ReportGenerator:
         lines.append("")
 
         # Risk History Table
-        lines.append(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ")
+        lines.append(f"## Thống kê lịch sử")
         # Markdown Table Header
         lines.append(f"| PERCENTILE | TÍN HIỆU | SỐ NGÀY | MAX DD TỪ PERCENTILE |")
         lines.append(f"| :--- | :--- | :--- | :--- |")
@@ -125,7 +125,7 @@ class ReportGenerator:
         lines.append("")
 
         # Current Status
-        lines.append("## HIỆN TRẠNG THỰC TẾ")
+        lines.append("## Trạng thái hiện tại")
         lines.append(f"1. Giá hiện tại: {self.current_status['current_price']:,.2f} USD")
         
         display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
@@ -149,7 +149,7 @@ class ReportGenerator:
         lines.append("")
         
         # Detailed Drawdown History Table (New Section)
-        lines.append(f"## TOP DRAWDOWN TỆ NHẤT & CÁC LẦN CHƯA PHỤC HỒI")
+        lines.append(f"## TOP Drawdown Period & Chưa phục hồi")
         lines.append(f"| Ngày bắt đầu | Giá | Percentile | Giá đáy | Ngày đáy | Max DD (%) | Days To Bottom | Ngày phục hồi | Days To Recover | Trạng thái |")
         lines.append(f"| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
         
@@ -167,27 +167,7 @@ class ReportGenerator:
              row = f"| {event['start_date_str']} | {price_str} | {event['percentile']}% | {min_price_str} | {event['min_date_str']} | {dd_str} | {event['days_to_bottom']} | {event['recovery_date_str']} | {event['days_to_recover']} | {status_str} |"
              lines.append(row)
 
-        # 5. Target Drawdown Analysis
-        if self.current_status.get('ref_percentile') is not None and self.current_status.get('target_drawdown') is not None:
-            lines.append("")
-            lines.append("## PHÂN TÍCH RỦI RO TIỀM NĂNG")
-            
-            ref_p = self.current_status['ref_percentile']
-            target_dd = self.current_status['target_drawdown']
-            
-            lines.append(f"Tín hiệu đang nằm trong nhóm {ref_p}% thấp nhất lịch sử.")
-            lines.append(f"- Max Drawdown lịch sử vùng này: {target_dd:.2f}%")
-            
-            if self.current_status.get('entry_price_at_threshold'):
-                entry_price = self.current_status['entry_price_at_threshold']
-                target_price = entry_price * (1 + target_dd / 100.0)
-                current_price = self.current_status['current_price']
-                
-                lines.append(f"- Giá tham chiếu (vào vùng): {entry_price:,.2f}")
-                lines.append(f"- Giá đáy tiềm năng (nếu lặp lại): {target_price:,.2f}")
-                
-                downside_pct = ((target_price - current_price) / current_price) * 100
-                lines.append(f"- Dư địa giảm từ giá hiện tại: {downside_pct:.2f}%")
+        
 
         return "\n".join(lines)
     
