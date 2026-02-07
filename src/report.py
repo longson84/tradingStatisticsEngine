@@ -118,7 +118,7 @@ class ReportGenerator:
                 lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
 
         if self.current_status.get('entry_date'):
-            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_FULL)
+            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
             lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}%: {self.current_status['entry_price']:,.2f} USD (Ngày: {date_str})")
             next_idx += 1
             
