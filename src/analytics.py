@@ -3,7 +3,7 @@ import pandas as pd
 
 class AnalyticsEngine:
     @staticmethod
-    def calculate_percentiles(signal_series: pd.Series, percentiles=[1, 5, 10, 20, 50]) -> pd.DataFrame:
+    def calculate_percentiles(signal_series: pd.Series, percentiles=[1, 5, 10, 15, 20, 25, 30, 40, 50]) -> pd.DataFrame:
         """Tính các ngưỡng giá trị tại các mốc percentile."""
         results = []
         for p in percentiles:
@@ -98,68 +98,96 @@ class AnalyticsEngine:
             "current_signal": current_signal,
             "rarity": rarity,
             "ref_percentile": None,
-            "entry_price": None,
-            "entry_date": None,
-            "target_price": None,
-            "historical_max_dd_of_zone": 0.0,
-            "drawdown_from_current": None
+            "target_drawdown": None,
+            "entry_price_at_threshold": None
         }
         
-        # 4. Nếu đang trong vùng rủi ro (active_stat tìm thấy)
         if active_stat:
             result['ref_percentile'] = active_stat['percentile']
-            result['historical_max_dd_of_zone'] = active_stat['max_dd'] * 100
+            result['target_drawdown'] = active_stat['historical_max_drawdown']
+            # Tìm giá Entry gần nhất vào vùng này (logic đơn giản hóa: lấy giá hiện tại, thực tế nên trace ngược lại)
+            # Tuy nhiên, ở đây chỉ để hiển thị cảnh báo
             
-            thresh = active_stat['threshold']
-            
-            # Align dữ liệu để tìm Entry Date
-            common_idx = price_series.index.intersection(signal_series.index)
-            s_aligned = signal_series.loc[common_idx]
-            p_aligned = price_series.loc[common_idx]
-            
-            # Boolean mask: Những ngày nào nằm trong vùng này
-            is_in_zone = s_aligned <= thresh
-            
-            # Tìm điểm bắt đầu của đợt (block) hiện tại
-            # Chúng ta biết điểm cuối cùng (iloc[-1]) là True (do logic tìm active_stat)
-            # Ta scan ngược lại tìm điểm False gần nhất
-            
-            # Convert to numpy for speed
-            not_in_zone_indices = np.where(~is_in_zone)[0]
-            
-            if len(not_in_zone_indices) > 0:
-                # Điểm False cuối cùng
-                last_false_idx = not_in_zone_indices[-1]
-                # Điểm Entry là điểm ngay sau đó
-                entry_idx = last_false_idx + 1
-            else:
-                # Toàn bộ lịch sử đều nằm trong zone (hiếm)
-                entry_idx = 0
-            
-            if entry_idx < len(common_idx):
-                entry_date = common_idx[entry_idx]
-                entry_price = p_aligned.iloc[entry_idx]
-                
-                result['entry_date'] = entry_date
-                result['entry_price'] = entry_price
-                
-                # Target Price = Entry * (1 + Max_DD_History)
-                # Max_DD_History là số âm (ví dụ -0.5)
-                target_price = entry_price * (1 + active_stat['max_dd'])
-                result['target_price'] = target_price
-
-                # Tính Drawdown từ giá hiện tại đến Target Price
-                if current_price > 0:
-                    result['drawdown_from_current'] = (target_price / current_price) - 1
-                
         return result
 
     @staticmethod
-    def get_current_status(signal_series: pd.Series) -> dict:
-        current_val = signal_series.iloc[-1]
-        # Tính độ hiếm (Rarity): Giá trị hiện tại thấp hơn bao nhiêu % lịch sử
-        rarity = (signal_series < current_val).mean() * 100
-        return {
-            "current_value": current_val,
-            "rarity_score": rarity
-        }
+    def analyze_entry_points_drawdown(price_series: pd.Series, signal_series: pd.Series, percentile: int) -> list:
+        """
+        Phân tích chi tiết từng lần tín hiệu đi vào vùng percentile này.
+        Trả về list các sự kiện (mỗi lần vào là một item).
+        
+        Logic:
+        - Entry: Ngày đầu tiên signal <= threshold (cắt xuống).
+        - Exit Zone: Ngày signal > threshold (thoát khỏi vùng).
+        - Bottom: Giá thấp nhất kể từ Entry cho đến nay (hoặc đến khi phục hồi).
+        - Recovery: Ngày giá quay lại >= Giá Entry.
+        """
+        threshold = np.percentile(signal_series, percentile)
+        
+        # Align data
+        common_idx = price_series.index.intersection(signal_series.index)
+        prices = price_series.loc[common_idx]
+        signals = signal_series.loc[common_idx]
+        
+        # Xác định trạng thái "Trong vùng"
+        is_in_zone = signals <= threshold
+        
+        # Tìm các điểm chuyển đổi trạng thái để xác định Start Date của từng đợt
+        # shift(1) để so sánh với ngày hôm trước.
+        # Start: Hôm qua False, Hôm nay True
+        starts = (is_in_zone) & (~is_in_zone.shift(1).fillna(False))
+        start_dates = starts[starts].index
+        
+        events = []
+        
+        for start_date in start_dates:
+            entry_price = prices.loc[start_date]
+            
+            # Slice dữ liệu từ ngày bắt đầu trở đi để tìm đáy và phục hồi
+            future_prices = prices.loc[start_date:]
+            
+            # 1. Tìm đáy (Min Price) & Max Drawdown
+            # Lưu ý: Đáy có thể nằm rất xa, thậm chí sau khi tín hiệu đã thoát vùng.
+            # Chúng ta sẽ tìm đáy trong khoảng thời gian cho đến khi phục hồi (hoặc hết dữ liệu)
+            
+            # Tìm ngày phục hồi đầu tiên
+            recovery_mask = (future_prices >= entry_price) & (future_prices.index > start_date)
+            if recovery_mask.any():
+                recovery_date = recovery_mask.idxmax() # Ngày đầu tiên thỏa mãn
+                # Chuỗi giá để tìm đáy là từ Start -> Recovery
+                drawdown_window = future_prices.loc[:recovery_date]
+                status = "Đã phục hồi"
+                days_to_recover = (recovery_date - start_date).days
+            else:
+                recovery_date = None
+                drawdown_window = future_prices # Chưa phục hồi -> Tìm đáy trong toàn bộ dữ liệu còn lại
+                status = "Chưa phục hồi"
+                days_to_recover = None
+                
+            min_price = drawdown_window.min()
+            min_date = drawdown_window.idxmin()
+            
+            max_dd_pct = (min_price / entry_price) - 1
+            days_to_bottom = (min_date - start_date).days
+            
+            # Format ngày tháng năm
+            fmt = '%d/%m/%Y'
+            
+            events.append({
+                "start_date": start_date, # Giữ object datetime để sort
+                "start_date_str": start_date.strftime(fmt),
+                "entry_price": entry_price,
+                "percentile": percentile, # Cố định theo input
+                "min_price": min_price,
+                "min_date_str": min_date.strftime(fmt),
+                "max_dd_pct": max_dd_pct * 100, # %
+                "days_to_bottom": days_to_bottom,
+                "recovery_date_str": recovery_date.strftime(fmt) if recovery_date else "Chưa phục hồi",
+                "days_to_recover": days_to_recover if days_to_recover is not None else "-",
+                "status": status
+            })
+            
+        # Sắp xếp: Gần nhất lên đầu (Start Date giảm dần)
+        events.sort(key=lambda x: x['start_date'], reverse=True)
+        
+        return events

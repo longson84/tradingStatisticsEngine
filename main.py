@@ -127,8 +127,9 @@ def main():
                     current_signal_value = signal_series.iloc[-1]
                     fig_dist = ChartVisualizer.create_distribution_chart(signal_series, current_signal_value, strategy.name)
                     
-                    # Show charts (optional in script mode, maybe too much popups)
-                    # fig.show() 
+                    # Show charts
+                    fig.show()
+                    fig_dist.show()
                     
                     # Save Charts (HTML + PNG)
                     timestamp = datetime.now().strftime("%y%m%d%H%M%S")

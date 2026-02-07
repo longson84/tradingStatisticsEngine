@@ -932,7 +932,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "kaleido", specifier = "==0.2.1" },
+    { name = "kaleido", specifier = ">=0.2.1" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "plotly", specifier = ">=6.5.2" },
     { name = "streamlit", specifier = ">=1.40.0" },

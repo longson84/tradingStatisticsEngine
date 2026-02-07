@@ -29,15 +29,30 @@ class ReportGenerator:
             self.stats_history.append({
                 'percentile': row['Percentile'],
                 'threshold': thresh,
-                'max_dd': dd_result['historical_max_drawdown'],
+                'historical_max_drawdown': dd_result['historical_max_drawdown'],
                 'dd_result': dd_result  # Store full result for display
             })
 
         # 3. Calculate Current Status
-        # AnalyticsEngine.get_detailed_current_status expects stats_history with keys 'percentile', 'threshold', 'max_dd'
+        # AnalyticsEngine.get_detailed_current_status expects stats_history with keys 'percentile', 'threshold', 'historical_max_drawdown'
         self.current_status = AnalyticsEngine.get_detailed_current_status(
             self.df['Close'], self.signal_series, self.stats_history
         )
+        
+        # 3.1 Calculate Detailed Drawdown History (New Section)
+        # Các percentile quan trọng cần theo dõi chi tiết
+        detailed_percentiles = [20, 15, 10, 5, 1]
+        self.detailed_drawdown_history = []
+        for p in detailed_percentiles:
+             events = AnalyticsEngine.analyze_entry_points_drawdown(
+                self.df['Close'], 
+                self.signal_series, 
+                p
+            )
+             self.detailed_drawdown_history.extend(events)
+        
+        # Sắp xếp theo ngày bắt đầu giảm dần (gần nhất trước)
+        self.detailed_drawdown_history.sort(key=lambda x: (x['start_date'], -x['percentile']), reverse=True)
 
         # 4. Additional Info
         self.add_info = self.strategy.get_additional_info(self.df)
@@ -50,14 +65,14 @@ class ReportGenerator:
         lines = []
         # Header
         lines.append(f"# TRADING STATISTICS REPORT")
-        lines.append(f"Ngày thống kê: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
+        lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
         lines.append(f"Ticker: {self.ticker}  ")
         
         # Lấy ngày bắt đầu dữ liệu
         start_date_str = self.df.index.min().strftime('%Y-%m-%d')
-        lines.append(f"Thống kê từ: {start_date_str}  ")
+        lines.append(f"Data History From: {start_date_str}  ")
         
-        lines.append(f"Tín hiệu: {self.strategy.name}  ")
+        lines.append(f"Strategy: {self.strategy.name}  ")
         lines.append("")
 
         # Risk History Table
@@ -98,24 +113,47 @@ class ReportGenerator:
             lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
             next_idx += 1
             lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
-            next_idx += 1
-            lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
-            next_idx += 1
+            # Kiểm tra nếu có key 'days_remaining' (cho strategy 2)
+            if 'days_remaining' in self.add_info:
+                next_idx += 1
+                lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
 
-        if self.current_status['entry_date']:
-            date_str = self.current_status['entry_date'].strftime('%Y-%m-%d')
-            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}%: {self.current_status['entry_price']:,.2f} USD (Ngày: {date_str})")
-            next_idx += 1
+        lines.append("")
+        
+        # Detailed Drawdown History Table (New Section)
+        lines.append(f"## LỊCH SỬ CÁC LẦN DRAWDOWN CHI TIẾT (VÙNG HIẾM)")
+        lines.append(f"| Ngày bắt đầu | Giá | Percentile | Giá đáy | Ngày đáy | Max DD (%) | Số ngày đến đáy | Ngày phục hồi | Số ngày phục hồi | Trạng thái |")
+        lines.append(f"| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+        
+        for event in self.detailed_drawdown_history:
+             price_str = f"{event['entry_price']:,.2f}"
+             min_price_str = f"{event['min_price']:,.2f}"
+             dd_str = f"{event['max_dd_pct']:.2f}%"
+             
+             row = f"| {event['start_date_str']} | {price_str} | {event['percentile']}% | {min_price_str} | {event['min_date_str']} | {dd_str} | {event['days_to_bottom']} | {event['recovery_date_str']} | {event['days_to_recover']} | {event['status']} |"
+             lines.append(row)
+
+        # 5. Target Drawdown Analysis
+        if self.current_status.get('ref_percentile') is not None and self.current_status.get('target_drawdown') is not None:
+            lines.append("")
+            lines.append("## PHÂN TÍCH RỦI RO TIỀM NĂNG")
             
-            max_dd_display = -self.current_status['historical_max_dd_of_zone']
-            dd_from_curr_display = ""
-            if self.current_status.get('drawdown_from_current') is not None:
-                dd_pct = -self.current_status['drawdown_from_current'] * 100
-                dd_from_curr_display = f" | Cần giảm thêm {dd_pct:.2f}% từ giá hiện tại"
+            ref_p = self.current_status['ref_percentile']
+            target_dd = self.current_status['target_drawdown']
             
-            lines.append(f"{next_idx}. Target Drawdown tiềm năng: {self.current_status['target_price']:,.2f} USD (Mức giảm tệ nhất lịch sử {max_dd_display:.2f}%{dd_from_curr_display})")
-        else:
-            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
+            lines.append(f"Tín hiệu đang nằm trong nhóm {ref_p}% thấp nhất lịch sử.")
+            lines.append(f"- Max Drawdown lịch sử vùng này: {target_dd:.2f}%")
+            
+            if self.current_status.get('entry_price_at_threshold'):
+                entry_price = self.current_status['entry_price_at_threshold']
+                target_price = entry_price * (1 + target_dd / 100.0)
+                current_price = self.current_status['current_price']
+                
+                lines.append(f"- Giá tham chiếu (vào vùng): {entry_price:,.2f}")
+                lines.append(f"- Giá đáy tiềm năng (nếu lặp lại): {target_price:,.2f}")
+                
+                downside_pct = ((target_price - current_price) / current_price) * 100
+                lines.append(f"- Dư địa giảm từ giá hiện tại: {downside_pct:.2f}%")
 
         return "\n".join(lines)
     

@@ -13,7 +13,7 @@ class DataIngestor(ABC):
         pass
 
 class YFinanceIngestor(DataIngestor):
-    def __init__(self, ticker: str, start_date: str = "2015-01-01"):
+    def __init__(self, ticker: str, start_date: str = "1990-01-01"):
         self.ticker = ticker
         self.start_date = start_date
         # Tạo folder data riêng cho source này trong folder re/data
