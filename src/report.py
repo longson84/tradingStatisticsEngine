@@ -2,6 +2,12 @@ import os
 from datetime import datetime
 import pandas as pd
 from src.analytics import AnalyticsEngine
+from src.constants import (
+    CALCULATE_PERCENTILES,
+    DRAWDOWN_PERCENTILES,
+    TOP_N_DRAWDOWN,
+    DATE_FORMAT_DISPLAY
+)
 
 class ReportGenerator:
     def __init__(self, ticker, strategy, df, signal_series):
@@ -17,7 +23,7 @@ class ReportGenerator:
     def calculate(self):
         """Thực hiện toàn bộ các tính toán thống kê."""
         # 1. Calculate Percentiles
-        self.stats_df = AnalyticsEngine.calculate_percentiles(self.signal_series, percentiles=[1, 5, 10, 15, 20, 25, 30, 40, 50])
+        self.stats_df = AnalyticsEngine.calculate_percentiles(self.signal_series, percentiles=CALCULATE_PERCENTILES)
         
         # 2. Calculate History
         self.stats_history = []
@@ -39,48 +45,13 @@ class ReportGenerator:
             self.df['Close'], self.signal_series, self.stats_history
         )
         
-        # 3.1 Calculate Detailed Drawdown History (New Section)
-        # Các percentile quan trọng cần theo dõi chi tiết
-        detailed_percentiles = [20, 15, 10, 5, 1]
-        self.detailed_drawdown_history = []
-        for p in detailed_percentiles:
-             events = AnalyticsEngine.analyze_entry_points_drawdown(
-                self.df['Close'], 
-                self.signal_series, 
-                p
-            )
-             self.detailed_drawdown_history.extend(events)
-        
-        # 3.2 Xử lý trùng lặp và lọc danh sách hiển thị
-        # Bước 1: Deduplication - Gộp các event trùng ngày bắt đầu, chỉ giữ event có percentile thấp nhất (nghiêm trọng nhất)
-        unique_events_map = {}
-        for event in self.detailed_drawdown_history:
-            d = event['start_date']
-            # Nếu ngày này chưa có hoặc event mới có percentile nhỏ hơn (hiếm hơn) -> cập nhật
-            if d not in unique_events_map or event['percentile'] < unique_events_map[d]['percentile']:
-                unique_events_map[d] = event
-        
-        cleaned_history = list(unique_events_map.values())
-        
-        # Bước 2: Lọc danh sách hiển thị (Top 10 tệ nhất + Tất cả các lần chưa phục hồi)
-        # Sắp xếp toàn bộ theo mức độ giảm giá (tệ nhất lên đầu)
-        cleaned_history.sort(key=lambda x: x['max_dd_pct'])
-        
-        # Lấy Top 10 tệ nhất
-        top_10_worst = cleaned_history[:10]
-        
-        # Lấy tất cả các lần chưa phục hồi (bất kể mức giảm)
-        unrecovered = [e for e in cleaned_history if e['status'] == "Chưa phục hồi"]
-        
-        # Gộp 2 danh sách và loại bỏ trùng lặp (dùng start_date làm key)
-        final_display_map = {e['start_date']: e for e in top_10_worst}
-        for e in unrecovered:
-            final_display_map[e['start_date']] = e # Nếu trùng thì ghi đè (vẫn là chính nó)
-            
-        self.detailed_drawdown_history = list(final_display_map.values())
-        
-        # Sắp xếp lại danh sách cuối cùng theo thời gian (gần nhất lên đầu)
-        self.detailed_drawdown_history.sort(key=lambda x: x['start_date'], reverse=True)
+        # 3.1 Calculate Detailed Drawdown History (Consolidated via AnalyticsEngine)
+        self.detailed_drawdown_history = AnalyticsEngine.get_consolidated_drawdown_analysis(
+            self.df['Close'],
+            self.signal_series,
+            percentiles=DRAWDOWN_PERCENTILES,
+            top_n=TOP_N_DRAWDOWN
+        )
 
         # 4. Additional Info
         self.add_info = self.strategy.get_additional_info(self.df)
@@ -93,18 +64,18 @@ class ReportGenerator:
         lines = []
         # Header
         lines.append(f"# Trading Statistics Report")
-        lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
+        lines.append(f"Date: {datetime.now().strftime(DATE_FORMAT_DISPLAY)}  ")
         lines.append(f"Ticker: {self.ticker}  ")
         
         # Lấy ngày bắt đầu dữ liệu
-        start_date_str = self.df.index.min().strftime('%Y-%m-%d')
+        start_date_str = self.df.index.min().strftime(DATE_FORMAT_DISPLAY)
         lines.append(f"Data History From: {start_date_str}  ")
         
         lines.append(f"Strategy: {self.strategy.name}  ")
         lines.append("")
 
         # Risk History Table
-        lines.append(f"## Thống kê lịch sử")
+        lines.append(f"## THỐNG KÊ RỦI RO LỊCH SỬ (TỔNG QUÁT)")
         # Markdown Table Header
         lines.append(f"| PERCENTILE | TÍN HIỆU | SỐ NGÀY | MAX DD TỪ PERCENTILE |")
         lines.append(f"| :--- | :--- | :--- | :--- |")
@@ -145,6 +116,21 @@ class ReportGenerator:
             if 'days_remaining' in self.add_info:
                 next_idx += 1
                 lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
+
+        if self.current_status.get('entry_date'):
+            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_FULL)
+            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}%: {self.current_status['entry_price']:,.2f} USD (Ngày: {date_str})")
+            next_idx += 1
+            
+            max_dd_display = -self.current_status['historical_max_dd_of_zone'] * 100
+            dd_from_curr_display = ""
+            if self.current_status.get('drawdown_from_current') is not None:
+                dd_pct = -self.current_status['drawdown_from_current'] * 100
+                dd_from_curr_display = f" | Cần giảm thêm {dd_pct:.2f}% từ giá hiện tại"
+            
+            lines.append(f"{next_idx}. Target Drawdown tiềm năng: {self.current_status['target_price']:,.2f} USD (Mức giảm tệ nhất lịch sử {max_dd_display:.2f}%{dd_from_curr_display})")
+        else:
+            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
 
         lines.append("")
         

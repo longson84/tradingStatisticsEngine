@@ -10,5 +10,8 @@ wheels/
 .venv
 
 
+# Debug files
+debug/
+
 # Report files
 re/
