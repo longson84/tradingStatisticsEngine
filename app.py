@@ -127,18 +127,28 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                 # 4. Visualization
                 fig = ChartVisualizer.create_chart(ticker, df, signal_series, final_strategy)
                 
+                # 4.1 Distribution Chart
+                current_signal_value = signal_series.iloc[-1]
+                fig_dist = ChartVisualizer.create_distribution_chart(signal_series, current_signal_value, final_strategy.name)
+                
                 # --- Display Results (Vertical Layout) ---
                 with results_container:
                     # Gói toàn bộ Ticker vào 1 Expander lớn
                     with st.expander(f"📊 Kết quả phân tích: {ticker}", expanded=True):
                         # Section 1: Báo cáo chi tiết (Render Markdown)
-                        with st.expander("📝 Báo Cáo Phân Tích", expanded=True):
-                            st.markdown(report_text)
+                        st.subheader("📝 Báo cáo phân tích")
+                        st.markdown(report_text)
                         
-                        # st.divider()
+                        st.divider()
 
-                        # Section 2: Biểu đồ (Cũng dùng Expander)
-                        with st.expander("📈 Xem Biểu đồ tín hiệu", expanded=True):
+                        # Section 2: Biểu đồ Phân phối (Mới)
+                        with st.expander("📊 Xem Phân phối tín hiệu (Distribution)", expanded=True):
+                            st.plotly_chart(fig_dist, use_container_width=True)
+
+                        st.divider()
+ 
+                        # Section 3: Biểu đồ Tín hiệu
+                        with st.expander("📈 Xem Biểu đồ tín hiệu lịch sử", expanded=True):
                             st.plotly_chart(fig, use_container_width=True)
                         
                         # st.divider()

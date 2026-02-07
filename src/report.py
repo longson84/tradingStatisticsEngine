@@ -52,14 +52,19 @@ class ReportGenerator:
         lines.append(f"# TRADING STATISTICS REPORT")
         lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append(f"Ticker: {self.ticker}")
+        
+        # Lấy ngày bắt đầu dữ liệu
+        start_date_str = self.df.index.min().strftime('%Y-%m-%d')
+        lines.append(f"Data History From: {start_date_str}")
+        
         lines.append(f"Strategy: {self.strategy.name}")
         lines.append("")
 
         # Risk History Table
         lines.append(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ")
         # Markdown Table Header
-        lines.append(f"| PERCENTILE | TÍN HIỆU | SỐ NGÀY | MAX DD TỪ PERCENTILE | TIME SPENT (%) |")
-        lines.append(f"| :--- | :--- | :--- | :--- | :--- |")
+        lines.append(f"| PERCENTILE | TÍN HIỆU | SỐ NGÀY | MAX DD TỪ PERCENTILE |")
+        lines.append(f"| :--- | :--- | :--- | :--- |")
 
         for item in self.stats_history:
             row = item
@@ -70,11 +75,9 @@ class ReportGenerator:
             display_thresh = self.strategy.format_value(thresh)
             
             days_info = f"{dd_result['days_in_zone']}/{dd_result['total_days']}"
-            # note = "Vùng đáy thế hệ" if row['percentile'] <= 5 else "Vùng mua tốt"
-            time_spent = dd_result['days_in_zone']/dd_result['total_days']*100
             
             # Markdown Table Row
-            lines.append(f"| {row['percentile']:.0f}% | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {time_spent:.0f}% |")
+            lines.append(f"| {row['percentile']:.0f}% | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} |")
         
         lines.append("")
 
@@ -116,7 +119,7 @@ class ReportGenerator:
 
         return "\n".join(lines)
     
-    def save_to_file(self, chart_filename: str = None, image_filename: str = None):
+    def save_to_file(self, chart_filename: str = None, image_filename: str = None, dist_chart_filename: str = None, dist_image_filename: str = None):
         """Lưu báo cáo ra file .md trong folder re/report"""
         report_text = self.generate_text_report()
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
@@ -128,8 +131,18 @@ class ReportGenerator:
         filename = f"{timestamp}_{self.ticker}_{self.strategy.report_name}.md"
         file_path = os.path.join(report_dir, filename)
         
-        # Thêm biểu đồ vào cuối file report
-        report_text += f"\n\n## BIỂU ĐỒ\n"
+        # Thêm biểu đồ phân phối vào báo cáo (Section mới)
+        report_text += f"\n\n## BIỂU ĐỒ PHÂN PHỐI\n"
+        if dist_image_filename:
+             relative_dist_image_path = f"../charts/{dist_image_filename}"
+             report_text += f"![Biểu đồ phân phối]({relative_dist_image_path})\n\n"
+        
+        if dist_chart_filename:
+            relative_dist_html_path = f"../charts/{dist_chart_filename}"
+            report_text += f"Xem biểu đồ phân phối tương tác: [{dist_chart_filename}]({relative_dist_html_path})\n"
+
+        # Thêm biểu đồ tín hiệu vào cuối file report
+        report_text += f"\n\n## BIỂU ĐỒ TÍN HIỆU\n"
         
         # 1. Nhúng ảnh tĩnh trực tiếp (hiển thị luôn trong Markdown)
         if image_filename:

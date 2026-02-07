@@ -98,25 +98,50 @@ class ChartVisualizer:
             if i >= len(colors): continue
             
             fig.add_hline(
-                y=val,
-                line_dash="dash",
-                line_color=colors[i],
-                line_width=1,
-                annotation_text=f"{threshold_percents[i]*100:.0f}%",
-                annotation_position="top right",
+                y=val, 
+                line_dash="dot", 
+                line_color=colors[i], 
+                annotation_text=f"{threshold_percents[i]*100:.0f}%", 
                 row=2, col=1
             )
-            
-        # Layout Updates
-        fig.update_layout(
-            height=800,
-            title_text=f"Analysis Report: {ticker} - {strategy.name}",
-            showlegend=True,
-            hovermode="x unified", # Show values for all traces at x
-            template="plotly_white"
+
+        fig.update_layout(height=800, hovermode="x unified", showlegend=True)
+        return fig
+
+    @staticmethod
+    def create_distribution_chart(signal_series: pd.Series, current_value: float, strategy_name: str) -> go.Figure:
+        """
+        Tạo biểu đồ phân phối (Histogram) của tín hiệu.
+        Và đánh dấu vị trí hiện tại.
+        """
+        fig = go.Figure()
+
+        # 1. Histogram
+        fig.add_trace(go.Histogram(
+            x=signal_series,
+            name='Phân phối lịch sử',
+            nbinsx=100,
+            marker_color='lightblue',
+            opacity=0.7
+        ))
+
+        # 2. Vertical Line for Current Value
+        fig.add_vline(
+            x=current_value,
+            line_width=3,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Hiện tại",
+            annotation_position="top right"
         )
-        
-        fig.update_yaxes(title_text="Price (USD)", row=1, col=1)
-        fig.update_yaxes(title_text="Signal Value", row=2, col=1)
+
+        fig.update_layout(
+            title=f"Phân phối tín hiệu: {strategy_name}",
+            xaxis_title="Giá trị Tín hiệu",
+            yaxis_title="Số lần xuất hiện (Ngày)",
+            height=400,
+            showlegend=True,
+            bargap=0.1
+        )
         
         return fig

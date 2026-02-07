@@ -119,38 +119,63 @@ def main():
                     
                     # Visualization
                     print(f"[{ticker}] Đang tạo và hiển thị biểu đồ...")
-                    fig = ChartVisualizer.create_chart(ticker, df, signal_series, strategy)
-                    fig.show()
                     
-                    # Save Chart (HTML + PNG)
+                    # 1. Main Chart
+                    fig = ChartVisualizer.create_chart(ticker, df, signal_series, strategy)
+                    
+                    # 2. Distribution Chart
+                    current_signal_value = signal_series.iloc[-1]
+                    fig_dist = ChartVisualizer.create_distribution_chart(signal_series, current_signal_value, strategy.name)
+                    
+                    # Show charts (optional in script mode, maybe too much popups)
+                    # fig.show() 
+                    
+                    # Save Charts (HTML + PNG)
                     timestamp = datetime.now().strftime("%y%m%d%H%M%S")
                     
                     # Folder charts
                     charts_dir = os.path.join(os.getcwd(), "re", "charts")
                     os.makedirs(charts_dir, exist_ok=True)
                     
-                    # 1. HTML
+                    # --- Save Main Chart ---
+                    # HTML
                     chart_filename_html = f"{timestamp}_{ticker}_{strategy.report_name}_chart.html"
                     chart_path_html = os.path.join(charts_dir, chart_filename_html)
                     fig.write_html(chart_path_html)
                     
-                    # 2. Static Image (PNG)
+                    # PNG
                     chart_filename_png = f"{timestamp}_{ticker}_{strategy.report_name}_chart.png"
                     chart_path_png = os.path.join(charts_dir, chart_filename_png)
                     try:
-                        # Yêu cầu cài đặt kaleido: pip install kaleido
-                        # Không cần chỉ định engine="kaleido" nữa vì Plotly sẽ tự động nhận diện
                         fig.write_image(chart_path_png)
-                        print(f"-> Đã lưu biểu đồ: {chart_filename_png} (PNG)")
+                        print(f"-> Đã lưu biểu đồ tín hiệu: {chart_filename_png} (PNG)")
                     except Exception as e:
                         print(f"-> Không thể lưu ảnh tĩnh (cần cài kaleido): {e}")
                         chart_filename_png = None
 
-                    print(f"-> Đã lưu biểu đồ tương tác: {chart_filename_html}")
+                    # --- Save Distribution Chart ---
+                    # HTML
+                    dist_chart_filename_html = f"{timestamp}_{ticker}_{strategy.report_name}_dist.html"
+                    dist_path_html = os.path.join(charts_dir, dist_chart_filename_html)
+                    fig_dist.write_html(dist_path_html)
+                    
+                    # PNG
+                    dist_chart_filename_png = f"{timestamp}_{ticker}_{strategy.report_name}_dist.png"
+                    dist_path_png = os.path.join(charts_dir, dist_chart_filename_png)
+                    try:
+                        fig_dist.write_image(dist_path_png)
+                        print(f"-> Đã lưu biểu đồ phân phối: {dist_chart_filename_png} (PNG)")
+                    except Exception as e:
+                        print(f"-> Không thể lưu ảnh tĩnh phân phối: {e}")
+                        dist_chart_filename_png = None
+
+                    print(f"-> Đã lưu các biểu đồ tương tác HTML.")
                     
                     # Store filenames in report object for linking
                     report_gen.chart_filename = chart_filename_html
                     report_gen.image_filename = chart_filename_png
+                    report_gen.dist_chart_filename = dist_chart_filename_html
+                    report_gen.dist_image_filename = dist_chart_filename_png
                     
                     # Print report
                     print("\n" + "=" * 65)
@@ -180,7 +205,15 @@ def main():
                 for report in generated_reports:
                     c_name = getattr(report, 'chart_filename', None)
                     img_name = getattr(report, 'image_filename', None)
-                    filename = report.save_to_file(chart_filename=c_name, image_filename=img_name)
+                    dist_c_name = getattr(report, 'dist_chart_filename', None)
+                    dist_img_name = getattr(report, 'dist_image_filename', None)
+                    
+                    filename = report.save_to_file(
+                        chart_filename=c_name, 
+                        image_filename=img_name,
+                        dist_chart_filename=dist_c_name,
+                        dist_image_filename=dist_img_name
+                    )
                     print(f"-> Đã lưu: {filename}")
             
             input("\n[Enter] để quay lại menu...")
