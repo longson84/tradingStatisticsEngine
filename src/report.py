@@ -17,7 +17,7 @@ class ReportGenerator:
     def calculate(self):
         """Thực hiện toàn bộ các tính toán thống kê."""
         # 1. Calculate Percentiles
-        self.stats_df = AnalyticsEngine.calculate_percentiles(self.signal_series, percentiles=[1, 5, 10, 20, 50])
+        self.stats_df = AnalyticsEngine.calculate_percentiles(self.signal_series, percentiles=[1, 5, 10, 15, 20, 25, 30, 40, 50])
         
         # 2. Calculate History
         self.stats_history = []
@@ -58,7 +58,7 @@ class ReportGenerator:
         # Risk History Table
         lines.append(f"## BẢNG THỐNG KÊ RỦI RO LỊCH SỬ")
         # Markdown Table Header
-        lines.append(f"| TOP TỆ NHẤT | NGƯỠNG | SỐ NGÀY | MAX DD LỊCH SỬ | GHI CHÚ |")
+        lines.append(f"| PERCENTILE | TÍN HIỆU | SỐ NGÀY | MAX DD TỪ PERCENTILE | TIME SPENT (%) |")
         lines.append(f"| :--- | :--- | :--- | :--- | :--- |")
 
         for item in self.stats_history:
@@ -70,10 +70,11 @@ class ReportGenerator:
             display_thresh = self.strategy.format_value(thresh)
             
             days_info = f"{dd_result['days_in_zone']}/{dd_result['total_days']}"
-            note = "Vùng đáy thế hệ" if row['percentile'] <= 5 else "Vùng mua tốt"
+            # note = "Vùng đáy thế hệ" if row['percentile'] <= 5 else "Vùng mua tốt"
+            time_spent = dd_result['days_in_zone']/dd_result['total_days']*100
             
             # Markdown Table Row
-            lines.append(f"| {row['percentile']:.0f}% (Hiếm) | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {note} |")
+            lines.append(f"| {row['percentile']:.0f}% (Hiếm) | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {time_spent:.2f}% |")
         
         lines.append("")
 
