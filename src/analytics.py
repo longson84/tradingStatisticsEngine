@@ -171,7 +171,7 @@ class AnalyticsEngine:
             days_to_bottom = (min_date - start_date).days
             
             # Format ngày tháng năm
-            fmt = '%d/%m/%Y'
+            fmt = '%d/%m/%y'
             
             events.append({
                 "start_date": start_date, # Giữ object datetime để sort

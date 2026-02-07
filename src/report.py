@@ -51,8 +51,36 @@ class ReportGenerator:
             )
              self.detailed_drawdown_history.extend(events)
         
-        # Sắp xếp theo ngày bắt đầu giảm dần (gần nhất trước)
-        self.detailed_drawdown_history.sort(key=lambda x: (x['start_date'], -x['percentile']), reverse=True)
+        # 3.2 Xử lý trùng lặp và lọc danh sách hiển thị
+        # Bước 1: Deduplication - Gộp các event trùng ngày bắt đầu, chỉ giữ event có percentile thấp nhất (nghiêm trọng nhất)
+        unique_events_map = {}
+        for event in self.detailed_drawdown_history:
+            d = event['start_date']
+            # Nếu ngày này chưa có hoặc event mới có percentile nhỏ hơn (hiếm hơn) -> cập nhật
+            if d not in unique_events_map or event['percentile'] < unique_events_map[d]['percentile']:
+                unique_events_map[d] = event
+        
+        cleaned_history = list(unique_events_map.values())
+        
+        # Bước 2: Lọc danh sách hiển thị (Top 10 tệ nhất + Tất cả các lần chưa phục hồi)
+        # Sắp xếp toàn bộ theo mức độ giảm giá (tệ nhất lên đầu)
+        cleaned_history.sort(key=lambda x: x['max_dd_pct'])
+        
+        # Lấy Top 10 tệ nhất
+        top_10_worst = cleaned_history[:10]
+        
+        # Lấy tất cả các lần chưa phục hồi (bất kể mức giảm)
+        unrecovered = [e for e in cleaned_history if e['status'] == "Chưa phục hồi"]
+        
+        # Gộp 2 danh sách và loại bỏ trùng lặp (dùng start_date làm key)
+        final_display_map = {e['start_date']: e for e in top_10_worst}
+        for e in unrecovered:
+            final_display_map[e['start_date']] = e # Nếu trùng thì ghi đè (vẫn là chính nó)
+            
+        self.detailed_drawdown_history = list(final_display_map.values())
+        
+        # Sắp xếp lại danh sách cuối cùng theo thời gian (gần nhất lên đầu)
+        self.detailed_drawdown_history.sort(key=lambda x: x['start_date'], reverse=True)
 
         # 4. Additional Info
         self.add_info = self.strategy.get_additional_info(self.df)
@@ -121,16 +149,22 @@ class ReportGenerator:
         lines.append("")
         
         # Detailed Drawdown History Table (New Section)
-        lines.append(f"## LỊCH SỬ CÁC LẦN DRAWDOWN CHI TIẾT (VÙNG HIẾM)")
-        lines.append(f"| Ngày bắt đầu | Giá | Percentile | Giá đáy | Ngày đáy | Max DD (%) | Số ngày đến đáy | Ngày phục hồi | Số ngày phục hồi | Trạng thái |")
+        lines.append(f"## TOP DRAWDOWN TỆ NHẤT & CÁC LẦN CHƯA PHỤC HỒI")
+        lines.append(f"| Ngày bắt đầu | Giá | Percentile | Giá đáy | Ngày đáy | Max DD (%) | Days To Bottom | Ngày phục hồi | Days To Recover | Trạng thái |")
         lines.append(f"| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
         
         for event in self.detailed_drawdown_history:
              price_str = f"{event['entry_price']:,.2f}"
              min_price_str = f"{event['min_price']:,.2f}"
              dd_str = f"{event['max_dd_pct']:.2f}%"
+             status_str = event['status']
              
-             row = f"| {event['start_date_str']} | {price_str} | {event['percentile']}% | {min_price_str} | {event['min_date_str']} | {dd_str} | {event['days_to_bottom']} | {event['recovery_date_str']} | {event['days_to_recover']} | {event['status']} |"
+             # Tô đỏ dòng chưa phục hồi
+             if event['status'] == "Chưa phục hồi":
+                 status_str = f"<span style='color:red'>**{status_str}**</span>"
+                 dd_str = f"<span style='color:red'>**{dd_str}**</span>"
+             
+             row = f"| {event['start_date_str']} | {price_str} | {event['percentile']}% | {min_price_str} | {event['min_date_str']} | {dd_str} | {event['days_to_bottom']} | {event['recovery_date_str']} | {event['days_to_recover']} | {status_str} |"
              lines.append(row)
 
         # 5. Target Drawdown Analysis

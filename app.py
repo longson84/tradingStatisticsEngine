@@ -137,7 +137,7 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
                     with st.expander(f"📊 Kết quả phân tích: {ticker}", expanded=True):
                         # Section 1: Báo cáo chi tiết (Render Markdown)
                         st.subheader("📝 Báo cáo phân tích")
-                        st.markdown(report_text)
+                        st.markdown(report_text, unsafe_allow_html=True)
                         
                         st.divider()
 
