@@ -74,7 +74,7 @@ class ReportGenerator:
             time_spent = dd_result['days_in_zone']/dd_result['total_days']*100
             
             # Markdown Table Row
-            lines.append(f"| {row['percentile']:.0f}% (Hiếm) | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {time_spent:.2f}% |")
+            lines.append(f"| {row['percentile']:.0f}% | {display_thresh} | {days_info} | {dd_result['formatted_drawdown']} | {time_spent:.0f}% |")
         
         lines.append("")
 
