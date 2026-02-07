@@ -50,14 +50,14 @@ class ReportGenerator:
         lines = []
         # Header
         lines.append(f"# TRADING STATISTICS REPORT")
-        lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"Ngày thống kê: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append(f"Ticker: {self.ticker}")
         
         # Lấy ngày bắt đầu dữ liệu
         start_date_str = self.df.index.min().strftime('%Y-%m-%d')
-        lines.append(f"Data History From: {start_date_str}")
+        lines.append(f"Thống kê từ: {start_date_str}")
         
-        lines.append(f"Strategy: {self.strategy.name}")
+        lines.append(f"Tín hiệu: {self.strategy.name}")
         lines.append("")
 
         # Risk History Table
