@@ -92,7 +92,7 @@ def load_data(ticker):
     ingestor = YFinanceIngestor(ticker)
     return ingestor.get_data()
 
-if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_state.get('submitted'):
+if st.sidebar.button("🚀 Phân Tích", type="primary") or st.session_state.get('submitted'):
     st.session_state['submitted'] = True
     
     if not tickers:
@@ -143,13 +143,21 @@ if st.sidebar.button("🚀 Chạy Phân Tích", type="primary") or st.session_st
 
                         # Section 2: Biểu đồ Phân phối (Mới)
                         with st.expander("📊 Xem Phân phối tín hiệu (Distribution)", expanded=True):
-                            st.plotly_chart(fig_dist, use_container_width=True)
+                            # Fix DeprecationWarning: use_container_width -> width='stretch' (Streamlit 1.40+)
+                            try:
+                                st.plotly_chart(fig_dist, width="stretch")
+                            except TypeError:
+                                # Fallback cho Streamlit cũ hơn
+                                st.plotly_chart(fig_dist, use_container_width=True)
 
-                        st.divider()
+                        # st.divider()
  
                         # Section 3: Biểu đồ Tín hiệu
                         with st.expander("📈 Xem Biểu đồ tín hiệu lịch sử", expanded=True):
-                            st.plotly_chart(fig, use_container_width=True)
+                            try:
+                                st.plotly_chart(fig, width="stretch")
+                            except TypeError:
+                                st.plotly_chart(fig, use_container_width=True)
                         
                         # st.divider()
 

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
+from src.constants import DATE_FORMAT_DISPLAY
 
 class SignalStrategy(ABC):
     """Lớp trừu tượng cho mọi loại tín hiệu."""
@@ -135,7 +136,7 @@ class DistanceFromPeakSignal(SignalStrategy):
         days_remaining = self.window - days_since_ref
         
         return {
-            "ref_date": peak_date.strftime('%Y-%m-%d'),
+            "ref_date": peak_date.strftime(DATE_FORMAT_DISPLAY),
             "ref_value": f"{peak_price:,.2f} USD",
             "days_since_ref": days_since_ref,
             "days_remaining": days_remaining
