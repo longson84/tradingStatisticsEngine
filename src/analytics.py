@@ -8,16 +8,212 @@ from src.constants import (
     DRAWDOWN_PERCENTILES_FOR_THRESHOLD
 )
 
+import uuid
+from typing import List, Dict, Optional
+
+class NPEvent:
+    def __init__(self, percentile: float, threshold: float, start_date, entry_price: float, upline_id: Optional[str] = None):
+        self.id = str(uuid.uuid4())
+        self.percentile = percentile
+        self.threshold = threshold
+        self.start_date = start_date
+        self.entry_price = entry_price
+        self.upline_id = upline_id
+        
+        self.min_price = entry_price
+        self.min_date = start_date
+        
+        self.status = "Chưa phục hồi"
+        self.recovery_date = None
+        self.days_to_recover = None
+        self.days_to_bottom = 0
+        
+        self.children_ids = [] # List of child event IDs
+        self.p_coverage = 0
+
+    def update_price(self, date, price):
+        if price < self.min_price:
+            self.min_price = price
+            self.min_date = date
+            
+    def close(self, recovery_date, price_series):
+        self.status = "Đã phục hồi"
+        self.recovery_date = recovery_date
+        
+        # Calculate days based on trading days (index difference)
+        try:
+            start_idx = price_series.index.get_loc(self.start_date)
+            rec_idx = price_series.index.get_loc(recovery_date)
+            self.days_to_recover = rec_idx - start_idx
+            
+            min_idx = price_series.index.get_loc(self.min_date)
+            self.days_to_bottom = min_idx - start_idx
+        except:
+            # Fallback if index lookup fails (rare)
+            self.days_to_recover = (recovery_date - self.start_date).days
+            self.days_to_bottom = (self.min_date - self.start_date).days
+
+    @property
+    def mae_pct(self):
+        return (1 - self.min_price / self.entry_price) * 100
+
 def calculate_signal_percentiles(signal_series: pd.Series, percentiles=CALCULATE_PERCENTILES) -> pd.DataFrame:
     """Tính các ngưỡng giá trị tín hiệu tại các mốc percentile."""
     results = []
+    # Drop NA to ensure percentile calculation is correct
+    clean_signals = signal_series.dropna()
     for p in percentiles:
-        threshold = np.percentile(signal_series, p)
+        threshold = np.percentile(clean_signals, p)
         results.append({
             "Percentile": p,
             "Threshold": threshold
         })
     return pd.DataFrame(results)
+
+def calculate_np_events_tree(price_series: pd.Series, signal_series: pd.Series, percentiles: list) -> List[NPEvent]:
+    """
+    Tính toán các sự kiện NP theo logic mới (reqv2.md):
+    - Trigger: Signal <= Percentile AND Price < Prev Price
+    - Structure: Tree (Cha-Con)
+    - Output: Danh sách phẳng các sự kiện (có link ID)
+    """
+    # 1. Align Data
+    common_idx = price_series.index.intersection(signal_series.index)
+    if len(common_idx) < 2:
+        return []
+        
+    prices = price_series.loc[common_idx]
+    signals = signal_series.loc[common_idx]
+    
+    # 2. Pre-calculate Thresholds
+    clean_signals = signal_series.dropna()
+    # Sort percentiles descending to check logic if needed, but for triggering we iterate all
+    # Use a map for O(1) lookup
+    threshold_map = {p: np.percentile(clean_signals, p) for p in percentiles}
+    sorted_percentiles = sorted(percentiles) 
+
+    active_events: List[NPEvent] = []
+    closed_events: List[NPEvent] = []
+    
+    # 3. Iterate through time
+    # Start from index 1 because we need prev_price
+    for i in range(1, len(common_idx)):
+        current_date = common_idx[i]
+        current_price = prices.iloc[i]
+        prev_price = prices.iloc[i-1]
+        current_signal = signals.iloc[i]
+        
+        # A. Check Recovery for Active Events
+        # Iterate backward to allow safe removal or use a new list
+        still_active = []
+        for event in active_events:
+            event.update_price(current_date, current_price)
+            
+            if current_price >= event.entry_price:
+                # Recovered!
+                event.close(current_date, prices)
+                closed_events.append(event)
+            else:
+                still_active.append(event)
+        
+        active_events = still_active
+        
+        # B. Check New Triggers
+        # Condition 1: Price Drop
+        if current_price < prev_price:
+            
+            # Condition 2: Signal <= Threshold
+            # Priority Rule: Only trigger the LOWEST applicable percentile event (smallest p).
+            
+            target_p = None
+            target_threshold = None
+            
+            # Since sorted_percentiles is ascending [1, 5, 10...], the first match is the smallest p.
+            for p in sorted_percentiles:
+                if current_signal <= threshold_map[p]:
+                    target_p = p
+                    target_threshold = threshold_map[p]
+                    break # FOUND THE TIGHTEST MATCH, STOP SEARCHING
+            
+            if target_p is not None:
+                p = target_p
+                t = target_threshold
+                
+                # Check if an event for this percentile is already active
+                is_already_active = False
+                for event in active_events:
+                    if event.percentile == p:
+                        is_already_active = True
+                        break
+                
+                if not is_already_active:
+                    # CREATE NEW EVENT
+                    
+                    # Find Parent (Upline)
+                    # Parent is an ACTIVE event with entry_price > current_price
+                    # If multiple, pick the one with smallest entry_price (closest container)
+                    # Also, parent must strictly be active (not closed this step).
+                    
+                    potential_parents = [e for e in active_events if e.entry_price > current_price]
+                    parent = None
+                    if potential_parents:
+                        # Sort by entry_price ascending (closest to current)
+                        potential_parents.sort(key=lambda e: e.entry_price)
+                        parent = potential_parents[0]
+                    
+                    new_event = NPEvent(
+                        percentile=p,
+                        threshold=t,
+                        start_date=current_date,
+                        entry_price=current_price,
+                        upline_id=parent.id if parent else None
+                    )
+                    
+                    if parent:
+                        parent.children_ids.append(new_event.id)
+                        
+                    active_events.append(new_event)
+    
+    # 4. Finalize
+    # Move remaining active events to result (they are Type A: Unrecovered)
+    # We need to calculate their current stats (days to bottom etc) up to now
+    for event in active_events:
+        # Calculate stats up to end of data
+        try:
+            start_idx = prices.index.get_loc(event.start_date)
+            min_idx = prices.index.get_loc(event.min_date)
+            event.days_to_bottom = min_idx - start_idx
+        except:
+             event.days_to_bottom = (event.min_date - event.start_date).days
+             
+        closed_events.append(event)
+        
+    # 5. Calculate P-Coverage (Total Descendants)
+    event_map = {e.id: e for e in closed_events}
+    
+    # Memoization for performance
+    memo_coverage = {}
+
+    def get_coverage(e_id):
+        if e_id in memo_coverage:
+            return memo_coverage[e_id]
+        
+        if e_id not in event_map:
+            return 0
+            
+        event = event_map[e_id]
+        count = len(event.children_ids)
+        for child_id in event.children_ids:
+            count += get_coverage(child_id)
+        
+        memo_coverage[e_id] = count
+        return count
+
+    for event in closed_events:
+        event.p_coverage = get_coverage(event.id)
+
+    return closed_events
+
 
 def _find_event_indices(prices: np.ndarray, signals: np.ndarray, threshold: float) -> list:
     """

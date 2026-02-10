@@ -12,6 +12,9 @@ TOP_N_DRAWDOWN = 10
 # Chỉ xem xét những đợt drawdown mà thời gian về bờ lâu hơn mức này
 MIN_RECOVERY_DAYS_THRESHOLD = 5
 
+# MAE Percentiles for Statistics (Thống kê mức độ sụt giảm)
+MAE_PERCENTILES = [80, 85, 90, 95, 98]
+
 # Visualization Constants
 # Tương ứng với Top 1%, 5%, 10%
 VISUALIZATION_THRESHOLDS = [0.01, 0.05, 0.10]
