@@ -9,9 +9,13 @@ wheels/
 # Virtual environments
 .venv
 
+# MacOS files
+.DS_Store
+
 
 # Debug files
 debug/
 
 # Report files
 re/
+.DS_Store
