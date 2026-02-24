@@ -198,6 +198,45 @@ class ReportGenerator:
             lines.append("| " + " | ".join(row) + " |")
             
         lines.append("")
+
+
+        # 3. Current Status (Keep existing)
+        lines.append("## Trạng thái hiện tại")
+        # ... (Reuse existing logic for Current Status display) ...
+        # Copied from original file
+        lines.append(f"1. Giá hiện tại: {self.current_status['current_price']:,.2f} USD")
+        display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
+        lines.append(f"2. {self.strategy.name} hiện tại: {display_current_signal}")
+        lines.append(f"3. Độ hiếm hiện tại: {self.current_status['rarity']:.0f}%")
+        
+        next_idx = 4
+        if self.add_info:
+            lines.append(f"{next_idx}. Ngày tham chiếu: {self.add_info['ref_date']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
+            if 'days_remaining' in self.add_info:
+                next_idx += 1
+                lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
+
+        if self.current_status.get('entry_date'):
+            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
+            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {self.current_status['entry_price']:,.2f} USD")
+            next_idx += 1
+            if self.current_status.get('days_in_current_zone') is not None:
+                lines.append(f"{next_idx}. Giá đã ở vùng hiện tại: {self.current_status['days_in_current_zone']} phiên")
+                next_idx += 1
+            
+            max_dd_display = -self.current_status['historical_max_dd_of_zone'] * 100
+            dd_from_curr_display = ""
+            if self.current_status.get('drawdown_from_current') is not None:
+                dd_pct = -self.current_status['drawdown_from_current'] * 100
+                dd_from_curr_display = f"~ giảm {dd_pct:.2f}% từ hiện tại"
+            
+            lines.append(f"{next_idx}. Giá có thể giảm đến {self.current_status['target_price']:,.2f} USD, {dd_from_curr_display}, Max DD: {max_dd_display:.2f}%")
+        else:
+            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
         
         # 2. Bảng liệt kê sự kiện (Tree View)
         lines.append(f"## Danh sách các sự kiện NP (Chi tiết)")
@@ -283,43 +322,7 @@ class ReportGenerator:
         lines.append("</details>")
         lines.append("")
 
-        # 3. Current Status (Keep existing)
-        lines.append("## Trạng thái hiện tại")
-        # ... (Reuse existing logic for Current Status display) ...
-        # Copied from original file
-        lines.append(f"1. Giá hiện tại: {self.current_status['current_price']:,.2f} USD")
-        display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
-        lines.append(f"2. {self.strategy.name} hiện tại: {display_current_signal}")
-        lines.append(f"3. Độ hiếm hiện tại: {self.current_status['rarity']:.0f}%")
         
-        next_idx = 4
-        if self.add_info:
-            lines.append(f"{next_idx}. Ngày tham chiếu: {self.add_info['ref_date']}")
-            next_idx += 1
-            lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
-            next_idx += 1
-            lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
-            if 'days_remaining' in self.add_info:
-                next_idx += 1
-                lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
-
-        if self.current_status.get('entry_date'):
-            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
-            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {self.current_status['entry_price']:,.2f} USD")
-            next_idx += 1
-            if self.current_status.get('days_in_current_zone') is not None:
-                lines.append(f"{next_idx}. Giá đã ở vùng hiện tại: {self.current_status['days_in_current_zone']} phiên")
-                next_idx += 1
-            
-            max_dd_display = -self.current_status['historical_max_dd_of_zone'] * 100
-            dd_from_curr_display = ""
-            if self.current_status.get('drawdown_from_current') is not None:
-                dd_pct = -self.current_status['drawdown_from_current'] * 100
-                dd_from_curr_display = f"~ giảm {dd_pct:.2f}% từ hiện tại"
-            
-            lines.append(f"{next_idx}. Giá có thể giảm đến {self.current_status['target_price']:,.2f} USD, {dd_from_curr_display}, Max DD: {max_dd_display:.2f}%")
-        else:
-            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
             
         return "\n".join(lines)
 
