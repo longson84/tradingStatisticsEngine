@@ -174,6 +174,14 @@ class ReportGenerator:
         lines.append("| " + " | ".join(header) + " |")
         lines.append("| " + " | ".join([":---"] * len(header)) + " |")
         
+        # Determine highlight row based on current rarity
+        current_rarity = self.current_status.get('rarity', 100) if self.current_status else 100
+        highlight_p = None
+        # Find the smallest percentile > current_rarity
+        candidates = [p for p in CALCULATE_PERCENTILES if p > current_rarity]
+        if candidates:
+            highlight_p = min(candidates)
+        
         # Rows
         for p in CALCULATE_PERCENTILES:
             stat = self.np_stats.get(p)
@@ -194,6 +202,11 @@ class ReportGenerator:
             for mp in sorted_mae_percentiles:
                 val = stat['mae_stats'].get(mp, 0)
                 row.append(f"{val:.2f}%")
+            
+            # Highlight row if it matches the target percentile
+            if p == highlight_p:
+                # Use Gold background and Black text to highlight
+                row = [f"<span style='background-color: #FFD700; color: black; padding: 2px 4px; border-radius: 4px;'><b>{cell}</b></span>" for cell in row]
                 
             lines.append("| " + " | ".join(row) + " |")
             
