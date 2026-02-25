@@ -531,9 +531,8 @@ def get_detailed_current_status(price_series: pd.Series, signal_series: pd.Serie
             result['historical_max_dd_of_zone'] = worst_dd_pct / 100.0
         
         # 5. Tìm Entry Point & Status hiện tại
-        # Sự kiện đang diễn ra sẽ nằm ở cuối list (vì events được sort theo thời gian)
         if events:
-            latest_event = events[-1]
+            latest_event = events[0]
             
             if latest_event['is_active']:
                 entry_price = latest_event['entry_price']
