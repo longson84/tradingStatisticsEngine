@@ -7,25 +7,26 @@ from src.signal.analytics import (
     calculate_np_events_tree,
     get_detailed_current_status,
 )
+from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
 from src.signal.constants import (
     CALCULATE_PERCENTILES,
-    DATE_FORMAT_DISPLAY,
-    MIN_RECOVERY_DAYS_THRESHOLD,
     MAE_PERCENTILES,
+    MIN_RECOVERY_DAYS_THRESHOLD,
 )
 
 class ReportGenerator:
-    def __init__(self, ticker, strategy, df, signal_series):
+    def __init__(self, ticker, strategy, df, signal_series, qr_threshold: int = MIN_RECOVERY_DAYS_THRESHOLD):
         self.ticker = ticker
         self.strategy = strategy
         self.df = df
         self.signal_series = signal_series
+        self.qr_threshold = max(2, int(qr_threshold))
         self.stats_df = None
         self.stats_history = []
         self.current_status = None
         self.add_info = None
-        self.np_events = [] # Store NP Events
-        self.np_stats = {} # Store Summary Stats
+        self.np_events = []
+        self.np_stats = {}
 
     def calculate(self):
         """Thực hiện toàn bộ các tính toán thống kê."""
@@ -44,7 +45,7 @@ class ReportGenerator:
 
         # 4. Derive current status from the already-computed tree (no double work)
         self.current_status = get_detailed_current_status(
-            self.df['Close'], self.signal_series, self.np_events
+            self.df['Close'], self.signal_series, self.np_events, self.qr_threshold
         )
         
         # 5. Additional Info
@@ -65,7 +66,7 @@ class ReportGenerator:
                 stats[p] = None
                 continue
                 
-            qr_count = sum(1 for e in events if e.days_to_recover is not None and e.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD)
+            qr_count = sum(1 for e in events if e.days_to_recover is not None and e.days_to_recover <= self.qr_threshold)
             
             # Count 5y/10y (Total and QR)
             count_5y = 0
@@ -74,7 +75,7 @@ class ReportGenerator:
             qr_10y = 0
             
             for e in events:
-                is_qr_event = e.days_to_recover is not None and e.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD
+                is_qr_event = e.days_to_recover is not None and e.days_to_recover <= self.qr_threshold
                 
                 if e.start_date >= date_5y:
                     count_5y += 1
@@ -101,7 +102,7 @@ class ReportGenerator:
                     total_days += last_idx - start_idx
                 
                 # Filter out Quick Recovery events for MAE stats
-                is_qr = e.days_to_recover is not None and e.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD
+                is_qr = e.days_to_recover is not None and e.days_to_recover <= self.qr_threshold
                 if not is_qr:
                     mae_values.append(e.mae_pct)
                 
@@ -134,21 +135,102 @@ class ReportGenerator:
             }
         return stats
 
+    def build_stats_df(self):
+        """Return (DataFrame, highlight_p) for the NP statistics summary table."""
+        sorted_mae = sorted(MAE_PERCENTILES, reverse=True)
+
+        current_rarity = self.current_status.get("rarity", 100) if self.current_status else 100
+        candidates = [p for p in CALCULATE_PERCENTILES if p > current_rarity]
+        highlight_p = min(candidates) if candidates else None
+
+        rows = []
+        for p in CALCULATE_PERCENTILES:
+            stat = self.np_stats.get(p)
+            if not stat:
+                continue
+            row = {
+                "PCT": f"{p}%",
+                "Signal": self.strategy.format_value(stat["threshold"]),
+                "Count": stat["count"],
+                "QR": stat["qr"],
+                "QR %": fmt_pct(stat['qr_pct']),
+                "5Y": f"{stat['count_5y']}/{stat['qr_5y']}",
+                "10Y": f"{stat['count_10y']}/{stat['qr_10y']}",
+                "Days": stat["total_days"],
+                "MMAE %": fmt_pct(stat['mmae']),
+                "_highlight": p == highlight_p,
+            }
+            for mp in sorted_mae:
+                val = stat["mae_stats"].get(mp, 0)
+                row[f"MAE-{mp}%"] = fmt_pct(val)
+            rows.append(row)
+
+        return pd.DataFrame(rows), highlight_p
+
+    # ------------------------------------------------------------------
+    # Private section builders
+    # ------------------------------------------------------------------
+
+    def _header_lines(self) -> list:
+        return [
+            f"## {self.ticker} — {self.strategy.name}",
+            f"Ngày thống kê: {datetime.now().strftime(DATE_FORMAT_DISPLAY)}  ",
+            f"Ngày dữ liệu đầu tiên: {self.df.index.min().strftime(DATE_FORMAT_DISPLAY)}  ",
+            f"Ngày dữ liệu cuối cùng: {self.df.index[-1].strftime(DATE_FORMAT_DISPLAY)}  ",
+            f"Tổng số phiên: {len(self.df):,}  ",
+            "",
+        ]
+
+    def _current_status_lines(self) -> list:
+        lines = ["## Trạng thái hiện tại"]
+        lines.append(f"1. Giá hiện tại: {fmt_price(self.current_status['current_price'])} USD")
+        display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
+        lines.append(f"2. {self.strategy.name} hiện tại: {display_current_signal}")
+        lines.append(f"3. Độ hiếm hiện tại: {fmt_pct(self.current_status['rarity'])}")
+
+        next_idx = 4
+        if self.add_info:
+            lines.append(f"{next_idx}. Ngày tham chiếu: {self.add_info['ref_date']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
+            next_idx += 1
+            lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
+            if 'days_remaining' in self.add_info:
+                next_idx += 1
+                lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
+
+        if self.current_status.get('entry_date'):
+            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
+            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {fmt_price(self.current_status['entry_price'])} USD")
+            next_idx += 1
+            if self.current_status.get('days_in_current_zone') is not None:
+                lines.append(f"{next_idx}. Giá đã ở vùng hiện tại: {self.current_status['days_in_current_zone']} phiên")
+                next_idx += 1
+            max_dd_display = -self.current_status['historical_max_dd_of_zone'] * 100
+            dd_from_curr_display = ""
+            if self.current_status.get('drawdown_from_current') is not None:
+                dd_pct = -self.current_status['drawdown_from_current'] * 100
+                dd_from_curr_display = f"~ giảm {fmt_pct(dd_pct)} từ hiện tại"
+            lines.append(f"{next_idx}. Giá có thể giảm đến {fmt_price(self.current_status['target_price'])} USD, {dd_from_curr_display}, Max DD: {fmt_pct(max_dd_display)}")
+        else:
+            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
+        return lines
+
+    # ------------------------------------------------------------------
+
+    def generate_display_report(self) -> str:
+        """Header + current status only — for UI display (stats table rendered separately)."""
+        if not self.np_events:
+            self.calculate()
+        lines = self._header_lines() + self._current_status_lines()
+        return "\n".join(lines)
+
     def generate_text_report(self):
         """Tạo nội dung báo cáo dạng text (dùng cho print và save file)."""
         if not self.np_events:
             self.calculate()
-            
-        lines = []
-        # Header
-        lines.append(f"## {self.ticker} — {self.strategy.name}")
-        lines.append(f"Ngày thống kê: {datetime.now().strftime(DATE_FORMAT_DISPLAY)}  ")
-        # ... (keep existing basic info) ...
-        start_date_str = self.df.index.min().strftime(DATE_FORMAT_DISPLAY)
-        lines.append(f"Ngày dữ liệu đầu tiên: {start_date_str}  ")
-        lines.append(f"Ngày dữ liệu cuối cùng: {self.df.index[-1].strftime(DATE_FORMAT_DISPLAY)}  ")
-        lines.append(f"Tổng số phiên: {len(self.df):,}  ")
-        lines.append("")
+
+        lines = self._header_lines()
 
         # 1. Bảng thống kê tổng hợp (New Table)
         lines.append(f"## Thống kê các sự kiện NP tổng hợp")
@@ -185,15 +267,15 @@ class ReportGenerator:
             row.append(self.strategy.format_value(stat['threshold']))
             row.append(str(stat['count']))
             row.append(str(stat['qr']))
-            row.append(f"{stat['qr_pct']:.1f}%")
+            row.append(fmt_pct(stat['qr_pct']))
             row.append(f"{stat['count_5y']}/{stat['qr_5y']}")
             row.append(f"{stat['count_10y']}/{stat['qr_10y']}")
             row.append(f"{stat['total_days']:,}")
-            row.append(f"{stat['mmae']:.2f}%")
+            row.append(fmt_pct(stat['mmae']))
             
             for mp in sorted_mae_percentiles:
                 val = stat['mae_stats'].get(mp, 0)
-                row.append(f"{val:.2f}%")
+                row.append(fmt_pct(val))
             
             # Highlight row if it matches the target percentile
             if p == highlight_p:
@@ -205,43 +287,7 @@ class ReportGenerator:
         lines.append("")
 
 
-        # 3. Current Status (Keep existing)
-        lines.append("## Trạng thái hiện tại")
-        # ... (Reuse existing logic for Current Status display) ...
-        # Copied from original file
-        lines.append(f"1. Giá hiện tại: {self.current_status['current_price']:,.2f} USD")
-        display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
-        lines.append(f"2. {self.strategy.name} hiện tại: {display_current_signal}")
-        lines.append(f"3. Độ hiếm hiện tại: {self.current_status['rarity']:.0f}%")
-        
-        next_idx = 4
-        if self.add_info:
-            lines.append(f"{next_idx}. Ngày tham chiếu: {self.add_info['ref_date']}")
-            next_idx += 1
-            lines.append(f"{next_idx}. Giá trị tham chiếu: {self.add_info['ref_value']}")
-            next_idx += 1
-            lines.append(f"{next_idx}. Số phiên tính từ ngày tham chiếu: {self.add_info['days_since_ref']}")
-            if 'days_remaining' in self.add_info:
-                next_idx += 1
-                lines.append(f"{next_idx}. Số ngày hiệu lực còn lại: {self.add_info['days_remaining']}")
-
-        if self.current_status.get('entry_date'):
-            date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
-            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {self.current_status['entry_price']:,.2f} USD")
-            next_idx += 1
-            if self.current_status.get('days_in_current_zone') is not None:
-                lines.append(f"{next_idx}. Giá đã ở vùng hiện tại: {self.current_status['days_in_current_zone']} phiên")
-                next_idx += 1
-            
-            max_dd_display = -self.current_status['historical_max_dd_of_zone'] * 100
-            dd_from_curr_display = ""
-            if self.current_status.get('drawdown_from_current') is not None:
-                dd_pct = -self.current_status['drawdown_from_current'] * 100
-                dd_from_curr_display = f"~ giảm {dd_pct:.2f}% từ hiện tại"
-            
-            lines.append(f"{next_idx}. Giá có thể giảm đến {self.current_status['target_price']:,.2f} USD, {dd_from_curr_display}, Max DD: {max_dd_display:.2f}%")
-        else:
-            lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
+        lines.extend(self._current_status_lines())
         
         # 2. Bảng liệt kê sự kiện (Tree View)
         lines.append(f"## Danh sách các sự kiện NP (Chi tiết)")
@@ -264,7 +310,7 @@ class ReportGenerator:
         
         def render_event(event, level=0):
             # Skip Quick Recovery events
-            if event.days_to_recover is not None and event.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD:
+            if event.days_to_recover is not None and event.days_to_recover <= self.qr_threshold:
                 return
 
             # Format
@@ -278,10 +324,10 @@ class ReportGenerator:
             
             np_str = f"{event.percentile}%"
             
-            price_str = f"{event.entry_price:,.2f}"
-            min_price_str = f"{event.min_price:,.2f}"
+            price_str = fmt_price(event.entry_price)
+            min_price_str = fmt_price(event.min_price)
             min_date_str = event.min_date.strftime(DATE_FORMAT_DISPLAY)
-            mae_str = f"{event.mae_pct:.2f}%"
+            mae_str = fmt_pct(event.mae_pct)
             
             rec_date_str = event.recovery_date.strftime(DATE_FORMAT_DISPLAY) if event.recovery_date else "-"
             

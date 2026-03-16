@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Literal
-from src.signal.constants import DATE_FORMAT_DISPLAY
+from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
 
 class BaseSignal(ABC):
     """Abstract base class for all signal types."""
@@ -107,7 +107,7 @@ class DistanceFromPeakSignal(BaseSignal):
         
     def format_value(self, value: float) -> str:
         """Override format cho Distance: Chuyển sang % dương."""
-        return f"{-value * 100:.2f}%"
+        return fmt_pct(-value * 100)
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         """
@@ -138,7 +138,7 @@ class DistanceFromPeakSignal(BaseSignal):
         
         return {
             "ref_date": peak_date.strftime(DATE_FORMAT_DISPLAY),
-            "ref_value": f"{peak_price:,.2f} USD",
+            "ref_value": f"{fmt_price(peak_price)} USD",
             "days_since_ref": days_since_ref,
             "days_remaining": days_remaining
         }
@@ -163,7 +163,7 @@ class MASignal(BaseSignal):
         return (df['Close'] / ma - 1).dropna()
 
     def format_value(self, value: float) -> str:
-        return f"{value * 100:.2f}%"
+        return fmt_pct(value * 100)
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         from src.strategy.analytics import calculate_ma
@@ -171,7 +171,7 @@ class MASignal(BaseSignal):
         ma_value = ma.iloc[-1]
         return {
             "ref_date": ma.index[-1].strftime(DATE_FORMAT_DISPLAY),
-            "ref_value": f"{ma_value:,.2f} USD ({self.ma_type}{self.length})",
+            "ref_value": f"{fmt_price(ma_value)} USD ({self.ma_type}{self.length})",
             "days_since_ref": 0,
         }
 

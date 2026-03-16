@@ -109,6 +109,18 @@ def build_trades(
     for i, date in enumerate(common_idx):
         p = price.iloc[i]
 
+        # SELL before BUY: same-day close+reopen works correctly
+        if sell_signals.get(date, False) and open_trade is not None:
+            holding = i - common_idx.get_loc(open_trade.entry_date)
+            ret = (p / open_trade.entry_price - 1) * 100
+            open_trade.exit_date = date
+            open_trade.exit_price = p
+            open_trade.return_pct = ret
+            open_trade.holding_days = holding
+            open_trade.status = "closed"
+            trades.append(open_trade)
+            open_trade = None
+
         if buy_signals.get(date, False) and open_trade is None:
             open_trade = Trade(
                 entry_date=date,
@@ -119,17 +131,6 @@ def build_trades(
                 holding_days=None,
                 status="open",
             )
-
-        elif sell_signals.get(date, False) and open_trade is not None:
-            holding = i - common_idx.get_loc(open_trade.entry_date)
-            ret = (p / open_trade.entry_price - 1) * 100
-            open_trade.exit_date = date
-            open_trade.exit_price = p
-            open_trade.return_pct = ret
-            open_trade.holding_days = holding
-            open_trade.status = "closed"
-            trades.append(open_trade)
-            open_trade = None
 
     # Emit open trade if any
     if open_trade is not None:
@@ -185,6 +186,7 @@ class TradePerformance:
     profit_factor: float
     total_return: float
     sharpe_ratio: Optional[float]
+    sortino_ratio: Optional[float]
 
 
 def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
@@ -209,6 +211,7 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
             profit_factor=0.0,
             total_return=0.0,
             sharpe_ratio=None,
+            sortino_ratio=None,
         )
 
     returns = [t.return_pct for t in closed if t.return_pct is not None]
@@ -251,11 +254,20 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
 
     # Sharpe
     if len(returns) >= 2:
-        mean_r = np.mean(returns)
-        std_r = np.std(returns, ddof=1)
-        sharpe: Optional[float] = float(mean_r / std_r) if std_r > 0 else None
+        mean_r = float(np.mean(returns))
+        std_r = float(np.std(returns, ddof=1))
+        sharpe: Optional[float] = mean_r / std_r if std_r > 0 else None
     else:
+        mean_r = float(np.mean(returns)) if returns else 0.0
         sharpe = None
+
+    # Sortino (downside deviation = std of negative returns)
+    downside = [r for r in returns if r < 0]
+    if len(downside) >= 2:
+        dd_std = float(np.std(downside, ddof=1))
+        sortino: Optional[float] = mean_r / dd_std if dd_std > 0 else None
+    else:
+        sortino = None
 
     return TradePerformance(
         total_trades=len(trades),
@@ -272,7 +284,80 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
         profit_factor=profit_factor,
         total_return=total_return,
         sharpe_ratio=sharpe,
+        sortino_ratio=sortino,
     )
+
+
+# ---------------------------------------------------------------------------
+# Equity Curve
+# ---------------------------------------------------------------------------
+
+def build_equity_curve(
+    price: pd.Series,
+    buy_signals: pd.Series,
+    sell_signals: pd.Series,
+    initial: float = 1000.0,
+) -> pd.Series:
+    """
+    Simulate the strategy equity curve starting from `initial` capital.
+    - In a trade: equity tracks price proportionally from entry.
+    - Out of a trade: equity stays flat (cash).
+    """
+    equity = pd.Series(index=price.index, dtype=float)
+    current_equity = initial
+    in_trade = False
+    entry_price: Optional[float] = None
+    entry_equity: Optional[float] = None
+
+    for i, date in enumerate(price.index):
+        p = float(price.iloc[i])
+
+        # Process SELL before BUY so that on days where both fire (e.g. buy_lag=0,
+        # sell_lag=2 and a cross happens exactly 2 days after a death cross), the old
+        # trade is closed first and the new entry can open on the same bar.
+        if sell_signals.get(date, False) and in_trade and entry_price:
+            current_equity = entry_equity * (p / entry_price)
+            in_trade = False
+            entry_price = None
+            entry_equity = None
+
+        if buy_signals.get(date, False) and not in_trade:
+            in_trade = True
+            entry_price = p
+            entry_equity = current_equity
+
+        equity.iloc[i] = (entry_equity * (p / entry_price)) if (in_trade and entry_price) else current_equity
+
+    return equity
+
+
+# ---------------------------------------------------------------------------
+# Buy & Hold + Equity Curve Stats
+# ---------------------------------------------------------------------------
+
+def calculate_max_drawdown(price_series: pd.Series) -> float:
+    """Max peak-to-trough drawdown of a price series. Returns negative %."""
+    rolling_max = price_series.expanding().max()
+    drawdown = (price_series - rolling_max) / rolling_max
+    return float(drawdown.min()) * 100
+
+
+def calculate_equity_curve_max_drawdown(trades: List[Trade]) -> float:
+    """Max drawdown of the strategy equity curve built from closed trade returns. Returns negative %."""
+    closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+    if not closed:
+        return 0.0
+    equity = 1.0
+    peak = 1.0
+    max_dd = 0.0
+    for t in closed:
+        equity *= (1 + t.return_pct / 100)
+        if equity > peak:
+            peak = equity
+        dd = (equity - peak) / peak
+        if dd < max_dd:
+            max_dd = dd
+    return max_dd * 100
 
 
 # ---------------------------------------------------------------------------

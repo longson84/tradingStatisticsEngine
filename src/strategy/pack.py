@@ -1,15 +1,20 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from plotly.subplots import make_subplots
+
+from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct, fmt_pct_signed
 
 from src.base import AnalysisPack, AnalysisResult
 from src.strategy.strategies import BaseStrategy, MACrossoverStrategy, PriceVsMAStrategy
 from src.strategy.analytics import (
+    build_equity_curve,
     build_trades,
     calculate_drawdown_during_trades,
+    calculate_equity_curve_max_drawdown,
+    calculate_max_drawdown,
     calculate_trade_performance,
     get_current_position,
 )
@@ -39,19 +44,19 @@ class StrategyBacktestPack(AnalysisPack):
         if strategy_type == "Price vs MA":
             col1, col2 = st.sidebar.columns(2)
             ma_type = col1.selectbox("MA Type:", ["SMA", "EMA", "WMA"], key="pma_type")
-            ma_len = col2.number_input("MA Length:", min_value=2, value=200, step=1, key="pma_len")
+            ma_len = col2.number_input("MA Length:", min_value=2, value=50, step=10, key="pma_len")
             col3, col4 = st.sidebar.columns(2)
-            buy_lag = col3.number_input("Buy Lag (days):", min_value=0, value=1, step=1, key="pma_buy_lag")
-            sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=1, step=1, key="pma_sell_lag")
+            buy_lag = col3.number_input("Buy Lag (days):", min_value=0, value=0, step=1, key="pma_buy_lag")
+            sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=2, step=1, key="pma_sell_lag")
             strategy = PriceVsMAStrategy(ma_type, int(ma_len), int(buy_lag), int(sell_lag))
 
         else:  # MA Crossover
             col1, col2 = st.sidebar.columns(2)
             fast_type = col1.selectbox("Fast MA Type:", ["EMA", "SMA", "WMA"], key="mac_fast_type")
-            fast_len = col2.number_input("Fast Length:", min_value=2, value=50, step=1, key="mac_fast_len")
+            fast_len = col2.number_input("Fast Length:", min_value=2, value=50, step=10, key="mac_fast_len")
             col3, col4 = st.sidebar.columns(2)
             slow_type = col3.selectbox("Slow MA Type:", ["SMA", "EMA", "WMA"], key="mac_slow_type")
-            slow_len = col4.number_input("Slow Length:", min_value=2, value=200, step=1, key="mac_slow_len")
+            slow_len = col4.number_input("Slow Length:", min_value=2, value=200, step=10, key="mac_slow_len")
             col5, col6 = st.sidebar.columns(2)
             buy_lag = col5.number_input("Buy Lag:", min_value=0, value=1, step=1, key="mac_buy_lag")
             sell_lag = col6.number_input("Sell Lag:", min_value=0, value=1, step=1, key="mac_sell_lag")
@@ -59,13 +64,32 @@ class StrategyBacktestPack(AnalysisPack):
                 fast_type, int(fast_len), slow_type, int(slow_len), int(buy_lag), int(sell_lag)
             )
 
-        return {"tickers": tickers, "strategy": strategy}
+        st.sidebar.divider()
+        from_date = st.sidebar.date_input(
+            "Backtest From Date:",
+            value=None,
+            help="Leave empty to use all available data. Set a later date to avoid early-data bias (tiny prices → inflated % returns).",
+            key="strat_from_date",
+        )
+
+        return {"tickers": tickers, "strategy": strategy, "from_date": from_date}
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
         strategy: BaseStrategy = config["strategy"]
+        from_date = config.get("from_date")
 
         try:
+            # Compute on full df so MAs have full history for warmup
             crossover_series, buy_signals, sell_signals = strategy.compute(df)
+
+            # Trim to from_date (signals already computed — no lookahead)
+            if from_date is not None:
+                from_ts = pd.Timestamp(from_date)
+                df = df[df.index >= from_ts]
+                crossover_series = crossover_series[crossover_series.index >= from_ts]
+                buy_signals = buy_signals[buy_signals.index >= from_ts]
+                sell_signals = sell_signals[sell_signals.index >= from_ts]
+
             price = df["Close"]
 
             trades = build_trades(price, buy_signals, sell_signals)
@@ -74,7 +98,17 @@ class StrategyBacktestPack(AnalysisPack):
             current_pos = get_current_position(price, crossover_series, buy_signals, sell_signals)
             ma_overlays = strategy.get_ma_overlays(df)
 
-            fig = self._build_figure(ticker, price, crossover_series, buy_signals, sell_signals, ma_overlays, strategy)
+            # Buy & hold stats
+            bh_total_return = (float(price.iloc[-1]) / float(price.iloc[0]) - 1) * 100
+            bh_max_drawdown = calculate_max_drawdown(price)
+            strat_max_drawdown = calculate_equity_curve_max_drawdown(trades)
+
+            # Equity curves
+            INITIAL_CAPITAL = 1000.0
+            strat_equity = build_equity_curve(price, buy_signals, sell_signals, INITIAL_CAPITAL)
+            bh_equity = price / float(price.iloc[0]) * INITIAL_CAPITAL
+
+            fig = self._build_equity_chart(ticker, strat_equity, bh_equity, strategy.name)
 
             return AnalysisResult(
                 ticker=ticker,
@@ -88,6 +122,11 @@ class StrategyBacktestPack(AnalysisPack):
                     "fig": fig,
                     "signal_label": strategy.name,
                     "ma_overlays": ma_overlays,
+                    "bh_total_return": bh_total_return,
+                    "bh_max_drawdown": bh_max_drawdown,
+                    "strat_max_drawdown": strat_max_drawdown,
+                    "strat_equity": strat_equity,
+                    "bh_equity": bh_equity,
                 },
             )
         except Exception as e:
@@ -99,88 +138,241 @@ class StrategyBacktestPack(AnalysisPack):
                 error=str(e),
             )
 
-    def _build_figure(
-        self,
+    @staticmethod
+    def _build_equity_chart(
         ticker: str,
-        price: pd.Series,
-        crossover_series: pd.Series,
-        buy_signals: pd.Series,
-        sell_signals: pd.Series,
-        ma_overlays: Dict[str, pd.Series],
-        strategy: BaseStrategy,
+        strat_equity: pd.Series,
+        bh_equity: pd.Series,
+        strategy_name: str,
+        log_scale: bool = False,
     ) -> go.Figure:
-        fig = make_subplots(
-            rows=2, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.05,
-            row_heights=[0.65, 0.35],
-            subplot_titles=(f"Price — {ticker}", f"Crossover Signal: {strategy.name}"),
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=bh_equity.index, y=bh_equity,
+            mode="lines", name="Buy & Hold",
+            line=dict(color="#90CAF9", width=1.5),
+            hovertemplate="B&H: $%{y:,.0f}<extra></extra>",
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=strat_equity.index, y=strat_equity,
+            mode="lines", name=strategy_name,
+            line=dict(color="#FFD700", width=2),
+            hovertemplate="Strategy: $%{y:,.0f}<extra></extra>",
+        ))
+
+        fig.add_hline(y=1000, line_dash="dot", line_color="gray", line_width=1)
+
+        fig.update_layout(
+            title=f"Equity Curve — {ticker} (Initial: $1,000)",
+            yaxis_title="Position Value (USD)",
+            yaxis_type="log" if log_scale else "linear",
+            height=500,
+            hovermode="x unified",
+            showlegend=True,
         )
-
-        # Row 1: Price
-        fig.add_trace(
-            go.Scatter(
-                x=price.index, y=price,
-                mode="lines", name="Price",
-                line=dict(color="black", width=1),
-                hovertemplate="Price: %{y:,.2f}<extra></extra>",
-            ),
-            row=1, col=1,
-        )
-
-        # MA overlays
-        overlay_colors = ["#2196F3", "#FF9800", "#9C27B0", "#4CAF50"]
-        for idx, (label, series) in enumerate(ma_overlays.items()):
-            color = overlay_colors[idx % len(overlay_colors)]
-            fig.add_trace(
-                go.Scatter(
-                    x=series.index, y=series,
-                    mode="lines", name=label,
-                    line=dict(color=color, width=1.5, dash="dash"),
-                    hovertemplate=f"{label}: %{{y:,.2f}}<extra></extra>",
-                ),
-                row=1, col=1,
-            )
-
-        # Buy/Sell markers on price chart
-        buy_dates = buy_signals[buy_signals].index
-        sell_dates = sell_signals[sell_signals].index
-
-        if len(buy_dates):
-            fig.add_trace(
-                go.Scatter(
-                    x=buy_dates, y=price.reindex(buy_dates),
-                    mode="markers", name="Buy",
-                    marker=dict(symbol="triangle-up", size=10, color="green"),
-                    hovertemplate="BUY: %{y:,.2f}<extra></extra>",
-                ),
-                row=1, col=1,
-            )
-        if len(sell_dates):
-            fig.add_trace(
-                go.Scatter(
-                    x=sell_dates, y=price.reindex(sell_dates),
-                    mode="markers", name="Sell",
-                    marker=dict(symbol="triangle-down", size=10, color="red"),
-                    hovertemplate="SELL: %{y:,.2f}<extra></extra>",
-                ),
-                row=1, col=1,
-            )
-
-        # Row 2: Crossover series
-        fig.add_trace(
-            go.Scatter(
-                x=crossover_series.index, y=crossover_series,
-                mode="lines", name="Crossover",
-                line=dict(color="blue", width=1.5),
-                hovertemplate="Signal: %{y:.4f}<extra></extra>",
-            ),
-            row=2, col=1,
-        )
-        fig.add_hline(y=0, line_dash="dot", line_color="gray", row=2, col=1)
-
-        fig.update_layout(height=750, hovermode="x unified", showlegend=True)
         return fig
+
+    @staticmethod
+    def _render_return_distribution(trades) -> None:
+        from src.strategy.analytics import Trade
+        closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+        if len(closed) < 2:
+            st.info("Not enough closed trades to show distribution.")
+            return
+
+        returns = [t.return_pct for t in closed]
+        wins = [r for r in returns if r > 0]
+        losses = [r for r in returns if r <= 0]
+
+        # --- Percentile stats table ---
+        percentiles = [5, 10, 25, 50, 75, 90, 95]
+        rows = []
+        for p in percentiles:
+            rows.append({"Percentile": f"P{p}", "Return %": fmt_pct(np.percentile(returns, p))})
+        rows.append({"Percentile": "Mean", "Return %": fmt_pct(np.mean(returns))})
+        rows.append({"Percentile": "Std Dev", "Return %": fmt_pct(np.std(returns, ddof=1))})
+
+        col_stats, col_buckets = st.columns(2)
+
+        with col_stats:
+            st.markdown("**Percentile breakdown**")
+            st.dataframe(
+                pd.DataFrame(rows),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + len(rows) * 35,
+            )
+
+        # --- Bucket table ---
+        buckets = [
+            ("< -20%",   float("-inf"), -20),
+            ("-20 → -10%", -20, -10),
+            ("-10 → -5%",  -10,  -5),
+            ("-5 → 0%",    -5,    0),
+            ("0 → 5%",      0,    5),
+            ("5 → 10%",     5,   10),
+            ("10 → 20%",   10,   20),
+            ("> 20%",      20, float("inf")),
+        ]
+        total = len(returns)
+        bucket_rows = []
+        for label, lo, hi in buckets:
+            subset = [r for r in returns if lo < r <= hi] if hi != float("inf") else [r for r in returns if r > lo]
+            count = len(subset)
+            bucket_rows.append({
+                "Range": label,
+                "Count": count,
+                "% of Total": fmt_pct(count / total * 100) if total else "0.00%",
+                "Avg Return": fmt_pct(np.mean(subset)) if subset else "—",
+            })
+
+        with col_buckets:
+            st.markdown("**Return buckets**")
+            st.dataframe(
+                pd.DataFrame(bucket_rows),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + len(bucket_rows) * 35,
+            )
+
+        # --- Histogram chart ---
+        fig = go.Figure()
+        if wins:
+            fig.add_trace(go.Histogram(
+                x=wins, name="Win",
+                marker_color="rgba(34, 197, 94, 0.7)",
+                xbins=dict(size=2),
+            ))
+        if losses:
+            fig.add_trace(go.Histogram(
+                x=losses, name="Loss",
+                marker_color="rgba(239, 68, 68, 0.7)",
+                xbins=dict(size=2),
+            ))
+
+        mean_r = float(np.mean(returns))
+        median_r = float(np.median(returns))
+        fig.add_vline(x=mean_r, line_dash="dash", line_color="white",
+                      annotation_text=f"Mean {mean_r:.1f}%", annotation_position="top right")
+        fig.add_vline(x=median_r, line_dash="dot", line_color="yellow",
+                      annotation_text=f"Median {median_r:.1f}%", annotation_position="top left")
+        fig.add_vline(x=0, line_color="gray", line_width=1)
+
+        fig.update_layout(
+            barmode="overlay",
+            height=350,
+            xaxis_title="Return %",
+            yaxis_title="# Trades",
+            hovermode="x unified",
+            showlegend=True,
+            margin=dict(t=30),
+        )
+        try:
+            st.plotly_chart(fig, width="stretch")
+        except TypeError:
+            st.plotly_chart(fig, use_container_width=True)
+
+    @staticmethod
+    def _build_monthly_returns_df(equity: pd.Series) -> pd.DataFrame:
+        """
+        Given an equity curve, return a year × month DataFrame of monthly returns (%).
+        Rows are years descending; columns are Jan..Dec.
+        Cells are fmt_pct strings; empty string where no data.
+        """
+        # Month-end values
+        monthly = equity.resample("ME").last()
+        # Monthly return: (this month / previous month) - 1
+        monthly_ret = monthly.pct_change() * 100
+        # Drop the very first NaN (no prior month)
+        monthly_ret = monthly_ret.dropna()
+
+        MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+        years = sorted(monthly_ret.index.year.unique(), reverse=True)
+        rows = []
+        for yr in years:
+            row: Dict[str, Any] = {"Year": str(yr)}
+            year_monthly_vals = []
+            for m_i, m_name in enumerate(MONTHS, start=1):
+                mask = (monthly_ret.index.year == yr) & (monthly_ret.index.month == m_i)
+                vals = monthly_ret[mask]
+                if len(vals) > 0:
+                    v = float(vals.iloc[0])
+                    row[m_name] = fmt_pct(v)
+                    year_monthly_vals.append(v)
+                else:
+                    row[m_name] = ""
+
+            # Compound annual / YTD return
+            if year_monthly_vals:
+                compound = 1.0
+                for v in year_monthly_vals:
+                    compound *= (1 + v / 100)
+                row["Annual"] = fmt_pct((compound - 1) * 100)
+            else:
+                row["Annual"] = ""
+
+            rows.append(row)
+
+        return pd.DataFrame(rows)
+
+    @staticmethod
+    def _style_monthly_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+        """Green for positive months, red for negative, blank for empty."""
+        MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+        def _cell_style(val):
+            if not isinstance(val, str) or val == "":
+                return ""
+            # Strip formatting to get numeric value
+            try:
+                numeric = float(val.replace(",", "").replace("%", ""))
+            except ValueError:
+                return ""
+            if numeric > 0:
+                return "background-color: #bbf7d0; color: #14532d; font-weight: bold"
+            elif numeric < 0:
+                return "background-color: #fecaca; color: #7f1d1d; font-weight: bold"
+            return ""
+
+        color_cols = [c for c in MONTHS + ["Annual"] if c in df.columns]
+        return df.style.applymap(_cell_style, subset=color_cols)
+
+    @staticmethod
+    def _render_monthly_returns_tables(
+        strat_equity: pd.Series,
+        bh_equity: pd.Series,
+        ticker: str,
+    ) -> None:
+        st.subheader("📅 Monthly Returns — Strategy Position")
+        strat_df = StrategyBacktestPack._build_monthly_returns_df(strat_equity)
+        if strat_df.empty:
+            st.info("Not enough data for monthly breakdown.")
+        else:
+            n = len(strat_df)
+            st.dataframe(
+                StrategyBacktestPack._style_monthly_table(strat_df),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + n * 35,
+            )
+
+        st.subheader("📅 Monthly Returns — Buy & Hold Position")
+        bh_df = StrategyBacktestPack._build_monthly_returns_df(bh_equity)
+        if bh_df.empty:
+            st.info("Not enough data for monthly breakdown.")
+        else:
+            n = len(bh_df)
+            st.dataframe(
+                StrategyBacktestPack._style_monthly_table(bh_df),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + n * 35,
+            )
 
     def render_results(self, result: AnalysisResult) -> None:
         if result.error:
@@ -191,15 +383,18 @@ class StrategyBacktestPack(AnalysisPack):
         pos = result.data["current_position"]
         trades = result.data["trades"]
         fig = result.data["fig"]
+        bh_total_return: float = result.data.get("bh_total_return", 0.0)
+        bh_max_drawdown: float = result.data.get("bh_max_drawdown", 0.0)
+        strat_max_drawdown: float = result.data.get("strat_max_drawdown", 0.0)
 
         with st.expander(f"📊 {result.ticker} — {result.data['signal_label']}", expanded=True):
             # 1. Current Position
             st.subheader("Current Position")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("In Trade", "Yes ✅" if pos.in_trade else "No ⬜")
-            c2.metric("Current Price", f"{pos.current_price:,.2f}")
+            c2.metric("Current Price", f"{pos.current_price:,.0f}")
             if pos.in_trade:
-                c3.metric("Unrealized P&L", f"{pos.unrealized_pnl_pct:.2f}%" if pos.unrealized_pnl_pct is not None else "—")
+                c3.metric("Unrealized P&L", fmt_pct(pos.unrealized_pnl_pct) if pos.unrealized_pnl_pct is not None else "—")
                 c4.metric("Days Held", str(pos.days_held) if pos.days_held is not None else "—")
             else:
                 c3.metric("Unrealized P&L", "—")
@@ -212,51 +407,100 @@ class StrategyBacktestPack(AnalysisPack):
 
             # 2. Performance Summary
             st.subheader("Performance Summary")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Win Rate", f"{perf.win_rate:.1f}%")
-            m2.metric("Avg Return", f"{perf.avg_return:.2f}%")
-            m3.metric(
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Win Rate", fmt_pct(perf.win_rate))
+            m2.metric("Avg Win", fmt_pct(perf.avg_winning_return) if perf.avg_winning_return else "—")
+            m3.metric("Avg Loss", fmt_pct(perf.avg_losing_return) if perf.avg_losing_return else "—")
+            m4.metric(
                 "Profit Factor",
                 f"{perf.profit_factor:.2f}" if perf.profit_factor != float("inf") else "∞",
             )
 
-            m4, m5, m6 = st.columns(3)
-            m4.metric("Total Return", f"{perf.total_return:.2f}%")
-            m5.metric(
-                "Sharpe Ratio",
-                f"{perf.sharpe_ratio:.2f}" if perf.sharpe_ratio is not None else "—",
-            )
-            m6.metric("Max Consec. Losses", str(perf.max_consecutive_losses))
+            m5, m6, m7, m8 = st.columns(4)
+            m5.metric("Total Return", fmt_pct(perf.total_return))
+            m6.metric("Sharpe", f"{perf.sharpe_ratio:.2f}" if perf.sharpe_ratio is not None else "—")
+            m7.metric("Sortino", f"{perf.sortino_ratio:.2f}" if perf.sortino_ratio is not None else "—")
+            m8.metric("Max Consec. Losses", str(perf.max_consecutive_losses))
 
-            m7, m8, m9 = st.columns(3)
-            m7.metric("Closed Trades", str(perf.closed_trades))
-            m8.metric("Best Trade", f"{perf.best_trade_return:.2f}%")
-            m9.metric("Worst Trade", f"{perf.worst_trade_return:.2f}%")
+            m9, m10, m11 = st.columns(3)
+            m9.metric("Closed Trades", str(perf.closed_trades))
+            m10.metric("Best Trade", fmt_pct(perf.best_trade_return))
+            m11.metric("Worst Trade", fmt_pct(perf.worst_trade_return))
 
             st.divider()
 
-            # 3. Signal Chart
-            with st.expander("📈 Signal Chart", expanded=True):
-                try:
-                    st.plotly_chart(fig, width="stretch")
-                except TypeError:
-                    st.plotly_chart(fig, use_container_width=True)
+            # 3. Strategy vs Buy & Hold
+            st.subheader("📈 Strategy vs Buy & Hold")
+            cmp_data = {
+                "Metric":        ["Total Return (%)", "Max Drawdown (%)"],
+                "Strategy":      [fmt_pct(perf.total_return), fmt_pct(strat_max_drawdown)],
+                "Buy & Hold":    [fmt_pct(bh_total_return),   fmt_pct(bh_max_drawdown)],
+                "Difference":    [
+                    fmt_pct_signed(perf.total_return - bh_total_return),
+                    fmt_pct_signed(strat_max_drawdown - bh_max_drawdown),
+                ],
+            }
+            st.dataframe(
+                pd.DataFrame(cmp_data),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + 2 * 35,
+            )
 
-            # 4. Trade Log
-            with st.expander("📋 Trade Log", expanded=False):
-                if trades:
-                    rows = []
-                    for t in trades:
-                        rows.append({
-                            "Entry Date": t.entry_date,
-                            "Entry Price": round(t.entry_price, 2),
-                            "Exit Date": t.exit_date,
-                            "Exit Price": round(t.exit_price, 2) if t.exit_price else None,
-                            "Return %": round(t.return_pct, 2) if t.return_pct is not None else None,
-                            "Holding Days": t.holding_days,
-                            "MAE %": round(t.mae_pct, 2) if t.mae_pct is not None else None,
-                            "Status": t.status,
-                        })
-                    st.dataframe(pd.DataFrame(rows), use_container_width=True)
-                else:
-                    st.info("No trades generated.")
+            st.divider()
+
+            # 4. Trade Log (above chart, no expander)
+            st.subheader("📋 Trade Log")
+            if trades:
+                sorted_trades = sorted(trades, key=lambda x: x.entry_date, reverse=True)
+                rows = []
+                for t in sorted_trades:
+                    rows.append({
+                        "Entry Date": t.entry_date.strftime(DATE_FORMAT_DISPLAY),
+                        "Entry Price": fmt_price(t.entry_price),
+                        "Exit Date": t.exit_date.strftime(DATE_FORMAT_DISPLAY) if t.exit_date else "—",
+                        "Exit Price": fmt_price(t.exit_price) if t.exit_price else "—",
+                        "Return %": fmt_pct(t.return_pct) if t.return_pct is not None else "—",
+                        "Holding Days": t.holding_days,
+                        "MAE %": fmt_pct(t.mae_pct) if t.mae_pct is not None else "—",
+                        "Status": t.status,
+                    })
+                trade_df = pd.DataFrame(rows)
+                n_rows = len(trade_df)
+                height = 38 + min(n_rows, 20) * 35
+                st.dataframe(trade_df, use_container_width=True, hide_index=True, height=height)
+            else:
+                st.info("No trades generated.")
+
+            st.divider()
+
+            # 4. Return Distribution
+            st.subheader("📊 Return Distribution")
+            self._render_return_distribution(trades)
+
+            st.divider()
+
+            # 5. Equity Curve
+            with st.expander("📈 Equity Curve", expanded=True):
+                log_scale = st.checkbox(
+                    "Log scale (Y axis)",
+                    value=False,
+                    key=f"strat_log_scale_{result.ticker}",
+                )
+                strat_equity = result.data.get("strat_equity")
+                bh_equity = result.data.get("bh_equity")
+                equity_fig = self._build_equity_chart(
+                    result.ticker, strat_equity, bh_equity,
+                    result.data["signal_label"], log_scale,
+                )
+                try:
+                    st.plotly_chart(equity_fig, width="stretch")
+                except TypeError:
+                    st.plotly_chart(equity_fig, use_container_width=True)
+
+            st.divider()
+
+            # 6. Monthly Returns Tables
+            strat_equity = result.data.get("strat_equity")
+            bh_equity = result.data.get("bh_equity")
+            self._render_monthly_returns_tables(strat_equity, bh_equity, result.ticker)

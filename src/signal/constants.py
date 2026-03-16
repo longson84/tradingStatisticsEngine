@@ -20,6 +20,6 @@ MAE_PERCENTILES = [80, 85, 90, 95, 98]
 VISUALIZATION_THRESHOLDS = [0.01, 0.05, 0.10]
 VISUALIZATION_COLORS = ["green", "#ffd700", "red"]
 
-# Date/Time Formats
-DATE_FORMAT_DISPLAY = '%d/%m/%y'      # dd/mm/yy (e.g. 25/12/23)
+# Date/Time Formats — defined in src.constants, re-exported for backward compat
+from src.constants import DATE_FORMAT_DISPLAY  # noqa: F401
 

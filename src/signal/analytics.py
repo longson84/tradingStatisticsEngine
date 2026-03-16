@@ -94,7 +94,6 @@ def calculate_np_events_tree(
     for i in range(1, len(common_idx)):
         current_date = common_idx[i]
         current_price = prices.iloc[i]
-        prev_price = prices.iloc[i - 1]
         current_signal = signals.iloc[i]
 
         # A. Check recovery for all active events
@@ -108,38 +107,35 @@ def calculate_np_events_tree(
                 still_active.append(event)
         active_events = still_active
 
-        # B. Check new trigger: price dropping AND signal in a rare zone
-        if current_price < prev_price:
-            # Only trigger the tightest applicable percentile (smallest p)
-            target_p = None
-            target_threshold = None
-            for p in sorted_percentiles:
-                if current_signal <= threshold_map[p]:
-                    target_p = p
-                    target_threshold = threshold_map[p]
-                    break
+        # B. Check new trigger: signal entering a rare zone
+        # Only trigger the tightest applicable percentile (smallest p)
+        target_p = None
+        target_threshold = None
+        for p in sorted_percentiles:
+            if current_signal <= threshold_map[p]:
+                target_p = p
+                target_threshold = threshold_map[p]
+                break
 
-            if target_p is not None:
-                # Skip if this percentile already has an active event
-                already_active = any(e.percentile == target_p for e in active_events)
-                if not already_active:
-                    # Parent = active event with closest entry_price above current
-                    potential_parents = [e for e in active_events if e.entry_price > current_price]
-                    parent = None
-                    if potential_parents:
-                        potential_parents.sort(key=lambda e: e.entry_price)
-                        parent = potential_parents[0]
+        if target_p is not None:
+            # Skip if this percentile already has an active event
+            already_active = any(e.percentile <= target_p for e in active_events)
+            if not already_active:
+                # Parent = the active event at the nearest wider percentile zone.
+                # (1% ⊂ 5% ⊂ 10% — use percentile containment, not price containment)
+                potential_parents = [e for e in active_events if e.percentile > target_p]
+                parent = min(potential_parents, key=lambda e: e.percentile) if potential_parents else None
 
-                    new_event = NPEvent(
-                        percentile=target_p,
-                        threshold=target_threshold,
-                        start_date=current_date,
-                        entry_price=current_price,
-                        upline_id=parent.id if parent else None,
-                    )
-                    if parent:
-                        parent.children_ids.append(new_event.id)
-                    active_events.append(new_event)
+                new_event = NPEvent(
+                    percentile=target_p,
+                    threshold=target_threshold,
+                    start_date=current_date,
+                    entry_price=current_price,
+                    upline_id=parent.id if parent else None,
+                )
+                if parent:
+                    parent.children_ids.append(new_event.id)
+                active_events.append(new_event)
 
     # Finalize still-active events (unrecovered at end of data)
     for event in active_events:
@@ -179,6 +175,7 @@ def get_detailed_current_status(
     price_series: pd.Series,
     signal_series: pd.Series,
     np_events: Optional[List[NPEvent]] = None,
+    qr_threshold: int = MIN_RECOVERY_DAYS_THRESHOLD,
 ) -> dict:
     """
     Derive current-status fields entirely from the NP event tree.
@@ -227,7 +224,7 @@ def get_detailed_current_status(
     events_at_p = [e for e in np_events if e.percentile == current_zone_p]
     mae_values = [
         e.mae_pct for e in events_at_p
-        if not (e.days_to_recover is not None and e.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD)
+        if not (e.days_to_recover is not None and e.days_to_recover <= qr_threshold)
     ]
     if mae_values:
         worst_mae = max(mae_values)

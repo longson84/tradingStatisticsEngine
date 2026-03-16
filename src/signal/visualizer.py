@@ -42,7 +42,7 @@ class ChartVisualizer:
                 mode='lines',
                 name='Price',
                 line=dict(color='black', width=1),
-                hovertemplate='Price: %{y:,.2f}<extra></extra>'
+                hovertemplate='Price: %{y:,.0f}<extra></extra>'
             ),
             row=1, col=1
         )
@@ -76,7 +76,7 @@ class ChartVisualizer:
                         name=label,
                         line=dict(color=color, width=2),
                         connectgaps=False, 
-                        hovertemplate=f'{label}: %{{y:,.2f}}<extra></extra>'
+                        hovertemplate=f'{label}: %{{y:,.0f}}<extra></extra>'
                     ),
                     row=1, col=1
                 )
