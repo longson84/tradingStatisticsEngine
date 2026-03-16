@@ -1,12 +1,32 @@
 # Shared infrastructure constants (used across domains)
 HISTORICAL_DATA_START_DATE = '1980-01-01'
 
+# ---------------------------------------------------------------------------
+# yfinance ticker presets — add/edit groups here
+# ---------------------------------------------------------------------------
+YFINANCE_PRESETS: dict[str, list[str]] = {
+    "Crypto": ["BTC-USD", "ETH-USD", "BNB-USD", "SOL-USD"],
+    "Mag7":   ["MSFT", "AAPL", "TSLA", "NVDA", "META", "GOOGL", "NFLX"],
+}
+
 # Display formatting — single source of truth for the whole app
 DATE_FORMAT_DISPLAY = '%d/%m/%y'   # e.g. 16/10/08
 
 
 def fmt_price(v: float) -> str:
     """Format a price: 60,000  (no decimal, thousands separator)."""
+    return f"{v:,.0f}"
+
+
+def fmt_capture(v: float | None) -> str:
+    """Format a capture ratio: 1.23×  (2 decimals, × suffix). Returns '—' for None."""
+    if v is None:
+        return "—"
+    return f"{v:.2f}×"
+
+
+def fmt_equity(v: float) -> str:
+    """Format an equity value: 1,234  (no decimal, thousands separator, no $ sign)."""
     return f"{v:,.0f}"
 
 
