@@ -6,6 +6,8 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 from src.constants import HISTORICAL_DATA_START_DATE
 
+VNSTOCK_START_DATE = '2000-01-01'  # earliest reliable vnstock data
+
 class DataIngestor(ABC):
     """Lớp trừu tượng cho mọi nguồn dữ liệu."""
     
@@ -65,6 +67,69 @@ class YFinanceIngestor(DataIngestor):
             print(f"Không thể lưu cache: {e}")
             
         return df
+
+class VnStockIngestor(DataIngestor):
+    def __init__(self, symbol: str, vnstock_source: str = 'KBS'):
+        self.symbol = symbol.upper()
+        self.vnstock_source = vnstock_source
+        self.source_dir = os.path.join(os.getcwd(), "re", "data", f"vnstock_{vnstock_source.lower()}")
+        os.makedirs(self.source_dir, exist_ok=True)
+
+    def get_data(self) -> pd.DataFrame:
+        # 1. Daily cache
+        today_str = datetime.now().strftime("%Y%m%d")
+        pattern = os.path.join(self.source_dir, f"{today_str}*_{self.symbol}.csv")
+        existing_files = glob.glob(pattern)
+
+        if existing_files:
+            file_path = sorted(existing_files)[-1]
+            print(f"--- [VnStockIngestor] Cache: {os.path.basename(file_path)} ---")
+            try:
+                df = pd.read_csv(file_path, parse_dates=['Date'], index_col='Date')
+                return df
+            except Exception as e:
+                print(f"Cache read error: {e}. Re-fetching...")
+
+        # 2. Fetch from vnstock — try preferred source, auto-fallback to the other
+        from vnstock import Quote
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        fallback = 'VCI' if self.vnstock_source == 'KBS' else 'KBS'
+        sources_to_try = [self.vnstock_source, fallback]
+
+        raw = None
+        for source in sources_to_try:
+            print(f"--- [VnStockIngestor] Fetching {self.symbol} from vnstock ({source}) ---")
+            try:
+                q = Quote(symbol=self.symbol, source=source)
+                raw = q.history(start=VNSTOCK_START_DATE, end=end_date, interval='1D')
+                if raw is not None and not raw.empty:
+                    print(f"--- [VnStockIngestor] Success with source: {source} ---")
+                    break
+                print(f"--- [VnStockIngestor] Empty response from {source}, trying fallback ---")
+            except Exception as e:
+                print(f"--- [VnStockIngestor] {source} failed ({e}), trying fallback ---")
+
+        if raw is None or raw.empty:
+            raise ValueError(f"No data for {self.symbol} from any vnstock source (tried: {sources_to_try})")
+
+        # 3. Normalise to our standard format (DatetimeIndex 'Date', Close/Open/High/Low)
+        raw['time'] = pd.to_datetime(raw['time']).dt.normalize()  # strip time, keep date
+        raw = raw.set_index('time')
+        raw.index.name = 'Date'
+        raw = raw.rename(columns={'close': 'Close', 'open': 'Open', 'high': 'High', 'low': 'Low'})
+        df = raw[['Close', 'Open', 'High', 'Low']].dropna()
+
+        # 4. Cache
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_path = os.path.join(self.source_dir, f"{timestamp}_{self.symbol}.csv")
+        try:
+            df.to_csv(file_path)
+            print(f"--- [VnStockIngestor] Saved: {os.path.basename(file_path)} ---")
+        except Exception as e:
+            print(f"Cache write error: {e}")
+
+        return df
+
 
 class CSVIngestor(DataIngestor):
     """Dành cho việc mở rộng sau này: Đọc từ file CSV local"""

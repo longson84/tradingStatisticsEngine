@@ -20,11 +20,27 @@ class SignalAnalysisPack(AnalysisPack):
     def render_sidebar(self) -> Dict[str, Any]:
         st.sidebar.header("Signal Analysis")
 
+        data_source = st.sidebar.selectbox(
+            "Data Source:",
+            ["yfinance", "vnstock"],
+            key="signal_data_source",
+            help="yfinance: global tickers (BTC-USD, AAPL…) | vnstock: Vietnamese stocks (VCB, VIC…)",
+        )
+        vnstock_source = "KBS"
+        if data_source == "vnstock":
+            vnstock_source = st.sidebar.selectbox(
+                "vnstock broker:",
+                ["KBS", "VCI"],
+                key="signal_vnstock_source",
+                help="KBS: faster, more stable | VCI: more complete data",
+            )
+
+        default_ticker = "BTC-USD" if data_source == "yfinance" else "VCB"
         ticker_input = st.sidebar.text_input(
             "Tickers (space-separated):",
-            value="BTC-USD",
+            value=default_ticker,
             key="signal_ticker_input",
-            help="e.g. BTC-USD ETH-USD MSFT",
+            help="e.g. BTC-USD ETH-USD MSFT" if data_source == "yfinance" else "e.g. VCB VIC GMD",
         )
         tickers = [t.strip().upper() for t in ticker_input.split() if t.strip()]
 
@@ -83,7 +99,13 @@ class SignalAnalysisPack(AnalysisPack):
             key="signal_qr_threshold",
         ))
 
-        return {"tickers": tickers, "signal": final_signal, "qr_threshold": qr_threshold}
+        return {
+            "tickers": tickers,
+            "signal": final_signal,
+            "qr_threshold": qr_threshold,
+            "data_source": data_source,
+            "vnstock_source": vnstock_source,
+        }
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
         signal: BaseSignal = config["signal"]

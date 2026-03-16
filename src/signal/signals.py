@@ -138,7 +138,7 @@ class DistanceFromPeakSignal(BaseSignal):
         
         return {
             "ref_date": peak_date.strftime(DATE_FORMAT_DISPLAY),
-            "ref_value": f"{fmt_price(peak_price)} USD",
+            "ref_value": fmt_price(peak_price),
             "days_since_ref": days_since_ref,
             "days_remaining": days_remaining
         }
@@ -171,7 +171,7 @@ class MASignal(BaseSignal):
         ma_value = ma.iloc[-1]
         return {
             "ref_date": ma.index[-1].strftime(DATE_FORMAT_DISPLAY),
-            "ref_value": f"{fmt_price(ma_value)} USD ({self.ma_type}{self.length})",
+            "ref_value": f"{fmt_price(ma_value)} ({self.ma_type}{self.length})",
             "days_since_ref": 0,
         }
 

@@ -9,5 +9,6 @@ dependencies = [
     "pandas>=2.2.0",
     "plotly[kaleido]>=6.5.2",
     "streamlit>=1.40.0",
+    "vnstock>=3.5.0",
     "yfinance>=1.1.0",
 ]

@@ -37,16 +37,32 @@ class StrategyBacktestPack(AnalysisPack):
     def render_sidebar(self) -> Dict[str, Any]:
         st.sidebar.header("Strategy Backtest")
 
+        data_source = st.sidebar.selectbox(
+            "Data Source:",
+            ["yfinance", "vnstock"],
+            key="strat_data_source",
+            help="yfinance: global tickers (BTC-USD, AAPL…) | vnstock: Vietnamese stocks (VCB, VIC…)",
+        )
+        vnstock_source = "KBS"
+        if data_source == "vnstock":
+            vnstock_source = st.sidebar.selectbox(
+                "vnstock broker:",
+                ["KBS", "VCI"],
+                key="strat_vnstock_source",
+                help="KBS: faster, more stable | VCI: more complete data",
+            )
+
+        default_ticker = "BTC-USD" if data_source == "yfinance" else "VCB"
         ticker_input = st.sidebar.text_input(
             "Tickers (space-separated):",
-            value="BTC-USD",
+            value=default_ticker,
             key="strat_ticker_input",
         )
         tickers = [t.strip().upper() for t in ticker_input.split() if t.strip()]
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs EMA", "Price vs MA", "MA Crossover"],
+            ["Price vs MA", "Price vs EMA", "MA Crossover"],
             key="strat_type",
         )
 
@@ -89,7 +105,13 @@ class StrategyBacktestPack(AnalysisPack):
             key="strat_from_date",
         )
 
-        return {"tickers": tickers, "strategy": strategy, "from_date": from_date}
+        return {
+            "tickers": tickers,
+            "strategy": strategy,
+            "from_date": from_date,
+            "data_source": data_source,
+            "vnstock_source": vnstock_source,
+        }
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
         strategy: BaseStrategy = config["strategy"]
@@ -497,10 +519,36 @@ class StrategyBacktestPack(AnalysisPack):
         return df.style.applymap(_cell_style, subset=color_cols)
 
     @staticmethod
+    def _build_trade_entry_month_stats_df(trades) -> pd.DataFrame:
+        """
+        Group closed trades by entry month, compute percentile distribution of returns.
+        Rows = months (Jan–Dec), columns = P95, P90, P80, P70, P60, P50, P40, P30, P20, P10, P5.
+        """
+        MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        PERCENTILES = [95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+
+        closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+
+        rows = []
+        for m_i, m_name in enumerate(MONTH_NAMES, start=1):
+            month_returns = [t.return_pct for t in closed if t.entry_date.month == m_i]
+            row: Dict[str, Any] = {"Month": m_name, "# Trades": len(month_returns)}
+            if month_returns:
+                for p in PERCENTILES:
+                    row[f"P{p}"] = fmt_pct(float(np.percentile(month_returns, p)))
+            else:
+                for p in PERCENTILES:
+                    row[f"P{p}"] = "—"
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    @staticmethod
     def _render_monthly_returns_tables(
         strat_equity: pd.Series,
         bh_equity: pd.Series,
         ticker: str,
+        trades: list = None,
     ) -> None:
         st.subheader("📅 Monthly Returns — Strategy Position")
         strat_df = StrategyBacktestPack._build_monthly_returns_df(strat_equity)
@@ -547,6 +595,18 @@ class StrategyBacktestPack(AnalysisPack):
             use_container_width=True,
             height=38 + 12 * 35,
         )
+
+        if trades:
+            st.divider()
+            st.subheader("📊 Monthly Statistics — Strategy by Trade Entry Month")
+            st.caption("Percentile distribution of trade returns grouped by the month the position was opened.")
+            entry_stats = StrategyBacktestPack._build_trade_entry_month_stats_df(trades)
+            st.dataframe(
+                StrategyBacktestPack._style_monthly_stats_df(entry_stats),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + 12 * 35,
+            )
 
     def render_results(self, result: AnalysisResult) -> None:
         if result.error:
@@ -596,10 +656,12 @@ class StrategyBacktestPack(AnalysisPack):
             m7.metric("Sortino", f"{perf.sortino_ratio:.2f}" if perf.sortino_ratio is not None else "—")
             m8.metric("Max Consec. Losses", str(perf.max_consecutive_losses))
 
-            m9, m10, m11 = st.columns(3)
+            m9, m10, m11, m12, m13 = st.columns(5)
             m9.metric("Closed Trades", str(perf.closed_trades))
-            m10.metric("Best Trade", fmt_pct(perf.best_trade_return))
-            m11.metric("Worst Trade", fmt_pct(perf.worst_trade_return))
+            m10.metric("Win Trades", str(perf.win_count))
+            m11.metric("Loss Trades", str(perf.loss_count))
+            m12.metric("Best Trade", fmt_pct(perf.best_trade_return))
+            m13.metric("Worst Trade", fmt_pct(perf.worst_trade_return))
 
             st.divider()
 
@@ -699,4 +761,4 @@ class StrategyBacktestPack(AnalysisPack):
             # 6. Monthly Returns Tables
             strat_equity = result.data.get("strat_equity")
             bh_equity = result.data.get("bh_equity")
-            self._render_monthly_returns_tables(strat_equity, bh_equity, result.ticker)
+            self._render_monthly_returns_tables(strat_equity, bh_equity, result.ticker, trades)

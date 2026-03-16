@@ -183,7 +183,7 @@ class ReportGenerator:
 
     def _current_status_lines(self) -> list:
         lines = ["## Trạng thái hiện tại"]
-        lines.append(f"1. Giá hiện tại: {fmt_price(self.current_status['current_price'])} USD")
+        lines.append(f"1. Giá hiện tại: {fmt_price(self.current_status['current_price'])}")
         display_current_signal = self.strategy.format_value(self.current_status['current_signal'])
         lines.append(f"2. {self.strategy.name} hiện tại: {display_current_signal}")
         lines.append(f"3. Độ hiếm hiện tại: {fmt_pct(self.current_status['rarity'])}")
@@ -201,7 +201,7 @@ class ReportGenerator:
 
         if self.current_status.get('entry_date'):
             date_str = self.current_status['entry_date'].strftime(DATE_FORMAT_DISPLAY)
-            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {fmt_price(self.current_status['entry_price'])} USD")
+            lines.append(f"{next_idx}. Giá bắt đầu vào vùng {self.current_status['ref_percentile']:,.0f}% từ ngày: {date_str} ở mức {fmt_price(self.current_status['entry_price'])}")
             next_idx += 1
             if self.current_status.get('days_in_current_zone') is not None:
                 lines.append(f"{next_idx}. Giá đã ở vùng hiện tại: {self.current_status['days_in_current_zone']} phiên")
@@ -211,7 +211,7 @@ class ReportGenerator:
             if self.current_status.get('drawdown_from_current') is not None:
                 dd_pct = -self.current_status['drawdown_from_current'] * 100
                 dd_from_curr_display = f"~ giảm {fmt_pct(dd_pct)} từ hiện tại"
-            lines.append(f"{next_idx}. Giá có thể giảm đến {fmt_price(self.current_status['target_price'])} USD, {dd_from_curr_display}, Max DD: {fmt_pct(max_dd_display)}")
+            lines.append(f"{next_idx}. Giá có thể giảm đến {fmt_price(self.current_status['target_price'])}, {dd_from_curr_display}, Max DD: {fmt_pct(max_dd_display)}")
         else:
             lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
         return lines

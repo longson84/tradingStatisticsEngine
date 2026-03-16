@@ -183,6 +183,8 @@ class TradePerformance:
     closed_trades: int
     open_trade: Optional[Trade]
     win_rate: float
+    win_count: int
+    loss_count: int
     avg_return: float
     avg_winning_return: float
     avg_losing_return: float
@@ -208,6 +210,8 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
             closed_trades=0,
             open_trade=open_trade,
             win_rate=0.0,
+            win_count=0,
+            loss_count=0,
             avg_return=0.0,
             avg_winning_return=0.0,
             avg_losing_return=0.0,
@@ -281,6 +285,8 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
         closed_trades=n_closed,
         open_trade=open_trade,
         win_rate=win_rate,
+        win_count=len(wins),
+        loss_count=len(losses),
         avg_return=avg_return,
         avg_winning_return=avg_winning,
         avg_losing_return=avg_losing,
