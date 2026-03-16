@@ -5,29 +5,29 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.base import AnalysisPack, AnalysisResult
+from src.base import AnalysisResult
 from src.constants import (
     COLOR_POSITIVE,
-    COLOR_NEGATIVE,
     DATE_FORMAT_DISPLAY,
     fmt_capture,
     fmt_pct,
+    style_capture,
     style_positive_negative,
 )
-from src.strategy.pack import StrategyBacktestPack, render_strategy_sidebar
+from src.strategy.pack import StrategyBacktestPack
 
 
-class BatchBacktestPack(AnalysisPack):
+class BatchBacktestPack(StrategyBacktestPack):
     @property
     def pack_name(self) -> str:
         return "Batch Backtest"
 
     def render_sidebar(self) -> Dict[str, Any]:
-        return render_strategy_sidebar(key_prefix="batch", header="Batch Backtest")
+        return self.render_strategy_sidebar(key_prefix="batch", header="Batch Backtest")
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
         try:
-            core = StrategyBacktestPack._compute_ticker_core(ticker, df, config)
+            core = self._compute_ticker_core(ticker, df, config)
             return AnalysisResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
@@ -82,7 +82,7 @@ class BatchBacktestPack(AnalysisPack):
             p10 = round(float(np.percentile(closed_returns, 10)), 2) if closed_returns else None
 
             strat_return = perf.total_return
-            if bh_return and bh_return != 0:
+            if bh_return and bh_return > 0:
                 capture = round(strat_return / bh_return, 2)
             else:
                 capture = None
@@ -111,12 +111,6 @@ class BatchBacktestPack(AnalysisPack):
 
         PERCENTILE_COLS = ["P90 %", "P70 %", "P50 %", "P30 %", "P10 %"]
 
-        def _style_capture(val):
-            try:
-                return COLOR_POSITIVE if float(val) > 1 else ""
-            except (TypeError, ValueError):
-                return ""
-
         def _style_percentile(val):
             try:
                 return style_positive_negative(float(val))
@@ -128,7 +122,7 @@ class BatchBacktestPack(AnalysisPack):
 
         styled = (
             df.style
-            .applymap(_style_capture, subset=["Capture"])
+            .applymap(style_capture, subset=["Capture"])
             .applymap(_style_percentile, subset=PERCENTILE_COLS)
             .applymap(_style_in_trade, subset=["In Trade"])
             .format(

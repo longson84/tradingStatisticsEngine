@@ -1,5 +1,6 @@
 # Shared infrastructure constants (used across domains)
 HISTORICAL_DATA_START_DATE = '1980-01-01'
+INITIAL_CAPITAL = 1000.0
 
 # ---------------------------------------------------------------------------
 # yfinance ticker presets — add/edit groups here
@@ -52,6 +53,21 @@ COLOR_NEGATIVE = "background-color: #fecaca; color: #7f1d1d; font-weight: bold"
 COLOR_ACTIVE = "background-color: #FFD700; color: black; font-weight: bold"
 # Primary group row (e.g. Lv-0 event tree rows): teal-green
 COLOR_GROUP = "background-color: #3aa56c; color: black; font-weight: bold"
+
+# Plotly trace colours — use these for chart lines/markers so they stay in sync
+# with the table colour scheme (same green/red family, adapted for dark backgrounds).
+PLOTLY_POSITIVE = "#4ADE80"
+PLOTLY_NEGATIVE = "#F87171"
+
+
+def style_capture(val: str) -> str:
+    """Return CSS for a capture ratio cell: green if > 1×, red if ≤ 1×, empty for '—' or blank."""
+    if not isinstance(val, str) or val in ("", "—"):
+        return ""
+    try:
+        return COLOR_POSITIVE if float(val.replace("×", "")) > 1 else COLOR_NEGATIVE
+    except ValueError:
+        return ""
 
 
 def style_positive_negative(value: float | None, threshold: float = 0.0) -> str:

@@ -10,6 +10,7 @@ from src.constants import COLOR_ACTIVE, COLOR_GROUP, DATE_FORMAT_DISPLAY, fmt_pr
 from src.signal.signals import AHR999Signal, BaseSignal, DistanceFromPeakSignal, MASignal
 from src.signal.report import ReportGenerator
 from src.signal.visualizer import ChartVisualizer
+from src.ui import plot_chart
 
 
 class SignalAnalysisPack(AnalysisPack):
@@ -308,16 +309,10 @@ class SignalAnalysisPack(AnalysisPack):
             self._render_event_tree(np_events, qr_threshold)
 
             with st.expander("📊 Xem Phân phối tín hiệu (Distribution)", expanded=True):
-                try:
-                    st.plotly_chart(fig_dist, width="stretch")
-                except TypeError:
-                    st.plotly_chart(fig_dist, use_container_width=True)
+                plot_chart(fig_dist)
 
             with st.expander("📈 Xem Biểu đồ tín hiệu lịch sử", expanded=True):
-                try:
-                    st.plotly_chart(fig, width="stretch")
-                except TypeError:
-                    st.plotly_chart(fig, use_container_width=True)
+                plot_chart(fig)
 
             st.subheader("Tải về kết quả")
             timestamp = datetime.now().strftime("%y%m%d")

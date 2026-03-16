@@ -17,7 +17,7 @@ Welcome! Use the navigation on the left to choose a tool:
 | Page | Description |
 |------|-------------|
 | **📈 Signal Analysis** | Analyse signal rarity, percentile zones, and historical drawdown statistics for any ticker. Supports AHR999, Distance-from-Peak (N-day), and MA-ratio signals. |
-| **🔁 Strategy Backtest** | Backtest MA-based trading strategies (Price vs MA, MA Crossover) with entry/exit lags. Shows win rate, total return, Sharpe ratio, and full trade log. |
+| **🔁 Strategy Backtest** | Backtest MA-based trading strategies (Price vs MA, MA Crossover) with entry/exit lags. Shows win rate, total return, profit factor, and full trade log. |
 
 ---
 

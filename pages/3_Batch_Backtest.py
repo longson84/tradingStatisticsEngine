@@ -29,7 +29,7 @@ if stored_ds is not None and stored_ds != data_source:
     st.info("Data source changed — previous results cleared.")
 
 has_results = bool(st.session_state.get("batch_results"))
-using_group = config.get("vnstock_group", "— type manually —") != "— type manually —"
+using_group = config.get("symbol_group", "— type manually —") != "— type manually —"
 
 # --- Sidebar buttons ---
 run_btn = st.sidebar.button("🚀 Run Batch", type="primary", key="batch_run_btn")

@@ -98,6 +98,7 @@ class Trade:
     mae_price: Optional[float] = None  # price at MAE (lowest price during trade)
     mfe_pct: Optional[float] = None    # Maximum Favorable Excursion — peak return during trade
     mfe_price: Optional[float] = None  # price at MFE (highest price during trade)
+    equity_at_close: Optional[float] = None  # strategy capital after this trade closes (stamped by _compute_ticker_core)
 
 
 # ---------------------------------------------------------------------------
@@ -197,10 +198,7 @@ class TradePerformance:
     worst_trade_return: float
     avg_holding_days: float
     max_consecutive_losses: int
-    profit_factor: float
     total_return: float
-    sharpe_ratio: Optional[float]
-    sortino_ratio: Optional[float]
 
 
 def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
@@ -224,10 +222,7 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
             worst_trade_return=0.0,
             avg_holding_days=0.0,
             max_consecutive_losses=0,
-            profit_factor=0.0,
             total_return=0.0,
-            sharpe_ratio=None,
-            sortino_ratio=None,
         )
 
     returns = [t.return_pct for t in closed if t.return_pct is not None]
@@ -254,36 +249,11 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
         else:
             consec = 0
 
-    # Profit factor
-    sum_wins = sum(wins)
-    sum_losses = abs(sum(losses))
-    if sum_losses == 0:
-        profit_factor = float("inf") if sum_wins > 0 else 0.0
-    else:
-        profit_factor = sum_wins / sum_losses
-
     # Total return (compound)
     compound = 1.0
     for r in returns:
         compound *= (1 + r / 100)
     total_return = (compound - 1) * 100
-
-    # Sharpe
-    if len(returns) >= 2:
-        mean_r = float(np.mean(returns))
-        std_r = float(np.std(returns, ddof=1))
-        sharpe: Optional[float] = mean_r / std_r if std_r > 0 else None
-    else:
-        mean_r = float(np.mean(returns)) if returns else 0.0
-        sharpe = None
-
-    # Sortino (downside deviation = std of negative returns)
-    downside = [r for r in returns if r < 0]
-    if len(downside) >= 2:
-        dd_std = float(np.std(downside, ddof=1))
-        sortino: Optional[float] = mean_r / dd_std if dd_std > 0 else None
-    else:
-        sortino = None
 
     return TradePerformance(
         total_trades=len(trades),
@@ -299,10 +269,7 @@ def calculate_trade_performance(trades: List[Trade]) -> TradePerformance:
         worst_trade_return=worst,
         avg_holding_days=avg_holding,
         max_consecutive_losses=max_consec_losses,
-        profit_factor=profit_factor,
         total_return=total_return,
-        sharpe_ratio=sharpe,
-        sortino_ratio=sortino,
     )
 
 
