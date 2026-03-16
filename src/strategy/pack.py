@@ -46,11 +46,19 @@ class StrategyBacktestPack(AnalysisPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "MA Crossover"],
+            ["Price vs EMA", "Price vs MA", "MA Crossover"],
             key="strat_type",
         )
 
-        if strategy_type == "Price vs MA":
+        if strategy_type == "Price vs EMA":
+            col1, col2 = st.sidebar.columns(2)
+            ema_len = col1.number_input("EMA Length:", min_value=2, value=50, step=10, key="pema_len")
+            col3, col4 = st.sidebar.columns(2)
+            buy_lag = col3.number_input("Buy Lag (days):", min_value=0, value=0, step=1, key="pema_buy_lag")
+            sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=2, step=1, key="pema_sell_lag")
+            strategy = PriceVsMAStrategy("EMA", int(ema_len), int(buy_lag), int(sell_lag))
+
+        elif strategy_type == "Price vs MA":
             col1, col2 = st.sidebar.columns(2)
             ma_type = col1.selectbox("MA Type:", ["SMA", "EMA", "WMA"], key="pma_type")
             ma_len = col2.number_input("MA Length:", min_value=2, value=50, step=10, key="pma_len")
