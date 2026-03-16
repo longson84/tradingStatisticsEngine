@@ -59,16 +59,21 @@ def generate_trade_signals(
         cur_sign = np.sign(cross.iloc[i])
 
         if prev_sign < 0 and cur_sign >= 0:
-            # Golden cross → BUY after buy_lag trading days
+            # Price crossed above MA → schedule BUY after buy_lag days
+            # Only execute if price is still above MA on that day (confirmation)
             target_i = i + buy_lag
             if target_i < len(common_idx):
-                buy_signals.iloc[target_i] = True
+                if np.sign(cross.iloc[target_i]) >= 0:
+                    buy_signals.iloc[target_i] = True
 
         elif prev_sign > 0 and cur_sign <= 0:
-            # Death cross → SELL after sell_lag trading days
+            # Price crossed below MA → schedule SELL after sell_lag days
+            # Only execute if price is still below MA on that day (confirmation)
+            # If price recovered above MA by then, skip — trade continues
             target_i = i + sell_lag
             if target_i < len(common_idx):
-                sell_signals.iloc[target_i] = True
+                if np.sign(cross.iloc[target_i]) <= 0:
+                    sell_signals.iloc[target_i] = True
 
         if cur_sign != 0:
             prev_sign = cur_sign

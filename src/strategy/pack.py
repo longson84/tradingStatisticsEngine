@@ -62,19 +62,11 @@ class StrategyBacktestPack(AnalysisPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "Price vs EMA", "MA Crossover"],
+            ["Price vs MA", "MA Crossover"],
             key="strat_type",
         )
 
-        if strategy_type == "Price vs EMA":
-            col1, col2 = st.sidebar.columns(2)
-            ema_len = col1.number_input("EMA Length:", min_value=2, value=50, step=10, key="pema_len")
-            col3, col4 = st.sidebar.columns(2)
-            buy_lag = col3.number_input("Buy Lag (days):", min_value=0, value=0, step=1, key="pema_buy_lag")
-            sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=2, step=1, key="pema_sell_lag")
-            strategy = PriceVsMAStrategy("EMA", int(ema_len), int(buy_lag), int(sell_lag))
-
-        elif strategy_type == "Price vs MA":
+        if strategy_type == "Price vs MA":
             col1, col2 = st.sidebar.columns(2)
             ma_type = col1.selectbox("MA Type:", ["SMA", "EMA", "WMA"], key="pma_type")
             ma_len = col2.number_input("MA Length:", min_value=2, value=50, step=10, key="pma_len")
@@ -314,6 +306,66 @@ class StrategyBacktestPack(AnalysisPack):
             st.plotly_chart(fig, use_container_width=True)
 
     @staticmethod
+    def _render_nonneg_distribution(values: list, metric_label: str, bar_color: str) -> None:
+        """Generic distribution renderer for non-negative metrics (MFE, MAE)."""
+        if len(values) < 2:
+            st.info("Not enough closed trades to show distribution.")
+            return
+
+        percentiles = [5, 10, 25, 50, 75, 90, 95]
+        pct_rows = []
+        for p in percentiles:
+            pct_rows.append({"Percentile": f"P{p}", metric_label: fmt_pct(np.percentile(values, p))})
+        pct_rows.append({"Percentile": "Mean",    metric_label: fmt_pct(np.mean(values))})
+        pct_rows.append({"Percentile": "Std Dev", metric_label: fmt_pct(np.std(values, ddof=1))})
+
+        buckets = [
+            ("0 → 5%",      0,   5),
+            ("5 → 10%",     5,  10),
+            ("10 → 20%",   10,  20),
+            ("20 → 30%",   20,  30),
+            ("30 → 50%",   30,  50),
+            ("50 → 100%",  50, 100),
+            ("> 100%",    100, float("inf")),
+        ]
+        total = len(values)
+        bucket_rows = []
+        for label, lo, hi in buckets:
+            subset = [v for v in values if lo < v <= hi] if hi != float("inf") else [v for v in values if v > lo]
+            count = len(subset)
+            bucket_rows.append({
+                "Range": label,
+                "Count": count,
+                "% of Total": fmt_pct(count / total * 100) if total else "0.00%",
+                f"Avg {metric_label}": fmt_pct(np.mean(subset)) if subset else "—",
+            })
+
+        col_stats, col_buckets = st.columns(2)
+        with col_stats:
+            st.markdown("**Percentile breakdown**")
+            st.dataframe(pd.DataFrame(pct_rows), hide_index=True, use_container_width=True,
+                         height=38 + len(pct_rows) * 35)
+        with col_buckets:
+            st.markdown("**Buckets**")
+            st.dataframe(pd.DataFrame(bucket_rows), hide_index=True, use_container_width=True,
+                         height=38 + len(bucket_rows) * 35)
+
+        mean_v = float(np.mean(values))
+        median_v = float(np.median(values))
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=values, name=metric_label, marker_color=bar_color, xbins=dict(size=2)))
+        fig.add_vline(x=mean_v, line_dash="dash", line_color="white",
+                      annotation_text=f"Mean {mean_v:.1f}%", annotation_position="top right")
+        fig.add_vline(x=median_v, line_dash="dot", line_color="yellow",
+                      annotation_text=f"Median {median_v:.1f}%", annotation_position="top left")
+        fig.update_layout(height=350, xaxis_title=f"{metric_label} (%)", yaxis_title="# Trades",
+                          hovermode="x unified", showlegend=False, margin=dict(t=30))
+        try:
+            st.plotly_chart(fig, width="stretch")
+        except TypeError:
+            st.plotly_chart(fig, use_container_width=True)
+
+    @staticmethod
     def _render_retracement_distribution(trades) -> None:
         """Distribution of retracement from MFE: (mfe_price - exit_price) / mfe_price * 100."""
         closed = [
@@ -519,24 +571,25 @@ class StrategyBacktestPack(AnalysisPack):
         return df.style.applymap(_cell_style, subset=color_cols)
 
     @staticmethod
-    def _build_trade_entry_month_stats_df(trades) -> pd.DataFrame:
+    def _build_trade_entry_month_stats_df(trades, value_attr: str = "return_pct") -> pd.DataFrame:
         """
-        Group closed trades by entry month, compute percentile distribution of returns.
-        Rows = months (Jan–Dec), columns = P95, P90, P80, P70, P60, P50, P40, P30, P20, P10, P5.
+        Group closed trades by entry month, compute percentile distribution of a trade attribute.
+        Rows = months (Jan–Dec), columns = # Trades, P95 … P5.
+        value_attr: Trade field to use — 'return_pct' or 'mfe_pct'.
         """
         MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         PERCENTILES = [95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
 
-        closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+        closed = [t for t in trades if t.status == "closed" and getattr(t, value_attr) is not None]
 
         rows = []
         for m_i, m_name in enumerate(MONTH_NAMES, start=1):
-            month_returns = [t.return_pct for t in closed if t.entry_date.month == m_i]
-            row: Dict[str, Any] = {"Month": m_name, "# Trades": len(month_returns)}
-            if month_returns:
+            month_vals = [getattr(t, value_attr) for t in closed if t.entry_date.month == m_i]
+            row: Dict[str, Any] = {"Month": m_name, "# Trades": len(month_vals)}
+            if month_vals:
                 for p in PERCENTILES:
-                    row[f"P{p}"] = fmt_pct(float(np.percentile(month_returns, p)))
+                    row[f"P{p}"] = fmt_pct(float(np.percentile(month_vals, p)))
             else:
                 for p in PERCENTILES:
                     row[f"P{p}"] = "—"
@@ -598,11 +651,21 @@ class StrategyBacktestPack(AnalysisPack):
 
         if trades:
             st.divider()
-            st.subheader("📊 Monthly Statistics — Strategy by Trade Entry Month")
+            st.subheader("📊 Monthly Statistics — Return by Trade Entry Month")
             st.caption("Percentile distribution of trade returns grouped by the month the position was opened.")
-            entry_stats = StrategyBacktestPack._build_trade_entry_month_stats_df(trades)
+            entry_stats = StrategyBacktestPack._build_trade_entry_month_stats_df(trades, "return_pct")
             st.dataframe(
                 StrategyBacktestPack._style_monthly_stats_df(entry_stats),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + 12 * 35,
+            )
+
+            st.subheader("📊 Monthly Statistics — MFE by Trade Entry Month")
+            st.caption("Percentile distribution of Maximum Favorable Excursion grouped by the month the position was opened.")
+            mfe_stats = StrategyBacktestPack._build_trade_entry_month_stats_df(trades, "mfe_pct")
+            st.dataframe(
+                StrategyBacktestPack._style_monthly_stats_df(mfe_stats),
                 hide_index=True,
                 use_container_width=True,
                 height=38 + 12 * 35,
@@ -732,9 +795,19 @@ class StrategyBacktestPack(AnalysisPack):
 
             st.divider()
 
-            # 5. Retracement from Peak Distribution
-            st.subheader("📉 Retracement from Peak (MFE) Distribution")
-            self._render_retracement_distribution(trades)
+            # 5. MAE & MFE of winning trades
+            winners = [t for t in trades if t.status == "closed" and t.return_pct is not None and t.return_pct > 0]
+            st.subheader("📉 MAE of Winning Trades")
+            st.caption("How far winning trades drew down before recovering. Use this to calibrate stop-loss levels: if your open trade exceeds the P90–P95 MAE of winners, it is statistically unlikely to recover.")
+            mae_vals = [t.mae_pct for t in winners if t.mae_pct is not None]
+            self._render_nonneg_distribution(mae_vals, "MAE %", "rgba(239, 68, 68, 0.7)")
+
+            st.divider()
+
+            st.subheader("📈 MFE of Winning Trades")
+            st.caption("Peak unrealized gain reached during winning trades. Use this to calibrate take-profit levels.")
+            mfe_vals = [t.mfe_pct for t in winners if t.mfe_pct is not None]
+            self._render_nonneg_distribution(mfe_vals, "MFE %", "rgba(34, 197, 94, 0.7)")
 
             st.divider()
 
