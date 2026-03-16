@@ -2,19 +2,16 @@ import os
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from src.analytics import (
+from src.signal.analytics import (
     calculate_signal_percentiles,
+    calculate_np_events_tree,
     get_detailed_current_status,
-    calculate_np_events_tree  # New function
 )
-from src.constants import (
+from src.signal.constants import (
     CALCULATE_PERCENTILES,
-    DRAWDOWN_PERCENTILES,
-    TOP_N_DRAWDOWN,
     DATE_FORMAT_DISPLAY,
     MIN_RECOVERY_DAYS_THRESHOLD,
-    DRAWDOWN_PERCENTILES_FOR_THRESHOLD,
-    MAE_PERCENTILES # New constant
+    MAE_PERCENTILES,
 )
 
 class ReportGenerator:
@@ -45,9 +42,9 @@ class ReportGenerator:
         # 3. Calculate NP Statistics Grouped by Percentile
         self.np_stats = self._calculate_np_stats()
 
-        # 4. Calculate Current Status (Keep existing logic for now)
+        # 4. Derive current status from the already-computed tree (no double work)
         self.current_status = get_detailed_current_status(
-            self.df['Close'], self.signal_series
+            self.df['Close'], self.signal_series, self.np_events
         )
         
         # 5. Additional Info
@@ -98,15 +95,10 @@ class ReportGenerator:
                 if e.days_to_recover is not None:
                     total_days += e.days_to_recover
                 else:
-                    # Active
-                    # Calculate days active from start to last_date
-                    days_active = (last_date - e.start_date).days # Or trading days if we want strict
-                    # For simplicity use rough days or re-calc trading days. 
-                    # Actually calculate_np_events_tree calculates days_to_bottom for active.
-                    # Let's approximate or use existing fields if we added them.
-                    # Ideally we should use index difference.
-                    # Let's use (last_date - start_date).days for consistency with "Age"
-                    total_days += (last_date - e.start_date).days
+                    # Active — count trading days via index position
+                    last_idx = len(self.df) - 1
+                    start_idx = self.df.index.get_loc(e.start_date)
+                    total_days += last_idx - start_idx
                 
                 # Filter out Quick Recovery events for MAE stats
                 is_qr = e.days_to_recover is not None and e.days_to_recover <= MIN_RECOVERY_DAYS_THRESHOLD
@@ -300,8 +292,8 @@ class ReportGenerator:
                 display_date = f"**{display_date}**"
                 mae_str = f"<span style='color:red'>{mae_str}</span>"
                 
-                # Calculate days from start to now for unrecovered events
-                days_active = (self.df.index[-1] - event.start_date).days
+                # Calculate trading days from start to now for unrecovered events
+                days_active = len(self.df) - 1 - self.df.index.get_loc(event.start_date)
                 days_rec_str = f"<span style='color:red'>{days_active} (chưa phục hồi)</span>"
             
             row = [

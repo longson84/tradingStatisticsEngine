@@ -23,7 +23,3 @@ VISUALIZATION_COLORS = ["green", "#ffd700", "red"]
 # Date/Time Formats
 DATE_FORMAT_DISPLAY = '%d/%m/%y'      # dd/mm/yy (e.g. 25/12/23)
 
-
-
-# Start Date for Historical Data
-HISTORICAL_DATA_START_DATE = '1980-01-01'

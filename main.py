@@ -2,9 +2,9 @@ import sys
 import os
 from datetime import datetime
 from src.ingestor import YFinanceIngestor
-from src.signals import AHR999Signal, DistanceFromPeakSignal
-from src.report import ReportGenerator
-from src.visualizer import ChartVisualizer
+from src.signal.signals import AHR999Signal, DistanceFromPeakSignal
+from src.signal.report import ReportGenerator
+from src.signal.visualizer import ChartVisualizer
 
 def get_ticker_input():
     print("\n" + "="*40)

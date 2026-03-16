@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
-from src.constants import DATE_FORMAT_DISPLAY
+from typing import Literal
+from src.signal.constants import DATE_FORMAT_DISPLAY
 
-class SignalStrategy(ABC):
-    """Lớp trừu tượng cho mọi loại tín hiệu."""
+class BaseSignal(ABC):
+    """Abstract base class for all signal types."""
     
     @abstractmethod
     def calculate(self, df: pd.DataFrame) -> pd.Series:
@@ -48,7 +49,7 @@ class SignalStrategy(ABC):
         """Kiểm tra xem signal này có áp dụng được cho ticker này không."""
         return True
 
-class AHR999Signal(SignalStrategy):
+class AHR999Signal(BaseSignal):
     def __init__(self):
         self._name = "AHR999"
 
@@ -81,7 +82,7 @@ class AHR999Signal(SignalStrategy):
         ahr_values = (data['Close'] / p_est) * (data['Close'] / ma200)
         return ahr_values.dropna()
 
-class DistanceFromPeakSignal(SignalStrategy):
+class DistanceFromPeakSignal(BaseSignal):
     def __init__(self, window_days: int = None):
         self.window = window_days
         if window_days:
@@ -141,3 +142,39 @@ class DistanceFromPeakSignal(SignalStrategy):
             "days_since_ref": days_since_ref,
             "days_remaining": days_remaining
         }
+
+
+class MASignal(BaseSignal):
+    def __init__(self, ma_type: Literal["SMA", "EMA", "WMA"], length: int):
+        self.ma_type = ma_type
+        self.length = length
+
+    @property
+    def name(self) -> str:
+        return f"{self.ma_type}({self.length}) vs Price"
+
+    @property
+    def report_name(self) -> str:
+        return f"MA_{self.ma_type}_{self.length}"
+
+    def calculate(self, df: pd.DataFrame) -> pd.Series:
+        from src.strategy.analytics import calculate_ma
+        ma = calculate_ma(df['Close'], self.ma_type, self.length)
+        return (df['Close'] / ma - 1).dropna()
+
+    def format_value(self, value: float) -> str:
+        return f"{value * 100:.2f}%"
+
+    def get_additional_info(self, df: pd.DataFrame) -> dict:
+        from src.strategy.analytics import calculate_ma
+        ma = calculate_ma(df['Close'], self.ma_type, self.length)
+        ma_value = ma.iloc[-1]
+        return {
+            "ref_date": ma.index[-1].strftime(DATE_FORMAT_DISPLAY),
+            "ref_value": f"{ma_value:,.2f} USD ({self.ma_type}{self.length})",
+            "days_since_ref": 0,
+        }
+
+
+# Backward-compat alias so any code importing SignalStrategy still works
+SignalStrategy = BaseSignal

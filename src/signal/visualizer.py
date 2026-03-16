@@ -2,12 +2,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
-from src.signals import SignalStrategy
-from src.constants import VISUALIZATION_THRESHOLDS, VISUALIZATION_COLORS
+from src.signal.signals import BaseSignal
+from src.signal.constants import VISUALIZATION_THRESHOLDS, VISUALIZATION_COLORS
 
 class ChartVisualizer:
     @staticmethod
-    def create_chart(ticker: str, df: pd.DataFrame, signal_series: pd.Series, strategy: SignalStrategy) -> go.Figure:
+    def create_chart(ticker: str, df: pd.DataFrame, signal_series: pd.Series, strategy: BaseSignal) -> go.Figure:
         """
         Tạo biểu đồ tương tác với Plotly.
         - Row 1: Giá (Tô màu theo độ hiếm)
