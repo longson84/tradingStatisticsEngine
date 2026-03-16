@@ -6,7 +6,7 @@ import streamlit as st
 
 from src.base import AnalysisPack, AnalysisResult
 from src.signal.analytics import NPEvent
-from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
+from src.constants import COLOR_ACTIVE, COLOR_GROUP, DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
 from src.signal.signals import AHR999Signal, BaseSignal, DistanceFromPeakSignal, MASignal
 from src.signal.report import ReportGenerator
 from src.signal.visualizer import ChartVisualizer
@@ -143,7 +143,7 @@ class SignalAnalysisPack(AnalysisPack):
 
         def _row_style(row: pd.Series):
             if highlight_mask[row.name]:
-                return ["background-color: #FFD700; color: black; font-weight: bold"] * len(row)
+                return [COLOR_ACTIVE] * len(row)
             return [""] * len(row)
 
         styled = display_df.style.apply(_row_style, axis=1)
@@ -222,9 +222,9 @@ class SignalAnalysisPack(AnalysisPack):
         def _row_style(row: pd.Series):
             i = row.name
             if unrecovered_mask[i]:
-                return ["background-color: #FFD700; color: black; font-weight: bold"] * len(row)
+                return [COLOR_ACTIVE] * len(row)
             if level_zero_mask[i]:
-                return ["background-color: #3aa56c; color: black; font-weight: bold"] * len(row)
+                return [COLOR_GROUP] * len(row)
             return [""] * len(row)
 
         styled = display_df.style.apply(_row_style, axis=1)

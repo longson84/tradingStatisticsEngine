@@ -5,7 +5,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct, fmt_pct_signed
+from src.constants import (
+    COLOR_ACTIVE,
+    COLOR_NEGATIVE,
+    COLOR_POSITIVE,
+    DATE_FORMAT_DISPLAY,
+    fmt_price,
+    fmt_pct,
+    fmt_pct_signed,
+    style_positive_negative,
+)
 
 from src.base import AnalysisPack, AnalysisResult
 from src.strategy.strategies import BaseStrategy, MACrossoverStrategy, PriceVsMAStrategy
@@ -275,6 +284,96 @@ class StrategyBacktestPack(AnalysisPack):
             st.plotly_chart(fig, use_container_width=True)
 
     @staticmethod
+    def _render_retracement_distribution(trades) -> None:
+        """Distribution of retracement from MFE: (mfe_price - exit_price) / mfe_price * 100."""
+        closed = [
+            t for t in trades
+            if t.status == "closed" and t.mfe_price and t.exit_price
+        ]
+        if len(closed) < 2:
+            st.info("Not enough closed trades to show retracement distribution.")
+            return
+
+        values = [(t.mfe_price - t.exit_price) / t.mfe_price * 100 for t in closed]
+
+        # --- Percentile stats table ---
+        percentiles = [5, 10, 25, 50, 75, 90, 95]
+        pct_rows = []
+        for p in percentiles:
+            pct_rows.append({"Percentile": f"P{p}", "Retracement %": fmt_pct(np.percentile(values, p))})
+        pct_rows.append({"Percentile": "Mean",    "Retracement %": fmt_pct(np.mean(values))})
+        pct_rows.append({"Percentile": "Std Dev", "Retracement %": fmt_pct(np.std(values, ddof=1))})
+
+        # --- Bucket table (retracement is always ≥ 0) ---
+        buckets = [
+            ("0 → 5%",     0,  5),
+            ("5 → 10%",    5, 10),
+            ("10 → 20%",  10, 20),
+            ("20 → 30%",  20, 30),
+            ("30 → 50%",  30, 50),
+            ("> 50%",     50, float("inf")),
+        ]
+        total = len(values)
+        bucket_rows = []
+        for label, lo, hi in buckets:
+            subset = [v for v in values if lo < v <= hi] if hi != float("inf") else [v for v in values if v > lo]
+            count = len(subset)
+            bucket_rows.append({
+                "Range": label,
+                "Count": count,
+                "% of Total": fmt_pct(count / total * 100) if total else "0.00%",
+                "Avg Retracement": fmt_pct(np.mean(subset)) if subset else "—",
+            })
+
+        col_stats, col_buckets = st.columns(2)
+
+        with col_stats:
+            st.markdown("**Percentile breakdown**")
+            st.dataframe(
+                pd.DataFrame(pct_rows),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + len(pct_rows) * 35,
+            )
+
+        with col_buckets:
+            st.markdown("**Retracement buckets**")
+            st.dataframe(
+                pd.DataFrame(bucket_rows),
+                hide_index=True,
+                use_container_width=True,
+                height=38 + len(bucket_rows) * 35,
+            )
+
+        # --- Histogram ---
+        mean_v = float(np.mean(values))
+        median_v = float(np.median(values))
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(
+            x=values, name="Retracement",
+            marker_color="rgba(251, 191, 36, 0.7)",
+            xbins=dict(size=2),
+        ))
+        fig.add_vline(x=mean_v, line_dash="dash", line_color="white",
+                      annotation_text=f"Mean {mean_v:.1f}%", annotation_position="top right")
+        fig.add_vline(x=median_v, line_dash="dot", line_color="yellow",
+                      annotation_text=f"Median {median_v:.1f}%", annotation_position="top left")
+
+        fig.update_layout(
+            barmode="overlay",
+            height=350,
+            xaxis_title="Retracement from MFE (%)",
+            yaxis_title="# Trades",
+            hovermode="x unified",
+            showlegend=False,
+            margin=dict(t=30),
+        )
+        try:
+            st.plotly_chart(fig, width="stretch")
+        except TypeError:
+            st.plotly_chart(fig, use_container_width=True)
+
+    @staticmethod
     def _build_monthly_returns_df(equity: pd.Series) -> pd.DataFrame:
         """
         Given an equity curve, return a year × month DataFrame of monthly returns (%).
@@ -334,12 +433,59 @@ class StrategyBacktestPack(AnalysisPack):
             except ValueError:
                 return ""
             if numeric > 0:
-                return "background-color: #bbf7d0; color: #14532d; font-weight: bold"
+                return COLOR_POSITIVE
             elif numeric < 0:
-                return "background-color: #fecaca; color: #7f1d1d; font-weight: bold"
+                return COLOR_NEGATIVE
             return ""
 
         color_cols = [c for c in MONTHS + ["Annual"] if c in df.columns]
+        return df.style.applymap(_cell_style, subset=color_cols)
+
+    @staticmethod
+    def _build_monthly_stats_df(equity: pd.Series) -> pd.DataFrame:
+        """
+        For each calendar month (Jan–Dec), compute percentile distribution across all years.
+        Rows = months, columns = P95, P90, P80, P70, P60, P50, P40, P30, P20, P10, P5.
+        """
+        MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        PERCENTILES = [95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+
+        monthly = equity.resample("ME").last()
+        monthly_ret = monthly.pct_change().dropna() * 100
+
+        rows = []
+        for m_i, m_name in enumerate(MONTH_NAMES, start=1):
+            vals = monthly_ret[monthly_ret.index.month == m_i].tolist()
+            row: Dict[str, Any] = {"Month": m_name}
+            if vals:
+                for p in PERCENTILES:
+                    row[f"P{p}"] = fmt_pct(float(np.percentile(vals, p)))
+            else:
+                for p in PERCENTILES:
+                    row[f"P{p}"] = "—"
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    @staticmethod
+    def _style_monthly_stats_df(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+        """Colour percentile cells by sign."""
+        PERCENTILES = [95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+        color_cols = [f"P{p}" for p in PERCENTILES if f"P{p}" in df.columns]
+
+        def _cell_style(val):
+            if not isinstance(val, str) or val == "—":
+                return ""
+            try:
+                numeric = float(val.replace(",", "").replace("%", ""))
+            except ValueError:
+                return ""
+            if numeric > 0:
+                return COLOR_POSITIVE
+            elif numeric < 0:
+                return COLOR_NEGATIVE
+            return ""
+
         return df.style.applymap(_cell_style, subset=color_cols)
 
     @staticmethod
@@ -373,6 +519,26 @@ class StrategyBacktestPack(AnalysisPack):
                 use_container_width=True,
                 height=38 + n * 35,
             )
+
+        st.divider()
+
+        st.subheader("📊 Monthly Statistics — Strategy Position")
+        strat_stats = StrategyBacktestPack._build_monthly_stats_df(strat_equity)
+        st.dataframe(
+            StrategyBacktestPack._style_monthly_stats_df(strat_stats),
+            hide_index=True,
+            use_container_width=True,
+            height=38 + 12 * 35,
+        )
+
+        st.subheader("📊 Monthly Statistics — Buy & Hold Position")
+        bh_stats = StrategyBacktestPack._build_monthly_stats_df(bh_equity)
+        st.dataframe(
+            StrategyBacktestPack._style_monthly_stats_df(bh_stats),
+            hide_index=True,
+            use_container_width=True,
+            height=38 + 12 * 35,
+        )
 
     def render_results(self, result: AnalysisResult) -> None:
         if result.error:
@@ -463,12 +629,28 @@ class StrategyBacktestPack(AnalysisPack):
                         "Return %": fmt_pct(t.return_pct) if t.return_pct is not None else "—",
                         "Holding Days": t.holding_days,
                         "MAE %": fmt_pct(t.mae_pct) if t.mae_pct is not None else "—",
+                        "MAE Price": fmt_price(t.mae_price) if t.mae_price is not None else "—",
+                        "MFE %": fmt_pct(t.mfe_pct) if t.mfe_pct is not None else "—",
+                        "MFE Price": fmt_price(t.mfe_price) if t.mfe_price is not None else "—",
+                        "Retracement %": fmt_pct((t.mfe_price - t.exit_price) / t.mfe_price * 100)
+                            if (t.mfe_price and t.exit_price) else "—",
                         "Status": t.status,
                     })
                 trade_df = pd.DataFrame(rows)
+
+                # Row colouring: open → active gold; |return| ≤ 1% → no colour; else green/red
+                returns_numeric = [t.return_pct for t in sorted_trades]
+                statuses = [t.status for t in sorted_trades]
+
+                def _trade_row_style(row: pd.Series):
+                    if statuses[row.name] == "open":
+                        return [COLOR_ACTIVE] * len(row)
+                    return [style_positive_negative(returns_numeric[row.name], threshold=1.0)] * len(row)
+
+                styled_trades = trade_df.style.apply(_trade_row_style, axis=1)
                 n_rows = len(trade_df)
                 height = 38 + min(n_rows, 20) * 35
-                st.dataframe(trade_df, use_container_width=True, hide_index=True, height=height)
+                st.dataframe(styled_trades, use_container_width=True, hide_index=True, height=height)
             else:
                 st.info("No trades generated.")
 
@@ -480,7 +662,13 @@ class StrategyBacktestPack(AnalysisPack):
 
             st.divider()
 
-            # 5. Equity Curve
+            # 5. Retracement from Peak Distribution
+            st.subheader("📉 Retracement from Peak (MFE) Distribution")
+            self._render_retracement_distribution(trades)
+
+            st.divider()
+
+            # 6. Equity Curve
             with st.expander("📈 Equity Curve", expanded=True):
                 log_scale = st.checkbox(
                     "Log scale (Y axis)",

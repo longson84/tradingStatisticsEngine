@@ -90,6 +90,9 @@ class Trade:
     holding_days: Optional[int]        # trading days
     status: Literal["closed", "open"]
     mae_pct: Optional[float] = None    # filled by calculate_drawdown_during_trades
+    mae_price: Optional[float] = None  # price at MAE (lowest price during trade)
+    mfe_pct: Optional[float] = None    # Maximum Favorable Excursion — peak return during trade
+    mfe_price: Optional[float] = None  # price at MFE (highest price during trade)
 
 
 # ---------------------------------------------------------------------------
@@ -146,13 +149,13 @@ def build_trades(
 
 
 # ---------------------------------------------------------------------------
-# Drawdown During Trades (MAE)
+# Drawdown During Trades (MAE) and Peak Return (MFE)
 # ---------------------------------------------------------------------------
 
 def calculate_drawdown_during_trades(
     trades: List[Trade], price_series: pd.Series
 ) -> List[Trade]:
-    """Fill mae_pct on each trade."""
+    """Fill mae_pct and mfe_pct on each trade."""
     for trade in trades:
         start = trade.entry_date
         end = trade.exit_date if trade.exit_date is not None else price_series.index[-1]
@@ -160,7 +163,11 @@ def calculate_drawdown_during_trades(
             window = price_series.loc[start:end]
             if not window.empty:
                 min_price = window.min()
+                max_price = window.max()
                 trade.mae_pct = (trade.entry_price - min_price) / trade.entry_price * 100
+                trade.mae_price = float(min_price)
+                trade.mfe_pct = (max_price - trade.entry_price) / trade.entry_price * 100
+                trade.mfe_price = float(max_price)
         except Exception:
             pass
     return trades
