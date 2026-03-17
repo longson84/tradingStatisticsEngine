@@ -1548,6 +1548,11 @@ dependencies = [
     { name = "yfinance" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "kaleido", specifier = ">=1.0.0" },
@@ -1557,6 +1562,9 @@ requires-dist = [
     { name = "vnstock", specifier = ">=3.5.0" },
     { name = "yfinance", specifier = ">=1.1.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
 
 [[package]]
 name = "typing-extensions"
