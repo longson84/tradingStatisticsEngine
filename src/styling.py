@@ -26,7 +26,7 @@ def style_positive_negative(value: float | None, threshold: float = 0.0) -> str:
     return COLOR_POSITIVE if value > 0 else COLOR_NEGATIVE
 
 
-def _style_pct_cell(val) -> str:
+def style_pct_cell(val) -> str:
     """Return green/red CSS for a formatted percentage string, empty for blanks and '—'."""
     if not isinstance(val, str) or val in ("", "—"):
         return ""
@@ -43,9 +43,9 @@ def _style_pct_cell(val) -> str:
 
 def style_monthly_returns_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
     color_cols = [c for c in MONTHS + ["Annual"] if c in df.columns]
-    return df.style.applymap(_style_pct_cell, subset=color_cols)
+    return df.style.applymap(style_pct_cell, subset=color_cols)
 
 
 def style_monthly_stats_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
     color_cols = [f"P{p}" for p in ANNUAL_PERCENTILES if f"P{p}" in df.columns]
-    return df.style.applymap(_style_pct_cell, subset=color_cols)
+    return df.style.applymap(style_pct_cell, subset=color_cols)
