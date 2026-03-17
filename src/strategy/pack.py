@@ -16,7 +16,7 @@ from src.styling import style_capture, style_positive_negative
 from src.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 from src.base import AnalysisPack, AnalysisResult
-from src.strategy.strategies import BaseStrategy, BollingerBandStrategy, DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
+from src.strategy.strategies import BaseStrategy, STRATEGY_NAMES, STRATEGY_REGISTRY
 from src.strategy.analytics import (
     Trade,
     build_equity_curve,
@@ -128,45 +128,9 @@ class StrategyBacktestPack(AnalysisPack):
         group_choice = "— type manually —"  # default for config compat
 
         strategy_type = st.sidebar.selectbox(
-            "Strategy Type:",
-            ["Price vs MA", "MA Crossover", "Donchian Breakout", "Bollinger Bands"],
-            key=f"{key_prefix}_type",
+            "Strategy Type:", STRATEGY_NAMES, key=f"{key_prefix}_type",
         )
-
-        if strategy_type == "Price vs MA":
-            col1, col2 = st.sidebar.columns(2)
-            ma_type = col1.selectbox("MA Type:", ["SMA", "EMA", "WMA"], key=f"{key_prefix}_pma_type")
-            ma_len = col2.number_input("MA Length:", min_value=2, value=50, step=10, key=f"{key_prefix}_pma_len")
-            col3, col4 = st.sidebar.columns(2)
-            buy_lag = col3.number_input("Buy Lag (days):", min_value=0, value=0, step=1, key=f"{key_prefix}_pma_buy_lag")
-            sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=2, step=1, key=f"{key_prefix}_pma_sell_lag")
-            strategy = PriceVsMAStrategy(ma_type, int(ma_len), int(buy_lag), int(sell_lag))
-
-        elif strategy_type == "MA Crossover":
-            col1, col2 = st.sidebar.columns(2)
-            fast_type = col1.selectbox("Fast MA Type:", ["EMA", "SMA", "WMA"], key=f"{key_prefix}_mac_fast_type")
-            fast_len = col2.number_input("Fast Length:", min_value=2, value=50, step=10, key=f"{key_prefix}_mac_fast_len")
-            col3, col4 = st.sidebar.columns(2)
-            slow_type = col3.selectbox("Slow MA Type:", ["SMA", "EMA", "WMA"], key=f"{key_prefix}_mac_slow_type")
-            slow_len = col4.number_input("Slow Length:", min_value=2, value=200, step=10, key=f"{key_prefix}_mac_slow_len")
-            col5, col6 = st.sidebar.columns(2)
-            buy_lag = col5.number_input("Buy Lag:", min_value=0, value=1, step=1, key=f"{key_prefix}_mac_buy_lag")
-            sell_lag = col6.number_input("Sell Lag:", min_value=0, value=1, step=1, key=f"{key_prefix}_mac_sell_lag")
-            strategy = MACrossoverStrategy(
-                fast_type, int(fast_len), slow_type, int(slow_len), int(buy_lag), int(sell_lag)
-            )
-
-        elif strategy_type == "Donchian Breakout":
-            col1, col2 = st.sidebar.columns(2)
-            entry_len = col1.number_input("Entry Length:", min_value=2, value=20, step=5, key=f"{key_prefix}_don_entry")
-            exit_len = col2.number_input("Exit Length:", min_value=2, value=10, step=5, key=f"{key_prefix}_don_exit")
-            strategy = DonchianBreakoutStrategy(int(entry_len), int(exit_len))
-
-        else:  # Bollinger Bands
-            col1, col2 = st.sidebar.columns(2)
-            bb_period = col1.number_input("Period:", min_value=5, value=20, step=1, key=f"{key_prefix}_bb_period")
-            bb_std = col2.number_input("Std Dev:", min_value=0.5, value=2.0, step=0.25, format="%.2f", key=f"{key_prefix}_bb_std")
-            strategy = BollingerBandStrategy(int(bb_period), float(bb_std))
+        strategy = STRATEGY_REGISTRY[strategy_type].from_sidebar(key_prefix)
 
         from_date = sidebar_from_date(key_prefix)
 
