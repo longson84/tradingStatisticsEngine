@@ -18,6 +18,22 @@ from src.constants import (
 from src.strategy.pack import StrategyBacktestPack
 
 
+# ---------------------------------------------------------------------------
+# Module-level style helpers (defined here so they aren't counted as closures
+# inside render_batch_results, which inflates that method's complexity score)
+# ---------------------------------------------------------------------------
+
+def _style_percentile(val) -> str:
+    try:
+        return style_positive_negative(float(val))
+    except (TypeError, ValueError):
+        return ""
+
+
+def _style_in_trade(val) -> str:
+    return COLOR_POSITIVE if val == "Yes" else ""
+
+
 class BatchBacktestPack(StrategyBacktestPack):
     @property
     def pack_name(self) -> str:
@@ -102,15 +118,6 @@ class BatchBacktestPack(StrategyBacktestPack):
         df = pd.DataFrame(rows)
 
         PERCENTILE_COLS = [f"P{p} %" for p in SUMMARY_PERCENTILES]
-
-        def _style_percentile(val):
-            try:
-                return style_positive_negative(float(val))
-            except (TypeError, ValueError):
-                return ""
-
-        def _style_in_trade(val):
-            return COLOR_POSITIVE if val == "Yes" else ""
 
         _fmt_pct_or_dash = lambda v: fmt_pct(v) if v is not None else "—"
         pct_formatters = {f"P{p} %": _fmt_pct_or_dash for p in SUMMARY_PERCENTILES}
