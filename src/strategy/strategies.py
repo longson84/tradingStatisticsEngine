@@ -32,6 +32,14 @@ class BaseStrategy(ABC):
         """Returns MA series to overlay on price chart."""
         ...
 
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BaseStrategy):
+            return NotImplemented
+        return self.name == other.name
+
 
 class PriceVsMAStrategy(BaseStrategy):
     def __init__(self, ma_type: str, ma_length: int, buy_lag: int, sell_lag: int):

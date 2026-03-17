@@ -1,5 +1,5 @@
 from datetime import datetime as _dt
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 import streamlit as st
@@ -38,6 +38,70 @@ from src.strategy.renderers import (
     render_performance_summary,
     render_return_distribution,
 )
+
+
+# ---------------------------------------------------------------------------
+# Cached computation — module-level so @st.cache_data works
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def compute_ticker_core(
+    ticker: str,
+    df: pd.DataFrame,
+    strategy: BaseStrategy,
+    from_date: Optional[object] = None,
+) -> Dict[str, Any]:
+    """
+    Pure computation — no Streamlit calls.
+    Returns a dict with all computed values needed by both single and batch rendering.
+    """
+    # Compute on full df so MAs have full history for warmup
+    crossover_series, buy_signals, sell_signals = strategy.compute(df)
+
+    # Trim to from_date (signals already computed — no lookahead)
+    if from_date is not None:
+        from_ts = pd.Timestamp(from_date)
+        df = df[df.index >= from_ts]
+        crossover_series = crossover_series[crossover_series.index >= from_ts]
+        buy_signals = buy_signals[buy_signals.index >= from_ts]
+        sell_signals = sell_signals[sell_signals.index >= from_ts]
+
+    price = df["Close"]
+
+    trades = build_trades(price, buy_signals, sell_signals)
+    trades = calculate_drawdown_during_trades(trades, price)
+    performance = calculate_trade_performance(trades)
+    current_pos = get_current_position(price, crossover_series, buy_signals, sell_signals)
+    ma_overlays = strategy.get_ma_overlays(df)
+
+    bh_total_return = (float(price.iloc[-1]) / float(price.iloc[0]) - 1) * 100
+    bh_max_drawdown = calculate_max_drawdown(price)
+    strat_max_drawdown = calculate_equity_curve_max_drawdown(trades)
+
+    strat_equity = build_equity_curve(price, buy_signals, sell_signals, INITIAL_CAPITAL)
+    bh_equity = price / float(price.iloc[0]) * INITIAL_CAPITAL
+
+    # Stamp equity_at_close on each closed trade — single source of truth,
+    # derived from trade returns rather than looked up from the equity curve.
+    capital = INITIAL_CAPITAL
+    for t in sorted((t for t in trades if t.status == "closed"), key=lambda x: x.entry_date):
+        capital *= (1 + t.return_pct / 100)
+        t.equity_at_close = capital
+
+    return {
+        "price": price,
+        "crossover_series": crossover_series,
+        "trades": trades,
+        "performance": performance,
+        "current_position": current_pos,
+        "ma_overlays": ma_overlays,
+        "signal_label": strategy.name,
+        "bh_total_return": bh_total_return,
+        "bh_max_drawdown": bh_max_drawdown,
+        "strat_max_drawdown": strat_max_drawdown,
+        "strat_equity": strat_equity,
+        "bh_equity": bh_equity,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -149,60 +213,10 @@ class StrategyBacktestPack(AnalysisPack):
 
     @staticmethod
     def _compute_ticker_core(ticker: str, df: pd.DataFrame, config: Dict) -> Dict[str, Any]:
-        """
-        Pure computation — no Streamlit calls.
-        Returns a dict with all computed values needed by both single and batch rendering.
-        """
-        strategy: BaseStrategy = config["strategy"]
-        from_date = config.get("from_date")
-
-        # Compute on full df so MAs have full history for warmup
-        crossover_series, buy_signals, sell_signals = strategy.compute(df)
-
-        # Trim to from_date (signals already computed — no lookahead)
-        if from_date is not None:
-            from_ts = pd.Timestamp(from_date)
-            df = df[df.index >= from_ts]
-            crossover_series = crossover_series[crossover_series.index >= from_ts]
-            buy_signals = buy_signals[buy_signals.index >= from_ts]
-            sell_signals = sell_signals[sell_signals.index >= from_ts]
-
-        price = df["Close"]
-
-        trades = build_trades(price, buy_signals, sell_signals)
-        trades = calculate_drawdown_during_trades(trades, price)
-        performance = calculate_trade_performance(trades)
-        current_pos = get_current_position(price, crossover_series, buy_signals, sell_signals)
-        ma_overlays = strategy.get_ma_overlays(df)
-
-        bh_total_return = (float(price.iloc[-1]) / float(price.iloc[0]) - 1) * 100
-        bh_max_drawdown = calculate_max_drawdown(price)
-        strat_max_drawdown = calculate_equity_curve_max_drawdown(trades)
-
-        strat_equity = build_equity_curve(price, buy_signals, sell_signals, INITIAL_CAPITAL)
-        bh_equity = price / float(price.iloc[0]) * INITIAL_CAPITAL
-
-        # Stamp equity_at_close on each closed trade — single source of truth,
-        # derived from trade returns rather than looked up from the equity curve.
-        capital = INITIAL_CAPITAL
-        for t in sorted((t for t in trades if t.status == "closed"), key=lambda x: x.entry_date):
-            capital *= (1 + t.return_pct / 100)
-            t.equity_at_close = capital
-
-        return {
-            "price": price,
-            "crossover_series": crossover_series,
-            "trades": trades,
-            "performance": performance,
-            "current_position": current_pos,
-            "ma_overlays": ma_overlays,
-            "signal_label": strategy.name,
-            "bh_total_return": bh_total_return,
-            "bh_max_drawdown": bh_max_drawdown,
-            "strat_max_drawdown": strat_max_drawdown,
-            "strat_equity": strat_equity,
-            "bh_equity": bh_equity,
-        }
+        """Delegate to the cached module-level function."""
+        return compute_ticker_core(
+            ticker, df, config["strategy"], config.get("from_date"),
+        )
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
         try:
