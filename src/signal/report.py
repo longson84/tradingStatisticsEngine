@@ -135,13 +135,17 @@ class ReportGenerator:
             }
         return stats
 
+    def _compute_highlight_p(self) -> int | None:
+        """Return the smallest percentile zone above the current rarity, or None."""
+        current_rarity = self.current_status.get("rarity", 100) if self.current_status else 100
+        candidates = [p for p in CALCULATE_PERCENTILES if p > current_rarity]
+        return min(candidates) if candidates else None
+
     def build_stats_df(self):
         """Return (DataFrame, highlight_p) for the NP statistics summary table."""
         sorted_mae = sorted(MAE_PERCENTILES, reverse=True)
 
-        current_rarity = self.current_status.get("rarity", 100) if self.current_status else 100
-        candidates = [p for p in CALCULATE_PERCENTILES if p > current_rarity]
-        highlight_p = min(candidates) if candidates else None
+        highlight_p = self._compute_highlight_p()
 
         rows = []
         for p in CALCULATE_PERCENTILES:
@@ -216,6 +220,45 @@ class ReportGenerator:
             lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
         return lines
 
+    def _render_event_lines(self, event, level: int = 0) -> list:
+        """Return markdown table row(s) for *event* and all its non-QR children."""
+        if event.days_to_recover is not None and event.days_to_recover <= self.qr_threshold:
+            return []
+
+        indent = "&nbsp;&nbsp;" * level + "- " if level > 0 else ""
+        display_date = f"{indent}{event.start_date.strftime(DATE_FORMAT_DISPLAY)}"
+        mae_str = fmt_pct(event.mae_pct)
+        rec_date_str = event.recovery_date.strftime(DATE_FORMAT_DISPLAY) if event.recovery_date else "-"
+        days_rec_str = str(event.days_to_recover) if event.days_to_recover is not None else "-"
+
+        if event.status == "Chưa phục hồi":
+            display_date = f"**{display_date}**"
+            mae_str = f"<span style='color:red'>{mae_str}</span>"
+            days_active = len(self.df) - 1 - self.df.index.get_loc(event.start_date)
+            days_rec_str = f"<span style='color:red'>{days_active} (chưa phục hồi)</span>"
+
+        row = [
+            display_date,
+            f"{event.percentile}%",
+            fmt_price(event.entry_price),
+            fmt_price(event.min_price),
+            event.min_date.strftime(DATE_FORMAT_DISPLAY),
+            mae_str,
+            str(event.days_to_bottom),
+            rec_date_str,
+            days_rec_str,
+            str(event.p_coverage),
+        ]
+        result = ["| " + " | ".join(row) + " |"]
+
+        children = sorted(
+            [e for e in self.np_events if e.upline_id == event.id],
+            key=lambda x: x.start_date,
+        )
+        for child in children:
+            result.extend(self._render_event_lines(child, level + 1))
+        return result
+
     # ------------------------------------------------------------------
 
     def generate_display_report(self) -> str:
@@ -248,13 +291,7 @@ class ReportGenerator:
         lines.append("| " + " | ".join(header) + " |")
         lines.append("| " + " | ".join([":---"] * len(header)) + " |")
         
-        # Determine highlight row based on current rarity
-        current_rarity = self.current_status.get('rarity', 100) if self.current_status else 100
-        highlight_p = None
-        # Find the smallest percentile > current_rarity
-        candidates = [p for p in CALCULATE_PERCENTILES if p > current_rarity]
-        if candidates:
-            highlight_p = min(candidates)
+        highlight_p = self._compute_highlight_p()
         
         # Rows
         for p in CALCULATE_PERCENTILES:
@@ -306,68 +343,8 @@ class ReportGenerator:
         # Sort by start_date desc
         top_events.sort(key=lambda x: x.start_date, reverse=True)
         
-        event_map = {e.id: e for e in self.np_events}
-        
-        def render_event(event, level=0):
-            # Skip Quick Recovery events
-            if event.days_to_recover is not None and event.days_to_recover <= self.qr_threshold:
-                return
-
-            # Format
-            # Indent: Level 0 -> "", Level 1 -> "&nbsp;&nbsp;- ", Level 2 -> "&nbsp;&nbsp;&nbsp;&nbsp;- "
-            indent = ""
-            if level > 0:
-                indent = "&nbsp;&nbsp;" * level + "- "
-            
-            start_str = event.start_date.strftime(DATE_FORMAT_DISPLAY)
-            display_date = f"{indent}{start_str}"
-            
-            np_str = f"{event.percentile}%"
-            
-            price_str = fmt_price(event.entry_price)
-            min_price_str = fmt_price(event.min_price)
-            min_date_str = event.min_date.strftime(DATE_FORMAT_DISPLAY)
-            mae_str = fmt_pct(event.mae_pct)
-            
-            rec_date_str = event.recovery_date.strftime(DATE_FORMAT_DISPLAY) if event.recovery_date else "-"
-            
-            days_rec_str = str(event.days_to_recover) if event.days_to_recover is not None else "-"
-            
-            # Highlight if active
-            if event.status == "Chưa phục hồi":
-                display_date = f"**{display_date}**"
-                mae_str = f"<span style='color:red'>{mae_str}</span>"
-                
-                # Calculate trading days from start to now for unrecovered events
-                days_active = len(self.df) - 1 - self.df.index.get_loc(event.start_date)
-                days_rec_str = f"<span style='color:red'>{days_active} (chưa phục hồi)</span>"
-            
-            row = [
-                display_date,
-                np_str,
-                price_str,
-                min_price_str,
-                min_date_str,
-                mae_str,
-                str(event.days_to_bottom),
-                rec_date_str,
-                days_rec_str,
-                str(event.p_coverage)
-            ]
-            lines.append("| " + " | ".join(row) + " |")
-            
-            # Render Children
-            # Find children
-            children = [e for e in self.np_events if e.upline_id == event.id]
-            # Sort children by date (req: "theo thứ tự diễn ra của chúng") -> Ascending?
-            # Usually sub-events happen after start.
-            children.sort(key=lambda x: x.start_date)
-            
-            for child in children:
-                render_event(child, level + 1)
-
         for event in top_events:
-            render_event(event)
+            lines.extend(self._render_event_lines(event))
             
         lines.append("")
         lines.append("</details>")
