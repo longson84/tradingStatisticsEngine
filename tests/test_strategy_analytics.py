@@ -12,6 +12,7 @@ from src.strategy.analytics import (
     calculate_max_drawdown,
     calculate_trade_performance,
 )
+from src.strategy.strategies import DonchianBreakoutStrategy
 
 
 def _make_price(values: list[float], start: str = "2020-01-01") -> pd.Series:
@@ -186,3 +187,67 @@ class TestMAEMFE:
         # MFE: highest = 130, (130-100)/100 = 30%
         assert t.mfe_pct == pytest.approx(30.0)
         assert t.mfe_price == pytest.approx(130.0)
+
+
+# ---------------------------------------------------------------------------
+# Donchian Breakout Strategy
+# ---------------------------------------------------------------------------
+
+def _make_ohlc(highs: list[float], lows: list[float], closes: list[float], start: str = "2020-01-01") -> pd.DataFrame:
+    idx = pd.bdate_range(start, periods=len(closes))
+    return pd.DataFrame({"High": highs, "Low": lows, "Close": closes}, index=idx)
+
+
+class TestDonchianBreakout:
+    def test_basic_signals(self):
+        """Buy when close breaks above upper channel, sell when close breaks below lower."""
+        # entry_length=3, exit_length=2
+        # We need enough bars for the rolling windows + shift(1) warmup.
+        #
+        # Bars 0-3: warmup (entry_length=3 needs 3 bars, then shifted by 1 → first valid upper at bar 3)
+        # Bar 4: close breaks above upper → buy
+        # Bar 6: close breaks below lower → sell
+        highs  = [100, 102, 104, 103, 110, 108, 95, 90]
+        lows   = [95,  97,  99,  98,  105, 103, 88, 85]
+        closes = [98,  100, 102, 101, 108, 106, 89, 87]
+        df = _make_ohlc(highs, lows, closes)
+
+        strat = DonchianBreakoutStrategy(entry_length=3, exit_length=2)
+        crossover, buy, sell = strat.compute(df)
+
+        buy_days = list(buy[buy].index)
+        sell_days = list(sell[sell].index)
+
+        assert len(buy_days) >= 1
+        assert len(sell_days) >= 1
+        # Sell must come after buy
+        assert sell_days[0] > buy_days[0]
+
+    def test_no_reentry_while_in_trade(self):
+        """Once in a trade, further upper-channel breaks do not generate duplicate buys."""
+        # Construct a series that stays above upper channel for multiple bars
+        highs  = [100, 102, 104, 103, 110, 115, 120, 118, 85, 80]
+        lows   = [95,  97,  99,  98,  105, 110, 115, 112, 80, 75]
+        closes = [98,  100, 102, 101, 108, 113, 118, 115, 82, 78]
+        df = _make_ohlc(highs, lows, closes)
+
+        strat = DonchianBreakoutStrategy(entry_length=3, exit_length=2)
+        _, buy, _ = strat.compute(df)
+
+        # Should only have one buy signal, not multiple
+        assert buy.sum() == 1
+
+    def test_overlays(self):
+        """get_overlays returns upper and lower channel Series."""
+        highs  = [100, 105, 110, 108, 112]
+        lows   = [95,  100, 105, 103, 107]
+        closes = [98,  103, 108, 106, 110]
+        df = _make_ohlc(highs, lows, closes)
+
+        strat = DonchianBreakoutStrategy(entry_length=3, exit_length=2)
+        overlays = strat.get_overlays(df)
+
+        assert "Upper(3)" in overlays
+        assert "Lower(2)" in overlays
+        assert len(overlays["Upper(3)"]) == len(df)
+        assert len(overlays["Lower(2)"]) == len(df)

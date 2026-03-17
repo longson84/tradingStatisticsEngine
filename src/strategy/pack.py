@@ -18,7 +18,7 @@ from src.constants import (
 from src.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 from src.base import AnalysisPack, AnalysisResult
-from src.strategy.strategies import BaseStrategy, MACrossoverStrategy, PriceVsMAStrategy
+from src.strategy.strategies import BaseStrategy, DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
 from src.strategy.analytics import (
     Trade,
     build_equity_curve,
@@ -47,7 +47,8 @@ from src.strategy.renderers import (
 def compute_ticker_core(
     ticker: str,
     df: pd.DataFrame,
-    strategy: BaseStrategy,
+    _strategy: BaseStrategy,
+    strategy_key: str,
     from_date: Optional[object] = None,
 ) -> Dict[str, Any]:
     """
@@ -55,7 +56,7 @@ def compute_ticker_core(
     Returns a dict with all computed values needed by both single and batch rendering.
     """
     # Compute on full df so MAs have full history for warmup
-    crossover_series, buy_signals, sell_signals = strategy.compute(df)
+    crossover_series, buy_signals, sell_signals = _strategy.compute(df)
 
     # Trim to from_date (signals already computed — no lookahead)
     if from_date is not None:
@@ -71,7 +72,7 @@ def compute_ticker_core(
     trades = calculate_drawdown_during_trades(trades, price)
     performance = calculate_trade_performance(trades)
     current_pos = get_current_position(price, crossover_series, buy_signals, sell_signals)
-    ma_overlays = strategy.get_ma_overlays(df)
+    overlays = _strategy.get_overlays(df)
 
     bh_total_return = (float(price.iloc[-1]) / float(price.iloc[0]) - 1) * 100
     bh_max_drawdown = calculate_max_drawdown(price)
@@ -93,8 +94,8 @@ def compute_ticker_core(
         "trades": trades,
         "performance": performance,
         "current_position": current_pos,
-        "ma_overlays": ma_overlays,
-        "signal_label": strategy.name,
+        "overlays": overlays,
+        "signal_label": strategy_key,
         "bh_total_return": bh_total_return,
         "bh_max_drawdown": bh_max_drawdown,
         "strat_max_drawdown": strat_max_drawdown,
@@ -131,7 +132,7 @@ class StrategyBacktestPack(AnalysisPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "MA Crossover"],
+            ["Price vs MA", "MA Crossover", "Donchian Breakout"],
             key=f"{key_prefix}_type",
         )
 
@@ -144,7 +145,7 @@ class StrategyBacktestPack(AnalysisPack):
             sell_lag = col4.number_input("Sell Lag (days):", min_value=0, value=2, step=1, key=f"{key_prefix}_pma_sell_lag")
             strategy = PriceVsMAStrategy(ma_type, int(ma_len), int(buy_lag), int(sell_lag))
 
-        else:  # MA Crossover
+        elif strategy_type == "MA Crossover":
             col1, col2 = st.sidebar.columns(2)
             fast_type = col1.selectbox("Fast MA Type:", ["EMA", "SMA", "WMA"], key=f"{key_prefix}_mac_fast_type")
             fast_len = col2.number_input("Fast Length:", min_value=2, value=50, step=10, key=f"{key_prefix}_mac_fast_len")
@@ -157,6 +158,12 @@ class StrategyBacktestPack(AnalysisPack):
             strategy = MACrossoverStrategy(
                 fast_type, int(fast_len), slow_type, int(slow_len), int(buy_lag), int(sell_lag)
             )
+
+        else:  # Donchian Breakout
+            col1, col2 = st.sidebar.columns(2)
+            entry_len = col1.number_input("Entry Length:", min_value=2, value=20, step=5, key=f"{key_prefix}_don_entry")
+            exit_len = col2.number_input("Exit Length:", min_value=2, value=10, step=5, key=f"{key_prefix}_don_exit")
+            strategy = DonchianBreakoutStrategy(int(entry_len), int(exit_len))
 
         from_date = sidebar_from_date(key_prefix)
 
@@ -172,8 +179,9 @@ class StrategyBacktestPack(AnalysisPack):
     @staticmethod
     def _compute_ticker_core(ticker: str, df: pd.DataFrame, config: Dict) -> Dict[str, Any]:
         """Delegate to the cached module-level function."""
+        strategy = config["strategy"]
         return compute_ticker_core(
-            ticker, df, config["strategy"], config.get("from_date"),
+            ticker, df, strategy, strategy.name, config.get("from_date"),
         )
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:

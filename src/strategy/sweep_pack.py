@@ -29,7 +29,7 @@ from src.strategy.renderers import (
     render_performance_summary,
     render_return_distribution,
 )
-from src.strategy.strategies import MACrossoverStrategy, PriceVsMAStrategy
+from src.strategy.strategies import DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
 from src.strategy.sweep_charts import (
     build_boxplot_chart,
     build_drawdown_chart,
@@ -60,7 +60,7 @@ class ParameterSweepPack(StrategyBacktestPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "MA Crossover"],
+            ["Price vs MA", "MA Crossover", "Donchian Breakout"],
             key="sweep_type",
         )
 
@@ -89,7 +89,7 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "sweep_lengths": sweep_lengths,
             }
 
-        else:  # MA Crossover
+        elif strategy_type == "MA Crossover":
             sweep_dim = st.sidebar.radio(
                 "Sweep:", ["Fast Length", "Slow Length"],
                 key="sweep_mac_dim", horizontal=True,
@@ -138,6 +138,36 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "sweep_lengths": sweep_lengths,
             }
 
+        else:  # Donchian Breakout
+            sweep_dim = st.sidebar.radio(
+                "Sweep:", ["Entry Length", "Exit Length"],
+                key="sweep_don_dim", horizontal=True,
+            )
+
+            st.sidebar.markdown(f"**{sweep_dim} Sweep Range**")
+            c1, c2, c3 = st.sidebar.columns(3)
+            sweep_min = c1.number_input("Min", min_value=2, value=10, step=5, key="sweep_don_min")
+            sweep_max = c2.number_input("Max", min_value=2, value=50, step=5, key="sweep_don_max")
+            sweep_step = c3.number_input("Step", min_value=1, value=5, step=1, key="sweep_don_step")
+
+            fixed_label = "Fixed Exit Length:" if sweep_dim == "Entry Length" else "Fixed Entry Length:"
+            fixed_default = 10 if sweep_dim == "Entry Length" else 20
+            fixed_length = st.sidebar.number_input(
+                fixed_label, min_value=2, value=fixed_default, step=5, key="sweep_don_fixed"
+            )
+
+            sweep_lengths = list(range(int(sweep_min), int(sweep_max) + 1, int(sweep_step)))
+
+            config = {
+                "ticker": ticker,
+                "data_source": data_source,
+                "vnstock_source": "KBS",
+                "strategy_type": strategy_type,
+                "sweep_dimension": "entry" if sweep_dim == "Entry Length" else "exit",
+                "fixed_length": int(fixed_length),
+                "sweep_lengths": sweep_lengths,
+            }
+
         from_date = sidebar_from_date("sweep")
         config["from_date"] = from_date
 
@@ -149,7 +179,7 @@ class ParameterSweepPack(StrategyBacktestPack):
             return PriceVsMAStrategy(
                 config["ma_type"], length, config["buy_lag"], config["sell_lag"]
             )
-        else:
+        elif config["strategy_type"] == "MA Crossover":
             dim = config["sweep_dimension"]
             if dim == "fast":
                 fast_len, slow_len = length, config["fixed_length"]
@@ -160,17 +190,29 @@ class ParameterSweepPack(StrategyBacktestPack):
                 config["slow_ma_type"], slow_len,
                 config["buy_lag"], config["sell_lag"],
             )
+        else:  # Donchian Breakout
+            dim = config["sweep_dimension"]
+            if dim == "entry":
+                return DonchianBreakoutStrategy(length, config["fixed_length"])
+            else:
+                return DonchianBreakoutStrategy(config["fixed_length"], length)
 
     def _make_label(self, config: Dict, length: int) -> str:
         """Build a short legend label for a sweep variant."""
         if config["strategy_type"] == "Price vs MA":
             return f"{config['ma_type']}({length})"
-        else:
+        elif config["strategy_type"] == "MA Crossover":
             dim = config["sweep_dimension"]
             if dim == "fast":
                 return f"{config['fast_ma_type']}({length})×{config['slow_ma_type']}({config['fixed_length']})"
             else:
                 return f"{config['fast_ma_type']}({config['fixed_length']})×{config['slow_ma_type']}({length})"
+        else:  # Donchian Breakout
+            dim = config["sweep_dimension"]
+            if dim == "entry":
+                return f"Donchian({length}/{config['fixed_length']})"
+            else:
+                return f"Donchian({config['fixed_length']}/{length})"
 
     def run_sweep(
         self, df: pd.DataFrame, config: Dict
