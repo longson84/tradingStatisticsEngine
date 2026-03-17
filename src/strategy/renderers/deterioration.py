@@ -11,6 +11,7 @@ from src.constants import (
     PLOTLY_NEGATIVE,
     PLOTLY_POSITIVE,
     fmt_pct,
+    format_percentile_columns,
     style_positive_negative,
 )
 from src.ui import plot_chart
@@ -60,10 +61,9 @@ def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str, k
                 "Win Rate": fmt_pct(len(wins) / len(rets) * 100),
                 "Avg. Win (%)": fmt_pct(float(np.mean(wins))) if wins else "—",
                 "Avg. Loss (%)": fmt_pct(float(np.mean(losses))) if losses else "—",
+                **format_percentile_columns(rets, ANNUAL_PERCENTILES),
+                "_total_return_num": total_return_pct,
             }
-            for p in ANNUAL_PERCENTILES:
-                row[f"P{p}"] = fmt_pct(float(np.percentile(rets, p)))
-            row["_total_return_num"] = total_return_pct
             annual_rows.append(row)
 
         ann_df = pd.DataFrame(annual_rows)

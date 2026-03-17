@@ -1,11 +1,10 @@
 """Monthly returns tables and statistics renderers."""
 from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.constants import COLOR_NEGATIVE, COLOR_POSITIVE, fmt_pct
+from src.constants import COLOR_NEGATIVE, COLOR_POSITIVE, fmt_pct, format_percentile_columns
 
 
 _MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -70,13 +69,7 @@ def build_monthly_stats_df(equity: pd.Series) -> pd.DataFrame:
     rows = []
     for m_i, m_name in enumerate(_MONTHS, start=1):
         vals = monthly_ret[monthly_ret.index.month == m_i].tolist()
-        row: Dict[str, Any] = {"Month": m_name}
-        if vals:
-            for p in _PERCENTILES:
-                row[f"P{p}"] = fmt_pct(float(np.percentile(vals, p)))
-        else:
-            for p in _PERCENTILES:
-                row[f"P{p}"] = "—"
+        row: Dict[str, Any] = {"Month": m_name, **format_percentile_columns(vals, _PERCENTILES)}
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -106,13 +99,11 @@ def build_trade_entry_month_stats_df(trades, value_attr: str = "return_pct") -> 
     rows = []
     for m_i, m_name in enumerate(_MONTHS, start=1):
         month_vals = [getattr(t, value_attr) for t in closed if t.entry_date.month == m_i]
-        row: Dict[str, Any] = {"Month": m_name, "# Trades": len(month_vals)}
-        if month_vals:
-            for p in _PERCENTILES:
-                row[f"P{p}"] = fmt_pct(float(np.percentile(month_vals, p)))
-        else:
-            for p in _PERCENTILES:
-                row[f"P{p}"] = "—"
+        row: Dict[str, Any] = {
+            "Month": m_name,
+            "# Trades": len(month_vals),
+            **format_percentile_columns(month_vals, _PERCENTILES),
+        }
         rows.append(row)
     return pd.DataFrame(rows)
 

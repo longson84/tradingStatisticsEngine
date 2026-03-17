@@ -14,6 +14,8 @@ from src.constants import (
     INITIAL_CAPITAL,
     PLOTLY_NEGATIVE,
     PLOTLY_POSITIVE,
+    SUMMARY_PERCENTILES,
+    compute_summary_percentiles,
     fmt_capture,
     fmt_pct,
     style_capture,
@@ -230,11 +232,6 @@ class ParameterSweepPack(StrategyBacktestPack):
                 t.return_pct for t in trades
                 if t.status == "closed" and t.return_pct is not None
             ]
-            p90 = round(float(np.percentile(closed_returns, 90)), 2) if closed_returns else None
-            p70 = round(float(np.percentile(closed_returns, 70)), 2) if closed_returns else None
-            p50 = round(float(np.percentile(closed_returns, 50)), 2) if closed_returns else None
-            p30 = round(float(np.percentile(closed_returns, 30)), 2) if closed_returns else None
-            p10 = round(float(np.percentile(closed_returns, 10)), 2) if closed_returns else None
 
             capture = round(strat_return / bh_return, 2) if bh_return and bh_return > 0 else None
 
@@ -247,24 +244,23 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "Trades":       perf.closed_trades,
                 "Wins":         perf.win_count,
                 "Losses":       perf.loss_count,
-                "P90 %":        p90,
-                "P70 %":        p70,
-                "P50 %":        p50,
-                "P30 %":        p30,
-                "P10 %":        p10,
+                **compute_summary_percentiles(closed_returns),
                 "Max DD %":     round(core["strat_max_drawdown"], 2),
                 "Avg Hold Days": int(round(perf.avg_holding_days)),
             })
 
         df_summary = pd.DataFrame(rows)
 
-        PERCENTILE_COLS = ["P90 %", "P70 %", "P50 %", "P30 %", "P10 %"]
+        PERCENTILE_COLS = [f"P{p} %" for p in SUMMARY_PERCENTILES]
 
         def _style_percentile(val):
             try:
                 return style_positive_negative(float(val))
             except (TypeError, ValueError):
                 return ""
+
+        _fmt_pct_or_dash = lambda v: fmt_pct(v) if v is not None else "—"
+        pct_formatters = {f"P{p} %": _fmt_pct_or_dash for p in SUMMARY_PERCENTILES}
 
         styled = (
             df_summary.style
@@ -276,11 +272,7 @@ class ParameterSweepPack(StrategyBacktestPack):
                     "B&H %":        fmt_pct,
                     "Capture":      fmt_capture,
                     "Win Rate %":   fmt_pct,
-                    "P90 %":        lambda v: fmt_pct(v) if v is not None else "—",
-                    "P70 %":        lambda v: fmt_pct(v) if v is not None else "—",
-                    "P50 %":        lambda v: fmt_pct(v) if v is not None else "—",
-                    "P30 %":        lambda v: fmt_pct(v) if v is not None else "—",
-                    "P10 %":        lambda v: fmt_pct(v) if v is not None else "—",
+                    **pct_formatters,
                     "Max DD %":     fmt_pct,
                 },
                 na_rep="—",

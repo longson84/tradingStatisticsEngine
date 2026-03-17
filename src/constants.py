@@ -1,3 +1,7 @@
+from collections.abc import Sequence
+
+import numpy as np
+
 # Shared infrastructure constants (used across domains)
 HISTORICAL_DATA_START_DATE = '1980-01-01'
 INITIAL_CAPITAL = 1000.0
@@ -80,3 +84,49 @@ def style_positive_negative(value: float | None, threshold: float = 0.0) -> str:
     if value is None or abs(value) <= threshold:
         return ""
     return COLOR_POSITIVE if value > 0 else COLOR_NEGATIVE
+
+
+# ---------------------------------------------------------------------------
+# Percentile utilities — eliminate per-file duplication
+# ---------------------------------------------------------------------------
+
+SUMMARY_PERCENTILES: tuple[int, ...] = (90, 70, 50, 30, 10)
+
+
+def compute_summary_percentiles(
+    values: list[float],
+    percentiles: Sequence[int] = SUMMARY_PERCENTILES,
+) -> dict[str, float | None]:
+    """Percentile dict for summary tables.
+
+    Keys: ``"P{n} %"``; values: rounded floats (2 dp) or None when *values* is empty.
+    Ready to be ``**``-unpacked into a row dict.
+    """
+    if not values:
+        return {f"P{n} %": None for n in percentiles}
+    return {f"P{n} %": round(float(np.percentile(values, n)), 2) for n in percentiles}
+
+
+def format_percentile_columns(
+    values: list[float],
+    percentiles: Sequence[int],
+) -> dict[str, str]:
+    """Percentile dict with ``fmt_pct`` formatting.
+
+    Keys: ``"P{n}"``; values: formatted percentage strings or ``"—"`` when empty.
+    """
+    if not values:
+        return {f"P{n}": "—" for n in percentiles}
+    return {f"P{n}": fmt_pct(float(np.percentile(values, n))) for n in percentiles}
+
+
+def build_percentile_breakdown(
+    values: list[float],
+    label: str,
+    percentiles: Sequence[int] = (5, 10, 25, 50, 75, 90, 95),
+) -> list[dict[str, str]]:
+    """Build percentile breakdown rows for display tables (includes Mean and Std Dev)."""
+    rows = [{"Percentile": f"P{p}", label: fmt_pct(np.percentile(values, p))} for p in percentiles]
+    rows.append({"Percentile": "Mean", label: fmt_pct(np.mean(values))})
+    rows.append({"Percentile": "Std Dev", label: fmt_pct(np.std(values, ddof=1))})
+    return rows

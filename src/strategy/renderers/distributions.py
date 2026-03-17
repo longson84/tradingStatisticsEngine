@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.constants import fmt_pct
+from src.constants import build_percentile_breakdown, fmt_pct
 from src.ui import plot_chart
 
 
@@ -18,12 +18,7 @@ def render_return_distribution(trades) -> None:
     wins = [r for r in returns if r > 0]
     losses = [r for r in returns if r <= 0]
 
-    percentiles = [5, 10, 25, 50, 75, 90, 95]
-    rows = []
-    for p in percentiles:
-        rows.append({"Percentile": f"P{p}", "Return %": fmt_pct(np.percentile(returns, p))})
-    rows.append({"Percentile": "Mean", "Return %": fmt_pct(np.mean(returns))})
-    rows.append({"Percentile": "Std Dev", "Return %": fmt_pct(np.std(returns, ddof=1))})
+    rows = build_percentile_breakdown(returns, "Return %")
 
     col_stats, col_buckets = st.columns(2)
 
@@ -93,12 +88,7 @@ def render_nonneg_distribution(values: list, metric_label: str, bar_color: str) 
         st.info("Not enough closed trades to show distribution.")
         return
 
-    percentiles = [5, 10, 25, 50, 75, 90, 95]
-    pct_rows = []
-    for p in percentiles:
-        pct_rows.append({"Percentile": f"P{p}", metric_label: fmt_pct(np.percentile(values, p))})
-    pct_rows.append({"Percentile": "Mean",    metric_label: fmt_pct(np.mean(values))})
-    pct_rows.append({"Percentile": "Std Dev", metric_label: fmt_pct(np.std(values, ddof=1))})
+    pct_rows = build_percentile_breakdown(values, metric_label)
 
     buckets = [
         ("0 → 5%",      0,   5),
