@@ -1,8 +1,8 @@
 """Pure trade analytics — zero Streamlit dependencies."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
