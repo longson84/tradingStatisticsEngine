@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.strategy.analytics import calculate_ma
+from src.indicators import moving_average
 from src.strategy.strategies.base import BaseStrategy
 
 
@@ -25,7 +25,7 @@ class BollingerBandStrategy(BaseStrategy):
 
     def _compute_bands(self, df: pd.DataFrame):
         close = df['Close']
-        ma = calculate_ma(close, "SMA", self.period)
+        ma = moving_average(close, "SMA", self.period)
         std = close.rolling(self.period).std()
         upper = ma + std * self.num_std_dev
         lower = ma - std * self.num_std_dev

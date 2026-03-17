@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Literal
 from src.constants import DATE_FORMAT_DISPLAY
 from src.fmt import fmt_pct, fmt_price
+from src.indicators import moving_average
 
 class BaseSignal(ABC):
     """Abstract base class for all signal types."""
@@ -159,16 +160,14 @@ class MASignal(BaseSignal):
         return f"MA_{self.ma_type}_{self.length}"
 
     def calculate(self, df: pd.DataFrame) -> pd.Series:
-        from src.strategy.analytics import calculate_ma
-        ma = calculate_ma(df['Close'], self.ma_type, self.length)
+        ma = moving_average(df['Close'], self.ma_type, self.length)
         return (df['Close'] / ma - 1).dropna()
 
     def format_value(self, value: float) -> str:
         return fmt_pct(value * 100)
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
-        from src.strategy.analytics import calculate_ma
-        ma = calculate_ma(df['Close'], self.ma_type, self.length)
+        ma = moving_average(df['Close'], self.ma_type, self.length)
         ma_value = ma.iloc[-1]
         return {
             "ref_date": ma.index[-1].strftime(DATE_FORMAT_DISPLAY),

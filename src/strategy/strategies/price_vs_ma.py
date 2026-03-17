@@ -3,7 +3,8 @@ from typing import Dict, Tuple
 import pandas as pd
 import streamlit as st
 
-from src.strategy.analytics import calculate_ma, generate_trade_signals
+from src.indicators import moving_average
+from src.strategy.analytics import generate_trade_signals
 from src.strategy.strategies.base import BaseStrategy
 
 
@@ -25,7 +26,7 @@ class PriceVsMAStrategy(BaseStrategy):
         return f"PriceVsMA_{self.ma_type}{self.ma_length}_lag{self.buy_lag}_{self.sell_lag}"
 
     def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        ma = calculate_ma(df['Close'], self.ma_type, self.ma_length)
+        ma = moving_average(df['Close'], self.ma_type, self.ma_length)
         crossover_series = (df['Close'] / ma - 1).dropna()
         buy_signals, sell_signals = generate_trade_signals(
             df['Close'], crossover_series, self.buy_lag, self.sell_lag
@@ -33,7 +34,7 @@ class PriceVsMAStrategy(BaseStrategy):
         return crossover_series, buy_signals, sell_signals
 
     def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        ma = calculate_ma(df['Close'], self.ma_type, self.ma_length)
+        ma = moving_average(df['Close'], self.ma_type, self.ma_length)
         return {f"{self.ma_type}({self.ma_length})": ma}
 
     @classmethod

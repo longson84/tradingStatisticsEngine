@@ -3,7 +3,8 @@ from typing import Dict, Tuple
 import pandas as pd
 import streamlit as st
 
-from src.strategy.analytics import calculate_ma, generate_trade_signals
+from src.indicators import moving_average
+from src.strategy.analytics import generate_trade_signals
 from src.strategy.strategies.base import BaseStrategy
 
 
@@ -41,8 +42,8 @@ class MACrossoverStrategy(BaseStrategy):
         )
 
     def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        fast_ma = calculate_ma(df['Close'], self.fast_ma_type, self.fast_ma_length)
-        slow_ma = calculate_ma(df['Close'], self.slow_ma_type, self.slow_ma_length)
+        fast_ma = moving_average(df['Close'], self.fast_ma_type, self.fast_ma_length)
+        slow_ma = moving_average(df['Close'], self.slow_ma_type, self.slow_ma_length)
         crossover_series = (fast_ma - slow_ma).dropna()
         buy_signals, sell_signals = generate_trade_signals(
             df['Close'], crossover_series, self.buy_lag, self.sell_lag
@@ -50,8 +51,8 @@ class MACrossoverStrategy(BaseStrategy):
         return crossover_series, buy_signals, sell_signals
 
     def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        fast_ma = calculate_ma(df['Close'], self.fast_ma_type, self.fast_ma_length)
-        slow_ma = calculate_ma(df['Close'], self.slow_ma_type, self.slow_ma_length)
+        fast_ma = moving_average(df['Close'], self.fast_ma_type, self.fast_ma_length)
+        slow_ma = moving_average(df['Close'], self.slow_ma_type, self.slow_ma_length)
         return {
             f"{self.fast_ma_type}({self.fast_ma_length})": fast_ma,
             f"{self.slow_ma_type}({self.slow_ma_length})": slow_ma,

@@ -9,27 +9,6 @@ import pandas as pd
 
 
 # ---------------------------------------------------------------------------
-# MA Computation
-# ---------------------------------------------------------------------------
-
-def calculate_ma(series: pd.Series, ma_type: Literal["SMA", "EMA", "WMA"], length: int) -> pd.Series:
-    if ma_type == "SMA":
-        return series.rolling(length).mean()
-    elif ma_type == "EMA":
-        return series.ewm(span=length, adjust=False).mean()
-    elif ma_type == "WMA":
-        weights = np.arange(1, length + 1, dtype=float)
-        weights /= weights.sum()
-
-        def _wma(x):
-            return np.dot(x, weights)
-
-        return series.rolling(length).apply(_wma, raw=True)
-    else:
-        raise ValueError(f"Unknown MA type: {ma_type}")
-
-
-# ---------------------------------------------------------------------------
 # Signal Generation
 # ---------------------------------------------------------------------------
 
@@ -290,7 +269,7 @@ def build_equity_curve(
     """
     equity = pd.Series(index=price.index, dtype=float)
     current_equity = initial
-    in_trade = False
+    in_trade: bool = False
     entry_price: Optional[float] = None
     entry_equity: Optional[float] = None
 
@@ -303,8 +282,6 @@ def build_equity_curve(
         if sell_signals.get(date, False) and in_trade and entry_price:
             current_equity = entry_equity * (p / entry_price)
             in_trade = False
-            entry_price = None
-            entry_equity = None
 
         if buy_signals.get(date, False) and not in_trade:
             in_trade = True
