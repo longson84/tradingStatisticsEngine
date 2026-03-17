@@ -35,6 +35,7 @@ from src.strategy.renderers import (
     render_deterioration_section,
     render_monthly_returns_tables,
     render_nonneg_distribution,
+    render_performance_summary,
     render_return_distribution,
 )
 
@@ -269,21 +270,7 @@ class StrategyBacktestPack(AnalysisPack):
 
             # 2. Performance Summary
             st.subheader("Performance Summary")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Win Rate", fmt_pct(perf.win_rate))
-            m2.metric("Avg Win", fmt_pct(perf.avg_winning_return) if perf.avg_winning_return else "—")
-            m3.metric("Avg Loss", fmt_pct(perf.avg_losing_return) if perf.avg_losing_return else "—")
-
-            m5, m6 = st.columns(2)
-            m5.metric("Total Return", fmt_pct(perf.total_return))
-            m6.metric("Max Consec. Losses", str(perf.max_consecutive_losses))
-
-            m9, m10, m11, m12, m13 = st.columns(5)
-            m9.metric("Closed Trades", str(perf.closed_trades))
-            m10.metric("Win Trades", str(perf.win_count))
-            m11.metric("Loss Trades", str(perf.loss_count))
-            m12.metric("Best Trade", fmt_pct(perf.best_trade_return))
-            m13.metric("Worst Trade", fmt_pct(perf.worst_trade_return))
+            render_performance_summary(perf, strat_max_drawdown)
 
             st.divider()
 
@@ -309,9 +296,9 @@ class StrategyBacktestPack(AnalysisPack):
                 sorted_trades = sorted(trades, key=lambda x: x.entry_date, reverse=True)
                 rows = []
                 for t in sorted_trades:
-                    eq_close = t.equity_at_close / 1000 if t.equity_at_close is not None else None
+                    eq_close = t.equity_at_close
                     if t.exit_date is not None and bh_equity is not None:
-                        bh_close = float(bh_equity.asof(pd.Timestamp(t.exit_date))) / 1000
+                        bh_close = float(bh_equity.asof(pd.Timestamp(t.exit_date)))
                     else:
                         bh_close = None
 

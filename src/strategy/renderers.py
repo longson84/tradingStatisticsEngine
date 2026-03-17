@@ -19,6 +19,28 @@ from src.ui import plot_chart
 
 
 # ---------------------------------------------------------------------------
+# Performance summary metrics
+# ---------------------------------------------------------------------------
+
+def render_performance_summary(perf, max_drawdown: float = 0.0) -> None:
+    """Render strategy performance metrics (win rate, returns, trade counts, etc.)."""
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Total Return", fmt_pct(perf.total_return))
+    m2.metric("Win Rate", fmt_pct(perf.win_rate))
+    m3.metric("Avg Win", fmt_pct(perf.avg_winning_return) if perf.avg_winning_return else "—")
+    m4.metric("Avg Loss", fmt_pct(perf.avg_losing_return) if perf.avg_losing_return else "—")
+    m5.metric("Max. DD", fmt_pct(max_drawdown))
+
+    m6, m7, m8, m9, m10, m11 = st.columns(6)
+    m6.metric("Closed Trades", str(perf.closed_trades))
+    m7.metric("Win Trades", str(perf.win_count))
+    m8.metric("Loss Trades", str(perf.loss_count))
+    m9.metric("Max Consec. Loss", str(perf.max_consecutive_losses))
+    m10.metric("Best Trade", fmt_pct(perf.best_trade_return))
+    m11.metric("Worst Trade", fmt_pct(perf.worst_trade_return))
+
+
+# ---------------------------------------------------------------------------
 # Return distribution
 # ---------------------------------------------------------------------------
 
@@ -392,7 +414,8 @@ def render_monthly_returns_tables(
 # Deterioration section
 # ---------------------------------------------------------------------------
 
-def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str) -> None:
+def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str, key_suffix: str = "") -> None:
+    _ks = key_suffix or ticker
     closed = [
         t for t in trades
         if t.status == "closed" and t.return_pct is not None and t.entry_date is not None
@@ -471,7 +494,7 @@ def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str) -
     if len(closed) < 5:
         st.info("Not enough closed trades for rolling analysis.")
     else:
-        n = st.slider("Rolling window (trades):", 5, 30, 10, key=f"rolling_n_{ticker}")
+        n = st.slider("Rolling window (trades):", 5, 30, 10, key=f"rolling_n_{_ks}")
         sorted_closed = sorted(closed, key=lambda t: t.entry_date)
         dates = [t.entry_date for t in sorted_closed]
         rets = [t.return_pct for t in sorted_closed]
@@ -511,7 +534,7 @@ def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str) -
                               hovermode="x unified", margin=dict(t=20, b=20), showlegend=True)
         plot_chart(fig_avg)
 
-        wl_log = st.checkbox("Log returns", value=False, key=f"wl_log_{ticker}")
+        wl_log = st.checkbox("Log returns", value=False, key=f"wl_log_{_ks}")
 
         def _to_log(v):
             return np.log1p(v / 100) * 100 if v is not None else None
@@ -551,7 +574,7 @@ def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str) -
         dates = [t.entry_date for t in sorted_closed]
         rets = [t.return_pct for t in sorted_closed]
 
-        scatter_log = st.checkbox("Log returns", value=False, key=f"scatter_log_{ticker}")
+        scatter_log = st.checkbox("Log returns", value=False, key=f"scatter_log_{_ks}")
 
         def _log_ret(r):
             return np.log1p(r / 100) * 100
@@ -661,7 +684,7 @@ def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str) -
         rolling_12m = strat_equity.pct_change(periods=252) * 100
         rolling_12m = rolling_12m.dropna()
 
-        r12_log = st.checkbox("Log returns", value=False, key=f"r12_log_{ticker}")
+        r12_log = st.checkbox("Log returns", value=False, key=f"r12_log_{_ks}")
         if r12_log:
             rolling_12m = np.log1p(rolling_12m / 100) * 100
 

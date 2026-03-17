@@ -19,3 +19,6 @@ debug/
 # Report files
 re/
 .DS_Store
+
+
+.claude/
