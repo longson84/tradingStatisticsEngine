@@ -9,11 +9,7 @@ from src.signal.analytics import (
 )
 from src.constants import DATE_FORMAT_DISPLAY
 from src.fmt import fmt_pct, fmt_price
-from src.signal.constants import (
-    CALCULATE_PERCENTILES,
-    MAE_PERCENTILES,
-    MIN_RECOVERY_DAYS_THRESHOLD,
-)
+from src.constants import CALCULATE_PERCENTILES, MAE_PERCENTILES, MIN_RECOVERY_DAYS_THRESHOLD
 
 class ReportGenerator:
     def __init__(self, ticker, strategy, df, signal_series, qr_threshold: int = MIN_RECOVERY_DAYS_THRESHOLD):

@@ -3,7 +3,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 from src.signal.signals import BaseSignal
-from src.signal.constants import VISUALIZATION_THRESHOLDS, VISUALIZATION_COLORS
+from src.constants import PLOTLY_ACTIVE, PLOTLY_NEGATIVE, PLOTLY_POSITIVE, VISUALIZATION_THRESHOLDS
 
 class ChartVisualizer:
     @staticmethod
@@ -19,7 +19,7 @@ class ChartVisualizer:
         # 1. Get configuration
         config = strategy.visualization_config
         threshold_percents = config.get("thresholds", VISUALIZATION_THRESHOLDS)
-        colors = config.get("colors", VISUALIZATION_COLORS) # 1%, 5%, 10%
+        colors = config.get("colors", [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE])
         
         # 2. Calculate actual threshold values from signal history
         # Percentiles are 0-100 in numpy

@@ -30,6 +30,7 @@ COLOR_GROUP = "background-color: #3aa56c; color: black; font-weight: bold"
 # with the table colour scheme (same green/red family, adapted for dark backgrounds).
 PLOTLY_POSITIVE = "#4ADE80"
 PLOTLY_NEGATIVE = "#F87171"
+PLOTLY_ACTIVE   = "#FFD700"   # Gold — matches COLOR_ACTIVE; use for caution zones in charts
 
 # ---------------------------------------------------------------------------
 # Distribution bucket definitions
@@ -65,4 +66,28 @@ SUMMARY_PERCENTILES: tuple[int, ...] = (90, 70, 50, 30, 10)
 ANNUAL_PERCENTILES = [90, 80, 70, 60, 50, 40, 30, 20, 10]
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+# ---------------------------------------------------------------------------
+# Signal analytics configuration
+# ---------------------------------------------------------------------------
+
+# Percentiles computed over the full signal history
+CALCULATE_PERCENTILES: list[int] = [1, 5, 10, 15, 20, 25, 30, 40, 50]
+
+# Subset shown in the drawdown table (must be a subset of CALCULATE_PERCENTILES)
+DRAWDOWN_PERCENTILES: list[int] = [20, 15, 10, 5, 1]
+DRAWDOWN_PERCENTILES_FOR_THRESHOLD: list[int] = [5, 10, 15, 20, 25, 30]
+
+# How many worst drawdown episodes to display
+TOP_N_DRAWDOWN: int = 10
+
+# Minimum trading days for a recovery to be included in analysis
+MIN_RECOVERY_DAYS_THRESHOLD: int = 5
+
+# MAE percentiles for trade statistics
+MAE_PERCENTILES: list[int] = [80, 85, 90, 95, 98]
+
+# Default signal rarity thresholds used in chart colouring (fractions, not %)
+# Colours come from PLOTLY_POSITIVE / PLOTLY_ACTIVE / PLOTLY_NEGATIVE
+VISUALIZATION_THRESHOLDS: list[float] = [0.01, 0.05, 0.10]
 

@@ -3,10 +3,7 @@ import pandas as pd
 import uuid
 from typing import List, Optional
 
-from src.signal.constants import (
-    CALCULATE_PERCENTILES,
-    MIN_RECOVERY_DAYS_THRESHOLD,
-)
+from src.constants import CALCULATE_PERCENTILES, MIN_RECOVERY_DAYS_THRESHOLD
 
 
 class NPEvent:

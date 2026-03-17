@@ -3,7 +3,13 @@ import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Literal
-from src.constants import DATE_FORMAT_DISPLAY
+from src.constants import (
+    DATE_FORMAT_DISPLAY,
+    PLOTLY_ACTIVE,
+    PLOTLY_NEGATIVE,
+    PLOTLY_POSITIVE,
+    VISUALIZATION_THRESHOLDS,
+)
 from src.fmt import fmt_pct, fmt_price
 from src.indicators import distance_from_peak, moving_average
 
@@ -29,8 +35,8 @@ class BaseSignal(ABC):
     def visualization_config(self) -> dict:
         """Cấu hình hiển thị biểu đồ: Ngưỡng và màu sắc."""
         return {
-            "thresholds": [0.01, 0.05, 0.10], # 1%, 5%, 10%
-            "colors": ["green", "#ffd700", "red"] # Green, Gold (Yellow), Red
+            "thresholds": VISUALIZATION_THRESHOLDS,
+            "colors": [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE],
         }
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
