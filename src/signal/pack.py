@@ -10,7 +10,7 @@ from src.constants import COLOR_ACTIVE, COLOR_GROUP, DATE_FORMAT_DISPLAY, fmt_pr
 from src.signal.signals import AHR999Signal, BaseSignal, DistanceFromPeakSignal, MASignal
 from src.signal.report import ReportGenerator
 from src.signal.visualizer import ChartVisualizer
-from src.ui import plot_chart
+from src.ui import plot_chart, sidebar_data_source, sidebar_ticker_input
 
 
 class SignalAnalysisPack(AnalysisPack):
@@ -21,20 +21,8 @@ class SignalAnalysisPack(AnalysisPack):
     def render_sidebar(self) -> Dict[str, Any]:
         st.sidebar.header("Signal Analysis")
 
-        data_source = st.sidebar.selectbox(
-            "Data Source:",
-            ["yfinance", "vnstock"],
-            key="signal_data_source",
-            help="yfinance: global tickers (BTC-USD, AAPL…) | vnstock: Vietnamese stocks (VCB, VIC…)",
-        )
-        default_ticker = "BTC-USD" if data_source == "yfinance" else "VCB"
-        ticker_input = st.sidebar.text_input(
-            "Tickers (space-separated):",
-            value=default_ticker,
-            key="signal_ticker_input",
-            help="e.g. BTC-USD ETH-USD MSFT" if data_source == "yfinance" else "e.g. VCB VIC GMD",
-        )
-        tickers = [t.strip().upper() for t in ticker_input.split() if t.strip()]
+        data_source = sidebar_data_source("signal")
+        tickers = sidebar_ticker_input(data_source, "signal", multi=True)
 
         # Build signal options
         base_signals = [

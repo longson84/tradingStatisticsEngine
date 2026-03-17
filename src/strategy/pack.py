@@ -8,7 +8,6 @@ from src.constants import (
     COLOR_ACTIVE,
     DATE_FORMAT_DISPLAY,
     INITIAL_CAPITAL,
-    YFINANCE_PRESETS,
     fmt_capture,
     fmt_equity,
     fmt_price,
@@ -16,7 +15,7 @@ from src.constants import (
     style_capture,
     style_positive_negative,
 )
-from src.ui import plot_chart
+from src.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 from src.base import AnalysisPack, AnalysisResult
 from src.strategy.strategies import BaseStrategy, MACrossoverStrategy, PriceVsMAStrategy
@@ -125,45 +124,10 @@ class StrategyBacktestPack(AnalysisPack):
         """
         st.sidebar.header(header)
 
-        data_source = st.sidebar.selectbox(
-            "Data Source:",
-            ["yfinance", "vnstock"],
-            key=f"{key_prefix}_data_source",
-            help="yfinance: global tickers (BTC-USD, AAPL…) | vnstock: Vietnamese stocks (VCB, VIC…)",
-        )
-        VNSTOCK_GROUPS = ["— type manually —", "VN30", "VN100", "VNMidCap"]
-        YFINANCE_GROUPS = ["— type manually —"] + list(YFINANCE_PRESETS.keys())
-        groups = VNSTOCK_GROUPS if data_source == "vnstock" else YFINANCE_GROUPS
+        data_source = sidebar_data_source(key_prefix)
+        tickers = sidebar_ticker_input(data_source, key_prefix, multi=True)
 
-        # Reset group selection when data source changes so the previous source's
-        # group choice doesn't carry over into the new source's option list.
-        group_key = f"{key_prefix}_symbol_group"
-        prev_ds_key = f"{key_prefix}_symbol_group_ds"
-        if st.session_state.get(prev_ds_key) != data_source:
-            st.session_state[group_key] = 0
-            st.session_state[prev_ds_key] = data_source
-
-        group_choice = st.sidebar.selectbox(
-            "Symbol Group:",
-            groups,
-            key=group_key,
-        )
-
-        if data_source == "vnstock" and group_choice != "— type manually —":
-            from src.data_loader import load_vnstock_group
-            tickers = load_vnstock_group(group_choice)
-            st.sidebar.caption(f"{len(tickers)} symbols from {group_choice}")
-        elif data_source == "yfinance" and group_choice != "— type manually —":
-            tickers = YFINANCE_PRESETS[group_choice]
-            st.sidebar.caption(f"{len(tickers)} symbols from {group_choice}")
-        else:
-            default_ticker = "BTC-USD" if data_source == "yfinance" else "VCB"
-            ticker_input = st.sidebar.text_input(
-                "Tickers (space-separated):",
-                value=default_ticker,
-                key=f"{key_prefix}_ticker_input",
-            )
-            tickers = [t.strip().upper() for t in ticker_input.split() if t.strip()]
+        group_choice = "— type manually —"  # default for config compat
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
@@ -194,13 +158,7 @@ class StrategyBacktestPack(AnalysisPack):
                 fast_type, int(fast_len), slow_type, int(slow_len), int(buy_lag), int(sell_lag)
             )
 
-        st.sidebar.divider()
-        from_date = st.sidebar.date_input(
-            "Backtest From Date:",
-            value=None,
-            help="Leave empty to use all available data. Set a later date to avoid early-data bias (tiny prices → inflated % returns).",
-            key=f"{key_prefix}_from_date",
-        )
+        from_date = sidebar_from_date(key_prefix)
 
         return {
             "tickers": tickers,

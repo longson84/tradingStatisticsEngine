@@ -29,7 +29,7 @@ from src.strategy.renderers import (
     render_return_distribution,
 )
 from src.strategy.strategies import MACrossoverStrategy, PriceVsMAStrategy
-from src.ui import plot_chart
+from src.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 
 class ParameterSweepPack(StrategyBacktestPack):
@@ -40,19 +40,8 @@ class ParameterSweepPack(StrategyBacktestPack):
     def render_sidebar(self) -> Dict[str, Any]:
         st.sidebar.header("Parameter Sweep")
 
-        data_source = st.sidebar.selectbox(
-            "Data Source:",
-            ["yfinance", "vnstock"],
-            key="sweep_data_source",
-            help="yfinance: global tickers (BTC-USD, AAPL…) | vnstock: Vietnamese stocks (VCB, VIC…)",
-        )
-
-        default_ticker = "BTC-USD" if data_source == "yfinance" else "VCB"
-        ticker = st.sidebar.text_input(
-            "Ticker:",
-            value=default_ticker,
-            key="sweep_ticker",
-        ).strip().upper()
+        data_source = sidebar_data_source("sweep")
+        ticker = sidebar_ticker_input(data_source, "sweep", multi=False)
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
@@ -134,13 +123,7 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "sweep_lengths": sweep_lengths,
             }
 
-        st.sidebar.divider()
-        from_date = st.sidebar.date_input(
-            "Backtest From Date:",
-            value=None,
-            help="Leave empty to use all available data.",
-            key="sweep_from_date",
-        )
+        from_date = sidebar_from_date("sweep")
         config["from_date"] = from_date
 
         return config
