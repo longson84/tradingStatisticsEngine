@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Literal
 from src.constants import DATE_FORMAT_DISPLAY
 from src.fmt import fmt_pct, fmt_price
-from src.indicators import moving_average
+from src.indicators import distance_from_peak, moving_average
 
 class BaseSignal(ABC):
     """Abstract base class for all signal types."""
@@ -101,11 +101,7 @@ class DistanceFromPeakSignal(BaseSignal):
         return f"Dist_Peak_{self.window}D"
 
     def calculate(self, df: pd.DataFrame) -> pd.Series:
-        # Logic: (Giá / Max N ngày) - 1
-        # Lưu ý: Theo yêu cầu cũ của bạn là Max, tôi sẽ sửa lại là Max cho chuẩn
-        rolling_max = df['Close'].rolling(window=self.window).max()
-        signal = (df['Close'] / rolling_max) - 1
-        return signal.dropna()
+        return distance_from_peak(df['Close'], self.window).dropna()
         
     def format_value(self, value: float) -> str:
         """Override format cho Distance: Chuyển sang % dương."""

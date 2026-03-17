@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-def moving_average(series: pd.Series, ma_type: Literal["SMA", "EMA", "WMA"], length: int) -> pd.Series:
+def moving_average(prices: pd.Series, ma_type: Literal["SMA", "EMA", "WMA"], length: int) -> pd.Series:
     """Compute a moving average of the given type over *series*.
 
     Args:
@@ -19,9 +19,9 @@ def moving_average(series: pd.Series, ma_type: Literal["SMA", "EMA", "WMA"], len
         A ``pd.Series`` of the same index with the MA values.
     """
     if ma_type == "SMA":
-        return series.rolling(length).mean()
+        return prices.rolling(length).mean()
     elif ma_type == "EMA":
-        return series.ewm(span=length, adjust=False).mean()
+        return prices.ewm(span=length, adjust=False).mean()
     elif ma_type == "WMA":
         weights = np.arange(1, length + 1, dtype=float)
         weights /= weights.sum()
@@ -29,6 +29,6 @@ def moving_average(series: pd.Series, ma_type: Literal["SMA", "EMA", "WMA"], len
         def _wma(x):
             return np.dot(x, weights)
 
-        return series.rolling(length).apply(_wma, raw=True)
+        return prices.rolling(length).apply(_wma, raw=True)
     else:
         raise ValueError(f"Unknown MA type: {ma_type}")
