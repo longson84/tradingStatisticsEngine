@@ -163,3 +163,55 @@ class DonchianBreakoutStrategy(BaseStrategy):
             f"Upper({self.entry_length})": upper,
             f"Lower({self.exit_length})": lower,
         }
+
+
+class BollingerBandStrategy(BaseStrategy):
+    def __init__(self, period: int, num_std_dev: float):
+        self.period = period
+        self.num_std_dev = num_std_dev
+
+    @property
+    def name(self) -> str:
+        return f"BB({self.period}, {self.num_std_dev}σ)"
+
+    @property
+    def strategy_name(self) -> str:
+        return f"BB_{self.period}_{str(self.num_std_dev).replace('.', '_')}"
+
+    def _compute_bands(self, df: pd.DataFrame):
+        close = df['Close']
+        ma = calculate_ma(close, "SMA", self.period)
+        std = close.rolling(self.period).std()
+        upper = ma + std * self.num_std_dev
+        lower = ma - std * self.num_std_dev
+        return close, ma, upper, lower
+
+    def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        close, ma, upper, lower = self._compute_bands(df)
+
+        buy = pd.Series(False, index=df.index)
+        sell = pd.Series(False, index=df.index)
+        in_trade = False
+
+        for i in range(len(df)):
+            if np.isnan(ma.iloc[i]):
+                continue
+            if not in_trade and close.iloc[i] < lower.iloc[i]:
+                buy.iloc[i] = True
+                in_trade = True
+            elif in_trade and close.iloc[i] > ma.iloc[i]:
+                sell.iloc[i] = True
+                in_trade = False
+
+        band_width = upper - lower
+        crossover_series = ((close - ma) / band_width).dropna()
+
+        return crossover_series, buy, sell
+
+    def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        _, ma, upper, lower = self._compute_bands(df)
+        return {
+            f"BB Upper({self.period})": upper,
+            f"SMA({self.period})": ma,
+            f"BB Lower({self.period})": lower,
+        }

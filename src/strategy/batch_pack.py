@@ -9,12 +9,10 @@ from src.constants import (
     COLOR_POSITIVE,
     DATE_FORMAT_DISPLAY,
     SUMMARY_PERCENTILES,
-    compute_summary_percentiles,
-    fmt_capture,
-    fmt_pct,
-    style_capture,
-    style_positive_negative,
 )
+from src.fmt import fmt_capture, fmt_pct
+from src.styling import style_capture, style_positive_negative
+from src.strategy.utils import compute_summary_percentiles
 from src.strategy.pack import StrategyBacktestPack
 
 

@@ -8,17 +8,15 @@ from src.constants import (
     COLOR_ACTIVE,
     DATE_FORMAT_DISPLAY,
     INITIAL_CAPITAL,
-    fmt_capture,
-    fmt_equity,
-    fmt_price,
-    fmt_pct,
-    style_capture,
-    style_positive_negative,
+    NONNEG_BUCKETS,
+    RETURN_BUCKETS,
 )
+from src.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
+from src.styling import style_capture, style_positive_negative
 from src.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 from src.base import AnalysisPack, AnalysisResult
-from src.strategy.strategies import BaseStrategy, DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
+from src.strategy.strategies import BaseStrategy, BollingerBandStrategy, DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
 from src.strategy.analytics import (
     Trade,
     build_equity_curve,
@@ -32,10 +30,9 @@ from src.strategy.analytics import (
 from src.strategy.charts import build_equity_chart
 from src.strategy.renderers import (
     render_deterioration_section,
+    render_distribution,
     render_monthly_returns_tables,
-    render_nonneg_distribution,
     render_performance_summary,
-    render_return_distribution,
 )
 
 
@@ -132,7 +129,7 @@ class StrategyBacktestPack(AnalysisPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "MA Crossover", "Donchian Breakout"],
+            ["Price vs MA", "MA Crossover", "Donchian Breakout", "Bollinger Bands"],
             key=f"{key_prefix}_type",
         )
 
@@ -159,11 +156,17 @@ class StrategyBacktestPack(AnalysisPack):
                 fast_type, int(fast_len), slow_type, int(slow_len), int(buy_lag), int(sell_lag)
             )
 
-        else:  # Donchian Breakout
+        elif strategy_type == "Donchian Breakout":
             col1, col2 = st.sidebar.columns(2)
             entry_len = col1.number_input("Entry Length:", min_value=2, value=20, step=5, key=f"{key_prefix}_don_entry")
             exit_len = col2.number_input("Exit Length:", min_value=2, value=10, step=5, key=f"{key_prefix}_don_exit")
             strategy = DonchianBreakoutStrategy(int(entry_len), int(exit_len))
+
+        else:  # Bollinger Bands
+            col1, col2 = st.sidebar.columns(2)
+            bb_period = col1.number_input("Period:", min_value=5, value=20, step=1, key=f"{key_prefix}_bb_period")
+            bb_std = col2.number_input("Std Dev:", min_value=0.5, value=2.0, step=0.25, format="%.2f", key=f"{key_prefix}_bb_std")
+            strategy = BollingerBandStrategy(int(bb_period), float(bb_std))
 
         from_date = sidebar_from_date(key_prefix)
 
@@ -320,7 +323,8 @@ class StrategyBacktestPack(AnalysisPack):
 
             # 5. Return Distribution
             st.subheader("📊 Return Distribution")
-            render_return_distribution(trades)
+            closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+            render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, bucket_header="Return buckets")
 
             st.divider()
 
@@ -329,14 +333,14 @@ class StrategyBacktestPack(AnalysisPack):
             st.subheader("📉 MAE of Winning Trades")
             st.caption("How far winning trades drew down before recovering. Use this to calibrate stop-loss levels: if your open trade exceeds the P90–P95 MAE of winners, it is statistically unlikely to recover.")
             mae_vals = [t.mae_pct for t in winners if t.mae_pct is not None]
-            render_nonneg_distribution(mae_vals, "MAE %", "rgba(239, 68, 68, 0.7)")
+            render_distribution(mae_vals, "MAE %", NONNEG_BUCKETS)
 
             st.divider()
 
             st.subheader("📈 MFE of Winning Trades")
             st.caption("Peak unrealized gain reached during winning trades. Use this to calibrate take-profit levels.")
             mfe_vals = [t.mfe_pct for t in winners if t.mfe_pct is not None]
-            render_nonneg_distribution(mfe_vals, "MFE %", "rgba(34, 197, 94, 0.7)")
+            render_distribution(mfe_vals, "MFE %", NONNEG_BUCKETS)
 
             st.divider()
 

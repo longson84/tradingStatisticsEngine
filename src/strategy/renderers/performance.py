@@ -1,7 +1,7 @@
 """Performance summary metrics renderer."""
 import streamlit as st
 
-from src.constants import fmt_pct
+from src.fmt import fmt_pct
 
 
 def render_performance_summary(perf, max_drawdown: float = 0.0) -> None:

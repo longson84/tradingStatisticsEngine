@@ -7,7 +7,8 @@ from src.signal.analytics import (
     calculate_np_events_tree,
     get_detailed_current_status,
 )
-from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
+from src.constants import DATE_FORMAT_DISPLAY
+from src.fmt import fmt_pct, fmt_price
 from src.signal.constants import (
     CALCULATE_PERCENTILES,
     MAE_PERCENTILES,

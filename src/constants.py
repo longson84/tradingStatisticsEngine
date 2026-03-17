@@ -1,7 +1,3 @@
-from collections.abc import Sequence
-
-import numpy as np
-
 # Shared infrastructure constants (used across domains)
 HISTORICAL_DATA_START_DATE = '1980-01-01'
 INITIAL_CAPITAL = 1000.0
@@ -14,36 +10,8 @@ YFINANCE_PRESETS: dict[str, list[str]] = {
     "Mag7":   ["MSFT", "AAPL", "TSLA", "NVDA", "META", "GOOGL", "NFLX"],
 }
 
-# Display formatting — single source of truth for the whole app
+# Display formatting
 DATE_FORMAT_DISPLAY = '%d/%m/%y'   # e.g. 16/10/08
-
-
-def fmt_price(v: float) -> str:
-    """Format a price: 60,000  (no decimal, thousands separator)."""
-    return f"{v:,.0f}"
-
-
-def fmt_capture(v: float | None) -> str:
-    """Format a capture ratio: 1.23×  (2 decimals, × suffix). Returns '—' for None."""
-    if v is None:
-        return "—"
-    return f"{v:.2f}×"
-
-
-def fmt_equity(v: float) -> str:
-    """Format an equity value: 1,234  (no decimal, thousands separator, no $ sign)."""
-    return f"{v:,.0f}"
-
-
-def fmt_pct(v: float) -> str:
-    """Format a percentage: 12.34%  (2 decimals, thousands separator on integer part)."""
-    return f"{v:,.2f}%"
-
-
-def fmt_pct_signed(v: float) -> str:
-    """Format a percentage with explicit sign: +12.34% or -5.67%."""
-    return f"{v:+,.2f}%"
-
 
 # ---------------------------------------------------------------------------
 # Cell / row colour styles — single source of truth for Styler usage
@@ -63,70 +31,38 @@ COLOR_GROUP = "background-color: #3aa56c; color: black; font-weight: bold"
 PLOTLY_POSITIVE = "#4ADE80"
 PLOTLY_NEGATIVE = "#F87171"
 
+# ---------------------------------------------------------------------------
+# Distribution bucket definitions
+# ---------------------------------------------------------------------------
 
-def style_capture(val: str) -> str:
-    """Return CSS for a capture ratio cell: green if > 1×, red if ≤ 1×, empty for '—' or blank."""
-    if not isinstance(val, str) or val in ("", "—"):
-        return ""
-    try:
-        return COLOR_POSITIVE if float(val.replace("×", "")) > 1 else COLOR_NEGATIVE
-    except ValueError:
-        return ""
+RETURN_BUCKETS: list[tuple[str, float, float]] = [
+    ("< -20%",      float("-inf"), -20),
+    ("-20 → -10%",         -20,   -10),
+    ("-10 → -5%",          -10,    -5),
+    ("-5 → 0%",             -5,     0),
+    ("0 → 5%",               0,     5),
+    ("5 → 10%",              5,    10),
+    ("10 → 20%",            10,    20),
+    ("> 20%",               20, float("inf")),
+]
 
-
-def style_positive_negative(value: float | None, threshold: float = 0.0) -> str:
-    """Return CSS for a numeric value: positive → green, negative → red, within ±threshold → ''.
-
-    Args:
-        value: the numeric value to evaluate.
-        threshold: values whose abs() is <= this are considered insignificant (no colour).
-    """
-    if value is None or abs(value) <= threshold:
-        return ""
-    return COLOR_POSITIVE if value > 0 else COLOR_NEGATIVE
-
+NONNEG_BUCKETS: list[tuple[str, float, float]] = [
+    ("0 → 5%",      0,   5),
+    ("5 → 10%",     5,  10),
+    ("10 → 20%",   10,  20),
+    ("20 → 30%",   20,  30),
+    ("30 → 50%",   30,  50),
+    ("50 → 100%",  50, 100),
+    ("> 100%",    100, float("inf")),
+]
 
 # ---------------------------------------------------------------------------
-# Percentile utilities — eliminate per-file duplication
+# Percentile configuration
 # ---------------------------------------------------------------------------
 
 SUMMARY_PERCENTILES: tuple[int, ...] = (90, 70, 50, 30, 10)
 
+ANNUAL_PERCENTILES = [90, 80, 70, 60, 50, 40, 30, 20, 10]
 
-def compute_summary_percentiles(
-    values: list[float],
-    percentiles: Sequence[int] = SUMMARY_PERCENTILES,
-) -> dict[str, float | None]:
-    """Percentile dict for summary tables.
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-    Keys: ``"P{n} %"``; values: rounded floats (2 dp) or None when *values* is empty.
-    Ready to be ``**``-unpacked into a row dict.
-    """
-    if not values:
-        return {f"P{n} %": None for n in percentiles}
-    return {f"P{n} %": round(float(np.percentile(values, n)), 2) for n in percentiles}
-
-
-def format_percentile_columns(
-    values: list[float],
-    percentiles: Sequence[int],
-) -> dict[str, str]:
-    """Percentile dict with ``fmt_pct`` formatting.
-
-    Keys: ``"P{n}"``; values: formatted percentage strings or ``"—"`` when empty.
-    """
-    if not values:
-        return {f"P{n}": "—" for n in percentiles}
-    return {f"P{n}": fmt_pct(float(np.percentile(values, n))) for n in percentiles}
-
-
-def build_percentile_breakdown(
-    values: list[float],
-    label: str,
-    percentiles: Sequence[int] = (5, 10, 25, 50, 75, 90, 95),
-) -> list[dict[str, str]]:
-    """Build percentile breakdown rows for display tables (includes Mean and Std Dev)."""
-    rows = [{"Percentile": f"P{p}", label: fmt_pct(np.percentile(values, p))} for p in percentiles]
-    rows.append({"Percentile": "Mean", label: fmt_pct(np.mean(values))})
-    rows.append({"Percentile": "Std Dev", label: fmt_pct(np.std(values, ddof=1))})
-    return rows

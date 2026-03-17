@@ -11,25 +11,22 @@ from src.base import AnalysisResult
 from src.constants import (
     COLOR_ACTIVE,
     DATE_FORMAT_DISPLAY,
+    NONNEG_BUCKETS,
+    RETURN_BUCKETS,
     SUMMARY_PERCENTILES,
-    compute_summary_percentiles,
-    fmt_capture,
-    fmt_equity,
-    fmt_pct,
-    fmt_price,
-    style_capture,
-    style_positive_negative,
 )
+from src.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
+from src.styling import style_capture, style_positive_negative
+from src.strategy.utils import compute_summary_percentiles
 
 from src.strategy.pack import StrategyBacktestPack
 from src.strategy.renderers import (
     render_deterioration_section,
+    render_distribution,
     render_monthly_returns_tables,
-    render_nonneg_distribution,
     render_performance_summary,
-    render_return_distribution,
 )
-from src.strategy.strategies import DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
+from src.strategy.strategies import BollingerBandStrategy, DonchianBreakoutStrategy, MACrossoverStrategy, PriceVsMAStrategy
 from src.strategy.sweep_charts import (
     build_boxplot_chart,
     build_drawdown_chart,
@@ -60,7 +57,7 @@ class ParameterSweepPack(StrategyBacktestPack):
 
         strategy_type = st.sidebar.selectbox(
             "Strategy Type:",
-            ["Price vs MA", "MA Crossover", "Donchian Breakout"],
+            ["Price vs MA", "MA Crossover", "Donchian Breakout", "Bollinger Bands"],
             key="sweep_type",
         )
 
@@ -138,7 +135,7 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "sweep_lengths": sweep_lengths,
             }
 
-        else:  # Donchian Breakout
+        elif strategy_type == "Donchian Breakout":
             sweep_dim = st.sidebar.radio(
                 "Sweep:", ["Entry Length", "Exit Length"],
                 key="sweep_don_dim", horizontal=True,
@@ -168,6 +165,43 @@ class ParameterSweepPack(StrategyBacktestPack):
                 "sweep_lengths": sweep_lengths,
             }
 
+        else:  # Bollinger Bands
+            sweep_dim = st.sidebar.radio(
+                "Sweep:", ["Period", "Std Dev"],
+                key="sweep_bb_dim", horizontal=True,
+            )
+
+            if sweep_dim == "Period":
+                st.sidebar.markdown("**Period Sweep Range**")
+                c1, c2, c3 = st.sidebar.columns(3)
+                sweep_min = c1.number_input("Min", min_value=5, value=10, step=5, key="sweep_bb_period_min")
+                sweep_max = c2.number_input("Max", min_value=5, value=40, step=5, key="sweep_bb_period_max")
+                sweep_step = c3.number_input("Step", min_value=1, value=5, step=1, key="sweep_bb_period_step")
+                fixed_std = st.sidebar.number_input(
+                    "Fixed Std Dev:", min_value=0.5, value=2.0, step=0.25, format="%.2f", key="sweep_bb_std_fixed"
+                )
+                sweep_lengths = list(range(int(sweep_min), int(sweep_max) + 1, int(sweep_step)))
+            else:
+                st.sidebar.markdown("**Std Dev Sweep Range**")
+                c1, c2, c3 = st.sidebar.columns(3)
+                sweep_min = c1.number_input("Min", min_value=0.5, value=1.0, step=0.25, format="%.2f", key="sweep_bb_std_min")
+                sweep_max = c2.number_input("Max", min_value=0.5, value=3.0, step=0.25, format="%.2f", key="sweep_bb_std_max")
+                sweep_step = c3.number_input("Step", min_value=0.25, value=0.25, step=0.25, format="%.2f", key="sweep_bb_std_step")
+                fixed_period = st.sidebar.number_input(
+                    "Fixed Period:", min_value=5, value=20, step=1, key="sweep_bb_period_fixed"
+                )
+                sweep_lengths = list(np.arange(float(sweep_min), float(sweep_max) + float(sweep_step) / 2, float(sweep_step)))
+
+            config = {
+                "ticker": ticker,
+                "data_source": data_source,
+                "vnstock_source": "KBS",
+                "strategy_type": strategy_type,
+                "sweep_dimension": "period" if sweep_dim == "Period" else "std_dev",
+                "fixed_value": float(fixed_std) if sweep_dim == "Period" else int(fixed_period),
+                "sweep_lengths": sweep_lengths,
+            }
+
         from_date = sidebar_from_date("sweep")
         config["from_date"] = from_date
 
@@ -190,12 +224,18 @@ class ParameterSweepPack(StrategyBacktestPack):
                 config["slow_ma_type"], slow_len,
                 config["buy_lag"], config["sell_lag"],
             )
-        else:  # Donchian Breakout
+        elif config["strategy_type"] == "Donchian Breakout":
             dim = config["sweep_dimension"]
             if dim == "entry":
                 return DonchianBreakoutStrategy(length, config["fixed_length"])
             else:
                 return DonchianBreakoutStrategy(config["fixed_length"], length)
+        else:  # Bollinger Bands
+            dim = config["sweep_dimension"]
+            if dim == "period":
+                return BollingerBandStrategy(int(length), config["fixed_value"])
+            else:
+                return BollingerBandStrategy(config["fixed_value"], float(length))
 
     def _make_label(self, config: Dict, length: int) -> str:
         """Build a short legend label for a sweep variant."""
@@ -207,12 +247,18 @@ class ParameterSweepPack(StrategyBacktestPack):
                 return f"{config['fast_ma_type']}({length})×{config['slow_ma_type']}({config['fixed_length']})"
             else:
                 return f"{config['fast_ma_type']}({config['fixed_length']})×{config['slow_ma_type']}({length})"
-        else:  # Donchian Breakout
+        elif config["strategy_type"] == "Donchian Breakout":
             dim = config["sweep_dimension"]
             if dim == "entry":
                 return f"Donchian({length}/{config['fixed_length']})"
             else:
                 return f"Donchian({config['fixed_length']}/{length})"
+        else:  # Bollinger Bands
+            dim = config["sweep_dimension"]
+            if dim == "period":
+                return f"BB({length}, {config['fixed_value']}σ)"
+            else:
+                return f"BB({config['fixed_value']}, {length}σ)"
 
     def run_sweep(
         self, df: pd.DataFrame, config: Dict
@@ -310,21 +356,22 @@ class ParameterSweepPack(StrategyBacktestPack):
             st.divider()
 
             st.markdown("**Return Distribution**")
-            render_return_distribution(trades)
+            closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
+            render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, bucket_header="Return buckets")
 
             st.divider()
 
             winners = [t for t in trades if t.status == "closed" and t.return_pct is not None and t.return_pct > 0]
             st.markdown("**MAE of Winning Trades**")
-            render_nonneg_distribution(
-                [t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", "rgba(239, 68, 68, 0.7)"
+            render_distribution(
+                [t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", NONNEG_BUCKETS
             )
 
             st.divider()
 
             st.markdown("**MFE of Winning Trades**")
-            render_nonneg_distribution(
-                [t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", "rgba(34, 197, 94, 0.7)"
+            render_distribution(
+                [t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", NONNEG_BUCKETS
             )
 
             st.divider()

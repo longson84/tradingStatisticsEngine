@@ -3,7 +3,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Literal
-from src.constants import DATE_FORMAT_DISPLAY, fmt_price, fmt_pct
+from src.constants import DATE_FORMAT_DISPLAY
+from src.fmt import fmt_pct, fmt_price
 
 class BaseSignal(ABC):
     """Abstract base class for all signal types."""

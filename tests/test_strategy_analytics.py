@@ -12,7 +12,7 @@ from src.strategy.analytics import (
     calculate_max_drawdown,
     calculate_trade_performance,
 )
-from src.strategy.strategies import DonchianBreakoutStrategy
+from src.strategy.strategies import BollingerBandStrategy, DonchianBreakoutStrategy
 
 
 def _make_price(values: list[float], start: str = "2020-01-01") -> pd.Series:
