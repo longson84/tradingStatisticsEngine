@@ -177,6 +177,3 @@ class MASignal(BaseSignal):
             "days_since_ref": 0,
         }
 
-
-# Backward-compat alias so any code importing SignalStrategy still works
-SignalStrategy = BaseSignal

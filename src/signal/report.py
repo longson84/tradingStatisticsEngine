@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from src.signal.analytics import (
+    EventStatus,
     calculate_signal_percentiles,
     calculate_np_events_tree,
     get_detailed_current_status,
@@ -228,7 +229,7 @@ class ReportGenerator:
         rec_date_str = event.recovery_date.strftime(DATE_FORMAT_DISPLAY) if event.recovery_date else "-"
         days_rec_str = str(event.days_to_recover) if event.days_to_recover is not None else "-"
 
-        if event.status == "Chưa phục hồi":
+        if event.status == EventStatus.UNRECOVERED:
             display_date = f"**{display_date}**"
             mae_str = f"<span style='color:red'>{mae_str}</span>"
             days_active = len(self.df) - 1 - self.df.index.get_loc(event.start_date)

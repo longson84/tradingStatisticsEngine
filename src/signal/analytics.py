@@ -1,9 +1,15 @@
 import numpy as np
 import pandas as pd
 import uuid
+from enum import Enum
 from typing import List, Optional
 
 from src.constants import CALCULATE_PERCENTILES, MIN_RECOVERY_DAYS_THRESHOLD
+
+
+class EventStatus(str, Enum):
+    UNRECOVERED = "Chưa phục hồi"
+    RECOVERED = "Đã phục hồi"
 
 
 class NPEvent:
@@ -18,7 +24,7 @@ class NPEvent:
         self.min_price = entry_price
         self.min_date = start_date
 
-        self.status = "Chưa phục hồi"
+        self.status = EventStatus.UNRECOVERED
         self.recovery_date = None
         self.days_to_recover = None
         self.days_to_bottom = 0
@@ -32,7 +38,7 @@ class NPEvent:
             self.min_date = date
 
     def close(self, recovery_date, price_series):
-        self.status = "Đã phục hồi"
+        self.status = EventStatus.RECOVERED
         self.recovery_date = recovery_date
         try:
             start_idx = price_series.index.get_loc(self.start_date)
@@ -228,7 +234,7 @@ def get_detailed_current_status(
         result["historical_max_dd_of_zone"] = -worst_mae / 100.0  # negative fraction
 
     # Find the most recent active (unrecovered) event at this zone
-    active_at_p = [e for e in events_at_p if e.status == "Chưa phục hồi"]
+    active_at_p = [e for e in events_at_p if e.status == EventStatus.UNRECOVERED]
     if active_at_p:
         current_event = max(active_at_p, key=lambda e: e.start_date)
         entry_price = current_event.entry_price

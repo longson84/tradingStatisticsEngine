@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from src.base import AnalysisPack, AnalysisResult
-from src.signal.analytics import NPEvent
+from src.signal.analytics import EventStatus, NPEvent
 from src.constants import COLOR_ACTIVE, COLOR_GROUP, DATE_FORMAT_DISPLAY
 from src.fmt import fmt_pct, fmt_price
 from src.signal.signals import AHR999Signal, BaseSignal, DistanceFromPeakSignal, MASignal
@@ -175,7 +175,7 @@ class SignalAnalysisPack(AnalysisPack):
             if event.days_to_recover is not None and event.days_to_recover <= qr_threshold:
                 return
 
-            unrecovered = event.status == "Chưa phục hồi"
+            unrecovered = event.status == EventStatus.UNRECOVERED
             prefix = "  " * level + ("└─ " if level > 0 else "")
             start_str = event.start_date.strftime(DATE_FORMAT_DISPLAY)
 
