@@ -9,8 +9,8 @@ def _load_yfinance(ticker: str):
 
 
 @st.cache_data(ttl=3600)
-def _load_vnstock(ticker: str, vnstock_source: str):
-    return VnStockIngestor(ticker, vnstock_source).get_data()
+def _load_vnstock(ticker: str):
+    return VnStockIngestor(ticker).get_data()
 
 
 @st.cache_data(ttl=3600)
@@ -18,12 +18,15 @@ def load_vnstock_group(group: str) -> list:
     from vnstock.explorer.vci.listing import Listing
     return Listing().symbols_by_group(group=group).tolist()
 
-"""
-TODO: 
-- the load_data does not need to know about vnstock_source, it should be passed to the ingestor
-- the load_data just needs to know about the data source
-"""
-def load_data(ticker: str, data_source: str = "yfinance", vnstock_source: str = "KBS"):
-    if data_source == "vnstock":
-        return _load_vnstock(ticker, vnstock_source)
-    return _load_yfinance(ticker)
+
+_LOADERS = {
+    "yfinance": _load_yfinance,
+    "vnstock": _load_vnstock,
+}
+
+
+def load_data(ticker: str, data_source: str = "yfinance"):
+    loader = _LOADERS.get(data_source)
+    if loader is None:
+        raise ValueError(f"Unknown data source: {data_source!r}")
+    return loader(ticker)

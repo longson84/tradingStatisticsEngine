@@ -10,7 +10,6 @@ from src.analysis.rarity.tables import build_np_event_tree
 
 
 def render_np_stats_table(stats_df: pd.DataFrame) -> None:
-    st.subheader("📊 Thống kê các sự kiện NP")
     if stats_df.empty:
         return
 

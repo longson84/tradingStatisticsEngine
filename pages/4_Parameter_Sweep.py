@@ -55,7 +55,7 @@ if run_btn:
         status = st.empty()
 
         status.text(f"Loading data for {ticker}...")
-        df = load_data(ticker, data_source, "KBS")
+        df = load_data(ticker, data_source)
         progress.progress(0.1)
 
         status.text(f"Running sweep ({len(config['sweep_lengths'])} variants)...")

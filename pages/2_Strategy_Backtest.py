@@ -33,7 +33,7 @@ if st.sidebar.button("🚀 Run Backtest", type="primary", key="strat_run_btn") o
 
         for i, ticker in enumerate(tickers):
             status.text(f"Processing {ticker} ({i + 1}/{len(tickers)})...")
-            df = load_data(ticker, config.get("data_source", "yfinance"), config.get("vnstock_source", "KBS"))
+            df = load_data(ticker, config.get("data_source", "yfinance"))
             result = pack.run_computation(ticker, df, config)
             pack.render_results(result)
             progress.progress((i + 1) / len(tickers))

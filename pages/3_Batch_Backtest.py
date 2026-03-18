@@ -54,7 +54,7 @@ def _run_tickers(tickers_to_run):
     results = []
     for i, ticker in enumerate(tickers_to_run):
         status.text(f"Processing {ticker} ({i + 1}/{len(tickers_to_run)})...")
-        df = load_data(ticker, data_source, "KBS")
+        df = load_data(ticker, data_source)
         result = pack.run_computation(ticker, df, config)
         results.append(result)
         progress.progress((i + 1) / len(tickers_to_run))

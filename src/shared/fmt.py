@@ -42,3 +42,4 @@ def format_percentile_columns(
     if not values:
         return {f"P{n}": "—" for n in percentiles}
     return {f"P{n}": fmt_pct(float(np.percentile(values, n))) for n in percentiles}
+
