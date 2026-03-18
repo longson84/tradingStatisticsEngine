@@ -12,7 +12,7 @@ class BaseSignal(ABC):
     """
 
     @abstractmethod
-    def calculate(self, df: pd.DataFrame) -> pd.Series:
+    def calculate(self, price: pd.DataFrame) -> pd.Series:
         pass
 
     @property
@@ -20,7 +20,7 @@ class BaseSignal(ABC):
     def name(self) -> str:
         pass
 
-    def get_additional_info(self, df: pd.DataFrame) -> dict:
+    def get_additional_info(self, price: pd.DataFrame) -> dict:
         """Return supplementary info (ref_date, ref_value, etc.)."""
         return None
 

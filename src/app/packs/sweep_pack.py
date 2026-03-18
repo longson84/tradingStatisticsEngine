@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import AnalysisResult
+from src.shared.base import PackResult
 from src.shared.constants import (
     COLOR_ACTIVE,
     DATE_FORMAT_DISPLAY,
@@ -16,6 +16,8 @@ from src.shared.constants import (
 from src.shared.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
 from src.app.styling import style_capture, style_positive_negative
 from src.backtest.utils import compute_summary_percentiles
+from src.backtest.tables import _compute_equity_by_trade
+from src.shared.constants import INITIAL_CAPITAL
 from src.backtest.charts import (
     build_boxplot_chart,
     build_drawdown_chart,
@@ -81,10 +83,10 @@ class ParameterSweepPack(PositionPack):
 
         return results, skipped
 
-    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
+    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> PackResult:
         pass  # Not used — computation via run_sweep()
 
-    def render_results(self, result: AnalysisResult) -> None:
+    def render_results(self, result: PackResult) -> None:
         pass  # Not used — rendering via render_sweep_results()
 
     # ------------------------------------------------------------------
@@ -107,9 +109,10 @@ class ParameterSweepPack(PositionPack):
             if trades:
                 bh_eq = core["bh_equity"]
                 sorted_trades = sorted(trades, key=lambda x: x.entry_date, reverse=True)
+                equity_map = _compute_equity_by_trade(trades, INITIAL_CAPITAL)
                 trade_rows = []
                 for t in sorted_trades:
-                    eq_close = t.equity_at_close
+                    eq_close = equity_map.get(id(t))
                     bh_close = (
                         float(bh_eq.asof(pd.Timestamp(t.exit_date)))
                         if t.exit_date is not None and bh_eq is not None

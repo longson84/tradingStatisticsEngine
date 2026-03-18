@@ -19,23 +19,23 @@ class DistanceFromPeakSignal(BaseSignal):
     def name(self) -> str:
         return self._name
 
-    def calculate(self, df: pd.DataFrame) -> pd.Series:
-        return distance_from_peak(df['Close'], self.window).dropna()
+    def calculate(self, price: pd.DataFrame) -> pd.Series:
+        return distance_from_peak(price['Close'], self.window).dropna()
 
     def format_value(self, value: float) -> str:
         return fmt_pct(-value * 100)
 
-    def get_additional_info(self, df: pd.DataFrame) -> dict:
-        recent_data = df.tail(self.window)
+    def get_additional_info(self, price: pd.DataFrame) -> dict:
+        recent_data = price.tail(self.window)
 
         if recent_data.empty:
-            return super().get_additional_info(df)
+            return super().get_additional_info(price)
 
         peak_price = recent_data['Close'].max()
         peak_date = recent_data['Close'].idxmax()
-        current_date = df.index[-1]
+        current_date = price.index[-1]
 
-        days_since_ref = len(df.loc[peak_date:current_date]) - 1
+        days_since_ref = len(price.loc[peak_date:current_date]) - 1
         days_remaining = self.window - days_since_ref
 
         return {

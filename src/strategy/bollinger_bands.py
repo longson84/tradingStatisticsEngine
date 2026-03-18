@@ -1,5 +1,5 @@
 """Bollinger Bands strategy — delegates band computation to indicators."""
-from typing import Dict, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -23,15 +23,15 @@ class BollingerBandStrategy(BaseStrategy):
     def strategy_name(self) -> str:
         return f"BB_{self.period}_{str(self.num_std_dev).replace('.', '_')}"
 
-    def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        close = df['Close']
+    def compute(self, price: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        close = price['Close']
         ma, upper, lower = bollinger_bands(close, self.period, self.num_std_dev)
 
-        buy = pd.Series(False, index=df.index)
-        sell = pd.Series(False, index=df.index)
+        buy = pd.Series(False, index=price.index)
+        sell = pd.Series(False, index=price.index)
         in_trade = False
 
-        for i in range(len(df)):
+        for i in range(len(price)):
             if np.isnan(ma.iloc[i]):
                 continue
             if not in_trade and close.iloc[i] < lower.iloc[i]:
@@ -46,10 +46,3 @@ class BollingerBandStrategy(BaseStrategy):
 
         return crossover_series, buy, sell
 
-    def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        ma, upper, lower = bollinger_bands(df['Close'], self.period, self.num_std_dev)
-        return {
-            f"BB Upper({self.period})": upper,
-            f"SMA({self.period})": ma,
-            f"BB Lower({self.period})": lower,
-        }

@@ -1,31 +1,26 @@
 """Minimal strategy base class — compute only, no Streamlit."""
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple
+from typing import Tuple
 
 import pandas as pd
 
 
 class BaseStrategy(ABC):
-    DISPLAY_NAME: str = ""
+    DISPLAY_NAME: str = "" # Human-readable name for the Selector
 
     @property
     @abstractmethod
-    def name(self) -> str: ...
+    def name(self) -> str: ... # Instance name for display, example: EMA(10) × SMA(50) — lag 1/1
 
     @property
     @abstractmethod
     def strategy_name(self) -> str:
-        """Short file-safe name."""
+        """Short file-safe name.""" # Instance name file-safe, example: MACross_EMA10_SMA50_lag1_1
         ...
 
     @abstractmethod
-    def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def compute(self, price: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
         """Returns (crossover_series, buy_signals, sell_signals)."""
-        ...
-
-    @abstractmethod
-    def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        """Returns named price-level Series to overlay on price chart."""
         ...
 
     def __hash__(self) -> int:

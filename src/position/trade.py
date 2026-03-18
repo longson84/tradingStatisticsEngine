@@ -20,4 +20,3 @@ class Trade:
     mae_price: Optional[float] = None  # price at MAE (lowest price during trade)
     mfe_pct: Optional[float] = None    # Maximum Favorable Excursion — peak return during trade
     mfe_price: Optional[float] = None  # price at MFE (highest price during trade)
-    equity_at_close: Optional[float] = None  # strategy capital after this trade closes

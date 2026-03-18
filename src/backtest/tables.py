@@ -4,19 +4,31 @@ from typing import List
 import pandas as pd
 
 from src.position.trade import Trade
-from src.shared.constants import DATE_FORMAT_DISPLAY
+from src.shared.constants import DATE_FORMAT_DISPLAY, INITIAL_CAPITAL
 from src.shared.fmt import fmt_equity, fmt_pct, fmt_price
+
+
+def _compute_equity_by_trade(trades: List[Trade], initial_capital: float) -> dict:
+    """Return {id(trade): equity_at_close} for closed trades in chronological order."""
+    equity_map = {}
+    capital = initial_capital
+    for t in sorted((t for t in trades if t.status == "closed"), key=lambda x: x.entry_date):
+        capital *= (1 + t.return_pct / 100)
+        equity_map[id(t)] = capital
+    return equity_map
 
 
 def build_trade_log_df(
     trades: List[Trade],
     bh_equity: pd.Series = None,
+    initial_capital: float = INITIAL_CAPITAL,
 ) -> pd.DataFrame:
     """Build a trade log DataFrame sorted by entry date (most recent first)."""
+    equity_map = _compute_equity_by_trade(trades, initial_capital)
     sorted_trades = sorted(trades, key=lambda x: x.entry_date, reverse=True)
     rows = []
     for t in sorted_trades:
-        eq_close = t.equity_at_close
+        eq_close = equity_map.get(id(t))
         if t.exit_date is not None and bh_equity is not None:
             bh_close = float(bh_equity.asof(pd.Timestamp(t.exit_date)))
         else:

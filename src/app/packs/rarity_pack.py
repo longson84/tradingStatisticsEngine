@@ -1,10 +1,10 @@
-"""Rarity analysis pack (was SignalAnalysisPack)."""
+"""Rarity analysis pack (was SignalBasePack)."""
 from typing import Any, Dict, List
 
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import AnalysisPack, AnalysisResult
+from src.shared.base import BasePack, PackResult
 from src.shared.fmt import fmt_pct, fmt_price
 
 from src.signals.base import BaseSignal
@@ -18,7 +18,7 @@ from src.app.analysis_sidebar_factories import rarity_analysis_sidebar
 from src.app.widgets.rarity_widget import render_np_stats_table, render_event_tree
 
 
-class RarityAnalysisPack(AnalysisPack):
+class RarityBasePack(BasePack):
     @property
     def pack_name(self) -> str:
         return "Signal Analysis"
@@ -26,23 +26,23 @@ class RarityAnalysisPack(AnalysisPack):
     def render_sidebar(self) -> Dict[str, Any]:
         return rarity_analysis_sidebar()
 
-    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
+    def run_computation(self, ticker: str, price: pd.DataFrame, config: Dict) -> PackResult:
         signal: BaseSignal = config["signal"]
 
         try:
-            signal_series = signal.calculate(df)
+            signal_series = signal.calculate(price)
 
-            report_gen = ReportGenerator(ticker, signal, df, signal_series, config["qr_threshold"])
+            report_gen = ReportGenerator(ticker, signal, price, signal_series, config["qr_threshold"])
             report_gen.calculate()
 
-            price_signal_chart = create_price_signal_chart(ticker, df, signal_series, signal)
+            price_signal_chart = create_price_signal_chart(ticker, price, signal_series, signal)
             current_value = signal_series.iloc[-1]
             signal_distribution_chart = create_signal_distribution_chart(signal_series, current_value, signal.name)
 
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
-                price_series=df["Close"],
+                price_series=price["Close"],
                 signal_series=signal_series,
                 data={
                     "price_signal_chart": price_signal_chart,
@@ -56,15 +56,15 @@ class RarityAnalysisPack(AnalysisPack):
                 },
             )
         except Exception as e:
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
-                price_series=df["Close"] if "Close" in df.columns else pd.Series(dtype=float),
+                price_series=price["Close"] if "Close" in price.columns else pd.Series(dtype=float),
                 signal_series=pd.Series(dtype=float),
                 error=str(e),
             )
 
-    def render_results(self, result: AnalysisResult) -> None:
+    def render_results(self, result: PackResult) -> None:
         if result.error:
             st.error(f"❌ [{result.ticker}] {result.error}")
             return

@@ -1,4 +1,4 @@
-"""All AnalysisPack implementations."""
+"""All BasePack implementations."""
 from src.app.packs.rarity_pack import RarityAnalysisPack
 from src.app.packs.position_pack import PositionPack
 from src.app.packs.batch_pack import BatchPositionPack

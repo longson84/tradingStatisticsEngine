@@ -1,33 +1,22 @@
 """Position backtest pack (was StrategyBacktestPack)."""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import AnalysisPack, AnalysisResult
-from src.shared.constants import (
-    COLOR_ACTIVE,
-    INITIAL_CAPITAL,
-    NONNEG_BUCKETS,
-    RETURN_BUCKETS,
-)
+from src.shared.base import BasePack, PackResult
+from src.shared.constants import COLOR_ACTIVE, NONNEG_BUCKETS, RETURN_BUCKETS
 from src.shared.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
 from src.shared.report_blocks import build_report_time_range_info
 
 from src.strategy.registry import STRATEGY_NAMES, STRATEGY_REGISTRY
-from src.position import build_equity_curve, build_trades, get_current_position
-from src.backtest import (
-    calculate_drawdown_during_trades,
-    calculate_equity_curve_max_drawdown,
-    calculate_max_drawdown,
-    calculate_trade_performance,
-)
 from src.backtest.charts import build_equity_chart
 from src.backtest.tables import build_trade_log_df
 
 from src.app.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 from src.app.styling import style_capture, style_positive_negative
 from src.app.strategy_sidebar_factories import SIDEBAR_REGISTRY
+from src.app.strategy_compute import compute_ticker_core
 
 # Import renderers (these are still Streamlit-based)
 from src.app.packs._renderers import (
@@ -38,61 +27,7 @@ from src.app.packs._renderers import (
 )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def compute_ticker_core(
-    ticker: str,
-    df: pd.DataFrame,
-    _strategy,
-    strategy_key: str,
-    from_date: Optional[object] = None,
-) -> Dict[str, Any]:
-    """Pure computation — no Streamlit calls."""
-    crossover_series, buy_signals, sell_signals = _strategy.compute(df)
-
-    if from_date is not None:
-        from_ts = pd.Timestamp(from_date)
-        df = df[df.index >= from_ts]
-        crossover_series = crossover_series[crossover_series.index >= from_ts]
-        buy_signals = buy_signals[buy_signals.index >= from_ts]
-        sell_signals = sell_signals[sell_signals.index >= from_ts]
-
-    price = df["Close"]
-
-    trades = build_trades(price, buy_signals, sell_signals)
-    trades = calculate_drawdown_during_trades(trades, price)
-    performance = calculate_trade_performance(trades)
-    current_pos = get_current_position(price, crossover_series, buy_signals, sell_signals)
-    overlays = _strategy.get_overlays(df)
-
-    bh_total_return = (float(price.iloc[-1]) / float(price.iloc[0]) - 1) * 100
-    bh_max_drawdown = calculate_max_drawdown(price)
-    strat_max_drawdown = calculate_equity_curve_max_drawdown(trades)
-
-    strat_equity = build_equity_curve(price, buy_signals, sell_signals, INITIAL_CAPITAL)
-    bh_equity = price / float(price.iloc[0]) * INITIAL_CAPITAL
-
-    capital = INITIAL_CAPITAL
-    for t in sorted((t for t in trades if t.status == "closed"), key=lambda x: x.entry_date):
-        capital *= (1 + t.return_pct / 100)
-        t.equity_at_close = capital
-
-    return {
-        "price": price,
-        "crossover_series": crossover_series,
-        "trades": trades,
-        "performance": performance,
-        "current_position": current_pos,
-        "overlays": overlays,
-        "signal_label": strategy_key,
-        "bh_total_return": bh_total_return,
-        "bh_max_drawdown": bh_max_drawdown,
-        "strat_max_drawdown": strat_max_drawdown,
-        "strat_equity": strat_equity,
-        "bh_equity": bh_equity,
-    }
-
-
-class PositionPack(AnalysisPack):
+class PositionPack(BasePack):
     @property
     def pack_name(self) -> str:
         return "Strategy Backtest"
@@ -126,19 +61,19 @@ class PositionPack(AnalysisPack):
         }
 
     @staticmethod
-    def _compute_ticker_core(ticker: str, df: pd.DataFrame, config: Dict) -> Dict[str, Any]:
+    def _compute_ticker_core(price: pd.DataFrame, config: Dict) -> Dict[str, Any]:
         strategy = config["strategy"]
         return compute_ticker_core(
-            ticker, df, strategy, strategy.name, config.get("from_date"),
+            price, strategy, strategy.name, config.get("from_date"),
         )
 
-    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
+    def run_computation(self, ticker: str, price: pd.DataFrame, config: Dict) -> PackResult:
         try:
-            core = self._compute_ticker_core(ticker, df, config)
+            core = self._compute_ticker_core(ticker, price, config)
             fig = build_equity_chart(
                 ticker, core["strat_equity"], core["bh_equity"], core["signal_label"]
             )
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
                 price_series=core["price"],
@@ -146,15 +81,15 @@ class PositionPack(AnalysisPack):
                 data={**core, "fig": fig},
             )
         except Exception as e:
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
-                price_series=df["Close"] if "Close" in df.columns else pd.Series(dtype=float),
+                price_series=price["Close"] if "Close" in price.columns else pd.Series(dtype=float),
                 signal_series=pd.Series(dtype=float),
                 error=str(e),
             )
 
-    def render_results(self, result: AnalysisResult) -> None:
+    def render_results(self, result: PackResult) -> None:
         if result.error:
             st.error(f"❌ [{result.ticker}] {result.error}")
             return

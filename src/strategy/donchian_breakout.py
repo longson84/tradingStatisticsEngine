@@ -1,5 +1,5 @@
 """Donchian Breakout strategy — delegates channel computation to indicators."""
-from typing import Dict, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -23,15 +23,15 @@ class DonchianBreakoutStrategy(BaseStrategy):
     def strategy_name(self) -> str:
         return f"Donchian_{self.entry_length}_{self.exit_length}"
 
-    def compute(self, df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        close = df['Close']
-        upper, lower = donchian_channels(df['High'], df['Low'], self.entry_length, self.exit_length)
+    def compute(self, price: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        close = price['Close']
+        upper, lower = donchian_channels(price['High'], price['Low'], self.entry_length, self.exit_length)
 
-        buy = pd.Series(False, index=df.index)
-        sell = pd.Series(False, index=df.index)
+        buy = pd.Series(False, index=price.index)
+        sell = pd.Series(False, index=price.index)
         in_trade = False
 
-        for i in range(len(df)):
+        for i in range(len(price)):
             if np.isnan(upper.iloc[i]) or np.isnan(lower.iloc[i]):
                 continue
             if not in_trade and close.iloc[i] > upper.iloc[i]:
@@ -46,9 +46,3 @@ class DonchianBreakoutStrategy(BaseStrategy):
 
         return crossover_series, buy, sell
 
-    def get_overlays(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        upper, lower = donchian_channels(df['High'], df['Low'], self.entry_length, self.exit_length)
-        return {
-            f"Upper({self.entry_length})": upper,
-            f"Lower({self.exit_length})": lower,
-        }

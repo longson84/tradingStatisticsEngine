@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import AnalysisResult
+from src.shared.base import PackResult
 from src.shared.constants import (
     COLOR_POSITIVE,
     DATE_FORMAT_DISPLAY,
@@ -40,10 +40,10 @@ class BatchPositionPack(PositionPack):
     def render_sidebar(self) -> Dict[str, Any]:
         return self.render_strategy_sidebar(key_prefix="batch", header="Batch Backtest")
 
-    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
+    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> PackResult:
         try:
             core = self._compute_ticker_core(ticker, df, config)
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
                 price_series=core["price"],
@@ -51,7 +51,7 @@ class BatchPositionPack(PositionPack):
                 data=core,
             )
         except Exception as e:
-            return AnalysisResult(
+            return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
                 price_series=df["Close"] if "Close" in df.columns else pd.Series(dtype=float),
@@ -59,10 +59,10 @@ class BatchPositionPack(PositionPack):
                 error=str(e),
             )
 
-    def render_results(self, result: AnalysisResult) -> None:
+    def render_results(self, result: PackResult) -> None:
         pass  # Not used — batch rendering via render_batch_results()
 
-    def render_batch_results(self, results: List[AnalysisResult], strategy_label: str) -> None:
+    def render_batch_results(self, results: List[PackResult], strategy_label: str) -> None:
         st.subheader(f"📊 Batch Backtest — {strategy_label}")
         st.caption(f"Ngày thống kê: {datetime.now().strftime(DATE_FORMAT_DISPLAY)}")
 

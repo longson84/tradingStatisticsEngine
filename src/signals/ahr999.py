@@ -16,5 +16,5 @@ class AHR999Signal(BaseSignal):
     def is_applicable(self, ticker: str) -> bool:
         return ticker == "BTC-USD"
 
-    def calculate(self, df: pd.DataFrame) -> pd.Series:
-        return ahr999(df['Close'])
+    def calculate(self, price: pd.DataFrame) -> pd.Series:
+        return ahr999(price['Close'])

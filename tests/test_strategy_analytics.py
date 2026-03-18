@@ -235,17 +235,3 @@ class TestDonchianBreakout:
         # Should only have one buy signal, not multiple
         assert buy.sum() == 1
 
-    def test_overlays(self):
-        """get_overlays returns upper and lower channel Series."""
-        highs  = [100, 105, 110, 108, 112]
-        lows   = [95,  100, 105, 103, 107]
-        closes = [98,  103, 108, 106, 110]
-        df = _make_ohlc(highs, lows, closes)
-
-        strat = DonchianBreakoutStrategy(entry_length=3, exit_length=2)
-        overlays = strat.get_overlays(df)
-
-        assert "Upper(3)" in overlays
-        assert "Lower(2)" in overlays
-        assert len(overlays["Upper(3)"]) == len(df)
-        assert len(overlays["Lower(2)"]) == len(df)
