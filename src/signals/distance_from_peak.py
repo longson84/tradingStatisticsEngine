@@ -19,10 +19,6 @@ class DistanceFromPeakSignal(BaseSignal):
     def name(self) -> str:
         return self._name
 
-    @property
-    def report_name(self) -> str:
-        return f"Dist_Peak_{self.window}D"
-
     def calculate(self, df: pd.DataFrame) -> pd.Series:
         return distance_from_peak(df['Close'], self.window).dropna()
 

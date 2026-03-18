@@ -2,8 +2,6 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 
-from src.shared.constants import PLOTLY_ACTIVE, PLOTLY_NEGATIVE, PLOTLY_POSITIVE, VISUALIZATION_THRESHOLDS
-
 
 class BaseSignal(ABC):
     """Abstract base class for all signals.
@@ -21,20 +19,6 @@ class BaseSignal(ABC):
     @abstractmethod
     def name(self) -> str:
         pass
-
-    @property
-    @abstractmethod
-    def report_name(self) -> str:
-        """Short file-safe name for reports."""
-        pass
-
-    @property
-    def visualization_config(self) -> dict:
-        """Chart display configuration: thresholds and colours."""
-        return {
-            "thresholds": VISUALIZATION_THRESHOLDS,
-            "colors": [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE],
-        }
 
     def get_additional_info(self, df: pd.DataFrame) -> dict:
         """Return supplementary info (ref_date, ref_value, etc.)."""

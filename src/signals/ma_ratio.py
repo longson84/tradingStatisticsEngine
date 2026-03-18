@@ -18,10 +18,6 @@ class MARatioSignal(BaseSignal):
     def name(self) -> str:
         return f"{self.ma_type}({self.length}) vs Price"
 
-    @property
-    def report_name(self) -> str:
-        return f"MA_{self.ma_type}_{self.length}"
-
     def calculate(self, df: pd.DataFrame) -> pd.Series:
         ma = moving_average(df['Close'], self.ma_type, self.length)
         return (df['Close'] / ma - 1).dropna()

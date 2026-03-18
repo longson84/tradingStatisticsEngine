@@ -13,10 +13,6 @@ class AHR999Signal(BaseSignal):
     def name(self) -> str:
         return self._name
 
-    @property
-    def report_name(self) -> str:
-        return "AHR999"
-
     def is_applicable(self, ticker: str) -> bool:
         return ticker == "BTC-USD"
 

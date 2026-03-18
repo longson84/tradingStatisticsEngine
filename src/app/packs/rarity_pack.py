@@ -1,5 +1,4 @@
 """Rarity analysis pack (was SignalAnalysisPack)."""
-from datetime import datetime
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -102,7 +101,6 @@ class RarityAnalysisPack(AnalysisPack):
 
             report_gen = ReportGenerator(ticker, indicator, df, signal_series, config["qr_threshold"])
             report_gen.calculate()
-            report_text = report_gen.generate_text_report()
             display_report_text = report_gen.generate_display_report()
             stats_df, highlight_p = report_gen.build_stats_df()
 
@@ -116,7 +114,6 @@ class RarityAnalysisPack(AnalysisPack):
                 price_series=df["Close"],
                 signal_series=signal_series,
                 data={
-                    "report_text": report_text,
                     "fig": fig,
                     "fig_dist": fig_dist,
                     "signal": indicator,
@@ -214,13 +211,12 @@ class RarityAnalysisPack(AnalysisPack):
             st.error(f"❌ [{result.ticker}] {result.error}")
             return
 
-        report_text: str = result.data["report_text"]
         fig = result.data["fig"]
         fig_dist = result.data["fig_dist"]
         signal: BaseSignal = result.data["signal"]
         np_events: List[NPEvent] = result.data.get("np_events", [])
         qr_threshold: int = result.data.get("qr_threshold", 5)
-        display_report_text: str = result.data.get("display_report_text", report_text)
+        display_report_text: str = result.data.get("display_report_text", "")
         stats_df: pd.DataFrame = result.data.get("stats_df", pd.DataFrame())
 
         with st.expander(f"📊 Kết quả phân tích: {result.ticker}", expanded=True):
@@ -241,36 +237,3 @@ class RarityAnalysisPack(AnalysisPack):
             with st.expander("📈 Xem Biểu đồ tín hiệu lịch sử", expanded=True):
                 plot_chart(fig)
 
-            st.subheader("Tải về kết quả")
-            timestamp = datetime.now().strftime("%y%m%d")
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.download_button(
-                    label="📥 Tải Báo Cáo (.md)",
-                    data=report_text,
-                    file_name=f"{timestamp}_{result.ticker}_Report.md",
-                    mime="text/markdown",
-                    key=f"sig_dl_md_{result.ticker}",
-                )
-
-            with col2:
-                try:
-                    img_bytes = fig.to_image(format="png", width=1200, height=800, scale=2)
-                    st.download_button(
-                        label="📥 Tải Biểu Đồ (.png)",
-                        data=img_bytes,
-                        file_name=f"{timestamp}_{result.ticker}_Chart.png",
-                        mime="image/png",
-                        key=f"sig_dl_png_{result.ticker}",
-                    )
-                except Exception:
-                    html_bytes = fig.to_html()
-                    st.download_button(
-                        label="📥 Tải Biểu Đồ (.html)",
-                        data=html_bytes,
-                        file_name=f"{timestamp}_{result.ticker}_Chart.html",
-                        mime="text/html",
-                        key=f"sig_dl_html_{result.ticker}",
-                    )
-                    st.caption("⚠️ PNG unavailable — downloading HTML instead.")

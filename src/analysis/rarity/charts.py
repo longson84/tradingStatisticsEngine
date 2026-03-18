@@ -7,6 +7,8 @@ from plotly.subplots import make_subplots
 from src.signals.base import BaseSignal
 from src.shared.constants import PLOTLY_ACTIVE, PLOTLY_NEGATIVE, PLOTLY_POSITIVE, VISUALIZATION_THRESHOLDS
 
+_CHART_COLORS = [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE]
+
 
 def create_price_signal_chart(
     ticker: str,
@@ -17,9 +19,8 @@ def create_price_signal_chart(
     """Create price + signal dual-panel chart with rarity-coloured overlays."""
     df_aligned = df.loc[signal_series.index]
 
-    config = indicator.visualization_config
-    threshold_percents = config.get("thresholds", VISUALIZATION_THRESHOLDS)
-    colors = config.get("colors", [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE])
+    threshold_percents = VISUALIZATION_THRESHOLDS
+    colors = _CHART_COLORS
 
     threshold_values = [np.percentile(signal_series, p * 100) for p in threshold_percents]
 
