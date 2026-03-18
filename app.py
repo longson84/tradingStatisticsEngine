@@ -16,12 +16,14 @@ Welcome! Use the navigation on the left to choose a tool:
 
 | Page | Description |
 |------|-------------|
-| **📈 Signal Analysis** | Analyse signal rarity, percentile zones, and historical drawdown statistics for any ticker. Supports AHR999, Distance-from-Peak (N-day), and MA-ratio signals. |
-| **🔁 Strategy Backtest** | Backtest MA-based trading strategies (Price vs MA, MA Crossover) with entry/exit lags. Shows win rate, total return, profit factor, and full trade log. |
+| **📈 Factor Analysis** | Analyse factor rarity, percentile zones, and historical drawdown statistics for any ticker. Supports AHR999, Distance-from-Peak (N-day), and MA-ratio factors. |
+| **🔁 Strategy Backtest** | Backtest trading strategies (Price vs MA, MA Crossover, Bollinger Bands, Donchian Breakout) with entry/exit lags. Shows win rate, total return, and full trade log. |
+| **📦 Batch Backtest** | Run a strategy across multiple symbols and compare results in a single summary table. |
+| **🔬 Parameter Sweep** | Sweep a single parameter (MA length) across a ticker and compare results side-by-side. |
 
 ---
 
-*Signals* are continuous values computed from price data.
-*Strategies* apply rules to signals to generate buy/sell events.
+*Factors* are continuous values computed from price data.
+*Strategies* apply rules to factors to generate buy/sell events.
 """
 )
