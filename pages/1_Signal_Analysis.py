@@ -1,6 +1,6 @@
 import streamlit as st
-from src.data_loader import load_data
-from src.signal.pack import SignalAnalysisPack
+from src.app.data_loader import load_data
+from src.app.packs import RarityAnalysisPack
 
 st.set_page_config(
     page_title="Signal Analysis",
@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("📈 Signal Analysis")
 st.markdown("Rarity zones, percentile analysis, and drawdown statistics for trading signals.")
 
-pack = SignalAnalysisPack()
+pack = RarityAnalysisPack()
 config = pack.render_sidebar()
 
 if st.sidebar.button("🚀 Analyse", type="primary", key="signal_run_btn") or st.session_state.get(

@@ -1,6 +1,6 @@
 import streamlit as st
-from src.data_loader import load_data
-from src.strategy.batch_pack import BatchBacktestPack
+from src.app.data_loader import load_data
+from src.app.packs import BatchPositionPack
 
 st.set_page_config(
     page_title="Batch Backtest",
@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("📦 Batch Backtest")
 st.markdown("Run a strategy across multiple symbols and compare results in a single summary table.")
 
-pack = BatchBacktestPack()
+pack = BatchPositionPack()
 config = pack.render_sidebar()
 
 tickers = config.get("tickers", [])

@@ -1,6 +1,6 @@
 import streamlit as st
-from src.data_loader import load_data
-from src.strategy.sweep_pack import ParameterSweepPack
+from src.app.data_loader import load_data
+from src.app.packs import ParameterSweepPack
 
 st.set_page_config(
     page_title="Parameter Sweep",

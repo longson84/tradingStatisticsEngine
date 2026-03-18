@@ -1,6 +1,6 @@
 import streamlit as st
-from src.data_loader import load_data
-from src.strategy.pack import StrategyBacktestPack
+from src.app.data_loader import load_data
+from src.app.packs import PositionPack
 
 st.set_page_config(
     page_title="Strategy Backtest",
@@ -12,7 +12,7 @@ st.set_page_config(
 st.title("🔁 Strategy Backtest")
 st.markdown("MA-based trading strategies with trade-level backtesting, win rate, and performance metrics.")
 
-pack = StrategyBacktestPack()
+pack = PositionPack()
 config = pack.render_sidebar()
 
 if st.sidebar.button("🚀 Run Backtest", type="primary", key="strat_run_btn") or st.session_state.get(

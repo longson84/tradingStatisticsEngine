@@ -3,16 +3,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.strategy.analytics import (
-    Trade,
-    build_equity_curve,
-    build_trades,
+from src.position import Trade, build_equity_curve, build_trades
+from src.backtest import (
     calculate_drawdown_during_trades,
     calculate_equity_curve_max_drawdown,
     calculate_max_drawdown,
     calculate_trade_performance,
 )
-from src.strategy.strategies import BollingerBandStrategy, DonchianBreakoutStrategy
+from src.strategy.donchian_breakout import DonchianBreakoutStrategy
 
 
 def _make_price(values: list[float], start: str = "2020-01-01") -> pd.Series:

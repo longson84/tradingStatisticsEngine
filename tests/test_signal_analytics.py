@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.signal.analytics import NPEvent, calculate_np_events_tree
+from src.analysis.rarity.events import NPEvent, calculate_np_events_tree
 
 
 def _make_series(values: list[float], start: str = "2020-01-01") -> pd.Series:
