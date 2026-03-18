@@ -9,7 +9,7 @@ from src.strategy.base import BaseStrategy
 
 
 class PriceVsMAStrategy(BaseStrategy):
-    DISPLAY_NAME = "Price crosses MA"
+    DISPLAY_NAME = "Price vs MA"
 
     def __init__(self, ma_type: str, ma_length: int, buy_lag: int, sell_lag: int):
         self.ma_type = ma_type
