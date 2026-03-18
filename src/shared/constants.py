@@ -78,8 +78,6 @@ CALCULATE_PERCENTILES: list[int] = [1, 5, 10, 15, 20, 25, 30, 40, 50]
 DRAWDOWN_PERCENTILES: list[int] = [20, 15, 10, 5, 1]
 DRAWDOWN_PERCENTILES_FOR_THRESHOLD: list[int] = [5, 10, 15, 20, 25, 30]
 
-# How many worst drawdown episodes to display
-TOP_N_DRAWDOWN: int = 10
 
 # Minimum trading days for a recovery to be included in analysis
 MIN_RECOVERY_DAYS_THRESHOLD: int = 5

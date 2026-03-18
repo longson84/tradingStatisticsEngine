@@ -5,10 +5,6 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-
-from src.shared.constants import CALCULATE_PERCENTILES
-
-
 class EventStatus(str, Enum):
     UNRECOVERED = "Chưa phục hồi"
     RECOVERED = "Đã phục hồi"

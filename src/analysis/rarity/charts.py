@@ -14,7 +14,7 @@ def create_price_signal_chart(
     ticker: str,
     df: pd.DataFrame,
     signal_series: pd.Series,
-    indicator: BaseSignal,
+    signal: BaseSignal,
 ) -> go.Figure:
     """Create price + signal dual-panel chart with rarity-coloured overlays."""
     df_aligned = df.loc[signal_series.index]
@@ -29,7 +29,7 @@ def create_price_signal_chart(
         shared_xaxes=True,
         vertical_spacing=0.05,
         row_heights=[0.6, 0.4],
-        subplot_titles=(f"Price Action - {ticker}", f"Signal: {indicator.name}")
+        subplot_titles=(f"Price Chart - {ticker}", f"Signal: {signal.name}")
     )
 
     fig.add_trace(
@@ -93,14 +93,14 @@ def create_price_signal_chart(
             row=2, col=1
         )
 
-    fig.update_layout(height=800, hovermode="x unified", showlegend=True)
+    fig.update_layout(height=800, hovermode="x unified", showlegend=False)
     return fig
 
 
-def create_distribution_chart(
+def create_signal_distribution_chart(
     signal_series: pd.Series,
     current_value: float,
-    indicator_name: str,
+    signal_name: str,
 ) -> go.Figure:
     """Create signal distribution histogram with current value marker."""
     fig = go.Figure()
@@ -123,11 +123,10 @@ def create_distribution_chart(
     )
 
     fig.update_layout(
-        title=f"Phân phối tín hiệu: {indicator_name}",
         xaxis_title="Giá trị Tín hiệu",
         yaxis_title="Số lần xuất hiện (Ngày)",
         height=400,
-        showlegend=True,
+        showlegend=False,
         bargap=0.1
     )
 

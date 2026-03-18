@@ -1,1 +1,1 @@
-"""Statistical analysis — indicator-agnostic."""
+"""Statistical analysis — signal-based."""

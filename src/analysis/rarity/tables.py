@@ -8,9 +8,9 @@ from src.shared.fmt import fmt_pct, fmt_price
 from src.analysis.rarity.events import EventStatus, NPEvent
 
 
-def build_stats_df(
+def build_np_stats_summary_table(
     np_stats: dict,
-    indicator,
+    signal,
     current_status: dict,
 ) -> tuple[pd.DataFrame, int | None]:
     """Build the NP statistics summary table.
@@ -30,7 +30,7 @@ def build_stats_df(
             continue
         row = {
             "PCT": f"{p}%",
-            "Signal": indicator.format_value(stat["threshold"]),
+            "Signal": signal.format_value(stat["threshold"]),
             "Count": stat["count"],
             "QR": stat["qr"],
             "QR %": fmt_pct(stat['qr_pct']),
@@ -48,7 +48,7 @@ def build_stats_df(
     return pd.DataFrame(rows), highlight_p
 
 
-def build_event_tree_df(np_events: List[NPEvent], qr_threshold: int) -> pd.DataFrame:
+def build_np_event_tree(np_events: List[NPEvent], qr_threshold: int) -> pd.DataFrame:
     """Walk the NPEvent tree and return a flat DataFrame."""
     rows: list = []
 

@@ -32,7 +32,7 @@ from src.app.packs._renderers import (
     render_monthly_returns_tables,
     render_performance_summary,
 )
-from src.app.sidebar_factories import (
+from src.app.strategy_sidebar_factories import (
     SWEEP_SIDEBAR_REGISTRY,
     build_from_sweep_config,
     should_skip_sweep_length,

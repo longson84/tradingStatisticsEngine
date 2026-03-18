@@ -1,5 +1,4 @@
 """Position backtest pack (was StrategyBacktestPack)."""
-from datetime import datetime as _dt
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -8,12 +7,12 @@ import streamlit as st
 from src.shared.base import AnalysisPack, AnalysisResult
 from src.shared.constants import (
     COLOR_ACTIVE,
-    DATE_FORMAT_DISPLAY,
     INITIAL_CAPITAL,
     NONNEG_BUCKETS,
     RETURN_BUCKETS,
 )
 from src.shared.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
+from src.shared.report_blocks import build_report_time_range_info
 
 from src.strategy.registry import STRATEGY_NAMES, STRATEGY_REGISTRY
 from src.position import build_equity_curve, build_trades, get_current_position
@@ -28,7 +27,7 @@ from src.backtest.tables import build_trade_log_df
 
 from src.app.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 from src.app.styling import style_capture, style_positive_negative
-from src.app.sidebar_factories import SIDEBAR_REGISTRY
+from src.app.strategy_sidebar_factories import SIDEBAR_REGISTRY
 
 # Import renderers (these are still Streamlit-based)
 from src.app.packs._renderers import (
@@ -170,12 +169,7 @@ class PositionPack(AnalysisPack):
 
         with st.expander(f"📊 {result.ticker} — {result.data['signal_label']}", expanded=True):
             price = result.price_series
-            st.caption(
-                f"Ngày thống kê: {_dt.now().strftime(DATE_FORMAT_DISPLAY)}  |  "
-                f"Ngày dữ liệu đầu tiên: {price.index.min().strftime(DATE_FORMAT_DISPLAY)}  |  "
-                f"Ngày dữ liệu cuối cùng: {price.index[-1].strftime(DATE_FORMAT_DISPLAY)}  |  "
-                f"Tổng số phiên giao dịch: {len(price):,}"
-            )
+            st.caption("  |  ".join(build_report_time_range_info(price)[1:]))
 
             st.divider()
 
