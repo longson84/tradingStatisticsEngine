@@ -51,7 +51,7 @@ def compute_ticker_core(
         "trades": trades,
         "performance": performance,
         "current_position": current_pos,
-        "signal_label": strategy_key,
+        "strategy_label": strategy_key,
         "bh_total_return": bh_total_return,
         "bh_max_drawdown": bh_max_drawdown,
         "strat_max_drawdown": strat_max_drawdown,

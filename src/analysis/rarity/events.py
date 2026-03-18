@@ -59,19 +59,19 @@ class NPEvent:
 
 def calculate_np_events_tree(
     price_series: pd.Series,
-    signal_series: pd.Series,
+    factor_series: pd.Series,
     percentiles: list,
 ) -> List[NPEvent]:
     """Detect NP events using a tree structure."""
-    common_idx = price_series.index.intersection(signal_series.index)
+    common_idx = price_series.index.intersection(factor_series.index)
     if len(common_idx) < 2:
         return []
 
     prices = price_series.loc[common_idx]
-    signals = signal_series.loc[common_idx]
+    factors = factor_series.loc[common_idx]
 
-    clean_signals = signal_series.dropna()
-    threshold_map = {p: np.percentile(clean_signals, p) for p in percentiles}
+    clean_factors = factor_series.dropna()
+    threshold_map = {p: np.percentile(clean_factors, p) for p in percentiles}
     sorted_percentiles = sorted(percentiles)
 
     active_events: List[NPEvent] = []
@@ -80,7 +80,7 @@ def calculate_np_events_tree(
     for i in range(1, len(common_idx)):
         current_date = common_idx[i]
         current_price = prices.iloc[i]
-        current_signal = signals.iloc[i]
+        current_factor = factors.iloc[i]
 
         still_active = []
         for event in active_events:
@@ -95,7 +95,7 @@ def calculate_np_events_tree(
         target_p = None
         target_threshold = None
         for p in sorted_percentiles:
-            if current_signal <= threshold_map[p]:
+            if current_factor <= threshold_map[p]:
                 target_p = p
                 target_threshold = threshold_map[p]
                 break

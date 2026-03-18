@@ -71,7 +71,7 @@ class PositionPack(BasePack):
         try:
             core = self._compute_ticker_core(ticker, price, config)
             fig = build_equity_chart(
-                ticker, core["strat_equity"], core["bh_equity"], core["signal_label"]
+                ticker, core["strat_equity"], core["bh_equity"], core["strategy_label"]
             )
             return PackResult(
                 ticker=ticker,
@@ -102,7 +102,7 @@ class PositionPack(BasePack):
         bh_max_drawdown: float = result.data.get("bh_max_drawdown", 0.0)
         strat_max_drawdown: float = result.data.get("strat_max_drawdown", 0.0)
 
-        with st.expander(f"📊 {result.ticker} — {result.data['signal_label']}", expanded=True):
+        with st.expander(f"📊 {result.ticker} — {result.data['strategy_label']}", expanded=True):
             price = result.price_series
             st.caption("  |  ".join(build_report_time_range_info(price)[1:]))
 
@@ -120,7 +120,7 @@ class PositionPack(BasePack):
                 c4.metric("Days Held", "—")
 
             regime_label = "Above Zero (Bullish)" if pos.regime == "above_zero" else "Below Zero (Bearish)"
-            st.caption(f"Signal: {pos.current_signal_value:.4f} | Regime: {regime_label}")
+            st.caption(f"Signal: {pos.crossover_value:.4f} | Regime: {regime_label}")
 
             st.divider()
 
@@ -196,7 +196,7 @@ class PositionPack(BasePack):
                 bh_equity = result.data.get("bh_equity")
                 equity_fig = build_equity_chart(
                     result.ticker, strat_equity, bh_equity,
-                    result.data["signal_label"], log_scale,
+                    result.data["strategy_label"], log_scale,
                 )
                 plot_chart(equity_fig)
 

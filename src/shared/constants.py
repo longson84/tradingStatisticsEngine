@@ -68,10 +68,10 @@ ANNUAL_PERCENTILES = [90, 80, 70, 60, 50, 40, 30, 20, 10]
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 # ---------------------------------------------------------------------------
-# Signal analytics configuration
+# Factor analytics configuration
 # ---------------------------------------------------------------------------
 
-# Percentiles computed over the full signal history
+# Percentiles computed over the full factor history
 CALCULATE_PERCENTILES: list[int] = [1, 5, 10, 15, 20, 25, 30, 40, 50]
 
 # Subset shown in the drawdown table (must be a subset of CALCULATE_PERCENTILES)
@@ -85,6 +85,6 @@ MIN_RECOVERY_DAYS_THRESHOLD: int = 5
 # MAE percentiles for trade statistics
 MAE_PERCENTILES: list[int] = [80, 85, 90, 95, 98]
 
-# Default signal rarity thresholds used in chart colouring (fractions, not %)
+# Default factor rarity thresholds used in chart colouring (fractions, not %)
 # Colours come from PLOTLY_POSITIVE / PLOTLY_ACTIVE / PLOTLY_NEGATIVE
 VISUALIZATION_THRESHOLDS: list[float] = [0.01, 0.05, 0.10]

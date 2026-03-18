@@ -1,13 +1,13 @@
-"""BaseSignal — abstract base class for all signal types."""
+"""BaseFactor — abstract base class for all factor types."""
 import pandas as pd
 from abc import ABC, abstractmethod
 
 
-class BaseSignal(ABC):
-    """Abstract base class for all signals.
+class BaseFactor(ABC):
+    """Abstract base class for all factors.
 
-    A signal is a named, configured time series derived from price data
-    (via indicator functions) or any other source. Signals are consumed
+    A factor is a named, configured time series derived from price data
+    (via indicator functions) or any other source. Factors are consumed
     by the analysis layer.
     """
 
@@ -25,9 +25,9 @@ class BaseSignal(ABC):
         return None
 
     def format_value(self, value: float) -> str:
-        """Format a signal value for display."""
+        """Format a factor value for display."""
         return f"{value:.2f}"
 
     def is_applicable(self, ticker: str) -> bool:
-        """Check whether this signal applies to the given ticker."""
+        """Check whether this factor applies to the given ticker."""
         return True

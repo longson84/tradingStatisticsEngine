@@ -91,18 +91,18 @@ def calculate_np_stats(
 
 def get_detailed_current_status(
     price_series: pd.Series,
-    signal_series: pd.Series,
+    factor_series: pd.Series,
     np_events: Optional[List[NPEvent]] = None,
     qr_threshold: int = MIN_RECOVERY_DAYS_THRESHOLD,
 ) -> dict:
     """Derive current-status fields from the NP event tree."""
     current_price = float(price_series.iloc[-1])
-    current_signal = float(signal_series.iloc[-1])
-    rarity = (signal_series < current_signal).mean() * 100
+    current_factor = float(factor_series.iloc[-1])
+    rarity = (factor_series < current_factor).mean() * 100
 
     result = {
         "current_price": current_price,
-        "current_signal": current_signal,
+        "current_factor": current_factor,
         "rarity": rarity,
         "ref_percentile": None,
         "entry_date": None,
@@ -115,12 +115,12 @@ def get_detailed_current_status(
         "days_in_current_zone": None,
     }
 
-    clean_signals = signal_series.dropna()
-    threshold_map = {p: float(np.percentile(clean_signals, p)) for p in sorted(CALCULATE_PERCENTILES)}
+    clean_factors = factor_series.dropna()
+    threshold_map = {p: float(np.percentile(clean_factors, p)) for p in sorted(CALCULATE_PERCENTILES)}
 
     current_zone_p = None
     for p in sorted(CALCULATE_PERCENTILES):
-        if current_signal <= threshold_map[p]:
+        if current_factor <= threshold_map[p]:
             current_zone_p = p
             break
 
@@ -130,7 +130,7 @@ def get_detailed_current_status(
     result["ref_percentile"] = current_zone_p
 
     if np_events is None:
-        np_events = calculate_np_events_tree(price_series, signal_series, CALCULATE_PERCENTILES)
+        np_events = calculate_np_events_tree(price_series, factor_series, CALCULATE_PERCENTILES)
 
     events_at_p = [e for e in np_events if e.percentile == current_zone_p]
     mae_values = [

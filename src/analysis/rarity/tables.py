@@ -10,7 +10,7 @@ from src.analysis.rarity.events import EventStatus, NPEvent
 
 def build_np_stats_summary_table(
     np_stats: dict,
-    signal,
+    factor,
     current_status: dict,
 ) -> tuple[pd.DataFrame, int | None]:
     """Build the NP statistics summary table.
@@ -30,7 +30,7 @@ def build_np_stats_summary_table(
             continue
         row = {
             "PCT": f"{p}%",
-            "Signal": signal.format_value(stat["threshold"]),
+            "Factor": factor.format_value(stat["threshold"]),
             "Count": stat["count"],
             "QR": stat["qr"],
             "QR %": fmt_pct(stat['qr_pct']),

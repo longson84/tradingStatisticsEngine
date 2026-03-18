@@ -17,7 +17,7 @@ class CurrentPosition:
     current_price: float
     days_held: Optional[int]
     unrealized_pnl_pct: Optional[float]
-    current_signal_value: float
+    crossover_value: float
     regime: Literal["above_zero", "below_zero"]
 
 
@@ -28,9 +28,9 @@ def get_current_position(
     sell_signals: pd.Series,
 ) -> CurrentPosition:
     current_price = float(price.iloc[-1])
-    current_signal = float(crossover_series.iloc[-1])
+    crossover_value = float(crossover_series.iloc[-1])
     regime: Literal["above_zero", "below_zero"] = (
-        "above_zero" if current_signal >= 0 else "below_zero"
+        "above_zero" if crossover_value >= 0 else "below_zero"
     )
 
     trades = build_trades(price, buy_signals, sell_signals)
@@ -46,7 +46,7 @@ def get_current_position(
             current_price=current_price,
             days_held=days_held,
             unrealized_pnl_pct=unrealized,
-            current_signal_value=current_signal,
+            crossover_value=crossover_value,
             regime=regime,
         )
     else:
@@ -57,6 +57,6 @@ def get_current_position(
             current_price=current_price,
             days_held=None,
             unrealized_pnl_pct=None,
-            current_signal_value=current_signal,
+            crossover_value=crossover_value,
             regime=regime,
         )

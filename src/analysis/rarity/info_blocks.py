@@ -3,12 +3,12 @@ from src.shared.constants import DATE_FORMAT_DISPLAY
 from src.shared.fmt import fmt_pct, fmt_price
 
 
-def build_current_status_lines(current_status: dict, signal, add_info: dict | None) -> list[str]:
+def build_current_status_lines(current_status: dict, factor, add_info: dict | None) -> list[str]:
     """Build the current status section lines for the rarity report."""
     lines = ["### Trạng thái hiện tại"]
     lines.append(f"1. Giá hiện tại: {fmt_price(current_status['current_price'])}")
-    display_current_signal = signal.format_value(current_status['current_signal'])
-    lines.append(f"2. {signal.name} hiện tại: {display_current_signal}")
+    display_current_factor = factor.format_value(current_status['current_factor'])
+    lines.append(f"2. {factor.name} hiện tại: {display_current_factor}")
     lines.append(f"3. Độ hiếm hiện tại: {fmt_pct(current_status['rarity'])}")
 
     next_idx = 4

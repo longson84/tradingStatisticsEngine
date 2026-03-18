@@ -9,7 +9,7 @@ class PackResult:
     ticker: str
     pack_name: str
     price_series: pd.Series
-    signal_series: Optional[pd.Series] = None
+    factor_series: Optional[pd.Series] = None
     data: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
 

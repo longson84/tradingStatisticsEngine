@@ -1,11 +1,11 @@
-"""AHR999 signal — BTC-USD only."""
+"""AHR999 factor — BTC-USD only."""
 import pandas as pd
 
-from src.signals.base import BaseSignal
+from src.factors.base import BaseFactor
 from src.indicators.ahr999 import ahr999
 
 
-class AHR999Signal(BaseSignal):
+class AHR999Factor(BaseFactor):
     def __init__(self):
         self._name = "AHR999"
 

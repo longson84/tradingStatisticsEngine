@@ -10,11 +10,11 @@ from src.analysis.rarity.tables import build_np_stats_summary_table
 
 
 class ReportGenerator:
-    def __init__(self, ticker, signal, price, signal_series, qr_threshold: int = 5):
+    def __init__(self, ticker, factor, price, factor_series, qr_threshold: int = 5):
         self.ticker = ticker
-        self.signal = signal
+        self.factor = factor
         self.price = price
-        self.signal_series = signal_series
+        self.factor_series = factor_series
         self.qr_threshold = max(2, int(qr_threshold))
         self.np_events = []
         self.np_stats = {}
@@ -29,20 +29,20 @@ class ReportGenerator:
     def calculate(self):
         self.np_events = calculate_np_events_tree(
             self.price['Close'],
-            self.signal_series,
+            self.factor_series,
             percentiles=CALCULATE_PERCENTILES
         )
 
         self.np_stats = calculate_np_stats(self.np_events, self.price, self.qr_threshold)
 
         self.current_status = get_detailed_current_status(
-            self.price['Close'], self.signal_series, self.np_events, self.qr_threshold
+            self.price['Close'], self.factor_series, self.np_events, self.qr_threshold
         )
 
-        self.add_info = self.signal.get_additional_info(self.price)
+        self.add_info = self.factor.get_additional_info(self.price)
 
-        self.np_stats, self.highlight_p = build_np_stats_summary_table(self.np_stats, self.signal, self.current_status)
+        self.np_stats, self.highlight_p = build_np_stats_summary_table(self.np_stats, self.factor, self.current_status)
 
         self.time_range_lines = build_report_time_range_info(self.price['Close'])
-        self.status_lines = build_current_status_lines(self.current_status, self.signal, self.add_info)
+        self.status_lines = build_current_status_lines(self.current_status, self.factor, self.add_info)
         self.report_text = "\n".join(self.time_range_lines + self.status_lines)

@@ -6,10 +6,6 @@ from src.strategy.price_vs_ma import PriceVsMAStrategy
 from src.strategy.ma_crossover import MACrossoverStrategy
 from src.strategy.bollinger_bands import BollingerBandStrategy
 from src.strategy.donchian_breakout import DonchianBreakoutStrategy
-from src.signals.distance_from_peak import DistanceFromPeakSignal
-from src.signals.ahr999 import AHR999Signal
-from src.signals.ma_ratio import MARatioSignal
-
 
 # ---------------------------------------------------------------------------
 # Strategy sidebar factories

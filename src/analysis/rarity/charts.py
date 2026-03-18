@@ -4,32 +4,32 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from src.signals.base import BaseSignal
+from src.factors.base import BaseFactor
 from src.shared.constants import PLOTLY_ACTIVE, PLOTLY_NEGATIVE, PLOTLY_POSITIVE, VISUALIZATION_THRESHOLDS
 
 _CHART_COLORS = [PLOTLY_POSITIVE, PLOTLY_ACTIVE, PLOTLY_NEGATIVE]
 
 
-def create_price_signal_chart(
+def create_price_factor_chart(
     ticker: str,
     df: pd.DataFrame,
-    signal_series: pd.Series,
-    signal: BaseSignal,
+    factor_series: pd.Series,
+    factor: BaseFactor,
 ) -> go.Figure:
-    """Create price + signal dual-panel chart with rarity-coloured overlays."""
-    df_aligned = df.loc[signal_series.index]
+    """Create price + factor dual-panel chart with rarity-coloured overlays."""
+    df_aligned = df.loc[factor_series.index]
 
     threshold_percents = VISUALIZATION_THRESHOLDS
     colors = _CHART_COLORS
 
-    threshold_values = [np.percentile(signal_series, p * 100) for p in threshold_percents]
+    threshold_values = [np.percentile(factor_series, p * 100) for p in threshold_percents]
 
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.05,
         row_heights=[0.6, 0.4],
-        subplot_titles=(f"Price Chart - {ticker}", f"Signal: {signal.name}")
+        subplot_titles=(f"Price Chart - {ticker}", f"Factor: {factor.name}")
     )
 
     fig.add_trace(
@@ -53,7 +53,7 @@ def create_price_signal_chart(
         color = colors[i]
         label = f"Rarity Top {threshold_percents[i]*100:.0f}%"
 
-        mask = signal_series <= thresh_val
+        mask = factor_series <= thresh_val
 
         filtered_close = df_aligned['Close'].copy()
         filtered_close[~mask] = np.nan
@@ -73,11 +73,11 @@ def create_price_signal_chart(
 
     fig.add_trace(
         go.Scatter(
-            x=signal_series.index, y=signal_series,
+            x=factor_series.index, y=factor_series,
             mode='lines',
-            name='Signal Value',
+            name='Factor Value',
             line=dict(color='blue', width=1.5),
-            hovertemplate='Signal: %{y:.4f}<extra></extra>'
+            hovertemplate='Factor: %{y:.4f}<extra></extra>'
         ),
         row=2, col=1
     )
@@ -97,16 +97,16 @@ def create_price_signal_chart(
     return fig
 
 
-def create_signal_distribution_chart(
-    signal_series: pd.Series,
+def create_factor_distribution_chart(
+    factor_series: pd.Series,
     current_value: float,
-    signal_name: str,
+    factor_name: str,
 ) -> go.Figure:
-    """Create signal distribution histogram with current value marker."""
+    """Create factor distribution histogram with current value marker."""
     fig = go.Figure()
 
     fig.add_trace(go.Histogram(
-        x=signal_series,
+        x=factor_series,
         name='Phân phối lịch sử',
         nbinsx=100,
         marker_color='lightblue',
@@ -123,7 +123,7 @@ def create_signal_distribution_chart(
     )
 
     fig.update_layout(
-        xaxis_title="Giá trị Tín hiệu",
+        xaxis_title="Giá trị Factor",
         yaxis_title="Số lần xuất hiện (Ngày)",
         height=400,
         showlegend=False,
