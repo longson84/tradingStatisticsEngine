@@ -1,15 +1,15 @@
-"""MA Ratio indicator (Price / MA - 1)."""
+"""MA Ratio signal (Price / MA - 1)."""
 from typing import Literal
 
 import pandas as pd
 
-from src.indicators.base import BaseIndicator
-from src.indicators.functions.ma import moving_average
+from src.signals.base import BaseSignal
+from src.indicators.ma import moving_average
 from src.shared.constants import DATE_FORMAT_DISPLAY
 from src.shared.fmt import fmt_pct, fmt_price
 
 
-class MARatioIndicator(BaseIndicator):
+class MARatioSignal(BaseSignal):
     def __init__(self, ma_type: Literal["SMA", "EMA", "WMA"], length: int):
         self.ma_type = ma_type
         self.length = length

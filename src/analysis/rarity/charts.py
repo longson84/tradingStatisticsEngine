@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from src.indicators.base import BaseIndicator
+from src.signals.base import BaseSignal
 from src.shared.constants import PLOTLY_ACTIVE, PLOTLY_NEGATIVE, PLOTLY_POSITIVE, VISUALIZATION_THRESHOLDS
 
 
@@ -12,7 +12,7 @@ def create_price_signal_chart(
     ticker: str,
     df: pd.DataFrame,
     signal_series: pd.Series,
-    indicator: BaseIndicator,
+    indicator: BaseSignal,
 ) -> go.Figure:
     """Create price + signal dual-panel chart with rarity-coloured overlays."""
     df_aligned = df.loc[signal_series.index]

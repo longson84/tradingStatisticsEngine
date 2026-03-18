@@ -1,13 +1,13 @@
-"""Distance from Peak indicator."""
+"""Distance from Peak signal."""
 import pandas as pd
 
-from src.indicators.base import BaseIndicator
-from src.indicators.functions.peak import distance_from_peak
+from src.signals.base import BaseSignal
+from src.indicators.peak import distance_from_peak
 from src.shared.constants import DATE_FORMAT_DISPLAY
 from src.shared.fmt import fmt_pct, fmt_price
 
 
-class DistanceFromPeakIndicator(BaseIndicator):
+class DistanceFromPeakSignal(BaseSignal):
     def __init__(self, window_days: int = None):
         self.window = window_days
         if window_days:

@@ -5,7 +5,7 @@ from typing import Tuple
 
 import pandas as pd
 
-from src.indicators.functions.ma import moving_average
+from src.indicators.ma import moving_average
 
 
 def bollinger_bands(

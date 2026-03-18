@@ -9,10 +9,10 @@ from src.shared.base import AnalysisPack, AnalysisResult
 from src.shared.constants import COLOR_ACTIVE, COLOR_GROUP, DATE_FORMAT_DISPLAY
 from src.shared.fmt import fmt_pct, fmt_price
 
-from src.indicators.base import BaseIndicator
-from src.indicators.definitions.ahr999 import AHR999Indicator
-from src.indicators.definitions.distance_from_peak import DistanceFromPeakIndicator
-from src.indicators.definitions.ma_ratio import MARatioIndicator
+from src.signals.base import BaseSignal
+from src.signals.ahr999 import AHR999Signal
+from src.signals.distance_from_peak import DistanceFromPeakSignal
+from src.signals.ma_ratio import MARatioSignal
 
 from src.analysis.rarity.events import EventStatus, NPEvent
 from src.analysis.rarity.charts import create_price_signal_chart, create_distribution_chart
@@ -34,11 +34,11 @@ class RarityAnalysisPack(AnalysisPack):
         tickers = sidebar_ticker_input(data_source, "signal", multi=True)
 
         base_signals = [
-            DistanceFromPeakIndicator(200),
-            DistanceFromPeakIndicator(150),
-            DistanceFromPeakIndicator(100),
-            DistanceFromPeakIndicator(50),
-            AHR999Indicator(),
+            DistanceFromPeakSignal(200),
+            DistanceFromPeakSignal(150),
+            DistanceFromPeakSignal(100),
+            DistanceFromPeakSignal(50),
+            AHR999Signal(),
         ]
         signal_map: Dict[str, Any] = {s.name: s for s in base_signals}
         signal_map["Khoảng cách từ đỉnh (Tùy chỉnh)"] = "CUSTOM_DIST"
@@ -67,12 +67,12 @@ class RarityAnalysisPack(AnalysisPack):
             window = st.sidebar.number_input(
                 "Window (days):", min_value=10, value=200, step=10, key="signal_custom_window"
             )
-            final_signal = DistanceFromPeakIndicator(int(window))
+            final_signal = DistanceFromPeakSignal(int(window))
         elif selected_name and signal_map[selected_name] == "CUSTOM_MA":
             col1, col2 = st.sidebar.columns(2)
             ma_type = col1.selectbox("MA Type:", ["SMA", "EMA", "WMA"], key="signal_ma_type")
             ma_len = col2.number_input("Length:", min_value=2, value=200, step=1, key="signal_ma_len")
-            final_signal = MARatioIndicator(ma_type, int(ma_len))
+            final_signal = MARatioSignal(ma_type, int(ma_len))
         elif selected_name:
             final_signal = signal_map[selected_name]
 
@@ -95,7 +95,7 @@ class RarityAnalysisPack(AnalysisPack):
         }
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> AnalysisResult:
-        indicator: BaseIndicator = config["signal"]
+        indicator: BaseSignal = config["signal"]
 
         try:
             signal_series = indicator.calculate(df)
@@ -217,7 +217,7 @@ class RarityAnalysisPack(AnalysisPack):
         report_text: str = result.data["report_text"]
         fig = result.data["fig"]
         fig_dist = result.data["fig_dist"]
-        signal: BaseIndicator = result.data["signal"]
+        signal: BaseSignal = result.data["signal"]
         np_events: List[NPEvent] = result.data.get("np_events", [])
         qr_threshold: int = result.data.get("qr_threshold", 5)
         display_report_text: str = result.data.get("display_report_text", report_text)

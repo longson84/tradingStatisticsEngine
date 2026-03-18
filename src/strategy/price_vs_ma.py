@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
-from src.indicators.functions.ma import moving_average
+from src.indicators.ma import moving_average
 from src.strategy.signal_utils import generate_trade_signals
 from src.strategy.base import BaseStrategy
 

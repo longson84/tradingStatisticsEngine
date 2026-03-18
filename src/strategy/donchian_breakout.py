@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from src.indicators.functions.donchian import donchian_channels
+from src.indicators.donchian import donchian_channels
 from src.strategy.base import BaseStrategy
 
 
