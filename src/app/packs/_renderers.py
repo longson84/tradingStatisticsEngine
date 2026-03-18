@@ -4,7 +4,7 @@ from typing import Sequence
 import pandas as pd
 import streamlit as st
 
-from src.shared.constants import ANNUAL_PERCENTILES, PLOTLY_NEGATIVE, PLOTLY_POSITIVE
+from src.shared.constants import ANNUAL_PERCENTILES
 from src.shared.fmt import fmt_pct
 from src.backtest.utils import build_bucket_breakdown, build_percentile_breakdown
 from src.backtest.monthly import (

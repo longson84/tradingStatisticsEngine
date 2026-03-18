@@ -53,7 +53,6 @@ class RarityAnalysisPack(BasePack):
                     "qr_threshold": report_gen.qr_threshold,
                     "current_status": report_gen.current_status,
                     "np_stats": report_gen.np_stats,
-                    "highlight_p": report_gen.highlight_p,
                 },
             )
         except Exception as e:
