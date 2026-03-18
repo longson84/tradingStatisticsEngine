@@ -23,6 +23,7 @@ from src.app.styling import style_monthly_returns_table, style_monthly_stats_tab
 
 def render_performance_summary(perf, max_drawdown: float = 0.0) -> None:
     """Render strategy performance metrics (win rate, returns, trade counts, etc.)."""
+    st.subheader("Performance Summary")
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Total Return", fmt_pct(perf.total_return))
     m2.metric("Win Rate", fmt_pct(perf.win_rate))
@@ -97,7 +98,7 @@ def render_monthly_returns_tables(
     ticker: str,
     trades: list = None,
 ) -> None:
-    st.subheader("📅 Monthly Returns — Strategy Position")
+    st.subheader("Monthly Returns — Strategy Position")
     strat_df = build_monthly_returns_df(strat_equity)
     if strat_df.empty:
         st.info("Not enough data for monthly breakdown.")
@@ -105,7 +106,7 @@ def render_monthly_returns_tables(
         st.dataframe(style_monthly_returns_table(strat_df), hide_index=True,
                      use_container_width=True, height=38 + len(strat_df) * 35)
 
-    st.subheader("📅 Monthly Returns — Buy & Hold Position")
+    st.subheader("Monthly Returns — Buy & Hold Position")
     bh_df = build_monthly_returns_df(bh_equity)
     if bh_df.empty:
         st.info("Not enough data for monthly breakdown.")
@@ -115,26 +116,24 @@ def render_monthly_returns_tables(
 
     st.divider()
 
-    st.subheader("📊 Monthly Statistics — Strategy Position")
+    st.subheader("Monthly Statistics — Strategy Position")
     strat_stats = build_monthly_stats_df(strat_equity)
     st.dataframe(style_monthly_stats_table(strat_stats), hide_index=True,
                  use_container_width=True, height=38 + 12 * 35)
 
-    st.subheader("📊 Monthly Statistics — Buy & Hold Position")
+    st.subheader("Monthly Statistics — Buy & Hold Position")
     bh_stats = build_monthly_stats_df(bh_equity)
     st.dataframe(style_monthly_stats_table(bh_stats), hide_index=True,
                  use_container_width=True, height=38 + 12 * 35)
 
     if trades:
         st.divider()
-        st.subheader("📊 Monthly Statistics — Return by Trade Entry Month")
-        st.caption("Percentile distribution of trade returns grouped by the month the position was opened.")
+        st.subheader("Monthly Statistics — Return by Trade Entry Month")
         entry_stats = build_trade_entry_month_stats_df(trades, "return_pct")
         st.dataframe(style_monthly_stats_table(entry_stats), hide_index=True,
                      use_container_width=True, height=38 + 12 * 35)
 
-        st.subheader("📊 Monthly Statistics — MFE by Trade Entry Month")
-        st.caption("Percentile distribution of Maximum Favorable Excursion grouped by the month the position was opened.")
+        st.subheader("Monthly Statistics — MFE by Trade Entry Month")
         mfe_stats = build_trade_entry_month_stats_df(trades, "mfe_pct")
         st.dataframe(style_monthly_stats_table(mfe_stats), hide_index=True,
                      use_container_width=True, height=38 + 12 * 35)
@@ -144,16 +143,19 @@ def render_monthly_returns_tables(
 # Deterioration / Strategy Health
 # ---------------------------------------------------------------------------
 
-def _render_annual_summary(closed: list, _ks: str) -> None:
-    st.subheader("Annual Trade Summary")
-    st.caption("Per-year trade statistics. Recent years at the top.")
+def render_strategy_health_section(trades, strat_equity: pd.Series, ticker: str, key_suffix: str = "") -> None:
+    closed = [
+        t for t in trades
+        if t.status == "closed" and t.return_pct is not None and t.entry_date is not None
+    ]
+
+    st.subheader("📉 Strategy Health Over Time")
 
     if len(closed) < 2:
         st.info("Not enough closed trades for annual breakdown.")
         return
 
     display_df = build_annual_summary_df(closed)
-
     pct_cols = (
         ["Total Return (%)", "Avg. Win (%)", "Avg. Loss (%)"]
         + [f"P{p}" for p in ANNUAL_PERCENTILES]
@@ -161,19 +163,3 @@ def _render_annual_summary(closed: list, _ks: str) -> None:
     styled = display_df.style.applymap(style_pct_cell, subset=pct_cols)
     st.dataframe(styled, hide_index=True, use_container_width=True,
                  height=38 + len(display_df) * 35)
-
-
-def render_deterioration_section(trades, strat_equity: pd.Series, ticker: str, key_suffix: str = "") -> None:
-    _ks = key_suffix or ticker
-    closed = [
-        t for t in trades
-        if t.status == "closed" and t.return_pct is not None and t.entry_date is not None
-    ]
-
-    st.subheader("📉 Strategy Health Over Time")
-    st.caption(
-        "These views help identify whether strategy performance is deteriorating. "
-        "Strong aggregate stats can mask recent weakness — check the most recent years and rolling windows."
-    )
-
-    _render_annual_summary(closed, _ks)

@@ -1,13 +1,13 @@
 """NP event detection, percentiles, and rarity analysis."""
 from src.analysis.rarity.events import NPEvent, EventStatus, calculate_np_events_tree
-from src.shared.stats import calculate_signal_percentiles
+from src.shared.stats import calculate_factor_percentiles
 from src.analysis.rarity.compute import get_detailed_current_status
 
 __all__ = [
     "NPEvent",
     "EventStatus",
     "calculate_np_events_tree",
-    "calculate_signal_percentiles",
+    "calculate_factor_percentiles",
     "get_detailed_current_status",
 ]
 

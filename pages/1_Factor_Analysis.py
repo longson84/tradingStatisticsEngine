@@ -3,30 +3,30 @@ from src.app.data_loader import load_data
 from src.app.packs import RarityAnalysisPack
 
 st.set_page_config(
-    page_title="Signal Analysis",
+    page_title="Factor Analysis",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("📈 Signal Analysis")
-st.markdown("Rarity zones, percentile analysis, and drawdown statistics for trading signals.")
+st.title("📈 Factor Analysis")
+st.markdown("Rarity zones, percentile analysis, and drawdown statistics for trading factors.")
 
 pack = RarityAnalysisPack()
 config = pack.render_sidebar()
 
-if st.sidebar.button("🚀 Analyse", type="primary", key="signal_run_btn") or st.session_state.get(
-    "signal_submitted"
+if st.sidebar.button("🚀 Analyse", type="primary", key="factor_run_btn") or st.session_state.get(
+    "factor_submitted"
 ):
-    st.session_state["signal_submitted"] = True
+    st.session_state["factor_submitted"] = True
 
     tickers = config.get("tickers", [])
-    signal = config.get("signal")
+    factor = config.get("factor")
 
     if not tickers:
         st.error("Please enter at least one ticker.")
-    elif not signal:
-        st.error("Please select a valid signal.")
+    elif not factor:
+        st.error("Please select a valid factor.")
     else:
         progress = st.progress(0)
         status = st.empty()

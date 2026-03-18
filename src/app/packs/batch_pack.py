@@ -15,6 +15,8 @@ from src.shared.fmt import fmt_capture, fmt_pct
 from src.app.styling import style_capture, style_positive_negative
 from src.backtest.utils import compute_summary_percentiles
 from src.app.packs.position_pack import PositionPack
+from src.app.strategy_sidebar_factories import strategy_backtest_sidebar
+from src.app.strategy_compute import compute_ticker_core
 
 
 # ---------------------------------------------------------------------------
@@ -38,16 +40,16 @@ class BatchPositionPack(PositionPack):
         return "Batch Backtest"
 
     def render_sidebar(self) -> Dict[str, Any]:
-        return self.render_strategy_sidebar(key_prefix="batch", header="Batch Backtest")
+        return strategy_backtest_sidebar(key_prefix="batch", header="Batch Backtest")
 
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> PackResult:
         try:
-            core = self._compute_ticker_core(ticker, df, config)
+            strategy = config["strategy"]
+            core = compute_ticker_core(df, strategy, strategy.name, config.get("from_date"))
             return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
                 price_series=core["price"],
-                signal_series=core["crossover_series"],
                 data=core,
             )
         except Exception as e:
@@ -55,7 +57,6 @@ class BatchPositionPack(PositionPack):
                 ticker=ticker,
                 pack_name=self.pack_name,
                 price_series=df["Close"] if "Close" in df.columns else pd.Series(dtype=float),
-                signal_series=pd.Series(dtype=float),
                 error=str(e),
             )
 

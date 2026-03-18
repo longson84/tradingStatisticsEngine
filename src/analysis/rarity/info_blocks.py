@@ -3,8 +3,8 @@ from src.shared.constants import DATE_FORMAT_DISPLAY
 from src.shared.fmt import fmt_pct, fmt_price
 
 
-def build_current_status_lines(current_status: dict, factor, add_info: dict | None) -> list[str]:
-    """Build the current status section lines for the rarity report."""
+def build_current_status_lines(current_status: dict, factor, add_info: dict | None) -> str:
+    """Build the current status section as a markdown string. Pass directly to st.markdown()."""
     lines = ["### Trạng thái hiện tại"]
     lines.append(f"1. Giá hiện tại: {fmt_price(current_status['current_price'])}")
     display_current_factor = factor.format_value(current_status['current_factor'])
@@ -37,4 +37,6 @@ def build_current_status_lines(current_status: dict, factor, add_info: dict | No
         lines.append(f"{next_idx}. Giá có thể giảm đến {fmt_price(current_status['target_price'])}, {dd_from_curr_display}, Max DD: {fmt_pct(max_dd_display)}")
     else:
         lines.append(f"{next_idx}. Trạng thái: An toàn (Chưa vào vùng rủi ro cao)")
-    return lines
+    
+    
+    return "\n".join(lines)

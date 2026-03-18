@@ -5,7 +5,8 @@ import pandas as pd
 import streamlit as st
 
 from src.shared.base import BasePack, PackResult
-from src.shared.fmt import fmt_pct, fmt_price
+
+from src.shared.general_info_blocks import build_report_time_range_info
 
 from src.factors.base import BaseFactor
 
@@ -50,7 +51,7 @@ class RarityAnalysisPack(BasePack):
                     "factor": factor,
                     "np_events": report_gen.np_events,
                     "qr_threshold": report_gen.qr_threshold,
-                    "report_text": report_gen.report_text,
+                    "current_status": report_gen.current_status,
                     "np_stats": report_gen.np_stats,
                     "highlight_p": report_gen.highlight_p,
                 },
@@ -68,18 +69,29 @@ class RarityAnalysisPack(BasePack):
             st.error(f"❌ [{result.ticker}] {result.error}")
             return
 
+
         price_factor_chart = result.data["price_factor_chart"]
         factor_distribution_chart = result.data["factor_distribution_chart"]
         np_events: List[NPEvent] = result.data.get("np_events", [])
         qr_threshold: int = result.data.get("qr_threshold", 5)
-        report_text: str = result.data.get("report_text", "")
+        current_status: str = result.data.get("current_status")
+        
+        time_range = build_report_time_range_info(result.price_series)
+
         stats_df: pd.DataFrame = result.data.get("np_stats", pd.DataFrame())
 
         with st.expander(f"📊 Kết quả phân tích: {result.ticker}", expanded=True):
+            
+            # the statistics table of the NP events
             render_np_stats_table(stats_df)
 
-            st.markdown(report_text, unsafe_allow_html=True)
+            # the time range of the analysis
+            st.markdown(time_range, unsafe_allow_html=True)
 
+            # the current status of the factor
+            st.markdown(current_status)
+
+            # the event tree of the NP events
             render_event_tree(np_events, qr_threshold)
 
             plot_chart(factor_distribution_chart)

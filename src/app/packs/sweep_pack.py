@@ -28,8 +28,9 @@ from src.backtest.charts import (
 
 from src.strategy.registry import STRATEGY_NAMES
 from src.app.packs.position_pack import PositionPack
+from src.app.strategy_compute import compute_ticker_core
 from src.app.packs._renderers import (
-    render_deterioration_section,
+    render_strategy_health_section,
     render_distribution,
     render_monthly_returns_tables,
     render_performance_summary,
@@ -77,8 +78,7 @@ class ParameterSweepPack(PositionPack):
 
             strategy = build_from_sweep_config(config["strategy_type"], config, length)
             label = sweep_label(config["strategy_type"], config, length)
-            core_config = {**config, "strategy": strategy}
-            core = self._compute_ticker_core(config["ticker"], df, core_config)
+            core = compute_ticker_core(df, strategy, strategy.name, config.get("from_date"))
             results.append((length, label, core))
 
         return results, skipped
@@ -100,7 +100,6 @@ class ParameterSweepPack(PositionPack):
             perf = core["performance"]
             trades = core["trades"]
 
-            st.markdown("**Performance Summary**")
             render_performance_summary(perf, core["strat_max_drawdown"])
 
             st.divider()
@@ -174,7 +173,7 @@ class ParameterSweepPack(PositionPack):
 
             st.divider()
 
-            render_deterioration_section(trades, strat_equity, ticker, key_suffix=f"sweep_{length}")
+            render_strategy_health_section(trades, strat_equity, ticker, key_suffix=f"sweep_{length}")
 
     def render_sweep_results(
         self,

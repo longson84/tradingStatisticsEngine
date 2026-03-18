@@ -1,4 +1,6 @@
 """Strategy sidebar factories — extracted from strategy classes. All Streamlit code."""
+from typing import Any, Dict
+
 import numpy as np
 import streamlit as st
 
@@ -6,6 +8,7 @@ from src.strategy.price_vs_ma import PriceVsMAStrategy
 from src.strategy.ma_crossover import MACrossoverStrategy
 from src.strategy.bollinger_bands import BollingerBandStrategy
 from src.strategy.donchian_breakout import DonchianBreakoutStrategy
+from src.app.ui import sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 # ---------------------------------------------------------------------------
 # Strategy sidebar factories
@@ -223,3 +226,31 @@ def should_skip_sweep_length(strategy_type: str, config: dict, length) -> bool:
             return length >= config["fixed_length"]
         return config["fixed_length"] >= length
     return False
+
+
+# ---------------------------------------------------------------------------
+# Pack sidebar factory
+# ---------------------------------------------------------------------------
+
+def strategy_backtest_sidebar(key_prefix: str, header: str) -> Dict[str, Any]:
+    """Render the strategy backtest sidebar and return the config dict."""
+    st.sidebar.header(header)
+
+    data_source = sidebar_data_source(key_prefix)
+    tickers = sidebar_ticker_input(data_source, key_prefix, multi=True)
+
+    strategy_type = st.sidebar.selectbox(
+        "Strategy Type:", list(SIDEBAR_REGISTRY.keys()), key=f"{key_prefix}_type",
+    )
+    strategy = SIDEBAR_REGISTRY[strategy_type](key_prefix)
+
+    from_date = sidebar_from_date(key_prefix)
+
+    return {
+        "tickers": tickers,
+        "strategy": strategy,
+        "from_date": from_date,
+        "data_source": data_source,
+        "vnstock_source": "KBS",
+        "symbol_group": "— type manually —",
+    }

@@ -2,7 +2,7 @@
 import pandas as pd
 
 from src.shared.constants import CALCULATE_PERCENTILES
-from src.shared.report_blocks import build_report_time_range_info
+
 from src.analysis.rarity.events import calculate_np_events_tree
 from src.analysis.rarity.compute import get_detailed_current_status, calculate_np_stats
 from src.analysis.rarity.info_blocks import build_current_status_lines
@@ -23,7 +23,7 @@ class ReportGenerator:
         self.np_stats = None
         self.highlight_p = None
         self.time_range_lines = []
-        self.status_lines = []
+        self.current_status = ""
         self.report_text = ""
 
     def calculate(self):
@@ -43,6 +43,4 @@ class ReportGenerator:
 
         self.np_stats, self.highlight_p = build_np_stats_summary_table(self.np_stats, self.factor, self.current_status)
 
-        self.time_range_lines = build_report_time_range_info(self.price['Close'])
-        self.status_lines = build_current_status_lines(self.current_status, self.factor, self.add_info)
-        self.report_text = "\n".join(self.time_range_lines + self.status_lines)
+        self.current_status = build_current_status_lines(self.current_status, self.factor, self.add_info)
