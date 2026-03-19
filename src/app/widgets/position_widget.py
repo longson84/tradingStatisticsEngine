@@ -2,7 +2,7 @@
 import pandas as pd
 import streamlit as st
 
-from src.shared.constants import COLOR_ACTIVE, NONNEG_BUCKETS, RETURN_BUCKETS
+from src.shared.constants import COLOR_ACTIVE, DISTRIBUTION_PERCENTILES, NONNEG_BUCKETS, RETURN_BUCKETS
 from src.shared.fmt import fmt_capture, fmt_pct
 
 from src.backtest.charts import build_equity_chart
@@ -65,15 +65,15 @@ def render_distributions(trades) -> None:
     winners = [t for t in closed if t.return_pct > 0]
 
     st.subheader("📊 Return Distribution")
-    render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, bucket_header="Return buckets")
+    render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, DISTRIBUTION_PERCENTILES, bucket_header="Return buckets")
 
     st.subheader("📉 MAE of Winning Trades")
     st.caption("How far winning trades drew down before recovering.")
-    render_distribution([t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", NONNEG_BUCKETS)
+    render_distribution([t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", NONNEG_BUCKETS, DISTRIBUTION_PERCENTILES)
 
     st.subheader("📈 MFE of Winning Trades")
     st.caption("Peak unrealized gain reached during winning trades.")
-    render_distribution([t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", NONNEG_BUCKETS)
+    render_distribution([t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", NONNEG_BUCKETS, DISTRIBUTION_PERCENTILES)
 
 
 def render_equity_curve(ticker, strat_equity, bh_equity, strategy_label) -> None:

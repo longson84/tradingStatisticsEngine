@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import BasePack, PackResult
+from src.shared.base import BaseAnalysisPack, PackResult
 
 from src.shared.general_info_blocks import build_report_time_range_info
 
@@ -19,7 +19,7 @@ from src.app.analysis_sidebar_factories import rarity_analysis_sidebar
 from src.app.widgets.rarity_widget import render_np_stats_table, render_event_tree
 
 
-class RarityAnalysisPack(BasePack):
+class RarityAnalysisPack(BaseAnalysisPack):
     @property
     def pack_name(self) -> str:
         return "Factor Analysis"

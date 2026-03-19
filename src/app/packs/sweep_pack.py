@@ -5,19 +5,17 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 import streamlit as st
 
-from src.shared.base import PackResult
+from src.shared.base import BaseSweepPack, PackResult
 from src.shared.constants import (
-    COLOR_ACTIVE,
     DATE_FORMAT_DISPLAY,
+    DISTRIBUTION_PERCENTILES,
     NONNEG_BUCKETS,
     RETURN_BUCKETS,
     SUMMARY_PERCENTILES,
 )
-from src.shared.fmt import fmt_capture, fmt_equity, fmt_pct, fmt_price
+from src.shared.fmt import fmt_capture, fmt_pct
 from src.app.styling import style_capture, style_positive_negative
 from src.backtest.utils import compute_summary_percentiles
-from src.backtest.tables import _compute_equity_by_trade
-from src.shared.constants import INITIAL_CAPITAL
 from src.backtest.charts import (
     build_boxplot_chart,
     build_drawdown_chart,
@@ -27,7 +25,6 @@ from src.backtest.charts import (
 )
 
 from src.strategy.registry import STRATEGY_NAMES
-from src.app.packs.position_pack import PositionPack
 from src.app.strategy_compute import compute_ticker_core
 from src.app.packs._renderers import (
     render_strategy_health_section,
@@ -35,6 +32,7 @@ from src.app.packs._renderers import (
     render_monthly_returns_tables,
     render_performance_summary,
 )
+from src.app.widgets.position_widget import render_trade_log
 from src.app.strategy_sidebar_factories import (
     SWEEP_SIDEBAR_REGISTRY,
     build_from_sweep_config,
@@ -44,7 +42,7 @@ from src.app.strategy_sidebar_factories import (
 from src.app.ui import plot_chart, sidebar_data_source, sidebar_from_date, sidebar_ticker_input
 
 
-class ParameterSweepPack(PositionPack):
+class ParameterSweepPack(BaseSweepPack):
     @property
     def pack_name(self) -> str:
         return "Parameter Sweep"
@@ -83,12 +81,6 @@ class ParameterSweepPack(PositionPack):
 
         return results, skipped
 
-    def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> PackResult:
-        pass  # Not used — computation via run_sweep()
-
-    def render_results(self, result: PackResult) -> None:
-        pass  # Not used — rendering via render_sweep_results()
-
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
@@ -104,65 +96,27 @@ class ParameterSweepPack(PositionPack):
 
             st.divider()
 
-            st.markdown("**Trade Log**")
-            if trades:
-                bh_eq = core["bh_equity"]
-                sorted_trades = sorted(trades, key=lambda x: x.entry_date, reverse=True)
-                equity_map = _compute_equity_by_trade(trades, INITIAL_CAPITAL)
-                trade_rows = []
-                for t in sorted_trades:
-                    eq_close = equity_map.get(id(t))
-                    bh_close = (
-                        float(bh_eq.asof(pd.Timestamp(t.exit_date)))
-                        if t.exit_date is not None and bh_eq is not None
-                        else None
-                    )
-                    trade_rows.append({
-                        "Entry Date":      t.entry_date.strftime(DATE_FORMAT_DISPLAY),
-                        "Entry Price":     fmt_price(t.entry_price),
-                        "Exit Date":       t.exit_date.strftime(DATE_FORMAT_DISPLAY) if t.exit_date else "—",
-                        "Exit Price":      fmt_price(t.exit_price) if t.exit_price else "—",
-                        "Return %":        fmt_pct(t.return_pct) if t.return_pct is not None else "—",
-                        "Equity at Close": fmt_equity(eq_close) if eq_close is not None else "—",
-                        "B&H at Close":    fmt_equity(bh_close) if bh_close is not None else "—",
-                        "Holding":         t.holding_days,
-                        "Status":          t.status,
-                    })
-
-                trade_df = pd.DataFrame(trade_rows)
-                returns_numeric = [t.return_pct for t in sorted_trades]
-                statuses = [t.status for t in sorted_trades]
-
-                def _trade_row_style(row: pd.Series):
-                    if statuses[row.name] == "open":
-                        return [COLOR_ACTIVE] * len(row)
-                    return [style_positive_negative(returns_numeric[row.name])] * len(row)
-
-                styled_trades = trade_df.style.apply(_trade_row_style, axis=1)
-                st.dataframe(styled_trades, use_container_width=True, hide_index=True,
-                             height=38 + min(len(trade_df), 15) * 35)
-            else:
-                st.info("No trades generated.")
+            render_trade_log(trades, core["bh_equity"])
 
             st.divider()
 
             st.markdown("**Return Distribution**")
             closed = [t for t in trades if t.status == "closed" and t.return_pct is not None]
-            render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, bucket_header="Return buckets")
+            render_distribution([t.return_pct for t in closed], "Return", RETURN_BUCKETS, DISTRIBUTION_PERCENTILES, bucket_header="Return buckets")
 
             st.divider()
 
             winners = [t for t in trades if t.status == "closed" and t.return_pct is not None and t.return_pct > 0]
             st.markdown("**MAE of Winning Trades**")
             render_distribution(
-                [t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", NONNEG_BUCKETS
+                [t.mae_pct for t in winners if t.mae_pct is not None], "MAE %", NONNEG_BUCKETS, DISTRIBUTION_PERCENTILES
             )
 
             st.divider()
 
             st.markdown("**MFE of Winning Trades**")
             render_distribution(
-                [t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", NONNEG_BUCKETS
+                [t.mfe_pct for t in winners if t.mfe_pct is not None], "MFE %", NONNEG_BUCKETS, DISTRIBUTION_PERCENTILES
             )
 
             st.divider()

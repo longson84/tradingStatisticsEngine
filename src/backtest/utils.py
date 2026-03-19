@@ -10,7 +10,7 @@ from src.shared.fmt import fmt_pct
 def build_percentile_breakdown(
     values: list[float],
     label: str,
-    percentiles: Sequence[int] = (5, 10, 25, 50, 75, 80, 85, 90, 95),
+    percentiles: Sequence[int],
 ) -> list[dict[str, str]]:
     """Build percentile breakdown rows for display tables (includes Mean and Std Dev)."""
     rows = [{"Percentile": f"P{p}", label: fmt_pct(np.percentile(values, p))} for p in percentiles]

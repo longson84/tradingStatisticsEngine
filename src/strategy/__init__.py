@@ -6,8 +6,6 @@ from src.strategy.price_vs_ma import PriceVsMAStrategy
 from src.strategy.ma_crossover import MACrossoverStrategy
 from src.strategy.donchian_breakout import DonchianBreakoutStrategy
 from src.strategy.bollinger_bands import BollingerBandStrategy
-from src.strategy.buy_and_hold import BuyAndHoldStrategy
-
 __all__ = [
     "BaseStrategy",
     "STRATEGY_REGISTRY",
@@ -17,5 +15,4 @@ __all__ = [
     "MACrossoverStrategy",
     "DonchianBreakoutStrategy",
     "BollingerBandStrategy",
-    "BuyAndHoldStrategy",
 ]

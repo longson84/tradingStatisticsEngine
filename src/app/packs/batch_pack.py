@@ -61,7 +61,9 @@ class BatchPositionPack(PositionPack):
             )
 
     def render_results(self, result: PackResult) -> None:
-        pass  # Not used — batch rendering via render_batch_results()
+        raise NotImplementedError(
+            "BatchPositionPack renders via render_batch_results(), not render_results()."
+        )
 
     def render_batch_results(self, results: List[PackResult], strategy_label: str) -> None:
         st.subheader(f"📊 Batch Backtest — {strategy_label}")

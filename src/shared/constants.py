@@ -62,6 +62,7 @@ NONNEG_BUCKETS: list[tuple[str, float, float]] = [
 # ---------------------------------------------------------------------------
 
 SUMMARY_PERCENTILES: tuple[int, ...] = (90, 70, 50, 30, 10)
+DISTRIBUTION_PERCENTILES: tuple[int, ...] = (5, 10, 25, 50, 75, 80, 85, 90, 95)
 
 ANNUAL_PERCENTILES = [90, 80, 70, 60, 50, 40, 30, 20, 10]
 

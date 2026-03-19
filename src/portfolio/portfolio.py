@@ -1,4 +1,7 @@
-"""Portfolio dataclasses — wraps position results."""
+"""Portfolio dataclasses — wraps position results.
+
+Note: No page is wired to this module yet. See TODOS.md → TODO-001.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

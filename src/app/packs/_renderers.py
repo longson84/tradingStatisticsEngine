@@ -4,7 +4,7 @@ from typing import Sequence
 import pandas as pd
 import streamlit as st
 
-from src.shared.constants import ANNUAL_PERCENTILES
+from src.shared.constants import ANNUAL_PERCENTILES, DISTRIBUTION_PERCENTILES
 from src.shared.fmt import fmt_pct
 from src.backtest.utils import build_bucket_breakdown, build_percentile_breakdown
 from src.backtest.monthly import (
@@ -54,8 +54,8 @@ def _render_dataframe_table(rows: list[dict], title: str) -> None:
     )
 
 
-def _render_percentile_breakdown(values: list[float], metric_label: str) -> None:
-    pct_rows = build_percentile_breakdown(values, metric_label)
+def _render_percentile_breakdown(values: list[float], metric_label: str, percentiles: Sequence[int]) -> None:
+    pct_rows = build_percentile_breakdown(values, metric_label, percentiles)
     _render_dataframe_table(pct_rows, "Percentile breakdown")
 
 
@@ -73,8 +73,8 @@ def render_distribution(
     values: list[float],
     metric_label: str,
     buckets: Sequence[tuple[str, float, float]],
+    percentiles: Sequence[int],
     bucket_header: str = "Buckets",
-    yaxis_title: str = "# Trades",
 ) -> None:
     """Render distribution tables + histogram."""
     if len(values) < 2:
@@ -83,7 +83,7 @@ def render_distribution(
 
     col_stats, col_buckets = st.columns(2)
     with col_stats:
-        _render_percentile_breakdown(values, metric_label)
+        _render_percentile_breakdown(values, metric_label, percentiles)
     with col_buckets:
         _render_bucket_breakdown(values, metric_label, buckets, header=bucket_header)
 
