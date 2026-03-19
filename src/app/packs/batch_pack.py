@@ -16,8 +16,7 @@ from src.app.styling import style_capture, style_positive_negative
 from src.backtest.utils import compute_summary_percentiles
 from src.app.packs.position_pack import PositionPack
 from src.app.strategy_sidebar_factories import strategy_backtest_sidebar
-from src.app.strategy_compute import compute_ticker_core
-
+from src.app.strategy_compute import compute_strategy
 
 # ---------------------------------------------------------------------------
 # Module-level style helpers
@@ -45,7 +44,7 @@ class BatchPositionPack(PositionPack):
     def run_computation(self, ticker: str, df: pd.DataFrame, config: Dict) -> PackResult:
         try:
             strategy = config["strategy"]
-            core = compute_ticker_core(df, strategy, strategy.name, config.get("from_date"))
+            core = compute_strategy(df, strategy, strategy.name, config.get("from_date"))
             return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,

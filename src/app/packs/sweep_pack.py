@@ -25,7 +25,7 @@ from src.backtest.charts import (
 )
 
 from src.strategy.registry import STRATEGY_NAMES
-from src.app.strategy_compute import compute_ticker_core
+from src.app.strategy_compute import compute_strategy
 from src.app.packs._renderers import (
     render_strategy_health_section,
     render_distribution,
@@ -76,7 +76,7 @@ class ParameterSweepPack(BaseSweepPack):
 
             strategy = build_from_sweep_config(config["strategy_type"], config, length)
             label = sweep_label(config["strategy_type"], config, length)
-            core = compute_ticker_core(df, strategy, strategy.name, config.get("from_date"))
+            core = compute_strategy(df, strategy, strategy.name, config.get("from_date"))
             results.append((length, label, core))
 
         return results, skipped

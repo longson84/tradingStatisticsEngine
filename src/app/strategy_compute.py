@@ -16,7 +16,7 @@ from src.backtest import (
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def compute_ticker_core(
+def compute_strategy(
     price: pd.DataFrame,
     _strategy: BaseStrategy,
     strategy_key: str,

@@ -8,7 +8,7 @@ from src.shared.base import BasePack, PackResult
 from src.shared.general_info_blocks import build_report_time_range_info
 
 from src.app.strategy_sidebar_factories import strategy_backtest_sidebar
-from src.app.strategy_compute import compute_ticker_core
+from src.app.strategy_compute import compute_strategy
 from src.app.packs._renderers import (
     render_performance_summary,
     render_monthly_returns_tables,
@@ -34,12 +34,12 @@ class PositionPack(BasePack):
     def run_computation(self, ticker: str, price: pd.DataFrame, config: Dict) -> PackResult:
         try:
             strategy = config["strategy"]
-            core = compute_ticker_core(price, strategy, strategy.name, config.get("from_date"))
+            data = compute_strategy(price, strategy, strategy.name, config.get("from_date"))
             return PackResult(
                 ticker=ticker,
                 pack_name=self.pack_name,
-                price_series=core["price"],
-                data=core,
+                price_series=data["price"],
+                data=data,
             )
         except Exception as e:
             return PackResult(
@@ -55,7 +55,7 @@ class PositionPack(BasePack):
             return
 
         data = result.data
-        perf = data["performance"]
+        perf = result.data["performance"]
         pos = data["current_position"]
         trades = data["trades"]
         strat_equity = data.get("strat_equity")

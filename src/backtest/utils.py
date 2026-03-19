@@ -11,11 +11,17 @@ def build_percentile_breakdown(
     values: list[float],
     label: str,
     percentiles: Sequence[int],
-) -> list[dict[str, str]]:
-    """Build percentile breakdown rows for display tables (includes Mean and Std Dev)."""
-    rows = [{"Percentile": f"P{p}", label: fmt_pct(np.percentile(values, p))} for p in percentiles]
-    rows.append({"Percentile": "Mean", label: fmt_pct(np.mean(values))})
-    rows.append({"Percentile": "Std Dev", label: fmt_pct(np.std(values, ddof=1))})
+) -> list[dict]:
+    """Build percentile breakdown rows for display tables.
+
+    Each row shows the percentile value and the count of trades at or below
+    that threshold. A Total row is appended with the full trade count.
+    """
+    rows = []
+    for p in percentiles:
+        pct_val = np.percentile(values, p)
+        count = int(np.sum(np.array(values) <= pct_val))
+        rows.append({"Percentile": f"P{p}", label: fmt_pct(pct_val), "#Trades": count})
     return rows
 
 
