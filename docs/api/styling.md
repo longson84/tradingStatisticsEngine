@@ -1,3 +1,0 @@
-# Styling
-
-::: src.styling
