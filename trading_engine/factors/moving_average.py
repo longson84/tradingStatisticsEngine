@@ -1,7 +1,7 @@
 """Moving average factors — MA computation and price-to-MA ratio."""
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -91,3 +91,16 @@ class MovingAverageRatio:
             values=values,
             metadata={"ma_type": self.ma_type, "length": self.length},
         )
+
+    def context(self, prices: PriceFrame) -> dict[str, Any]:
+        """Return current MA value and its distance from price."""
+        close = prices.data["close"]
+        ma = compute_ma(close, self.ma_type, self.length)
+        ma_value = float(ma.iloc[-1])
+        current_price = float(close.iloc[-1])
+        return {
+            "ma_value": ma_value,
+            "ma_type": self.ma_type,
+            "length": self.length,
+            "distance_pct": round((current_price / ma_value - 1) * 100, 4) if ma_value else 0,
+        }

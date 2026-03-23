@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from trading_engine.types import FactorComputeError, InsufficientDataError
 
-from trading_engine import analyze_factor, analyze_universe, detect_regime
+from trading_engine import analyze_factor, analyze_universe, detect_regime, zone_rarity_analysis
 from trading_engine.factors.bollinger import BollingerBands
 from trading_engine.factors.distance_from_peak import DistanceFromPeak
 from trading_engine.factors.donchian import DonchianChannel
@@ -22,6 +22,10 @@ from api.schemas.factor import (
     CrossSectionalResponse,
     FactorRequest,
     FactorAnalysisResponse,
+    RarityRequest,
+    RarityAnalysisResponse,
+    ZoneStatsSchema,
+    ZoneEntrySchema,
     RegimeRequest,
     RegimeResponse,
 )
@@ -126,4 +130,92 @@ def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
     return RegimeResponse(
         labels={_date_key(ts): str(v) for ts, v in regime.labels.items()},
         breadth={_date_key(ts): float(v) for ts, v in regime.breadth.items()},
+    )
+
+
+@router.post("/rarity", response_model=RarityAnalysisResponse)
+def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
+    prices = fetch_prices(
+        [req.symbol],
+        req.date_range.start,
+        req.date_range.end,
+        req.data_source,
+    )
+    if req.symbol not in prices:
+        raise HTTPException(status_code=422, detail=f"No data for symbol {req.symbol!r}")
+
+    try:
+        factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
+        series = factor.compute(prices[req.symbol])
+        result = zone_rarity_analysis(
+            series=series,
+            prices=prices[req.symbol],
+            zones=req.zones,
+            quick_recovery_days=req.quick_recovery_days,
+        )
+        # Attach factor-specific context (optional — not all factors implement context())
+        factor_context = {}
+        if hasattr(factor, "context"):
+            factor_context = factor.context(prices[req.symbol])
+        result.factor_context = factor_context
+
+    except (FactorComputeError, InsufficientDataError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return RarityAnalysisResponse(
+        factor_name=result.factor_name,
+        symbol=result.symbol,
+        stats_date=result.stats_date,
+        first_date=result.first_date,
+        last_date=result.last_date,
+        total_bars=result.total_bars,
+        current_price=result.current_price,
+        current_value=result.current_value,
+        current_percentile=result.current_percentile,
+        current_zone=result.current_zone,
+        zone_entry_date=result.zone_entry_date,
+        zone_entry_price=result.zone_entry_price,
+        sessions_in_zone=result.sessions_in_zone,
+        max_potential_drop_pct=result.max_potential_drop_pct,
+        factor_context=result.factor_context,
+        zone_stats=[
+            ZoneStatsSchema(
+                zone_pct=s.zone_pct,
+                threshold_value=s.threshold_value,
+                count=s.count,
+                qr_count=s.qr_count,
+                qr_pct=s.qr_pct,
+                count_5y=s.count_5y,
+                qr_5y=s.qr_5y,
+                count_10y=s.count_10y,
+                qr_10y=s.qr_10y,
+                avg_days=s.avg_days,
+                mmae_pct=s.mmae_pct,
+                mae_by_percentile={str(k): v for k, v in s.mae_by_percentile.items()},
+                is_current_zone=s.is_current_zone,
+            )
+            for s in result.zone_stats
+        ],
+        entries=[
+            ZoneEntrySchema(
+                zone_pct=e.zone_pct,
+                start_date=e.start_date,
+                entry_price=e.entry_price,
+                entry_factor=e.entry_factor,
+                low_price=e.low_price,
+                low_date=e.low_date,
+                low_factor=e.low_factor,
+                mae_pct=e.mae_pct,
+                days_to_low=e.days_to_low,
+                recovery_date=e.recovery_date,
+                days_to_recovery=e.days_to_recovery,
+                is_active=e.is_active,
+                is_quick_recovery=e.is_quick_recovery,
+                level=e.level,
+                children_count=e.children_count,
+                parent_zone_pct=e.parent_zone_pct,
+                parent_start_date=e.parent_start_date,
+            )
+            for e in result.entries
+        ],
     )

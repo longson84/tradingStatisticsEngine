@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Literal, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import pandas as pd
 
@@ -88,6 +88,76 @@ class Factor(Protocol):
 # =============================================================================
 # Layer 3: Factor Analysis
 # =============================================================================
+
+@dataclass
+class ZoneEntry:
+    """One historical instance when a factor entered a percentile zone.
+
+    A "zone entry" begins when the factor crosses below the zone threshold
+    and ends when it recovers back above it. Entries are nested: a P20 entry
+    that starts while a P25 entry is still active is a child of that P25 entry.
+    """
+    zone_pct: int                      # e.g. 20 for the P20 zone
+    start_date: date
+    entry_price: float                 # close price on entry date
+    entry_factor: float                # factor value on entry date
+    low_price: float                   # lowest close price during this entry
+    low_date: date
+    low_factor: float                  # most extreme factor value during entry
+    mae_pct: float                     # (entry_price - low_price) / entry_price * 100
+    days_to_low: int                   # sessions from entry to the price low
+    recovery_date: date | None         # first session factor crossed back above threshold
+    days_to_recovery: int | None       # sessions from entry to recovery
+    is_active: bool                    # still in zone as of last data date
+    is_quick_recovery: bool            # recovered within quick_recovery_days
+    level: int                         # nesting depth (0 = no parent zone active at entry)
+    children_count: int                # total nested entries at any depth below this one
+    parent_zone_pct: int | None        # zone_pct of immediate parent entry, or None
+    parent_start_date: date | None     # start_date of immediate parent entry, or None
+
+
+@dataclass
+class ZoneStats:
+    """Aggregate statistics for all historical entries into one percentile zone."""
+    zone_pct: int
+    threshold_value: float             # factor value at this percentile
+    count: int                         # total historical entries
+    qr_count: int                      # quick-recovery entries
+    qr_pct: float                      # quick-recovery rate [0, 100]
+    count_5y: int                      # entries in last 5 years
+    qr_5y: int                         # quick recoveries in last 5 years
+    count_10y: int                     # entries in last 10 years
+    qr_10y: int                        # quick recoveries in last 10 years
+    avg_days: float                    # average sessions spent in zone (completed entries)
+    mmae_pct: float                    # worst-case MAE across all entries
+    mae_by_percentile: dict[int, float]  # e.g. {80: 12.3, 85: 15.1, 90: 18.7, 95: 23.4, 98: 29.1}
+    is_current_zone: bool              # factor is currently inside this zone
+
+
+@dataclass
+class RarityAnalysisResult:
+    """Full output of a Rarity Analysis run (1 symbol, 1 factor)."""
+    factor_name: str
+    symbol: str
+    stats_date: date
+    first_date: date
+    last_date: date
+    total_bars: int
+    # ── Current state ─────────────────────────────────────────────────────────
+    current_price: float
+    current_value: float
+    current_percentile: float          # where current value sits in history [0, 100]
+    current_zone: int | None           # deepest zone currently active, or None
+    zone_entry_date: date | None       # when current zone was first entered
+    zone_entry_price: float | None     # price when current zone was first entered
+    sessions_in_zone: int              # sessions since zone was entered
+    max_potential_drop_pct: float      # MMAE of current zone (worst historical drop)
+    # ── Factor-specific extra context ─────────────────────────────────────────
+    factor_context: dict[str, Any]
+    # ── Results ───────────────────────────────────────────────────────────────
+    zone_stats: list[ZoneStats]        # one row per zone, ordered by zone_pct ascending
+    entries: list[ZoneEntry]           # all historical entries, in display order
+
 
 @dataclass
 class FactorAnalysisResult:

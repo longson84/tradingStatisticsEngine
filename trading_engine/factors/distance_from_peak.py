@@ -1,6 +1,8 @@
 """Distance from Peak factor — measures drawdown from rolling high."""
 from __future__ import annotations
 
+from typing import Any
+
 from trading_engine.types import FactorComputeError, FactorSeries, PriceFrame
 
 
@@ -38,3 +40,23 @@ class DistanceFromPeak:
             values=values,
             metadata={"window": self.window},
         )
+
+    def context(self, prices: PriceFrame) -> dict[str, Any]:
+        """Return factor-specific live context for display.
+
+        For DistanceFromPeak this is: the date and price of the current
+        rolling-window peak, how many sessions ago it was set, and how many
+        sessions remain before it potentially rolls off the window.
+        """
+        close = prices.data["close"]
+        window_data = close.iloc[-self.window:]
+        peak_price = float(window_data.max())
+        peak_date = window_data.idxmax()
+        sessions_from_peak = len(close.loc[peak_date:]) - 1
+        remaining_sessions = max(0, self.window - sessions_from_peak)
+        return {
+            "peak_price": peak_price,
+            "peak_date": str(peak_date.date()),
+            "sessions_from_peak": sessions_from_peak,
+            "remaining_sessions": remaining_sessions,
+        }

@@ -1,6 +1,8 @@
 """Bollinger Bands factor."""
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from trading_engine.types import FactorComputeError, FactorSeries, PriceFrame
@@ -52,6 +54,20 @@ class BollingerBands:
                 "num_std": self.num_std,
             },
         )
+
+    def context(self, prices: PriceFrame) -> dict[str, Any]:
+        """Return current band values and bandwidth."""
+        sma, upper, lower = self.compute_bands(prices)
+        sma_val = float(sma.iloc[-1])
+        upper_val = float(upper.iloc[-1])
+        lower_val = float(lower.iloc[-1])
+        bandwidth_pct = round((upper_val - lower_val) / sma_val * 100, 4) if sma_val else 0
+        return {
+            "upper_band": upper_val,
+            "middle_band": sma_val,
+            "lower_band": lower_val,
+            "bandwidth_pct": bandwidth_pct,
+        }
 
     def compute_bands(self, prices: PriceFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
         """Return raw (sma, upper, lower) bands for charting."""

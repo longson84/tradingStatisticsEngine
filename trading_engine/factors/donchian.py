@@ -1,6 +1,8 @@
 """Donchian Channel factor."""
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from trading_engine.types import FactorComputeError, FactorSeries, PriceFrame
@@ -47,6 +49,17 @@ class DonchianChannel:
                 "exit_length": self.exit_length,
             },
         )
+
+    def context(self, prices: PriceFrame) -> dict[str, Any]:
+        """Return current channel levels and width."""
+        upper, lower = self.compute_channels(prices)
+        upper_val = float(upper.iloc[-1])
+        lower_val = float(lower.iloc[-1])
+        return {
+            "upper_channel": upper_val,
+            "lower_channel": lower_val,
+            "channel_width": round(upper_val - lower_val, 4),
+        }
 
     def compute_channels(self, prices: PriceFrame) -> tuple[pd.Series, pd.Series]:
         """Return raw (upper, lower) channels for charting."""

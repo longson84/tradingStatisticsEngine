@@ -17,6 +17,7 @@ from trading_engine.performance.comparison import run_comparison
 from trading_engine.factor_analysis.time_series import percentile_breakdown as analyze_factor
 from trading_engine.factor_analysis.cross_sectional import analyze_cross_section as analyze_universe
 from trading_engine.factor_analysis.regime import detect_regime
+from trading_engine.factor_analysis.zone_rarity import zone_rarity_analysis
 
 __all__ = [
     "run_portfolio",
@@ -24,4 +25,5 @@ __all__ = [
     "analyze_factor",
     "analyze_universe",
     "detect_regime",
+    "zone_rarity_analysis",
 ]
