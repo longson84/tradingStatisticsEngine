@@ -5,6 +5,8 @@ description = "Trading Statistics Engine — library-first backtesting"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "lightweight-charts>=2.1",
+    "mplfinance>=0.12.10b0",
     "numpy>=1.26.0",
     "pandas>=2.2.0",
     "scipy>=1.12.0",

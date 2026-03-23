@@ -47,11 +47,14 @@ def analyze_cross_section(
 
     # Compute factor for each symbol, align to a common date index
     factor_values: dict[str, pd.Series] = {}
+    factor_name: str = ""
     for symbol in universe:
         if symbol not in prices:
             continue  # skip symbols without price data
         series = factor.compute(prices[symbol])
         factor_values[symbol] = series.values
+        if not factor_name:
+            factor_name = series.name  # capture from first successful compute
 
     if not factor_values:
         raise InsufficientDataError(
@@ -82,7 +85,7 @@ def analyze_cross_section(
     universe_median = factor_df.median(axis=1)
 
     return CrossSectionalResult(
-        factor_name=factor.compute(prices[universe[0]]).name if universe else "",
+        factor_name=factor_name,
         universe=universe,
         counts_above=counts_above,
         pct_above=pct_above,

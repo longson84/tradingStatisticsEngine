@@ -7,6 +7,7 @@ POST /factors/regime    — regime labels derived from cross-sectional breadth
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from trading_engine.types import FactorComputeError, InsufficientDataError
 
 from trading_engine import analyze_factor, analyze_universe, detect_regime
 from trading_engine.factors.bollinger import BollingerBands
@@ -55,9 +56,12 @@ def analyze_factor_endpoint(req: FactorRequest) -> FactorAnalysisResponse:
     if req.symbol not in prices:
         raise HTTPException(status_code=422, detail=f"No data for symbol {req.symbol!r}")
 
-    factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
-    factor_series = factor.compute(prices[req.symbol])
-    result = analyze_factor(factor_series)
+    try:
+        factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
+        factor_series = factor.compute(prices[req.symbol])
+        result = analyze_factor(factor_series)
+    except (FactorComputeError, InsufficientDataError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return FactorAnalysisResponse(
         factor_name=result.factor_name,
@@ -76,13 +80,16 @@ def analyze_universe_endpoint(req: CrossSectionalRequest) -> CrossSectionalRespo
         req.date_range.end,
         req.data_source,
     )
-    factor = _build_factor(req.factor_type, req.period, req.ma_type)
-    result = analyze_universe(
-        factor=factor,
-        universe=req.symbols,
-        prices=prices,
-        threshold=req.threshold,
-    )
+    try:
+        factor = _build_factor(req.factor_type, req.period, req.ma_type)
+        result = analyze_universe(
+            factor=factor,
+            universe=req.symbols,
+            prices=prices,
+            threshold=req.threshold,
+        )
+    except (FactorComputeError, InsufficientDataError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return CrossSectionalResponse(
         factor_name=result.factor_name,
@@ -101,17 +108,20 @@ def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
         req.date_range.end,
         req.data_source,
     )
-    factor = _build_factor(req.factor_type, req.period, req.ma_type)
-    cross = analyze_universe(
-        factor=factor,
-        universe=req.symbols,
-        prices=prices,
-        threshold=req.threshold,
-    )
-    regime = detect_regime(
-        breadth=cross.breadth,
-        thresholds=(req.lower_threshold, req.upper_threshold),
-    )
+    try:
+        factor = _build_factor(req.factor_type, req.period, req.ma_type)
+        cross = analyze_universe(
+            factor=factor,
+            universe=req.symbols,
+            prices=prices,
+            threshold=req.threshold,
+        )
+        regime = detect_regime(
+            breadth=cross.breadth,
+            thresholds=(req.lower_threshold, req.upper_threshold),
+        )
+    except (FactorComputeError, InsufficientDataError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return RegimeResponse(
         labels={_date_key(ts): str(v) for ts, v in regime.labels.items()},
