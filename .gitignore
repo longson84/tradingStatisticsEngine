@@ -8,31 +8,166 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
 
-# MacOS files
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Frontend environment
+frontend/.env.local
+frontend/.env.*.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Vite
+frontend/.vite/
+vite.config.ts.timestamp-*.mjs
+
+# TypeScript
+*.tsbuildinfo
+frontend/.tsbuildinfo
+
+# Package manager files
+package-lock.json
+yarn.lock
+.pnpm-store/
 
 # Debug files
 debug/
 
 # Report files
 re/
-.DS_Store
 
-
+# Claude/GPT files
 .claude/
-site/
-.docs/
 .gstack/
 
-# Frontend
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/.env.local
-frontend/.env*.local
+# Backup files
+*.bak
+*.backup
+*.orig
 
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
+# Logs
+logs/
+*.log
 
-.vscode/
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/

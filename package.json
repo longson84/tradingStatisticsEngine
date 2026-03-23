@@ -1,0 +1,31 @@
+{
+  "name": "trading-engine-fullstack",
+  "version": "0.1.0",
+  "description": "Trading Statistics Engine - Full Stack Application",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
+    "dev:backend": "uv run uvicorn api.main:app --reload --port 8002",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "build:frontend": "pnpm --filter frontend build",
+    "lint": "pnpm --filter frontend lint",
+    "lint:frontend": "pnpm --filter frontend lint",
+    "preview": "pnpm --filter frontend preview",
+    "type-check": "pnpm --filter frontend type-check",
+    "test": "uv run pytest",
+    "test:watch": "uv run pytest -w",
+    "start": "pnpm run dev",
+    "setup": "pnpm install && uv sync",
+    "clean": "pnpm --filter frontend clean && rm -rf node_modules .pnpm-store",
+    "clean:all": "pnpm clean && uv venv --remove"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
