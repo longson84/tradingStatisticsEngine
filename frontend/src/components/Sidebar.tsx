@@ -1,6 +1,7 @@
 import { NavLink } from "react-router"
 import { BarChart2, TrendingUp, Layers, SlidersHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const links = [
   { to: "/factors",  label: "Factor Analysis",   icon: BarChart2 },
@@ -11,9 +12,10 @@ const links = [
 
 export function Sidebar({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
-    <aside className={cn("w-64 shrink-0 flex flex-col bg-[#1a1b1e] border-r border-white/8 min-h-screen", className)}>
-      <div className="px-4 py-5 border-b border-white/8">
-        <span className="text-sm font-semibold text-white/90 tracking-wide">TSE</span>
+    <aside className={cn("w-64 shrink-0 flex flex-col bg-card border-r border-border min-h-screen", className)}>
+      <div className="px-4 py-5 border-b border-border flex items-center justify-between">
+        <span className="text-sm font-semibold text-card-foreground tracking-wide">TSE</span>
+        <ThemeToggle />
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5">
@@ -25,8 +27,8 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
               cn(
                 "flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors",
                 isActive
-                  ? "bg-white/10 text-white font-medium"
-                  : "text-white/50 hover:text-white/80 hover:bg-white/5"
+                  ? "bg-primary text-primary-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )
             }
           >
@@ -37,7 +39,7 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
       </nav>
 
       {children && (
-        <div className="border-t border-white/8 p-4 space-y-4">
+        <div className="border-t border-border p-4 space-y-4">
           {children}
         </div>
       )}

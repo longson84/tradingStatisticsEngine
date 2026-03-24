@@ -43,7 +43,7 @@ const ANALYSIS_TABS: Array<{ label: string; value: AnalysisType }> = [
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="block text-[10px] font-medium text-white/40 uppercase tracking-wide mb-1">
+    <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
       {children}
     </span>
   )
@@ -62,7 +62,7 @@ function FormSelect<T extends string>({
     <select
       value={value}
       onChange={e => onChange(e.target.value as T)}
-      className="w-full bg-[#111113] border border-white/12 rounded px-2 py-1.5 text-sm text-white/90 focus:outline-none focus:border-white/30"
+      className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-ring"
     >
       {options.map(o => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -89,7 +89,7 @@ function NumberInput({
       min={min}
       step={step}
       onChange={e => onChange(Number(e.target.value))}
-      className="w-full bg-[#111113] border border-white/12 rounded px-2 py-1.5 text-sm text-white/90 focus:outline-none focus:border-white/30"
+      className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-ring"
     />
   )
 }
@@ -147,7 +147,7 @@ export function FactorsPage() {
           value={symbol}
           onChange={e => setSymbol(e.target.value.toUpperCase())}
           placeholder="e.g. MSFT"
-          className="w-full bg-[#111113] border border-white/12 rounded px-2 py-1.5 text-sm text-white/90 uppercase placeholder:normal-case placeholder:text-white/25 focus:outline-none focus:border-white/30"
+          className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground uppercase placeholder:normal-case placeholder:text-muted-foreground focus:outline-none focus:border-ring"
         />
       </div>
 
@@ -185,14 +185,14 @@ export function FactorsPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setQrDays(d => Math.max(1, d - 1))}
-            className="w-7 h-7 rounded bg-white/8 hover:bg-white/15 text-white/60 hover:text-white flex items-center justify-center text-base leading-none transition-colors"
+            className="w-7 h-7 rounded bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:text-secondary-foreground flex items-center justify-center text-base leading-none transition-colors"
           >
             −
           </button>
-          <span className="flex-1 text-center text-sm text-white/90 tabular-nums">{qrDays}</span>
+          <span className="flex-1 text-center text-sm text-foreground tabular-nums">{qrDays}</span>
           <button
             onClick={() => setQrDays(d => d + 1)}
-            className="w-7 h-7 rounded bg-white/8 hover:bg-white/15 text-white/60 hover:text-white flex items-center justify-center text-base leading-none transition-colors"
+            className="w-7 h-7 rounded bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:text-secondary-foreground flex items-center justify-center text-base leading-none transition-colors"
           >
             +
           </button>
@@ -203,7 +203,7 @@ export function FactorsPage() {
       <button
         onClick={handleAnalyse}
         disabled={isFetching || !symbol.trim()}
-        className="w-full py-2 rounded bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
+        className="w-full py-2 rounded bg-destructive hover:bg-destructive/90 disabled:opacity-40 disabled:cursor-not-allowed text-destructive-foreground text-sm font-semibold transition-colors"
       >
         {isFetching ? "Loading…" : "Analyse"}
       </button>
@@ -211,12 +211,12 @@ export function FactorsPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-[#111113] text-white">
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar className="w-72" children={controls} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Analysis type tabs */}
-        <div className="border-b border-white/8 px-6 flex gap-1 pt-1">
+        <div className="border-b border-border px-6 flex gap-1 pt-1">
           {ANALYSIS_TABS.map(tab => (
             <button
               key={tab.value}
@@ -224,8 +224,8 @@ export function FactorsPage() {
               className={[
                 "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
                 activeTab === tab.value
-                  ? "border-white text-white"
-                  : "border-transparent text-white/40 hover:text-white/70",
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               {tab.label}
@@ -251,7 +251,7 @@ export function FactorsPage() {
 
           {/* Empty state */}
           {!data && !isFetching && !error && (
-            <div className="flex flex-col items-center justify-center h-64 text-white/20 text-sm">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground/40 text-sm">
               Configure the controls and click <span className="text-red-400 font-medium ml-1">Analyse</span>.
             </div>
           )}

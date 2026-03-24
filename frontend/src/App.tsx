@@ -22,7 +22,7 @@ export default function App() {
 
 function Placeholder({ title }: { title: string }) {
   return (
-    <div className="flex items-center justify-center h-screen text-white/40 text-sm">
+    <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-muted-foreground text-sm">
       {title} — coming soon
     </div>
   )

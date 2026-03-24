@@ -91,9 +91,9 @@ export function CurrentStatus({ data, factorType }: Props) {
     <ol className="space-y-1.5">
       {items.map((item, i) => (
         <li key={i} className="flex gap-2 text-sm">
-          <span className="text-white/30 shrink-0 w-5 text-right">{i + 1}.</span>
-          <span className="text-white/60">{item.label}:</span>
-          <span className="text-white font-medium">{item.value}</span>
+          <span className="text-muted-foreground/50 shrink-0 w-5 text-right">{i + 1}.</span>
+          <span className="text-muted-foreground">{item.label}:</span>
+          <span className="text-foreground font-medium">{item.value}</span>
         </li>
       ))}
     </ol>
