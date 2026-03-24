@@ -269,14 +269,28 @@ class Strategy(Protocol):
 # =============================================================================
 
 @dataclass
+class StrategySlot:
+    """A strategy with its capital allocation weight within a portfolio.
+
+    weight is a relative allocation — slots are normalised to sum to 1.0
+    before weights are combined.  A single-strategy portfolio uses weight=1.0.
+    """
+    strategy: Strategy
+    weight: float = 1.0
+
+
+@dataclass
 class Portfolio:
     """Configuration for a portfolio simulation run.
 
-    Strategy expresses conviction via weights.
-    Portfolio enforces capital constraints (max_leverage) and regime filter.
+    slots: one or more (strategy, allocation_weight) pairs.
+           Weights are normalised internally so they need not sum to 1.0.
+    initial_capital: starting NAV in currency units.
+    max_leverage: safety cap on the combined absolute weight at any bar.
+    regime_config: optional market-state filter passed to every strategy.
     """
+    slots: list[StrategySlot]
     initial_capital: float
-    strategy: Strategy
     max_leverage: float = 1.0
     regime_config: RegimeConfig | None = None
 

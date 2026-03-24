@@ -1,13 +1,21 @@
 """POST /backtest — run a single portfolio backtest."""
 from __future__ import annotations
 
+from dataclasses import asdict
+from datetime import date
+
 from fastapi import APIRouter
 
 from trading_engine import run_portfolio
-from trading_engine.types import Portfolio
+from trading_engine.performance.strategy_analysis import run_single_ticker_analysis
 
-from api.deps import build_strategy, fetch_prices
-from api.schemas.backtest import BacktestRequest, PortfolioResultResponse
+from api.deps import build_portfolio, build_strategy, fetch_prices
+from api.schemas.backtest import (
+    AnalyzeRequest,
+    BacktestRequest,
+    PortfolioResultResponse,
+    SingleTickerAnalysisResponse,
+)
 from api.schemas.common import TradeSchema, WeightEventSchema
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
@@ -27,9 +35,9 @@ def run_backtest(req: BacktestRequest) -> PortfolioResultResponse:
         req.data_source,
     )
     strategy = build_strategy(req.strategy)
-    portfolio = Portfolio(
-        initial_capital=req.initial_capital,
+    portfolio = build_portfolio(
         strategy=strategy,
+        initial_capital=req.initial_capital,
         max_leverage=req.max_leverage,
     )
 
@@ -73,3 +81,25 @@ def run_backtest(req: BacktestRequest) -> PortfolioResultResponse:
         total_return_pct=total_return_pct,
         final_nav=final,
     )
+
+
+@router.post("/analyze", response_model=SingleTickerAnalysisResponse)
+def analyze_single_ticker(req: AnalyzeRequest) -> SingleTickerAnalysisResponse:
+    """Full analytics for a single-ticker strategy: performance, trades, heatmaps, health."""
+    start = req.start or date(2000, 1, 1)
+    end = req.end or date.today()
+    symbol = req.symbol.upper().strip()
+
+    prices = fetch_prices([symbol], start, end, req.data_source)
+    strategy = build_strategy(req.strategy)
+    strategy_label = f"{req.strategy.type.replace('_', ' ').title()} — {symbol}"
+
+    analysis = run_single_ticker_analysis(
+        strategy=strategy,
+        symbol=symbol,
+        prices=prices,
+        initial_capital=req.initial_capital,
+        strategy_label=strategy_label,
+    )
+
+    return SingleTickerAnalysisResponse(**asdict(analysis))

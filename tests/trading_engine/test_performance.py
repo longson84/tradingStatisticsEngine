@@ -16,12 +16,14 @@ import pytest
 
 from trading_engine import run_comparison
 from trading_engine.performance import analyze_performance
-from trading_engine.strategy import BuyAndHold, MACrossover
+from trading_engine.factors.moving_average import MovingAverageRatio
+from trading_engine.strategy import BuyAndHold, FactorThresholdStrategy
 from trading_engine.types import (
     BacktestConfig,
     PerformanceReport,
     Portfolio,
     PortfolioResult,
+    StrategySlot,
     Trade,
     WeightEvent,
 )
@@ -95,7 +97,7 @@ class TestAnalyzePerformance:
 
     def test_sharpe_positive_for_upward_trend(self, prices_dict):
         from trading_engine import run_portfolio
-        portfolio = Portfolio(initial_capital=10_000.0, strategy=BuyAndHold())
+        portfolio = Portfolio(slots=[StrategySlot(strategy=BuyAndHold(), weight=1.0)], initial_capital=10_000.0)
         result = run_portfolio(portfolio, prices_dict)
         report = analyze_performance(result)
         # With upward trend, Sharpe should be positive
@@ -104,7 +106,7 @@ class TestAnalyzePerformance:
 
     def test_monthly_returns_is_dataframe(self, prices_dict):
         from trading_engine import run_portfolio
-        portfolio = Portfolio(initial_capital=10_000.0, strategy=BuyAndHold())
+        portfolio = Portfolio(slots=[StrategySlot(strategy=BuyAndHold(), weight=1.0)], initial_capital=10_000.0)
         result = run_portfolio(portfolio, prices_dict)
         report = analyze_performance(result)
         assert isinstance(report.monthly_returns, pd.DataFrame)
@@ -134,7 +136,9 @@ class TestRunComparison:
                 end=date(2021, 12, 31),
             ),
             BacktestConfig(
-                strategy=MACrossover(),
+                strategy=FactorThresholdStrategy(
+                    factor=MovingAverageRatio(ma_type="SMA", length=20),
+                ),
                 symbols=["MSFT"],
                 start=date(2020, 1, 1),
                 end=date(2021, 12, 31),

@@ -1,6 +1,6 @@
 """Tests for trading_engine/strategy/ — Layer 4 validation gate.
 
-Gate: from trading_engine.strategy import MACrossover
+Gate: from trading_engine.strategy import FactorThresholdStrategy
 Key verifications:
 - Zero-crossing atomic rule: weight 0.5 -> -0.3 = exactly 2 Trade records
 - Weight NaN -> StrategyOutputError
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from trading_engine.strategy import BuyAndHold, EnsembleStrategy, MACrossover
+from trading_engine.strategy import BuyAndHold, EnsembleStrategy, FactorThresholdStrategy
 from trading_engine.strategy.base import BaseStrategy
 from trading_engine.strategy.utils import weight_transitions_to_trades
 from trading_engine.types import (
@@ -97,12 +97,14 @@ class TestWeightTransitionsToTrades:
         assert trades[0].mfe_pct is not None
 
     def test_open_trade_emitted_at_end(self):
-        """A trade still open at the last bar should still be emitted."""
+        """A trade still open at the last bar is emitted with exit_date=None."""
         prices = self._make_prices(10)
         weights = self._make_weights([0, 0, 1, 1, 1, 1, 1, 1, 1, 1])
         trades = weight_transitions_to_trades(weights, prices)
         assert len(trades) == 1
-        assert trades[0].exit_date is not None  # emitted at last bar
+        assert trades[0].exit_date is None      # still open — not force-closed
+        assert trades[0].mae_pct is not None    # unrealized MAE computed
+        assert trades[0].mfe_pct is not None    # unrealized MFE computed
 
 
 # =============================================================================
@@ -142,24 +144,103 @@ class TestBaseStrategy:
 # [W] Strategy implementations
 # =============================================================================
 
-class TestMACrossover:
+class TestFactorThresholdStrategy:
+    def _make_strategy(self, buy_lag: int = 0, sell_lag: int = 0) -> FactorThresholdStrategy:
+        from trading_engine.factors.moving_average import MovingAverageRatio
+        factor = MovingAverageRatio(ma_type="SMA", length=50)
+        return FactorThresholdStrategy(factor=factor, threshold=0.0, buy_lag=buy_lag, sell_lag=sell_lag)
+
     def test_weights_are_binary(self, prices_dict):
-        """MACrossover should only produce 0.0 or 1.0 weights."""
-        strategy = MACrossover(fast_length=10, slow_length=50)
+        """FactorThresholdStrategy should only produce 0.0 or 1.0 weights."""
+        strategy = self._make_strategy()
         output = strategy.compute(list(prices_dict.keys()), prices_dict)
         unique_values = set(output.weights.values.flatten())
         assert unique_values.issubset({0.0, 1.0})
 
     def test_output_has_correct_columns(self, prices_dict):
-        strategy = MACrossover()
+        strategy = self._make_strategy()
         output = strategy.compute(list(prices_dict.keys()), prices_dict)
         assert set(output.weights.columns) == set(prices_dict.keys())
 
     def test_trades_are_long_only(self, prices_dict):
-        strategy = MACrossover()
+        strategy = self._make_strategy()
         output = strategy.compute(list(prices_dict.keys()), prices_dict)
         for trade in output.trades:
             assert trade.direction == "long"
+
+    def test_confirmation_lag_delays_entry(self):
+        """buy_lag=2 requires 3 consecutive bars above threshold before entry."""
+        import numpy as np
+        prices_arr = np.ones(20) * 100.0
+        df = pd.DataFrame(
+            {"open": prices_arr, "high": prices_arr, "low": prices_arr, "close": prices_arr},
+            index=pd.date_range("2020-01-01", periods=20, freq="B"),
+        )
+        from trading_engine.types import PriceFrame, Factor, FactorSeries
+
+        class _ConstantFactor:
+            """Always returns the same value — lets us control the signal exactly."""
+            def __init__(self, values: list[float]):
+                self._values = values
+            def compute(self, prices: PriceFrame) -> FactorSeries:
+                idx = prices.data.index
+                return FactorSeries(
+                    name="test",
+                    values=pd.Series(self._values[:len(idx)], index=idx),
+                )
+
+        prices = {"SYM": PriceFrame(symbol="SYM", data=df, source="test")}
+
+        # Signal: 0,0,1,1,1,1,0... buy_lag=2 → should enter at bar 4 (3 consec)
+        signals = [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        strategy = FactorThresholdStrategy(
+            factor=_ConstantFactor(signals), threshold=0.5, buy_lag=2, sell_lag=0
+        )
+        output = strategy.compute(["SYM"], prices)
+        weights = output.weights["SYM"].tolist()
+        # bars 0-3: weight=0 (warm-up + confirmation), bar 4 onwards: weight=1
+        assert weights[0] == 0.0
+        assert weights[1] == 0.0
+        assert weights[2] == 0.0   # first above-bar, consec=1, need 3
+        assert weights[3] == 0.0   # consec=2
+        assert weights[4] == 1.0   # consec=3 → entered
+        assert weights[5] == 1.0   # still in
+
+    def test_confirmation_lag_resets_on_reversal(self):
+        """A dip below threshold during confirmation resets the counter."""
+        import numpy as np
+        prices_arr = np.ones(20) * 100.0
+        df = pd.DataFrame(
+            {"open": prices_arr, "high": prices_arr, "low": prices_arr, "close": prices_arr},
+            index=pd.date_range("2020-01-01", periods=20, freq="B"),
+        )
+        from trading_engine.types import PriceFrame, FactorSeries
+
+        class _ConstantFactor:
+            def __init__(self, values: list[float]):
+                self._values = values
+            def compute(self, prices: PriceFrame) -> FactorSeries:
+                idx = prices.data.index
+                return FactorSeries(
+                    name="test",
+                    values=pd.Series(self._values[:len(idx)], index=idx),
+                )
+
+        prices = {"SYM": PriceFrame(symbol="SYM", data=df, source="test")}
+
+        # Signal: 1,1,0,1,1,1,0 — dip at bar 2 resets counter; entry at bar 5
+        signals = [1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        strategy = FactorThresholdStrategy(
+            factor=_ConstantFactor(signals), threshold=0.5, buy_lag=2, sell_lag=0
+        )
+        output = strategy.compute(["SYM"], prices)
+        weights = output.weights["SYM"].tolist()
+        assert weights[0] == 0.0   # consec=1
+        assert weights[1] == 0.0   # consec=2
+        assert weights[2] == 0.0   # reversal — reset
+        assert weights[3] == 0.0   # consec=1 (fresh start)
+        assert weights[4] == 0.0   # consec=2
+        assert weights[5] == 1.0   # consec=3 → entered
 
 
 class TestBuyAndHold:

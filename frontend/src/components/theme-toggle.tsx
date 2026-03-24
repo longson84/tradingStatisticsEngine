@@ -1,11 +1,9 @@
 import { Sun, Moon, Monitor } from "lucide-react"
 import { useTheme } from "@/lib/theme"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const getIcon = () => {
     switch (theme) {

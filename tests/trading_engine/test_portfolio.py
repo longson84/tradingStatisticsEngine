@@ -19,6 +19,7 @@ from trading_engine.types import (
     Portfolio,
     PriceFrame,
     RegimeSeries,
+    StrategySlot,
 )
 
 from tests.trading_engine.conftest import make_price_frame
@@ -71,8 +72,8 @@ class TestRunPortfolioNAV:
         """100% long in asset with +1% daily return -> NAV grows ~1% daily."""
         prices = self._flat_prices("X", n=20, start_price=100.0, daily_return=0.01)
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=_ConstantWeightStrategy(weight=1.0), weight=1.0)],
             initial_capital=1000.0,
-            strategy=_ConstantWeightStrategy(weight=1.0),
         )
         result = run_portfolio(portfolio, prices)
         assert result.equity_curve.iloc[-1] > result.equity_curve.iloc[0]
@@ -84,8 +85,8 @@ class TestRunPortfolioNAV:
         """0% weight -> NAV should stay at initial capital."""
         prices = self._flat_prices("X", n=20, start_price=100.0, daily_return=0.05)
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=_ConstantWeightStrategy(weight=0.0), weight=1.0)],
             initial_capital=1000.0,
-            strategy=_ConstantWeightStrategy(weight=0.0),
         )
         result = run_portfolio(portfolio, prices)
         # After the first bar (lag), NAV should be flat
@@ -94,14 +95,14 @@ class TestRunPortfolioNAV:
 
     def test_equity_curve_length_matches_prices(self, prices_dict):
         from trading_engine.strategy import BuyAndHold
-        portfolio = Portfolio(initial_capital=10_000.0, strategy=BuyAndHold())
+        portfolio = Portfolio(slots=[StrategySlot(strategy=BuyAndHold(), weight=1.0)], initial_capital=10_000.0)
         result = run_portfolio(portfolio, prices_dict)
         price_len = len(prices_dict["AAPL"].data)
         assert len(result.equity_curve) == price_len
 
     def test_initial_capital_is_nav_at_start(self, prices_dict):
         from trading_engine.strategy import BuyAndHold
-        portfolio = Portfolio(initial_capital=5_000.0, strategy=BuyAndHold())
+        portfolio = Portfolio(slots=[StrategySlot(strategy=BuyAndHold(), weight=1.0)], initial_capital=5_000.0)
         result = run_portfolio(portfolio, prices_dict)
         assert result.equity_curve.iloc[0] == pytest.approx(5_000.0)
 
@@ -114,8 +115,8 @@ class TestMaxLeverage:
     def test_sum_abs_weights_never_exceeds_limit(self, prices_dict):
         from trading_engine.strategy import BuyAndHold
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=BuyAndHold(weight=1.0), weight=1.0)],
             initial_capital=10_000.0,
-            strategy=BuyAndHold(weight=1.0),
             max_leverage=1.0,
         )
         result = run_portfolio(portfolio, prices_dict)
@@ -126,8 +127,8 @@ class TestMaxLeverage:
     def test_leverage_2_allows_double(self, prices_dict):
         from trading_engine.strategy import BuyAndHold
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=BuyAndHold(weight=1.0), weight=1.0)],
             initial_capital=10_000.0,
-            strategy=BuyAndHold(weight=1.0),
             max_leverage=2.0,
         )
         result = run_portfolio(portfolio, prices_dict)
@@ -138,8 +139,8 @@ class TestMaxLeverage:
         """Single symbol at weight=0.8 with leverage=1.0 should not be scaled."""
         prices = {"X": make_price_frame("X")}
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=_ConstantWeightStrategy(weight=0.8), weight=1.0)],
             initial_capital=1000.0,
-            strategy=_ConstantWeightStrategy(weight=0.8),
             max_leverage=1.0,
         )
         result = run_portfolio(portfolio, prices)
@@ -153,7 +154,7 @@ class TestMaxLeverage:
 
 class TestPortfolioResult:
     def test_result_has_all_fields(self, prices_dict, simple_strategy):
-        portfolio = Portfolio(initial_capital=10_000.0, strategy=simple_strategy)
+        portfolio = Portfolio(slots=[StrategySlot(strategy=simple_strategy, weight=1.0)], initial_capital=10_000.0)
         result = run_portfolio(portfolio, prices_dict)
         assert result.equity_curve is not None
         assert result.trades is not None
@@ -162,13 +163,13 @@ class TestPortfolioResult:
     def test_weights_match_strategy_output(self, prices_dict):
         from trading_engine.strategy import BuyAndHold
         strategy = BuyAndHold(weight=0.5)
-        portfolio = Portfolio(initial_capital=1000.0, strategy=strategy, max_leverage=2.0)
+        portfolio = Portfolio(slots=[StrategySlot(strategy=strategy, weight=1.0)], initial_capital=1000.0, max_leverage=2.0)
         result = run_portfolio(portfolio, prices_dict)
         # 0.5 per symbol, 3 symbols, max_leverage=2.0 -> no capping needed (sum=1.5)
         assert result.weights.max().max() == pytest.approx(0.5)
 
     def test_trades_are_trade_instances(self, prices_dict, simple_strategy):
-        portfolio = Portfolio(initial_capital=10_000.0, strategy=simple_strategy)
+        portfolio = Portfolio(slots=[StrategySlot(strategy=simple_strategy, weight=1.0)], initial_capital=10_000.0)
         result = run_portfolio(portfolio, prices_dict)
         from trading_engine.types import Trade
         for trade in result.trades:

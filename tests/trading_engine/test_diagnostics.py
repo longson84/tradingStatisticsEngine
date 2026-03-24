@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from trading_engine.diagnostics import assert_no_leakage
-from trading_engine.strategy import BuyAndHold, MACrossover
+from trading_engine.strategy import BuyAndHold, FactorThresholdStrategy
 from trading_engine.strategy.base import BaseStrategy
 from trading_engine.types import PriceFrame, StrategyOutputError
 
@@ -28,9 +28,11 @@ class TestNoLeakagePassesClearStrategies:
         prices = {"X": make_price_frame("X")}
         assert_no_leakage(BuyAndHold(), ["X"], prices)
 
-    def test_ma_crossover_passes(self):
+    def test_factor_threshold_passes(self):
+        from trading_engine.factors.moving_average import MovingAverageRatio
+        factor = MovingAverageRatio(ma_type="SMA", length=20)
         prices = {"X": make_price_frame("X")}
-        assert_no_leakage(MACrossover(fast_length=5, slow_length=20), ["X"], prices)
+        assert_no_leakage(FactorThresholdStrategy(factor=factor), ["X"], prices)
 
     def test_multi_symbol_passes(self):
         prices = {

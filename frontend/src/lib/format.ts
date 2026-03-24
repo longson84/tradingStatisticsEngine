@@ -13,18 +13,29 @@ export function fmtPrice(n: number): string {
   return Math.round(n).toLocaleString("en-US")
 }
 
-export function fmtPct(n: number): string {
-  return n.toFixed(2) + "%"
+export function fmtPct(n: number, decimals = 2): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }) + "%"
+}
+
+/** Generic decimal number with thousand separator — for Sharpe, profit factor, etc. */
+export function fmtNum(n: number, decimals = 2): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
 }
 
 /** Factor value multiplied ×100 and shown with sign */
 export function fmtFactor(n: number): string {
-  return (n * 100).toFixed(2) + "%"
+  return fmtPct(n * 100)
 }
 
 /** Absolute factor value ×100 (for "distance" style display) */
 export function fmtFactorAbs(n: number): string {
-  return Math.abs(n * 100).toFixed(2) + "%"
+  return fmtPct(Math.abs(n * 100))
 }
 
 /** ISO date string "2026-03-23" → "23/03/26" */

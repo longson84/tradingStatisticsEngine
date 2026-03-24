@@ -15,6 +15,7 @@ from trading_engine.types import (
     Portfolio,
     PortfolioResult,
     PriceFrame,
+    StrategySlot,
 )
 from trading_engine.portfolio.simulation import run_portfolio
 
@@ -103,8 +104,8 @@ def _run_single(
             )
 
         portfolio = Portfolio(
+            slots=[StrategySlot(strategy=config.strategy, weight=1.0)],
             initial_capital=1000.0,
-            strategy=config.strategy,
         )
         result = run_portfolio(portfolio, filtered)
         return result, None

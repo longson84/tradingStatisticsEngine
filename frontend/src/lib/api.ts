@@ -75,6 +75,138 @@ export type FactorType = "distance_from_peak" | "moving_average" | "bollinger" |
 export type MaType = "sma" | "ema" | "wma"
 export type DataSource = "yfinance" | "vnstock" | "csv"
 
+// ── Strategy Backtest Analysis ────────────────────────────────────────────────
+
+export type StrategyType = "buy_and_hold" | "price_vs_ma"
+
+export interface PerformanceSummary {
+  total_return_pct: number
+  cagr_pct: number
+  sharpe_ratio: number
+  max_drawdown_pct: number
+  current_drawdown_pct: number
+  calmar_ratio: number
+  win_rate_pct: number
+  avg_win_pct: number
+  avg_loss_pct: number
+  max_consec_losses: number
+  best_trade_pct: number
+  worst_trade_pct: number
+  total_trades: number
+  avg_holding_days: number
+  profit_factor: number
+  time_in_market_pct: number
+}
+
+export interface CurrentPosition {
+  entry_date: string
+  entry_price: number
+  holding_days: number
+  unrealized_return_pct: number | null
+  mae_pct: number | null
+  mfe_pct: number | null
+}
+
+export interface TradeRow {
+  symbol: string
+  direction: string
+  entry_date: string
+  exit_date: string | null
+  entry_price: number
+  exit_price: number | null
+  return_pct: number | null
+  holding_days: number | null
+  mae_pct: number | null
+  mfe_pct: number | null
+  mae_price: number | null
+  mfe_price: number | null
+  retracement_pct: number | null
+}
+
+export interface DistributionRow {
+  percentile: number
+  value_pct: number
+  cumulative_count: number
+}
+
+
+export interface MonthlyStatRow {
+  label: string
+  count: number
+  p5: number | null
+  p10: number | null
+  p15: number | null
+  p20: number | null
+  p25: number | null
+  p50: number | null
+  p75: number | null
+  p90: number | null
+  p95: number | null
+}
+
+export interface HealthRow {
+  year: number
+  trades: number
+  p5: number | null
+  p10: number | null
+  p15: number | null
+  p20: number | null
+  p25: number | null
+  p50: number | null
+  p75: number | null
+  p90: number | null
+  p95: number | null
+}
+
+export interface SingleTickerAnalysis {
+  symbol: string
+  strategy_label: string
+  from_date: string
+  to_date: string
+  total_bars: number
+  current_position: CurrentPosition | null
+  strategy: PerformanceSummary
+  bah: PerformanceSummary
+  trades: TradeRow[]
+  return_percentiles: DistributionRow[]
+  mae_percentiles_winners: DistributionRow[]
+  mfe_percentiles_winners: DistributionRow[]
+  monthly_returns_strategy: Record<string, Record<string, number | null>>
+  monthly_returns_bah: Record<string, Record<string, number | null>>
+  monthly_stats_by_calendar: MonthlyStatRow[]
+  monthly_stats_by_entry_month: MonthlyStatRow[]
+  health_by_year: HealthRow[]
+  equity_curve_strategy: Record<string, number>
+  equity_curve_bah: Record<string, number>
+}
+
+export function backtestAnalyzeApi(params: {
+  symbol: string
+  ma_type: MaType
+  ma_length: number
+  buy_lag: number
+  sell_lag: number
+  initial_capital: number
+  data_source: DataSource
+  start?: string
+  end?: string
+}): Promise<SingleTickerAnalysis> {
+  return post("/backtest/analyze", {
+    symbol: params.symbol.toUpperCase().trim(),
+    strategy: {
+      type: "price_vs_ma",
+      ma_type: params.ma_type,
+      ma_length: params.ma_length,
+      buy_lag: params.buy_lag,
+      sell_lag: params.sell_lag,
+    },
+    initial_capital: params.initial_capital,
+    data_source: params.data_source,
+    start: params.start ?? null,
+    end: params.end ?? null,
+  })
+}
+
 export function rarityAnalysisApi(params: {
   symbol: string
   factor_type: FactorType

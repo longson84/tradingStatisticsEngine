@@ -11,13 +11,14 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
+from trading_engine.factors.moving_average import MovingAverageRatio
 from trading_engine.strategy.buy_and_hold import BuyAndHold
-from trading_engine.strategy.ma_crossover import MACrossover
-from trading_engine.types import DataLoadError, DataLoader, PriceFrame, Strategy
+from trading_engine.strategy.factor_threshold import FactorThresholdStrategy
+from trading_engine.types import DataLoadError, DataLoader, Portfolio, PriceFrame, Strategy, StrategySlot
 
 from api.schemas.backtest import (
     BuyAndHoldConfig,
-    MACrossoverConfig,
+    PriceVsMAConfig,
     StrategyConfig,
 )
 
@@ -36,14 +37,31 @@ def build_strategy(config: StrategyConfig) -> Strategy:
     """Construct a Strategy instance from a request config."""
     if isinstance(config, BuyAndHoldConfig):
         return BuyAndHold(weight=config.weight)
-    if isinstance(config, MACrossoverConfig):
-        return MACrossover(
-            fast_length=config.fast_period,
-            slow_length=config.slow_period,
-            fast_ma_type=config.ma_type.upper(),
-            slow_ma_type=config.ma_type.upper(),
+    if isinstance(config, PriceVsMAConfig):
+        factor = MovingAverageRatio(
+            ma_type=config.ma_type.upper(),
+            length=config.ma_length,
+        )
+        return FactorThresholdStrategy(
+            factor=factor,
+            threshold=0.0,
+            buy_lag=config.buy_lag,
+            sell_lag=config.sell_lag,
         )
     raise HTTPException(status_code=400, detail=f"Unknown strategy type: {config.type!r}")
+
+
+def build_portfolio(
+    strategy: Strategy,
+    initial_capital: float,
+    max_leverage: float = 1.0,
+) -> Portfolio:
+    """Wrap a single strategy in a one-slot Portfolio."""
+    return Portfolio(
+        slots=[StrategySlot(strategy=strategy, weight=1.0)],
+        initial_capital=initial_capital,
+        max_leverage=max_leverage,
+    )
 
 
 def fetch_prices(

@@ -123,13 +123,21 @@ def weight_transitions_to_trades(
                         WeightEvent(date=d, weight=w, price=p)
                     )
 
-        # Close any remaining open trade at last bar
+        # Leave any remaining open trade with exit_date=None.
+        # Compute unrealized MAE/MFE and holding days up to the last bar
+        # so callers can display current-position stats without closing the trade.
         if open_trade is not None:
-            last_date = _to_date(common_dates[-1])
-            last_price = float(close.iloc[-1])
-            open_trade = _close_trade(
-                open_trade, last_date, last_price, close, common_dates
-            )
+            entry_loc = common_dates.get_loc(pd.Timestamp(open_trade.entry_date))
+            trade_prices = close.iloc[entry_loc:]
+            if len(trade_prices) > 0 and open_trade.entry_price > 0:
+                price_returns = trade_prices / open_trade.entry_price - 1
+                if open_trade.direction == "long":
+                    open_trade.mae_pct = float(price_returns.min() * 100)
+                    open_trade.mfe_pct = float(price_returns.max() * 100)
+                else:
+                    open_trade.mae_pct = float(-price_returns.max() * 100)
+                    open_trade.mfe_pct = float(-price_returns.min() * 100)
+                open_trade.holding_days = int(len(trade_prices) - 1)
             trades.append(open_trade)
 
     return trades

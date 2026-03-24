@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { FactorsPage } from "@/pages/FactorsPage"
+import { BacktestPage } from "@/pages/BacktestPage"
 
 const qc = new QueryClient()
 
@@ -11,7 +12,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/factors" replace />} />
           <Route path="/factors" element={<FactorsPage />} />
-          <Route path="/backtest" element={<Placeholder title="Strategy Backtest" />} />
+          <Route path="/backtest" element={<BacktestPage />} />
           <Route path="/batch" element={<Placeholder title="Batch Backtest" />} />
           <Route path="/sweep" element={<Placeholder title="Parameter Sweep" />} />
         </Routes>

@@ -21,6 +21,7 @@ from trading_engine.types import (
     PortfolioResult,
     PriceFrame,
     RegimeSeries,
+    StrategySlot,
 )
 from trading_engine.factor_analysis.cross_sectional import analyze_cross_section
 from trading_engine.factor_analysis.regime import detect_regime
@@ -41,7 +42,7 @@ def run_portfolio(
     """
     symbols = list(prices.keys())
 
-    # Step 1: Compute regime if configured
+    # Step 1: Compute regime if configured (shared across all slots)
     regime: RegimeSeries | None = None
     if portfolio.regime_config is not None:
         rc = portfolio.regime_config
@@ -53,19 +54,31 @@ def run_portfolio(
         )
         regime = detect_regime(cross.breadth, rc.thresholds)
 
-    # Step 2: Get strategy weights
-    output = portfolio.strategy.compute(symbols, prices, regime)
-    weights = output.weights
+    # Step 2: Combine weights from all slots
+    # Normalise slot weights so they sum to 1.0
+    total_slot_weight = sum(slot.weight for slot in portfolio.slots)
+    if total_slot_weight <= 0:
+        total_slot_weight = 1.0
 
-    if weights.empty:
+    combined_weights: pd.DataFrame | None = None
+    for slot in portfolio.slots:
+        normalised = slot.weight / total_slot_weight
+        output = slot.strategy.compute(symbols, prices, regime)
+        scaled = output.weights * normalised
+        if combined_weights is None:
+            combined_weights = scaled
+        else:
+            combined_weights = combined_weights.add(scaled, fill_value=0.0)
+
+    if combined_weights is None or combined_weights.empty:
         return PortfolioResult(
             equity_curve=pd.Series(dtype=float),
-            trades=output.trades,
-            weights=weights,
+            trades=[],
+            weights=pd.DataFrame(),
         )
 
-    # Step 3: Enforce max_leverage
-    weights = _enforce_leverage(weights, portfolio.max_leverage)
+    # Step 3: Enforce max_leverage on combined weights
+    weights = _enforce_leverage(combined_weights, portfolio.max_leverage)
 
     # Step 4: Build close price matrix aligned with weights
     close_matrix = _build_close_matrix(symbols, prices, weights.index)
@@ -75,7 +88,7 @@ def run_portfolio(
         weights, close_matrix, portfolio.initial_capital
     )
 
-    # Recompute trades from the potentially leverage-adjusted weights
+    # Step 6: Derive trades from combined (leverage-adjusted) weights
     from trading_engine.strategy.utils import weight_transitions_to_trades
     trades = weight_transitions_to_trades(weights, prices)
 

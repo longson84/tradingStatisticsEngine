@@ -18,7 +18,7 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
         <ThemeToggle />
       </div>
 
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
+      <nav className="px-2 py-3 space-y-0.5">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -39,7 +39,7 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
       </nav>
 
       {children && (
-        <div className="border-t border-border p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto border-t border-border p-4 space-y-4">
           {children}
         </div>
       )}
