@@ -13,11 +13,11 @@ interface Props {
 
 export function TradeLog({ trades, equityStrategy, equityBah }: Props) {
   const lastStratDate = Object.keys(equityStrategy).sort().at(-1) ?? ""
-  const lastBahDate = Object.keys(equityBah).sort().at(-1) ?? ""
+  const lastBahDate   = Object.keys(equityBah).sort().at(-1) ?? ""
   const [page, setPage] = useState(0)
-  const sorted = [...trades].reverse()
+  const sorted     = [...trades].reverse()
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
-  const pageSlice = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const pageSlice  = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   if (trades.length === 0) {
     return (
@@ -31,26 +31,36 @@ export function TradeLog({ trades, equityStrategy, equityBah }: Props) {
   return (
     <div>
       <SectionTitle>Trade Log ({trades.length})</SectionTitle>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs tabular-nums border-collapse">
+
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-xs tabular-nums border-collapse [&_td]:border-r [&_td]:border-border [&_th]:border-r [&_th]:border-border">
           <thead>
-            <tr className="border-b border-border text-muted-foreground uppercase tracking-wide">
-              <th className="py-2 px-2 text-left font-medium">#</th>
+            {/* Group header */}
+            <tr className="bg-muted/40 border-b border-border text-[9px] uppercase tracking-widest text-muted-foreground/70">
+              <th colSpan={3} className="py-1.5 px-3 text-left font-semibold">Trade</th>
+              <th colSpan={4} className="py-1.5 px-3 text-left font-semibold border-l border-border">Execution</th>
+              <th colSpan={5} className="py-1.5 px-3 text-left font-semibold border-l border-border">Risk Metrics</th>
+              <th colSpan={2} className="py-1.5 px-3 text-left font-semibold border-l border-border">Portfolio</th>
+            </tr>
+            {/* Column header */}
+            <tr className="bg-card border-b border-border text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 px-2 text-left font-medium w-8">#</th>
               <th className="py-2 px-2 text-left font-medium">Entry</th>
               <th className="py-2 px-2 text-left font-medium">Exit</th>
-              <th className="py-2 px-2 text-right font-medium">Entry Px</th>
+              <th className="py-2 px-2 text-right font-medium border-l border-border">Entry Px</th>
               <th className="py-2 px-2 text-right font-medium">Exit Px</th>
               <th className="py-2 px-2 text-right font-medium">Return</th>
               <th className="py-2 px-2 text-right font-medium">Days</th>
-              <th className="py-2 px-2 text-right font-medium">MAE</th>
+              <th className="py-2 px-2 text-right font-medium border-l border-border">MAE</th>
               <th className="py-2 px-2 text-right font-medium">MAE Px</th>
               <th className="py-2 px-2 text-right font-medium">MFE</th>
               <th className="py-2 px-2 text-right font-medium">MFE Px</th>
               <th className="py-2 px-2 text-right font-medium">Retrace</th>
-              <th className="py-2 px-2 text-right font-medium">Strat NAV</th>
+              <th className="py-2 px-2 text-right font-medium border-l border-border">Strat NAV</th>
               <th className="py-2 px-2 text-right font-medium">BaH NAV</th>
             </tr>
           </thead>
+
           <tbody>
             {pageSlice.map((t, i) => {
               const globalIndex = page * PAGE_SIZE + i
@@ -58,34 +68,65 @@ export function TradeLog({ trades, equityStrategy, equityBah }: Props) {
               const retPct = t.return_pct
               const lookupDate = t.exit_date ?? lastStratDate
               const stratNav = equityStrategy[lookupDate]
-              const bahNav = equityBah[t.exit_date ?? lastBahDate]
-              const rowBg = isOpen
-                ? "bg-yellow-950/20"
+              const bahNav   = equityBah[t.exit_date ?? lastBahDate]
+
+              // Left-border stripe color
+              const stripe = isOpen
+                ? "rgba(234,179,8,0.7)"
                 : retPct != null && retPct > 0
-                ? "bg-green-950/10"
+                ? "rgba(34,197,94,0.6)"
                 : retPct != null && retPct < 0
-                ? "bg-red-950/10"
-                : ""
+                ? "rgba(239,68,68,0.55)"
+                : "transparent"
 
               return (
-                <tr key={globalIndex} className={`border-b border-border/40 ${rowBg}`}>
-                  <td className="py-1.5 px-2 text-muted-foreground">{trades.length - globalIndex}</td>
+                <tr
+                  key={globalIndex}
+                  className="border-b border-border hover:bg-blue-500/20 transition-colors group"
+                >
+                  {/* # — carries the colored left stripe */}
+                  <td
+                    className="py-1.5 px-2 text-muted-foreground/60 font-mono text-[10px]"
+                    style={{ borderLeft: `3px solid ${stripe}` }}
+                  >
+                    {trades.length - globalIndex}
+                  </td>
+
                   <td className="py-1.5 px-2 text-foreground">{fmtDate(t.entry_date)}</td>
-                  <td className="py-1.5 px-2 text-foreground">
-                    {isOpen ? <span className="text-yellow-400 font-medium">Open</span> : fmtDate(t.exit_date)}
+                  <td className="py-1.5 px-2">
+                    {isOpen
+                      ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-yellow-500/15 text-yellow-500 font-semibold text-[10px]">● Open</span>
+                      : <span className="text-muted-foreground">{fmtDate(t.exit_date)}</span>
+                    }
                   </td>
-                  <td className="py-1.5 px-2 text-right text-foreground">{fmtPrice(t.entry_price)}</td>
+
+                  <td className="py-1.5 px-2 text-right text-foreground border-l border-border/30">{fmtPrice(t.entry_price)}</td>
                   <td className="py-1.5 px-2 text-right text-foreground">{t.exit_price != null ? fmtPrice(t.exit_price) : "—"}</td>
-                  <td className={`py-1.5 px-2 text-right font-medium ${retPct != null ? (retPct > 0 ? "text-green-400" : "text-red-400") : "text-muted-foreground"}`}>
-                    {retPct != null ? fmtPct(retPct) : "—"}
+
+                  {/* Return — pill badge */}
+                  <td className="py-1.5 px-2 text-right">
+                    {retPct != null ? (
+                      <span
+                        className="inline-block px-1.5 py-0.5 rounded-sm text-[11px] font-bold"
+                        style={{
+                          color:           retPct > 0 ? "#15803d" : "#b91c1c",
+                          backgroundColor: retPct > 0 ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.12)",
+                        }}
+                      >
+                        {fmtPct(retPct)}
+                      </span>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="py-1.5 px-2 text-right text-foreground">{t.holding_days != null ? fmtInt(t.holding_days) : "—"}</td>
-                  <td className="py-1.5 px-2 text-right text-red-400">{t.mae_pct != null ? fmtPct(t.mae_pct) : "—"}</td>
+
+                  <td className="py-1.5 px-2 text-right text-muted-foreground">{t.holding_days != null ? fmtInt(t.holding_days) : "—"}</td>
+
+                  <td className="py-1.5 px-2 text-right text-red-400 border-l border-border/30">{t.mae_pct != null ? fmtPct(t.mae_pct) : "—"}</td>
                   <td className="py-1.5 px-2 text-right text-muted-foreground">{t.mae_price != null ? fmtPrice(t.mae_price) : "—"}</td>
-                  <td className="py-1.5 px-2 text-right text-green-400">{t.mfe_pct != null ? fmtPct(t.mfe_pct) : "—"}</td>
+                  <td className="py-1.5 px-2 text-right text-green-500">{t.mfe_pct != null ? fmtPct(t.mfe_pct) : "—"}</td>
                   <td className="py-1.5 px-2 text-right text-muted-foreground">{t.mfe_price != null ? fmtPrice(t.mfe_price) : "—"}</td>
                   <td className="py-1.5 px-2 text-right text-muted-foreground">{t.retracement_pct != null ? fmtPct(t.retracement_pct) : "—"}</td>
-                  <td className="py-1.5 px-2 text-right text-blue-400 font-medium">{stratNav != null ? fmtInt(stratNav) : "—"}</td>
+
+                  <td className="py-1.5 px-2 text-right font-semibold text-blue-500 border-l border-border/30">{stratNav != null ? fmtInt(stratNav) : "—"}</td>
                   <td className="py-1.5 px-2 text-right text-muted-foreground">{bahNav != null ? fmtInt(bahNav) : "—"}</td>
                 </tr>
               )
@@ -94,7 +135,7 @@ export function TradeLog({ trades, equityStrategy, equityBah }: Props) {
         </table>
       </div>
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 px-1">
           <span className="text-xs text-muted-foreground">
@@ -138,7 +179,6 @@ function PageBtn({ onClick, disabled, label }: { onClick: () => void; disabled: 
   )
 }
 
-/** Returns a window of up to 5 page indices centred on the current page. */
 function pageRange(current: number, total: number): number[] {
   const window = 5
   let start = Math.max(0, current - Math.floor(window / 2))

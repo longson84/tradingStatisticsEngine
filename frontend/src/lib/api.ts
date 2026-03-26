@@ -178,6 +178,7 @@ export interface SingleTickerAnalysis {
   health_by_year: HealthRow[]
   equity_curve_strategy: Record<string, number>
   equity_curve_bah: Record<string, number>
+  ticker_prices: Record<string, number>
 }
 
 export function backtestAnalyzeApi(params: {

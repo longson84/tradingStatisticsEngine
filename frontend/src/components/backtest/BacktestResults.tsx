@@ -8,10 +8,16 @@ import { PerformanceSummaryCard } from "./PerformanceSummary"
 import { BahComparison } from "./BahComparison"
 import { TradeLog } from "./TradeLog"
 import { MaeScatter } from "./MaeScatter"
+import { MaeMfeScatter } from "./MaeMfeScatter"
+import { ReturnVsDuration } from "./ReturnVsDuration"
+import { MfeRetracementScatter } from "./MfeRetracementScatter"
 import { ReturnDistribution } from "./ReturnDistribution"
 import { MonthlyReturns } from "./MonthlyReturns"
 import { MonthlyStats } from "./MonthlyStats"
 import { StrategyHealth } from "./StrategyHealth"
+import { DrawdownPeriods } from "./DrawdownPeriods"
+import { RollingReturn } from "./RollingReturn"
+import { AnnualReturns } from "./AnnualReturns"
 
 interface Props {
   data: SingleTickerAnalysis
@@ -60,11 +66,17 @@ export function BacktestResults({ data }: Props) {
         equityBah={data.equity_curve_bah}
       />
 
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <RollingReturn equityStrategy={data.equity_curve_strategy} equityBah={data.equity_curve_bah} />
+        <AnnualReturns equityStrategy={data.equity_curve_strategy} equityBah={data.equity_curve_bah} strategyLabel={data.strategy_label} />
+      </div>
+
       <TimeFrame data={data} />
       <CurrentPositionCard position={data.current_position} />
       <PerformanceSummaryCard data={data.strategy} />
 
       <BahComparison strategy={data.strategy} bah={data.bah} />
+      <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <ReturnDistribution
@@ -81,7 +93,12 @@ export function BacktestResults({ data }: Props) {
         />
       </div>
 
-      <MaeScatter trades={data.trades} />
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <MaeScatter trades={data.trades} />
+        <MaeMfeScatter trades={data.trades} />
+        <ReturnVsDuration trades={data.trades} />
+        <MfeRetracementScatter trades={data.trades} />
+      </div>
 
       <TradeLog
         trades={data.trades}

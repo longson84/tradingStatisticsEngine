@@ -131,6 +131,7 @@ class SingleTickerAnalysis:
     health_by_year: list[HealthRow]
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
+    ticker_prices: dict[str, float]
 
 
 # =============================================================================
@@ -214,6 +215,7 @@ def run_single_ticker_analysis(
         health_by_year=_compute_health_by_year(closed_trades, result.equity_curve),
         equity_curve_strategy={str(ts.date()): float(v) for ts, v in result.equity_curve.items()},
         equity_curve_bah={str(ts.date()): float(v) for ts, v in bah_result.equity_curve.items()},
+        ticker_prices={str(ts.date()): float(v) for ts, v in price_frame.data["close"].items()},
     )
 
 

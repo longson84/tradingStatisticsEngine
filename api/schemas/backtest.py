@@ -215,3 +215,4 @@ class SingleTickerAnalysisResponse(BaseModel):
     health_by_year: list[HealthRowResponse]
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
+    ticker_prices: dict[str, float]
