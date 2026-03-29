@@ -22,7 +22,7 @@ interface Tooltip {
 
 const W = 520
 const H = 300
-const MX = { top: 24, right: 28, bottom: 52, left: 60 }
+const MX = { top: 24, right: 60, bottom: 52, left: 28 }
 const IW = W - MX.left - MX.right
 const IH = H - MX.top - MX.bottom
 
@@ -190,17 +190,16 @@ export function MaeScatter({ trades }: Props) {
             MAE %
           </text>
 
-          {/* Y ticks & labels */}
+          {/* Y ticks & labels — right side */}
           {yTicks.map(v => (
             <g key={`yt${v}`}>
-              <line x1={0} y1={ys(v)} x2={-5} y2={ys(v)} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
-              <text x={-10} y={ys(v) + 3.5} textAnchor="end" fontSize={10} fill="hsl(var(--muted-foreground))">{v}%</text>
+              <line x1={IW} y1={ys(v)} x2={IW + 5} y2={ys(v)} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
+              <text x={IW + 10} y={ys(v) + 3.5} textAnchor="start" fontSize={10} fill="hsl(var(--muted-foreground))">{v}%</text>
             </g>
           ))}
           <text
-            x={-(IH / 2)} y={-44}
             textAnchor="middle" fontSize={11} fill="hsl(var(--foreground))" fontWeight="500"
-            transform="rotate(-90)"
+            transform={`translate(${IW + 44}, ${IH / 2}) rotate(90)`}
           >
             Return %
           </text>

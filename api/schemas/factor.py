@@ -107,12 +107,33 @@ class ZoneEntrySchema(BaseModel):
     days_to_low: int
     recovery_date: date | None
     days_to_recovery: int | None
+    bars_elapsed: int | None
+    forward_returns: dict[str, float | None]
     is_active: bool
     is_quick_recovery: bool
     level: int
     children_count: int
     parent_zone_pct: int | None
     parent_start_date: date | None
+
+
+class TimeSeriesPoint(BaseModel):
+    date: str   # "YYYY-MM-DD"
+    price: float
+    factor: float
+
+
+class EventStudyPath(BaseModel):
+    day: int    # session offset from entry (-10 to +90)
+    mean: float
+    p25: float
+    p75: float
+
+
+class EventStudyZone(BaseModel):
+    zone_pct: int
+    count: int  # number of entries used
+    paths: list[EventStudyPath]
 
 
 class RarityAnalysisResponse(BaseModel):
@@ -133,3 +154,5 @@ class RarityAnalysisResponse(BaseModel):
     factor_context: dict[str, Any]
     zone_stats: list[ZoneStatsSchema]
     entries: list[ZoneEntrySchema]
+    time_series: list[TimeSeriesPoint]
+    event_study: list[EventStudyZone]

@@ -17,6 +17,9 @@ from trading_engine.factors.moving_average import MovingAverageRatio
 from trading_engine.types import Factor
 
 from api.deps import fetch_prices
+import numpy as np
+import pandas as pd
+
 from api.schemas.factor import (
     CrossSectionalRequest,
     CrossSectionalResponse,
@@ -26,9 +29,13 @@ from api.schemas.factor import (
     RarityAnalysisResponse,
     ZoneStatsSchema,
     ZoneEntrySchema,
+    TimeSeriesPoint,
+    EventStudyPath,
+    EventStudyZone,
     RegimeRequest,
     RegimeResponse,
 )
+from api.utils import date_key
 
 router = APIRouter(prefix="/factors", tags=["factors"])
 
@@ -43,10 +50,6 @@ def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 
     if factor_type == "distance_from_peak":
         return DistanceFromPeak(window=period)
     raise HTTPException(status_code=400, detail=f"Unknown factor type: {factor_type!r}")
-
-
-def _date_key(ts) -> str:
-    return str(ts.date()) if hasattr(ts, "date") and callable(ts.date) else str(ts)
 
 
 @router.post("/analyze", response_model=FactorAnalysisResponse)
@@ -98,9 +101,9 @@ def analyze_universe_endpoint(req: CrossSectionalRequest) -> CrossSectionalRespo
     return CrossSectionalResponse(
         factor_name=result.factor_name,
         universe=result.universe,
-        breadth={_date_key(ts): float(v) for ts, v in result.breadth.items()},
-        pct_above={_date_key(ts): float(v) for ts, v in result.pct_above.items()},
-        universe_median={_date_key(ts): float(v) for ts, v in result.universe_median.items()},
+        breadth={date_key(ts): float(v) for ts, v in result.breadth.items()},
+        pct_above={date_key(ts): float(v) for ts, v in result.pct_above.items()},
+        universe_median={date_key(ts): float(v) for ts, v in result.universe_median.items()},
     )
 
 
@@ -128,8 +131,8 @@ def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return RegimeResponse(
-        labels={_date_key(ts): str(v) for ts, v in regime.labels.items()},
-        breadth={_date_key(ts): float(v) for ts, v in regime.breadth.items()},
+        labels={date_key(ts): str(v) for ts, v in regime.labels.items()},
+        breadth={date_key(ts): float(v) for ts, v in regime.breadth.items()},
     )
 
 
@@ -161,6 +164,77 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
 
     except (FactorComputeError, InsufficientDataError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # ── Time series ───────────────────────────────────────────────────────────
+    price_close = prices[req.symbol].data["close"]
+    factor_vals = series.values.dropna()
+    ts_points: list[TimeSeriesPoint] = []
+    for ts, fv in factor_vals.items():
+        if ts in price_close.index:
+            ts_points.append(TimeSeriesPoint(
+                date=ts.strftime("%Y-%m-%d"),
+                price=float(price_close[ts]),
+                factor=float(fv),
+            ))
+
+    # ── Forward returns & Event study ─────────────────────────────────────────
+    price_arr = price_close.values.astype(float)
+    dates_idx = price_close.index
+    date_to_pos = {ts: i for i, ts in enumerate(dates_idx)}
+
+    _FWD_BARS = [20, 50, 100, 150, 200]
+    _n = len(price_arr)
+
+    def _forward_returns(start_date, entry_price: float) -> dict[str, float | None]:
+        pos = date_to_pos.get(pd.Timestamp(start_date))
+        if pos is None or entry_price <= 0:
+            return {str(b): None for b in _FWD_BARS}
+        return {
+            str(b): float((price_arr[pos + b] - entry_price) / entry_price * 100)
+                    if pos + b < _n else None
+            for b in _FWD_BARS
+        }
+
+    day_offsets = np.arange(-10, 91)           # 101 sessions
+
+    study_zones = [z for z in req.zones if z <= 25]
+    event_study_data: list[EventStudyZone] = []
+
+    for zone_pct in study_zones:
+        zone_entries = [e for e in result.entries if e.zone_pct == zone_pct]
+        valid = [(e, date_to_pos.get(pd.Timestamp(e.start_date))) for e in zone_entries]
+        valid = [(e, idx) for e, idx in valid if idx is not None]
+        if len(valid) < 3:
+            continue
+
+        # returns matrix: shape (n_entries, 101)
+        ret_matrix = np.full((len(valid), len(day_offsets)), np.nan)
+        for i, (_, entry_idx) in enumerate(valid):
+            ep = price_arr[entry_idx]
+            if ep <= 0:
+                continue
+            target = entry_idx + day_offsets
+            mask = (target >= 0) & (target < len(price_arr))
+            ret_matrix[i, mask] = (price_arr[target[mask]] - ep) / ep * 100
+
+        paths: list[EventStudyPath] = []
+        for j, day in enumerate(day_offsets):
+            col = ret_matrix[:, j]
+            vals = col[~np.isnan(col)]
+            if len(vals) >= 3:
+                paths.append(EventStudyPath(
+                    day=int(day),
+                    mean=float(np.mean(vals)),
+                    p25=float(np.percentile(vals, 25)),
+                    p75=float(np.percentile(vals, 75)),
+                ))
+
+        if paths:
+            event_study_data.append(EventStudyZone(
+                zone_pct=zone_pct,
+                count=len(valid),
+                paths=paths,
+            ))
 
     return RarityAnalysisResponse(
         factor_name=result.factor_name,
@@ -209,6 +283,8 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
                 days_to_low=e.days_to_low,
                 recovery_date=e.recovery_date,
                 days_to_recovery=e.days_to_recovery,
+                bars_elapsed=e.bars_elapsed,
+                forward_returns=_forward_returns(e.start_date, e.entry_price),
                 is_active=e.is_active,
                 is_quick_recovery=e.is_quick_recovery,
                 level=e.level,
@@ -218,4 +294,6 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
             )
             for e in result.entries
         ],
+        time_series=ts_points,
+        event_study=event_study_data,
     )

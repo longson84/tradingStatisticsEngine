@@ -17,13 +17,9 @@ from api.schemas.backtest import (
     SingleTickerAnalysisResponse,
 )
 from api.schemas.common import TradeSchema, WeightEventSchema
+from api.utils import date_key
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
-
-
-def _date_key(ts) -> str:
-    """Convert pandas Timestamp or date to ISO string key."""
-    return str(ts.date()) if hasattr(ts, "date") and callable(ts.date) else str(ts)
 
 
 @router.post("", response_model=PortfolioResultResponse)
@@ -43,13 +39,13 @@ def run_backtest(req: BacktestRequest) -> PortfolioResultResponse:
 
     result = run_portfolio(portfolio=portfolio, prices=prices)
 
-    equity_curve = {_date_key(ts): float(v) for ts, v in result.equity_curve.items()}
+    equity_curve = {date_key(ts): float(v) for ts, v in result.equity_curve.items()}
     initial = float(result.equity_curve.iloc[0])
     final = float(result.equity_curve.iloc[-1])
     total_return_pct = (final / initial - 1) * 100 if initial > 0 else 0.0
 
     weights = {
-        col: {_date_key(ts): float(v) for ts, v in result.weights[col].items()}
+        col: {date_key(ts): float(v) for ts, v in result.weights[col].items()}
         for col in result.weights.columns
     }
 

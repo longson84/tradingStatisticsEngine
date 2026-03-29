@@ -3,6 +3,8 @@ import { fmtDate, fmtInt } from "@/lib/format"
 import { ZoneStatsTable } from "./ZoneStatsTable"
 import { CurrentStatus } from "./CurrentStatus"
 import { ZoneEntryTable } from "./ZoneEntryTable"
+import { PriceFactorChart } from "./PriceFactorChart"
+import { EventStudyChart } from "./EventStudyChart"
 
 interface Props {
   data: RarityAnalysisResponse
@@ -13,18 +15,28 @@ export function RarityResults({ data, factorType }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-xl font-bold text-foreground">{data.symbol}</h2>
-        <span className="text-muted-foreground text-sm">·</span>
-        <span className="text-muted-foreground text-sm">{data.factor_name}</span>
+      <div className="flex items-center gap-3 pb-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">{data.symbol}</h2>
+          <span className="text-xs font-mono px-2 py-0.5 rounded border border-border bg-muted text-muted-foreground uppercase tracking-wider">
+            {data.factor_name}
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground/60">
+          <span>{fmtDate(data.first_date)} – {fmtDate(data.last_date)}</span>
+          <span className="tabular-nums">{fmtInt(data.total_bars)} sessions</span>
+          <span>as of {fmtDate(data.stats_date)}</span>
+        </div>
       </div>
 
-      {/* Analysis timeframe */}
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-        <span>Data from <span className="text-muted-foreground/70">{fmtDate(data.first_date)}</span></span>
-        <span>to <span className="text-muted-foreground/70">{fmtDate(data.last_date)}</span></span>
-        <span><span className="text-muted-foreground/70">{fmtInt(data.total_bars)}</span> sessions</span>
-        <span>Stats as of <span className="text-muted-foreground/70">{fmtDate(data.stats_date)}</span></span>
+      {/* Charts row */}
+      <div className="grid grid-cols-2 gap-4">
+        <PriceFactorChart
+          timeSeries={data.time_series}
+          zoneStats={data.zone_stats}
+          entries={data.entries}
+        />
+        <EventStudyChart zones={data.event_study} />
       </div>
 
       {/* Zone Statistics */}

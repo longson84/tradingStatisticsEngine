@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { NavLink } from "react-router"
-import { BarChart2, TrendingUp, Layers, SlidersHorizontal } from "lucide-react"
+import { BarChart2, TrendingUp, Layers, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -11,6 +12,8 @@ const links = [
 ]
 
 export function Sidebar({ children, className }: { children?: React.ReactNode; className?: string }) {
+  const [panelOpen, setPanelOpen] = useState(true)
+
   return (
     <aside className={cn("w-64 shrink-0 flex flex-col bg-card border-r border-border min-h-screen", className)}>
       <div className="px-4 py-5 border-b border-border flex items-center justify-between">
@@ -39,9 +42,21 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
       </nav>
 
       {children && (
-        <div className="flex-1 overflow-y-auto border-t border-border p-4 space-y-4">
-          {children}
-        </div>
+        <>
+          <button
+            onClick={() => setPanelOpen(o => !o)}
+            className="flex items-center justify-between px-4 py-2 border-t border-border text-[10px] uppercase tracking-widest text-muted-foreground hover:bg-accent/40 transition-colors"
+          >
+            <span>Controls</span>
+            {panelOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+
+          {panelOpen && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {children}
+            </div>
+          )}
+        </>
       )}
     </aside>
   )

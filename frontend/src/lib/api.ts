@@ -43,12 +43,33 @@ export interface ZoneEntry {
   days_to_low: number
   recovery_date: string | null
   days_to_recovery: number | null
+  bars_elapsed: number | null
+  forward_returns: Record<string, number | null>
   is_active: boolean
   is_quick_recovery: boolean
   level: number
   children_count: number
   parent_zone_pct: number | null
   parent_start_date: string | null
+}
+
+export interface TimeSeriesPoint {
+  date: string
+  price: number
+  factor: number
+}
+
+export interface EventStudyPath {
+  day: number
+  mean: number
+  p25: number
+  p75: number
+}
+
+export interface EventStudyZone {
+  zone_pct: number
+  count: number
+  paths: EventStudyPath[]
 }
 
 export interface RarityAnalysisResponse {
@@ -69,6 +90,8 @@ export interface RarityAnalysisResponse {
   factor_context: Record<string, unknown>
   zone_stats: ZoneStat[]
   entries: ZoneEntry[]
+  time_series: TimeSeriesPoint[]
+  event_study: EventStudyZone[]
 }
 
 export type FactorType = "distance_from_peak" | "moving_average" | "bollinger" | "donchian"
@@ -85,6 +108,7 @@ export interface PerformanceSummary {
   sharpe_ratio: number
   max_drawdown_pct: number
   current_drawdown_pct: number
+  current_drawdown_days: number
   calmar_ratio: number
   win_rate_pct: number
   avg_win_pct: number
@@ -121,6 +145,7 @@ export interface TradeRow {
   mae_price: number | null
   mfe_price: number | null
   retracement_pct: number | null
+  early_returns: Record<string, number | null>
 }
 
 export interface DistributionRow {
@@ -171,6 +196,7 @@ export interface SingleTickerAnalysis {
   return_percentiles: DistributionRow[]
   mae_percentiles_winners: DistributionRow[]
   mfe_percentiles_winners: DistributionRow[]
+  mfe_percentiles_losers: DistributionRow[]
   monthly_returns_strategy: Record<string, Record<string, number | null>>
   monthly_returns_bah: Record<string, Record<string, number | null>>
   monthly_stats_by_calendar: MonthlyStatRow[]

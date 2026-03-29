@@ -105,9 +105,10 @@ class ZoneEntry:
     low_date: date
     low_factor: float                  # most extreme factor value during entry
     mae_pct: float                     # (entry_price - low_price) / entry_price * 100
-    days_to_low: int                   # sessions from entry to the price low
+    days_to_low: int                   # bars from entry to the price low
     recovery_date: date | None         # first session factor crossed back above threshold
-    days_to_recovery: int | None       # sessions from entry to recovery
+    days_to_recovery: int | None       # bars from entry to recovery
+    bars_elapsed: int | None           # bars from entry to last data date (active entries only)
     is_active: bool                    # still in zone as of last data date
     is_quick_recovery: bool            # recovered within quick_recovery_days
     level: int                         # nesting depth (0 = no parent zone active at entry)

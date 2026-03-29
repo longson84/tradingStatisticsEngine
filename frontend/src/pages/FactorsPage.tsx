@@ -203,9 +203,9 @@ export function FactorsPage() {
       <button
         onClick={handleAnalyse}
         disabled={isFetching || !symbol.trim()}
-        className="w-full py-2 rounded bg-destructive hover:bg-destructive/90 disabled:opacity-40 disabled:cursor-not-allowed text-destructive-foreground text-sm font-semibold transition-colors"
+        className="w-full py-2.5 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground text-sm font-semibold transition-colors tracking-wide"
       >
-        {isFetching ? "Loading…" : "Analyse"}
+        {isFetching ? "Analysing…" : "Analyse"}
       </button>
     </div>
   )
@@ -237,8 +237,11 @@ export function FactorsPage() {
         <div className="flex-1 overflow-y-auto p-6">
           {/* Loading bar */}
           {isFetching && (
-            <div className="mb-4 h-0.5 w-full bg-white/8 rounded overflow-hidden">
-              <div className="h-full bg-red-500 animate-pulse w-2/3 rounded" />
+            <div className="mb-4 h-0.5 w-full bg-border rounded overflow-hidden relative">
+              <div
+                className="absolute h-full w-1/3 bg-primary rounded"
+                style={{ animation: "progress-slide 1.2s ease-in-out infinite" }}
+              />
             </div>
           )}
 
@@ -251,8 +254,9 @@ export function FactorsPage() {
 
           {/* Empty state */}
           {!data && !isFetching && !error && (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground/40 text-sm">
-              Configure the controls and click <span className="text-red-400 font-medium ml-1">Analyse</span>.
+            <div className="flex flex-col items-center justify-center h-64 gap-2">
+              <div className="text-muted-foreground/30 text-4xl font-thin tracking-widest">TSE</div>
+              <p className="text-muted-foreground/40 text-sm">Configure the controls and click <span className="text-foreground/60 font-medium">Analyse</span></p>
             </div>
           )}
 

@@ -48,6 +48,7 @@ class _Entry:
     days_to_low: int
     recovery_date: date | None
     days_to_recovery: int | None
+    bars_elapsed: int | None
     is_active: bool
     is_quick_recovery: bool
     level: int = 0
@@ -124,6 +125,12 @@ def zone_rarity_analysis(
             factor_vals, close, thresholds[pct], pct, quick_recovery_days
         )
 
+    # When the factor gaps through multiple zone thresholds in a single bar,
+    # keep only the most extreme (minimum zone_pct) entry for that bar.
+    # E.g. if the factor drops from above P25 to below P15 in one session,
+    # only the P15 entry is kept — P20 and P25 are discarded.
+    entries_by_zone = _filter_same_day_breaches(entries_by_zone)
+
     # Assign levels and parent references
     _assign_levels(entries_by_zone, zones_asc)
 
@@ -160,6 +167,11 @@ def zone_rarity_analysis(
                 cz_stats = next(s for s in zone_stats if s.zone_pct == current_zone)
                 max_potential_drop_pct = cz_stats.mmae_pct
                 break
+
+    # For active entries, count bars from entry date to the last available bar
+    for e in display_entries:
+        if e.is_active:
+            e.bars_elapsed = int(factor_vals.loc[e.start_ts:].count())
 
     # Convert _Entry objects to public ZoneEntry dataclasses
     public_entries = [_to_zone_entry(e) for e in display_entries]
@@ -257,6 +269,7 @@ def _find_zone_entries(
             days_to_low=days_to_low,
             recovery_date=recovery_ts.date() if recovery_ts is not None else None,
             days_to_recovery=days_to_recovery,
+            bars_elapsed=None,
             is_active=is_active,
             is_quick_recovery=is_qr,
         ))
@@ -295,25 +308,29 @@ def _assign_levels(
         pct = entry.zone_pct
         pct_idx = zones_asc.index(pct)
 
-        # Parent zone = next less extreme (next higher pct in zones_asc)
-        if pct_idx + 1 < len(zones_asc):
-            parent_zone = zones_asc[pct_idx + 1]
-            parent_candidate = active_entry.get(parent_zone)
-
-            if parent_candidate is not None:
-                # Verify parent was still active when this entry started
+        # Walk up the zone list to find the nearest active ancestor.
+        # We skip intermediate zones that may have been filtered out (e.g. by the
+        # same-day breach filter), so we can't rely on just the one-step-up neighbor.
+        parent_candidate = None
+        for parent_idx in range(pct_idx + 1, len(zones_asc)):
+            candidate = active_entry.get(zones_asc[parent_idx])
+            if candidate is not None:
                 parent_still_active = (
-                    parent_candidate.recovery_date is None
-                    or parent_candidate.recovery_date > entry.start_date
+                    candidate.recovery_date is None
+                    or candidate.recovery_date > entry.start_date
                 )
                 if parent_still_active:
-                    entry.parent = parent_candidate
-                    entry.level = parent_candidate.level + 1
-                    # Propagate children count up the ancestor chain
-                    ancestor = parent_candidate
-                    while ancestor is not None:
-                        ancestor.children_count += 1
-                        ancestor = ancestor.parent
+                    parent_candidate = candidate
+                    break  # nearest (most extreme) active ancestor wins
+
+        if parent_candidate is not None:
+            entry.parent = parent_candidate
+            entry.level = parent_candidate.level + 1
+            # Propagate children count up the ancestor chain
+            ancestor = parent_candidate
+            while ancestor is not None:
+                ancestor.children_count += 1
+                ancestor = ancestor.parent
 
         # Register this entry as the active entry for its zone
         active_entry[pct] = entry
@@ -341,7 +358,8 @@ def _compute_zone_stats(
     completed = [e for e in entries if e.days_to_recovery is not None]
     avg_days = float(np.mean([e.days_to_recovery for e in completed])) if completed else 0.0
 
-    maes = [e.mae_pct for e in entries]
+    non_qr = [e for e in entries if not e.is_quick_recovery]
+    maes = [e.mae_pct for e in non_qr]
     mmae_pct = float(max(maes)) if maes else 0.0
     mae_by_percentile: dict[int, float] = {}
     for p in mae_percentiles:
@@ -362,6 +380,105 @@ def _compute_zone_stats(
         mae_by_percentile={p: round(v, 4) for p, v in mae_by_percentile.items()},
         is_current_zone=is_current,
     )
+
+
+def _filter_same_day_breaches(
+    entries_by_zone: dict[int, list[_Entry]],
+) -> dict[int, list[_Entry]]:
+    """When multiple zones are first breached on the same bar, keep only the
+    most extreme (minimum zone_pct).
+
+    If the factor gaps from above P25 to below P15 in one session it creates
+    entries for P25, P20, and P15 simultaneously.  Only P15 is meaningful —
+    the others are just artefacts of the same price move seen through
+    less-extreme lenses.
+    """
+    all_entries: list[_Entry] = [e for lst in entries_by_zone.values() for e in lst]
+
+    # Group by start timestamp
+    by_ts: dict[pd.Timestamp, list[_Entry]] = {}
+    for e in all_entries:
+        by_ts.setdefault(e.start_ts, []).append(e)
+
+    to_remove: set[int] = set()
+    for group in by_ts.values():
+        if len(group) <= 1:
+            continue
+        min_pct = min(e.zone_pct for e in group)
+        for e in group:
+            if e.zone_pct != min_pct:
+                to_remove.add(id(e))
+
+    if not to_remove:
+        return entries_by_zone
+
+    return {
+        pct: [e for e in lst if id(e) not in to_remove]
+        for pct, lst in entries_by_zone.items()
+    }
+
+
+def _filter_first_touch_per_zone(
+    entries_by_zone: dict[int, list[_Entry]],
+) -> dict[int, list[_Entry]]:
+    """Within each parent episode keep only the first touch of each deeper zone.
+
+    Rule: if P30 is hit inside a P40 episode, recovers back above P30 (but stays
+    inside P40), and then hits P30 again — the second P30 crossing is not a new
+    entry.  Descendants of removed entries are also removed.
+
+    Entries with no parent (standalone root episodes) are never removed by this
+    step — the deduplication only applies within a shared parent episode.
+    """
+    all_entries: list[_Entry] = [e for lst in entries_by_zone.values() for e in lst]
+
+    # Build parent-id → sorted children list
+    parent_to_children: dict[int, list[_Entry]] = {}
+    for e in all_entries:
+        if e.parent is not None:
+            parent_to_children.setdefault(id(e.parent), []).append(e)
+    for lst in parent_to_children.values():
+        lst.sort(key=lambda e: e.start_ts)
+
+    to_remove: set[int] = set()
+
+    def _mark_subtree(entry: _Entry) -> None:
+        to_remove.add(id(entry))
+        for child in parent_to_children.get(id(entry), []):
+            _mark_subtree(child)
+
+    def _deduplicate_children(entry: _Entry) -> None:
+        seen_zones: set[int] = set()
+        for child in parent_to_children.get(id(entry), []):
+            if child.zone_pct in seen_zones:
+                _mark_subtree(child)
+            else:
+                seen_zones.add(child.zone_pct)
+                _deduplicate_children(child)
+
+    for e in all_entries:
+        if e.level == 0:
+            _deduplicate_children(e)
+
+    # Rebuild entries_by_zone without removed entries and recompute children_count
+    filtered: dict[int, list[_Entry]] = {
+        pct: [e for e in lst if id(e) not in to_remove]
+        for pct, lst in entries_by_zone.items()
+    }
+
+    # Recompute children_count on all surviving entries
+    surviving_ids: set[int] = {id(e) for lst in filtered.values() for e in lst}
+    for lst in filtered.values():
+        for e in lst:
+            e.children_count = 0
+    for lst in filtered.values():
+        for e in lst:
+            ancestor = e.parent
+            while ancestor is not None and id(ancestor) in surviving_ids:
+                ancestor.children_count += 1
+                ancestor = ancestor.parent
+
+    return filtered
 
 
 def _build_display_order(entries_by_zone: dict[int, list[_Entry]]) -> list[_Entry]:
@@ -416,6 +533,7 @@ def _to_zone_entry(e: _Entry) -> ZoneEntry:
         days_to_low=e.days_to_low,
         recovery_date=e.recovery_date,
         days_to_recovery=e.days_to_recovery,
+        bars_elapsed=e.bars_elapsed,
         is_active=e.is_active,
         is_quick_recovery=e.is_quick_recovery,
         level=e.level,

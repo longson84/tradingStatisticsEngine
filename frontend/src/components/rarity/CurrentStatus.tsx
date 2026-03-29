@@ -47,7 +47,6 @@ interface Props {
 export function CurrentStatus({ data, factorType }: Props) {
   const ctxConfig = FACTOR_CONTEXT[factorType] ?? []
 
-  // Potential drop calculation
   const potentialLow =
     data.zone_entry_price != null
       ? data.zone_entry_price * (1 - data.max_potential_drop_pct / 100)
@@ -57,45 +56,78 @@ export function CurrentStatus({ data, factorType }: Props) {
       ? ((data.current_price - potentialLow) / data.current_price) * 100
       : null
 
-  const items: Array<{ label: string; value: string }> = [
-    { label: "Current price",   value: fmtPrice(data.current_price) },
-    { label: "Current factor value", value: fmtFactor(data.current_value) },
-    { label: "Current rarity",  value: fmtOrdinal(data.current_percentile) },
-    ...ctxConfig
-      .filter(c => data.factor_context[c.key] != null)
-      .map(c => ({
-        label: c.label,
-        value: fmtCtxValue(data.factor_context[c.key], c.fmt),
-      })),
-  ]
+  const inZone = data.current_zone != null && data.zone_entry_date
 
-  if (data.current_zone != null && data.zone_entry_date) {
-    items.push({
-      label: `Entered P${data.current_zone} zone on`,
-      value: `${fmtDate(data.zone_entry_date)} at ${fmtPrice(data.zone_entry_price ?? 0)}`,
-    })
-    items.push({
-      label: "Sessions in current zone",
-      value: String(data.sessions_in_zone),
-    })
-  }
-
-  if (potentialLow != null && dropFromCurrent != null) {
-    items.push({
-      label: "Max potential drop",
-      value: `${fmtPrice(potentialLow)}  (~${fmtPct(dropFromCurrent)} from current, Max DD: ${fmtPct(data.max_potential_drop_pct)})`,
-    })
-  }
+  const contextItems = ctxConfig
+    .filter(c => data.factor_context[c.key] != null)
+    .map(c => ({
+      label: c.label,
+      value: fmtCtxValue(data.factor_context[c.key], c.fmt),
+    }))
 
   return (
-    <ol className="space-y-1.5">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-2 text-sm">
-          <span className="text-muted-foreground/50 shrink-0 w-5 text-right">{i + 1}.</span>
-          <span className="text-muted-foreground">{item.label}:</span>
-          <span className="text-foreground font-medium">{item.value}</span>
-        </li>
-      ))}
-    </ol>
+    <div className="space-y-4">
+      {/* Primary metric tiles */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Current Price</div>
+          <div className="text-xl font-bold tabular-nums text-foreground">{fmtPrice(data.current_price)}</div>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Factor Value</div>
+          <div className="text-xl font-bold tabular-nums text-foreground">{fmtFactor(data.current_value)}</div>
+        </div>
+        <div className={[
+          "rounded-lg border px-4 py-3",
+          inZone
+            ? "border-amber-400 bg-amber-50 dark:border-amber-600/50 dark:bg-amber-900/20"
+            : "border-border bg-muted/30"
+        ].join(" ")}>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Rarity</div>
+          <div className={[
+            "text-xl font-bold tabular-nums",
+            inZone ? "text-amber-700 dark:text-amber-400" : "text-foreground"
+          ].join(" ")}>{fmtOrdinal(data.current_percentile)}</div>
+        </div>
+      </div>
+
+      {/* Active zone panel */}
+      {inZone && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 dark:border-amber-600/40 dark:bg-amber-900/15 px-4 py-3 grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Zone entered</span>
+            <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+              P{data.current_zone} on {fmtDate(data.zone_entry_date!)} at {fmtPrice(data.zone_entry_price ?? 0)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Sessions in zone</span>
+            <span className="font-semibold text-foreground tabular-nums">{data.sessions_in_zone}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Factor context grid */}
+      {contextItems.length > 0 && (
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm px-1">
+          {contextItems.map((item, i) => (
+            <div key={i} className="flex justify-between gap-2 border-b border-border/40 pb-1.5">
+              <span className="text-muted-foreground">{item.label}</span>
+              <span className="font-medium text-foreground tabular-nums">{item.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Potential drop warning */}
+      {potentialLow != null && dropFromCurrent != null && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Max potential drop</span>
+          <span className="font-semibold text-red-400 tabular-nums">
+            {fmtPrice(potentialLow)} · ~{fmtPct(dropFromCurrent)} from current · Max DD {fmtPct(data.max_potential_drop_pct)}
+          </span>
+        </div>
+      )}
+    </div>
   )
 }

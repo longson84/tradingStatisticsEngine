@@ -122,6 +122,7 @@ class PerformanceSummaryResponse(BaseModel):
     sharpe_ratio: float
     max_drawdown_pct: float
     current_drawdown_pct: float
+    current_drawdown_days: int
     calmar_ratio: float
     win_rate_pct: float
     avg_win_pct: float
@@ -158,6 +159,7 @@ class TradeRowResponse(BaseModel):
     mae_price: float | None
     mfe_price: float | None
     retracement_pct: float | None
+    early_returns: dict[str, float | None] = {}
 
 
 class DistributionRowResponse(BaseModel):
@@ -208,6 +210,7 @@ class SingleTickerAnalysisResponse(BaseModel):
     return_percentiles: list[DistributionRowResponse]
     mae_percentiles_winners: list[DistributionRowResponse]
     mfe_percentiles_winners: list[DistributionRowResponse]
+    mfe_percentiles_losers: list[DistributionRowResponse]
     monthly_returns_strategy: dict[str, dict[str, float | None]]
     monthly_returns_bah: dict[str, dict[str, float | None]]
     monthly_stats_by_calendar: list[MonthlyStatRowResponse]

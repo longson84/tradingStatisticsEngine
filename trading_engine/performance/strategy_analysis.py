@@ -29,6 +29,7 @@ class PerformanceSummary:
     sharpe_ratio: float
     max_drawdown_pct: float
     current_drawdown_pct: float
+    current_drawdown_days: int
     calmar_ratio: float
     win_rate_pct: float
     avg_win_pct: float
@@ -52,6 +53,9 @@ class CurrentPosition:
     mfe_pct: float | None
 
 
+EARLY_BARS: list[int] = [2, 5, 10]
+
+
 @dataclass
 class TradeRow:
     symbol: str
@@ -67,6 +71,7 @@ class TradeRow:
     mae_price: float | None
     mfe_price: float | None
     retracement_pct: float | None
+    early_returns: dict[str, float | None] = field(default_factory=dict)
 
 
 @dataclass
@@ -78,6 +83,7 @@ class DistributionRow:
 
 
 STAT_PERCENTILES: list[int] = [5, 10, 15, 20, 25, 50, 75, 90, 95]
+DIST_PERCENTILES: list[int] = [5, 10, 15, 20, 25, 50, 75, 90, 95, 98, 100]
 
 
 @dataclass
@@ -124,6 +130,7 @@ class SingleTickerAnalysis:
     return_percentiles: list[DistributionRow]
     mae_percentiles_winners: list[DistributionRow]
     mfe_percentiles_winners: list[DistributionRow]
+    mfe_percentiles_losers: list[DistributionRow]
     monthly_returns_strategy: dict[str, dict[str, float | None]]
     monthly_returns_bah: dict[str, dict[str, float | None]]
     monthly_stats_by_calendar: list[MonthlyStatRow]
@@ -192,8 +199,10 @@ def run_single_ticker_analysis(
 
     returns = [t.return_pct for t in closed_trades if t.return_pct is not None]
     winners = [t for t in closed_trades if t.return_pct is not None and t.return_pct > 0]
+    losers  = [t for t in closed_trades if t.return_pct is not None and t.return_pct <= 0]
     winner_maes = [t.mae_pct for t in winners if t.mae_pct is not None]
     winner_mfes = [t.mfe_pct for t in winners if t.mfe_pct is not None]
+    loser_mfes  = [t.mfe_pct for t in losers  if t.mfe_pct is not None]
 
     return SingleTickerAnalysis(
         symbol=symbol,
@@ -204,10 +213,11 @@ def run_single_ticker_analysis(
         current_position=current_position,
         strategy=_compute_performance_summary(result, closed_trades),
         bah=_compute_performance_summary(bah_result, bah_closed),
-        trades=_compute_trade_rows(result.trades),
+        trades=_compute_trade_rows(result.trades, price_frame),
         return_percentiles=_compute_percentile_table(returns),
         mae_percentiles_winners=_compute_percentile_table(winner_maes),
         mfe_percentiles_winners=_compute_percentile_table(winner_mfes),
+        mfe_percentiles_losers=_compute_percentile_table(loser_mfes),
         monthly_returns_strategy=_compute_monthly_heatmap(result.equity_curve),
         monthly_returns_bah=_compute_monthly_heatmap(bah_result.equity_curve),
         monthly_stats_by_calendar=_compute_monthly_stats_by_calendar(result.equity_curve),
@@ -233,8 +243,14 @@ def _compute_performance_summary(result: PortfolioResult, closed_trades: list[Tr
     sharpe = _sharpe(equity)
     max_dd = _max_drawdown(equity)
     calmar = cagr / abs(max_dd) if max_dd != 0 else 0.0
-    peak = float(equity.cummax().iloc[-1])
+    cum_max = equity.cummax()
+    peak = float(cum_max.iloc[-1])
     current_dd = float((equity.iloc[-1] / peak - 1) * 100) if peak > 0 else 0.0
+    if current_dd < 0.0:
+        at_peak = equity[equity >= peak - 1e-9]
+        current_dd_days = int((equity.index[-1] - at_peak.index[-1]).days) if not at_peak.empty else 0
+    else:
+        current_dd_days = 0
     time_in_market = _time_in_market(result.trades, equity)
 
     returns = [t.return_pct for t in closed_trades if t.return_pct is not None]
@@ -245,6 +261,7 @@ def _compute_performance_summary(result: PortfolioResult, closed_trades: list[Tr
             sharpe_ratio=sharpe,
             max_drawdown_pct=max_dd,
             current_drawdown_pct=current_dd,
+            current_drawdown_days=current_dd_days,
             calmar_ratio=calmar,
             win_rate_pct=0.0,
             avg_win_pct=0.0,
@@ -286,6 +303,7 @@ def _compute_performance_summary(result: PortfolioResult, closed_trades: list[Tr
         sharpe_ratio=sharpe,
         max_drawdown_pct=max_dd,
         current_drawdown_pct=current_dd,
+        current_drawdown_days=current_dd_days,
         calmar_ratio=calmar,
         win_rate_pct=win_rate,
         avg_win_pct=avg_win,
@@ -303,7 +321,7 @@ def _compute_performance_summary(result: PortfolioResult, closed_trades: list[Tr
 def _empty_summary() -> PerformanceSummary:
     return PerformanceSummary(
         total_return_pct=0.0, cagr_pct=0.0, sharpe_ratio=0.0,
-        max_drawdown_pct=0.0, current_drawdown_pct=0.0, calmar_ratio=0.0, win_rate_pct=0.0,
+        max_drawdown_pct=0.0, current_drawdown_pct=0.0, current_drawdown_days=0, calmar_ratio=0.0, win_rate_pct=0.0,
         avg_win_pct=0.0, avg_loss_pct=0.0, max_consec_losses=0,
         best_trade_pct=0.0, worst_trade_pct=0.0, total_trades=0,
         avg_holding_days=0.0, profit_factor=0.0, time_in_market_pct=0.0,
@@ -325,7 +343,11 @@ def _time_in_market(trades: list[Trade], equity: pd.Series) -> float:
 # Trade rows
 # =============================================================================
 
-def _compute_trade_rows(trades: list[Trade]) -> list[TradeRow]:
+def _compute_trade_rows(trades: list[Trade], price_frame: PriceFrame) -> list[TradeRow]:
+    close = price_frame.data["close"]
+    # Build date→integer-position lookup for O(1) early-bar lookups
+    date_to_idx: dict[Any, int] = {ts: i for i, ts in enumerate(close.index)}
+
     rows = []
     for t in trades:
         mae_price = t.entry_price * (1 + t.mae_pct / 100) if t.mae_pct is not None else None
@@ -333,6 +355,25 @@ def _compute_trade_rows(trades: list[Trade]) -> list[TradeRow]:
         retracement: float | None = None
         if t.mfe_pct is not None and t.return_pct is not None and t.return_pct > 0 and t.mfe_pct != 0:
             retracement = (t.mfe_pct - t.return_pct) / abs(t.mfe_pct) * 100
+
+        # Early-bar min returns — lowest return within first N bars while still open
+        early_returns: dict[str, float | None] = {}
+        if t.exit_date is not None and t.entry_price > 0:
+            entry_ts = pd.Timestamp(str(t.entry_date))
+            exit_ts  = pd.Timestamp(str(t.exit_date))
+            entry_idx = date_to_idx.get(entry_ts)
+            exit_idx  = date_to_idx.get(exit_ts)
+            for n in EARLY_BARS:
+                key = str(n)
+                # Bars from entry+1 up to min(entry+n, exit-1) — must have at least 1 bar open
+                if entry_idx is not None and exit_idx is not None and entry_idx + 1 < exit_idx:
+                    end_bar = min(entry_idx + n, exit_idx - 1)
+                    window = close.iloc[entry_idx + 1 : end_bar + 1]
+                    min_price = float(window.min())
+                    early_returns[key] = (min_price / t.entry_price - 1) * 100
+                else:
+                    early_returns[key] = None
+
         rows.append(TradeRow(
             symbol=t.symbol,
             direction=t.direction,
@@ -347,6 +388,7 @@ def _compute_trade_rows(trades: list[Trade]) -> list[TradeRow]:
             mae_price=mae_price,
             mfe_price=mfe_price,
             retracement_pct=retracement,
+            early_returns=early_returns,
         ))
     return rows
 
@@ -361,7 +403,7 @@ def _compute_percentile_table(values: list[float]) -> list[DistributionRow]:
     arr = np.array(values)
     sorted_vals = sorted(values)
     rows = []
-    for pct in STAT_PERCENTILES:
+    for pct in DIST_PERCENTILES:
         val = float(np.percentile(arr, pct))
         cumulative = sum(1 for v in sorted_vals if v <= val)
         rows.append(DistributionRow(percentile=pct, value_pct=val, cumulative_count=cumulative))

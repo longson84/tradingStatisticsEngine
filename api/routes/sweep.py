@@ -8,12 +8,9 @@ from trading_engine.types import BacktestConfig
 
 from api.deps import build_strategy, fetch_prices
 from api.schemas.backtest import SweepErrorItem, SweepRequest, SweepResponse, SweepResultItem
+from api.utils import date_key
 
 router = APIRouter(prefix="/sweep", tags=["sweep"])
-
-
-def _date_key(ts) -> str:
-    return str(ts.date()) if hasattr(ts, "date") and callable(ts.date) else str(ts)
 
 
 @router.post("", response_model=SweepResponse)
@@ -46,7 +43,7 @@ def run_sweep(req: SweepRequest) -> SweepResponse:
         results.append(
             SweepResultItem(
                 strategy_type=type(config.strategy).__name__,
-                equity_curve={_date_key(ts): float(v) for ts, v in ec.items()},
+                equity_curve={date_key(ts): float(v) for ts, v in ec.items()},
                 total_return_pct=total_return_pct,
                 final_nav=final,
                 trade_count=len(portfolio_result.trades),

@@ -1,9 +1,12 @@
 import { SectionTitle } from "./SectionTitle"
 import { fmtDate, fmtPct, fmtInt, fmtPrice } from "@/lib/format"
 
+const DD_MIN_THRESHOLD = 5   // minimum depth % to count as a drawdown period
+
 interface Props {
   equityStrategy: Record<string, number>
   tickerPrices: Record<string, number>
+  label?: string
 }
 
 interface Period {
@@ -87,7 +90,7 @@ function computeDrawdowns(
   }
 
   return periods
-    .filter(p => p.depthPct < -0.5)
+    .filter(p => p.depthPct < -DD_MIN_THRESHOLD)
     .sort((a, b) => a.depthPct - b.depthPct)
     .slice(0, top)
     .sort((a, b) => b.startDate.localeCompare(a.startDate))
@@ -99,12 +102,12 @@ function stripeColor(pct: number): string {
   return "rgba(249,115,22,0.50)"
 }
 
-export function DrawdownPeriods({ equityStrategy, tickerPrices }: Props) {
+export function DrawdownPeriods({ equityStrategy, tickerPrices, label = "Strategy" }: Props) {
   const periods = computeDrawdowns(equityStrategy, tickerPrices)
 
   return (
     <div>
-      <SectionTitle>Top Drawdown Periods — Strategy</SectionTitle>
+      <SectionTitle>Top Drawdown Periods — {label}</SectionTitle>
       {periods.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">No drawdown data.</p>
       ) : (

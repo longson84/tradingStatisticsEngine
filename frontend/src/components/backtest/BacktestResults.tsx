@@ -16,8 +16,11 @@ import { MonthlyReturns } from "./MonthlyReturns"
 import { MonthlyStats } from "./MonthlyStats"
 import { StrategyHealth } from "./StrategyHealth"
 import { DrawdownPeriods } from "./DrawdownPeriods"
+import { DrawdownDepthAnalysis } from "./DrawdownDepthAnalysis"
+import { DrawdownDurationAnalysis } from "./DrawdownDurationAnalysis"
 import { RollingReturn } from "./RollingReturn"
 import { AnnualReturns } from "./AnnualReturns"
+import { EarlyTradeBehavior } from "./EarlyTradeBehavior"
 
 interface Props {
   data: SingleTickerAnalysis
@@ -76,9 +79,21 @@ export function BacktestResults({ data }: Props) {
       <PerformanceSummaryCard data={data.strategy} />
 
       <BahComparison strategy={data.strategy} bah={data.bah} />
-      <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} />
+      <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} label="Strategy" />
+      <DrawdownPeriods equityStrategy={data.equity_curve_bah} tickerPrices={data.ticker_prices} label="Buy &amp; Hold" />
+      <DrawdownDepthAnalysis
+        equityStrategy={data.equity_curve_strategy}
+        equityBah={data.equity_curve_bah}
+        strategyLabel={data.strategy_label}
+      />
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <DrawdownDurationAnalysis
+        equityStrategy={data.equity_curve_strategy}
+        equityBah={data.equity_curve_bah}
+        strategyLabel={data.strategy_label}
+      />
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
         <ReturnDistribution
           percentiles={data.return_percentiles}
           title="RETURN DIST — All Trades"
@@ -91,7 +106,13 @@ export function BacktestResults({ data }: Props) {
           percentiles={data.mfe_percentiles_winners}
           title="MFE DIST — Winning Trades"
         />
+        <ReturnDistribution
+          percentiles={data.mfe_percentiles_losers}
+          title="MFE DIST — Losing Trades"
+        />
       </div>
+
+      <EarlyTradeBehavior trades={data.trades} />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <MaeScatter trades={data.trades} />

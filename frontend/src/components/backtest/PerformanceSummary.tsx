@@ -21,6 +21,7 @@ export function PerformanceSummaryCard({ data }: Props) {
     [
       { label: "Max Drawdown",    value: fmtPct(data.max_drawdown_pct),   color: "text-red-400" },
       { label: "Curr. Drawdown",  value: fmtPct(data.current_drawdown_pct), color: "text-red-400" },
+      { label: "Curr. DD Days",   value: data.current_drawdown_days > 0 ? `${data.current_drawdown_days}d` : "—", color: data.current_drawdown_days > 0 ? "text-red-400" : "text-muted-foreground" },
       { label: "Win Rate",        value: fmtPct(data.win_rate_pct),       color: colorPct(data.win_rate_pct - 50) },
       { label: "Avg Win",         value: fmtPct(data.avg_win_pct),        color: "text-green-400" },
       { label: "Avg Loss",        value: fmtPct(data.avg_loss_pct),       color: "text-red-400" },
