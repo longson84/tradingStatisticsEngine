@@ -1,0 +1,33 @@
+services:
+  # ── Backend API ────────────────────────────────────────────────────────────
+  - type: web
+    name: trading-engine-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: |
+      pip install uv
+      uv sync --group api
+    startCommand: uv run uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: UV_SYSTEM_PYTHON
+        value: "1"
+    healthCheckPath: /health
+
+  # ── Frontend Static Site ───────────────────────────────────────────────────
+  - type: static
+    name: trading-engine-frontend
+    plan: free
+    region: singapore
+    buildCommand: |
+      cd frontend && npm install -g pnpm && pnpm install && pnpm build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22.0.0
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
