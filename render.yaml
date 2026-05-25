@@ -17,8 +17,9 @@ services:
     healthCheckPath: /health
 
   # ── Frontend Static Site ───────────────────────────────────────────────────
-  - type: static
+  - type: web
     name: trading-engine-frontend
+    runtime: static
     plan: free
     region: singapore
     buildCommand: |
