@@ -21,7 +21,7 @@ services:
     name: trading-engine-frontend
     runtime: static
     buildCommand: |
-      cd frontend && npm install && npm run build
+      cd frontend && corepack enable && corepack prepare pnpm@9.15.0 --activate && pnpm install && pnpm build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: NODE_VERSION
