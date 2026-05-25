@@ -82,7 +82,7 @@ export function PriceFactorChart({ timeSeries, zoneStats, entries }: Props) {
     })
     const priceSeries = priceChart.addSeries(LineSeries, {
       color: "#3b82f6",
-      lineWidth: 1.5,
+      lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: true,
     })
@@ -95,7 +95,7 @@ export function PriceFactorChart({ timeSeries, zoneStats, entries }: Props) {
     })
     const factorSeries = factorChart.addSeries(LineSeries, {
       color: "#f59e0b",
-      lineWidth: 1.5,
+      lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: true,
     })
