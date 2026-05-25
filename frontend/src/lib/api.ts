@@ -1,4 +1,4 @@
-const BASE = "http://localhost:8000"
+const BASE = "https://trading-engine-api-k4m0.onrender.com"
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -183,6 +183,12 @@ export interface HealthRow {
   p95: number | null
 }
 
+export interface UndercutDistributionRow {
+  undercuts: number
+  trade_count: number
+  pct_of_winners: number
+}
+
 export interface SingleTickerAnalysis {
   symbol: string
   strategy_label: string
@@ -205,6 +211,7 @@ export interface SingleTickerAnalysis {
   equity_curve_strategy: Record<string, number>
   equity_curve_bah: Record<string, number>
   ticker_prices: Record<string, number>
+  undercut_distribution: UndercutDistributionRow[] | null
 }
 
 export function backtestAnalyzeApi(params: {
