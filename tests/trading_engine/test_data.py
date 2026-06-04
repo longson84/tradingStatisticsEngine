@@ -122,3 +122,44 @@ class TestYFinanceLoader:
         loader = YFinanceLoader()
         with pytest.raises(DataLoadError):
             loader.load("XXXXXXXXXX", date(2023, 1, 1), date(2023, 3, 31))
+
+
+# =============================================================================
+# [C2] YFinanceLoader column normalization (no network — yf.download mocked)
+# =============================================================================
+
+class TestYFinanceColumnNormalization:
+    """yfinance can return columns that flatten to DUPLICATE names.
+
+    When that happens, df["close"] selects multiple columns and becomes a
+    DataFrame instead of a Series, which silently corrupts every factor (e.g.
+    AHR999 raises "truth value of a Series is ambiguous"). The loader must
+    guarantee unique columns so df["close"] is always a Series.
+    """
+
+    def _dup_close_frame(self) -> pd.DataFrame:
+        idx = pd.date_range("2023-01-01", periods=5, freq="D")
+        df = pd.DataFrame(
+            {
+                "Open": [1.0, 2, 3, 4, 5],
+                "High": [1.0, 2, 3, 4, 5],
+                "Low": [1.0, 2, 3, 4, 5],
+                "Close": [1.0, 2, 3, 4, 5],
+                "Close2": [1.0, 2, 3, 4, 5],
+                "Volume": [10.0, 20, 30, 40, 50],
+            },
+            index=idx,
+        )
+        # Two columns that both lowercase to "close"
+        df.columns = ["Open", "High", "Low", "Close", "Close", "Volume"]
+        return df
+
+    def test_duplicate_close_collapses_to_series(self, monkeypatch):
+        import trading_engine.data.yfinance_loader as mod
+
+        monkeypatch.setattr(mod.yf, "download", lambda *a, **k: self._dup_close_frame())
+        pf = YFinanceLoader().load("BTC-USD", date(2023, 1, 1), date(2023, 1, 6))
+
+        # Columns must be unique and close must be a 1-D Series
+        assert pf.data.columns.is_unique
+        assert isinstance(pf.data["close"], pd.Series)

@@ -54,6 +54,11 @@ class YFinanceLoader:
         df.columns = df.columns.str.lower()
         df.index.name = "date"
 
+        # Flattening a MultiIndex can leave duplicate names (e.g. two "close").
+        # Drop duplicates (keep first) so df["close"] is always a Series, not a
+        # DataFrame — a DataFrame-valued column silently corrupts every factor.
+        df = df.loc[:, ~df.columns.duplicated()]
+
         # Ensure required columns exist
         required = {"open", "high", "low", "close"}
         actual = set(df.columns)
