@@ -1,4 +1,4 @@
-const BASE = "https://trading-engine-api-k4m0.onrender.com"
+const BASE = "http://localhost:8000"
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
