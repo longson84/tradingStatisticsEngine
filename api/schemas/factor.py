@@ -70,7 +70,7 @@ class RegimeResponse(BaseModel):
 class RarityRequest(BaseModel):
     symbol: str
     date_range: DateRange
-    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak"]
+    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak", "ahr999"]
     period: int = 200
     ma_type: Literal["sma", "ema", "wma"] = "sma"
     std_dev: float = 2.0

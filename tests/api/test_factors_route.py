@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from api.routes.factors import _build_factor
+from api.schemas.factor import RarityRequest
 from trading_engine.factors import (
     AHR999,
     BollingerBands,
@@ -28,3 +29,20 @@ class TestBuildFactor:
         from fastapi import HTTPException
         with pytest.raises(HTTPException):
             _build_factor("nonsense", 10, "sma")
+
+
+class TestRarityRequestSchema:
+    """The request schema must accept the same factor types the factory builds.
+
+    If the schema's Literal lacks 'ahr999', FastAPI rejects the request body
+    with a 422 (detail is a list of error objects) before _build_factor runs —
+    which surfaces in the UI as the unhelpful "[object Object]".
+    """
+
+    def test_accepts_ahr999(self):
+        req = RarityRequest(
+            symbol="BTC-USD",
+            date_range={"start": "2000-01-01", "end": "2024-01-01"},
+            factor_type="ahr999",
+        )
+        assert req.factor_type == "ahr999"
