@@ -94,7 +94,7 @@ export interface RarityAnalysisResponse {
   event_study: EventStudyZone[]
 }
 
-export type FactorType = "distance_from_peak" | "moving_average" | "bollinger" | "donchian"
+export type FactorType = "distance_from_peak" | "moving_average" | "bollinger" | "donchian" | "ahr999"
 export type MaType = "sma" | "ema" | "wma"
 export type DataSource = "yfinance" | "vnstock" | "csv"
 

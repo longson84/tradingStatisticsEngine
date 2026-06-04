@@ -17,6 +17,7 @@ const FACTOR_OPTIONS: FactorOption[] = [
   { label: "Moving Average",     value: "moving_average" },
   { label: "Bollinger Bands",    value: "bollinger" },
   { label: "Donchian Channel",   value: "donchian" },
+  { label: "AHR999",             value: "ahr999" },
 ]
 
 const DATA_SOURCES: Array<{ label: string; value: DataSource }> = [
@@ -157,11 +158,13 @@ export function FactorsPage() {
         <FormSelect value={factorType} onChange={setFactorType} options={FACTOR_OPTIONS} />
       </div>
 
-      {/* Period (all factors have this) */}
-      <div>
-        <Label>Period</Label>
-        <NumberInput value={period} onChange={setPeriod} min={2} />
-      </div>
+      {/* Period — all factors except AHR999 (which is parameter-free) */}
+      {factorType !== "ahr999" && (
+        <div>
+          <Label>Period</Label>
+          <NumberInput value={period} onChange={setPeriod} min={2} />
+        </div>
+      )}
 
       {/* MA Type — moving_average only */}
       {factorType === "moving_average" && (
