@@ -11,6 +11,7 @@ import pytest
 from trading_engine.factors import (
     AHR999,
     BollingerBands,
+    DistanceFromMovingAverage,
     DonchianChannel,
     DistanceFromPeak,
     MovingAverage,
@@ -102,6 +103,29 @@ class TestMovingAverageRatio:
         result = factor.compute(price_frame)
         assert result.metadata["ma_type"] == "EMA"
         assert result.metadata["length"] == 30
+
+
+class TestDistanceFromMovingAverage:
+    def test_matches_price_distance_from_ma(self):
+        idx = pd.date_range("2024-01-01", periods=5)
+        prices = PriceFrame(
+            symbol="TEST",
+            source="test",
+            data=pd.DataFrame({
+                "open": [10, 10, 10, 10, 12],
+                "high": [10, 10, 10, 10, 12],
+                "low": [10, 10, 10, 10, 12],
+                "close": [10, 10, 10, 10, 12],
+                "volume": [1, 1, 1, 1, 1],
+            }, index=idx),
+        )
+
+        result = DistanceFromMovingAverage(ma_type="SMA", length=5).compute(prices)
+
+        assert result.name == "Distance from SMA(5)"
+        assert result.values.iloc[-1] == pytest.approx(12 / 10.4 - 1)
+        assert result.metadata["ma_type"] == "SMA"
+        assert result.metadata["length"] == 5
 
 
 # =============================================================================

@@ -93,8 +93,9 @@ class Factor(Protocol):
 class ZoneEntry:
     """One historical instance when a factor entered a percentile zone.
 
-    A "zone entry" begins when the factor crosses below the zone threshold
-    and ends when it recovers back above it. Entries are nested: a P20 entry
+    A "zone entry" begins when the factor crosses below the zone threshold.
+    Recovery can be configured by analysis: either factor exits the threshold
+    zone, or price recovers to the entry close. Entries are nested: a P20 entry
     that starts while a P25 entry is still active is a child of that P25 entry.
     """
     zone_pct: int                      # e.g. 20 for the P20 zone
@@ -106,7 +107,7 @@ class ZoneEntry:
     low_factor: float                  # most extreme factor value during entry
     mae_pct: float                     # (entry_price - low_price) / entry_price * 100
     days_to_low: int                   # bars from entry to the price low
-    recovery_date: date | None         # first session factor crossed back above threshold
+    recovery_date: date | None         # first session satisfying configured recovery mode
     days_to_recovery: int | None       # bars from entry to recovery
     bars_elapsed: int | None           # bars from entry to last data date (active entries only)
     is_active: bool                    # still in zone as of last data date
@@ -131,7 +132,7 @@ class ZoneStats:
     qr_10y: int                        # quick recoveries in last 10 years
     avg_days: float                    # average sessions spent in zone (completed entries)
     mmae_pct: float                    # worst-case MAE across all entries
-    mae_by_percentile: dict[int, float]  # e.g. {80: 12.3, 85: 15.1, 90: 18.7, 95: 23.4, 98: 29.1}
+    mae_by_percentile: dict[int, float]  # worst-tail percentile level -> MAE value
     is_current_zone: bool              # factor is currently inside this zone
 
 

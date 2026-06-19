@@ -7,12 +7,13 @@ them per-request; notebooks can override them per-cell.
 # Percentile zones for Rarity Analysis.
 # Ordered ascending; each zone is a left-tail threshold (factor ≤ P_k threshold).
 # Add or remove zones here to change the default breakdown globally.
-DEFAULT_RARITY_ZONES: list[int] = [1, 5, 10, 15, 20, 25, 30, 40, 50]
+DEFAULT_RARITY_ZONES: list[int] = [1, 5, 10, 15, 20, 25, 30]
 
 # Quick Recovery window (trading sessions).
-# An entry is "quick recovery" if the factor exits the zone within this many sessions.
+# An entry is "quick recovery" if its configured recovery completes within this many sessions.
 DEFAULT_QR_DAYS: int = 5
 
-# MAE percentile levels reported in ZoneStats.
-# Each value becomes a column in the Rarity Analysis summary table.
-DEFAULT_MAE_PERCENTILES: list[int] = [80, 85, 90, 95, 98]
+# Worst-tail MAE percentile levels reported in ZoneStats.
+# MAE is a positive drawdown magnitude, so P5 means the 95th percentile
+# threshold: only the worst 5% of non-quick-recovery entries had larger MAE.
+DEFAULT_MAE_PERCENTILES: list[int] = [5, 10, 15, 20, 25, 50]

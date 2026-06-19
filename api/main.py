@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import backtest, factors, sweep
+from api.routes import backtest, events, factors, fundamentals, sweep
 
 app = FastAPI(
     title="Trading Statistics Engine",
@@ -29,6 +29,8 @@ app.add_middleware(
 app.include_router(backtest.router)
 app.include_router(sweep.router)
 app.include_router(factors.router)
+app.include_router(events.router)
+app.include_router(fundamentals.router)
 
 
 @app.get("/health")

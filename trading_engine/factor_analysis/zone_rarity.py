@@ -15,6 +15,7 @@ from datetime import date
 import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
+from typing import Literal
 
 from trading_engine.constants import (
     DEFAULT_MAE_PERCENTILES,
@@ -64,6 +65,7 @@ def zone_rarity_analysis(
     zones: list[int] | None = None,
     quick_recovery_days: int = DEFAULT_QR_DAYS,
     mae_percentiles: list[int] | None = None,
+    recovery_mode: Literal["factor", "price"] = "price",
 ) -> RarityAnalysisResult:
     """Run Zone Rarity Analysis for a single symbol and factor.
 
@@ -73,6 +75,9 @@ def zone_rarity_analysis(
         zones: Percentile thresholds to analyze. Default: DEFAULT_RARITY_ZONES.
         quick_recovery_days: Sessions for a recovery to count as "quick".
         mae_percentiles: Which MAE percentile levels to report.
+        recovery_mode:
+            "factor": episode ends when factor exits the percentile zone.
+            "price": episode ends when close recovers to the entry close.
 
     Returns:
         RarityAnalysisResult with zone stats table and full entry history.
@@ -84,6 +89,8 @@ def zone_rarity_analysis(
         zones = list(DEFAULT_RARITY_ZONES)
     if mae_percentiles is None:
         mae_percentiles = list(DEFAULT_MAE_PERCENTILES)
+    if recovery_mode not in {"factor", "price"}:
+        raise ValueError("recovery_mode must be 'factor' or 'price'")
 
     zones_asc = sorted(zones)  # [1, 5, 10, 15, 20, 25, 30, 40, 50]
 
@@ -112,17 +119,22 @@ def zone_rarity_analysis(
     }
 
     # Determine current zone (most extreme zone the factor is currently inside)
-    current_zone: int | None = None
+    factor_current_zone: int | None = None
     for pct in zones_asc:  # ascending: stops at most extreme satisfied
         if current_value <= thresholds[pct]:
-            current_zone = pct
+            factor_current_zone = pct
             break
 
     # Find all entries per zone
     entries_by_zone: dict[int, list[_Entry]] = {}
     for pct in zones_asc:
         entries_by_zone[pct] = _find_zone_entries(
-            factor_vals, close, thresholds[pct], pct, quick_recovery_days
+            factor_vals,
+            close,
+            thresholds[pct],
+            pct,
+            quick_recovery_days,
+            recovery_mode,
         )
 
     # When the factor gaps through multiple zone thresholds in a single bar,
@@ -133,6 +145,14 @@ def zone_rarity_analysis(
 
     # Assign levels and parent references
     _assign_levels(entries_by_zone, zones_asc)
+
+    if recovery_mode == "price":
+        active_entries = [
+            e for entries in entries_by_zone.values() for e in entries if e.is_active
+        ]
+        current_zone = min((e.zone_pct for e in active_entries), default=None)
+    else:
+        current_zone = factor_current_zone
 
     # Build zone stats
     zone_stats: list[ZoneStats] = []
@@ -205,8 +225,9 @@ def _find_zone_entries(
     threshold: float,
     zone_pct: int,
     quick_recovery_days: int,
+    recovery_mode: Literal["factor", "price"],
 ) -> list[_Entry]:
-    """Find all contiguous periods where factor_vals ≤ threshold."""
+    """Find factor-triggered entries and recover them by factor or price."""
     in_zone = factor_vals <= threshold
 
     entries: list[_Entry] = []
@@ -228,14 +249,29 @@ def _find_zone_entries(
         entry_price = float(close.iloc[i])
         entry_factor = float(factor_vals.iloc[i])
 
-        # Find end of contiguous stay
+        # Find episode recovery.
+        #
+        # factor mode: the episode ends when the factor exits the percentile zone.
+        #
+        # price mode: New-Low-style behavior, the episode ends when close
+        # returns to the entry close. Repeated threshold touches before that
+        # recovery are part of the same episode.
         j = i + 1
-        while j < n and in_zone.iloc[j]:
-            j += 1
+        if recovery_mode == "factor":
+            while j < n and in_zone.iloc[j]:
+                j += 1
+        else:
+            while j < n and float(close.iloc[j]) < entry_price:
+                j += 1
 
-        # Slice covering the stay
-        stay_close = close.iloc[i:j]
-        stay_factor = factor_vals.iloc[i:j]
+        recovered = j < n
+        end_pos = j if recovered and recovery_mode == "price" else j - 1
+
+        # Slice covering the episode. Price recovery includes the recovery bar,
+        # matching the New-Low episode engine; factor recovery keeps the prior
+        # contiguous-zone behavior.
+        stay_close = close.iloc[i:end_pos + 1]
+        stay_factor = factor_vals.iloc[i:end_pos + 1]
 
         low_price = float(stay_close.min())
         low_ts = stay_close.idxmin()
@@ -245,7 +281,7 @@ def _find_zone_entries(
 
         mae_pct = (entry_price - low_price) / entry_price * 100 if entry_price > 0 else 0.0
 
-        if j < n:
+        if recovered:
             recovery_ts = in_zone.index[j]
             days_to_recovery = j - i
             is_active = False
@@ -363,7 +399,10 @@ def _compute_zone_stats(
     mmae_pct = float(max(maes)) if maes else 0.0
     mae_by_percentile: dict[int, float] = {}
     for p in mae_percentiles:
-        mae_by_percentile[p] = float(np.percentile(maes, p)) if maes else 0.0
+        # MAE is stored as a positive drawdown magnitude. A "MAE P5" column is
+        # therefore the threshold for the worst 5% of outcomes, i.e. the 95th
+        # percentile of positive MAE values.
+        mae_by_percentile[p] = float(np.percentile(maes, 100 - p)) if maes else 0.0
 
     return ZoneStats(
         zone_pct=pct,

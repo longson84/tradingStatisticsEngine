@@ -1,14 +1,36 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { BarChart2, TrendingUp, Layers, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react"
+import { Activity, BarChart2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-const links = [
-  { to: "/factors",  label: "Factor Analysis",   icon: BarChart2 },
-  { to: "/backtest", label: "Strategy Backtest",  icon: TrendingUp },
-  { to: "/batch",    label: "Batch Backtest",     icon: Layers },
-  { to: "/sweep",    label: "Parameter Sweep",    icon: SlidersHorizontal },
+const sections = [
+  {
+    label: "Factor Analysis",
+    links: [
+      { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "Event Analysis",
+    links: [
+      { to: "/events/new-low", label: "New-Low Compare", icon: Waves, end: true },
+      { to: "/events/new-low/deep", label: "New-Low Deep", icon: SearchCode },
+    ],
+  },
+  {
+    label: "Company Analysis",
+    links: [
+      { to: "/fundamentals", label: "Fundamentals", icon: Database },
+      { to: "/company/growth", label: "Growth Dashboard", icon: Activity },
+    ],
+  },
+  {
+    label: "Strategy Analysis",
+    links: [
+      { to: "/strategy/sma", label: "SMA Strategy", icon: TrendingUp },
+    ],
+  },
 ]
 
 export function Sidebar({ children, className }: { children?: React.ReactNode; className?: string }) {
@@ -21,23 +43,33 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
         <ThemeToggle />
       </div>
 
-      <nav className="px-2 py-3 space-y-0.5">
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )
-            }
-          >
-            <Icon size={15} />
-            {label}
-          </NavLink>
+      <nav className="px-2 py-3 space-y-3">
+        {sections.map(section => (
+          <div key={section.label}>
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              {section.label}
+            </div>
+            <div className="space-y-0.5">
+              {section.links.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    )
+                  }
+                >
+                  <Icon size={15} />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 

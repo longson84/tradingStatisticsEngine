@@ -197,6 +197,12 @@ class HealthRowResponse(BaseModel):
     p95: float | None
 
 
+class UndercutDistributionRowResponse(BaseModel):
+    undercuts: int
+    trade_count: int
+    pct_of_winners: float
+
+
 class SingleTickerAnalysisResponse(BaseModel):
     symbol: str
     strategy_label: str
@@ -219,3 +225,4 @@ class SingleTickerAnalysisResponse(BaseModel):
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
     ticker_prices: dict[str, float]
+    undercut_distribution: list[UndercutDistributionRowResponse] | None = None

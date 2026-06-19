@@ -104,3 +104,16 @@ class MovingAverageRatio:
             "length": self.length,
             "distance_pct": round((current_price / ma_value - 1) * 100, 4) if ma_value else 0,
         }
+
+
+class DistanceFromMovingAverage(MovingAverageRatio):
+    """Factor: percentage distance from moving average.
+
+    Values are stored as decimal returns for consistency with the existing
+    factor pipeline: -0.10 means price is 10% below the moving average.
+    """
+
+    def compute(self, prices: PriceFrame) -> FactorSeries:
+        result = super().compute(prices)
+        result.name = f"Distance from {self.ma_type}({self.length})"
+        return result

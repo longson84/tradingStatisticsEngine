@@ -1,19 +1,13 @@
 import { useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
-import { BacktestResults } from "@/components/backtest/BacktestResults"
-import { backtestAnalyzeApi } from "@/lib/api"
+import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisResults"
+import { smaStrategyAnalysisApi } from "@/lib/api"
 import type { MaType, DataSource } from "@/lib/api"
 
 const DATA_SOURCES: Array<{ label: string; value: DataSource }> = [
   { label: "Yahoo Finance", value: "yfinance" },
   { label: "VN Stock",      value: "vnstock" },
-]
-
-const MA_TYPES: Array<{ label: string; value: MaType }> = [
-  { label: "SMA", value: "sma" },
-  { label: "EMA", value: "ema" },
-  { label: "WMA", value: "wma" },
 ]
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -64,12 +58,12 @@ function NumberInput({
   )
 }
 
-type FrozenParams = Parameters<typeof backtestAnalyzeApi>[0]
+type FrozenParams = Parameters<typeof smaStrategyAnalysisApi>[0]
 
-export function BacktestPage() {
+export function SmaStrategyPage() {
   const [symbol, setSymbol]               = useState("MSFT")
   const [dataSource, setDataSource]       = useState<DataSource>("yfinance")
-  const [maType, setMaType]               = useState<MaType>("sma")
+  const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)
   const [sellLag, setSellLag]             = useState(0)
@@ -79,8 +73,8 @@ export function BacktestPage() {
   const [frozenParams, setFrozenParams] = useState<FrozenParams | null>(null)
 
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["backtest-analyze", frozenParams],
-    queryFn: () => backtestAnalyzeApi(frozenParams!),
+    queryKey: ["sma-strategy-analysis", frozenParams],
+    queryFn: () => smaStrategyAnalysisApi(frozenParams!),
     enabled: frozenParams != null,
     retry: false,
   })
@@ -97,7 +91,7 @@ export function BacktestPage() {
       start: fromDate.trim() || undefined,
     })
     refetch()
-  }, [symbol, maType, maLength, buyLag, sellLag, initialCapital, dataSource, fromDate, refetch])
+  }, [symbol, maLength, buyLag, sellLag, initialCapital, dataSource, fromDate, refetch])
 
   const controls = (
     <div className="space-y-4">
@@ -119,17 +113,12 @@ export function BacktestPage() {
 
       <div className="border-t border-border pt-4">
         <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-          Strategy: Price vs MA
+          SMA Strategy
         </div>
 
         <div className="space-y-3">
           <div>
-            <Label>MA Type</Label>
-            <FormSelect value={maType} onChange={setMaType} options={MA_TYPES} />
-          </div>
-
-          <div>
-            <Label>MA Length</Label>
+            <Label>SMA Length</Label>
             <NumberInput value={maLength} onChange={setMaLength} min={2} />
           </div>
 
@@ -168,7 +157,7 @@ export function BacktestPage() {
         disabled={isFetching || !symbol.trim()}
         className="w-full py-2 rounded bg-destructive hover:bg-destructive/90 disabled:opacity-40 disabled:cursor-not-allowed text-destructive-foreground text-sm font-semibold transition-colors"
       >
-        {isFetching ? "Running…" : "Run Backtest"}
+        {isFetching ? "Running…" : "Run Analysis"}
       </button>
     </div>
   )
@@ -178,31 +167,34 @@ export function BacktestPage() {
       <Sidebar className="w-72" children={controls} />
 
       <main className="flex-1 overflow-y-auto p-6">
-        {/* Loading bar */}
+        <div className="mb-5 border-b border-border pb-4">
+          <h1 className="text-2xl font-bold tracking-tight">SMA Strategy Analysis</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Single-symbol strategy analysis for price versus simple moving average.
+          </p>
+        </div>
+
         {isFetching && (
           <div className="mb-6 h-0.5 w-full bg-white/8 rounded overflow-hidden">
             <div className="h-full bg-red-500 animate-pulse w-2/3 rounded" />
           </div>
         )}
 
-        {/* Error */}
         {error && !isFetching && (
           <div className="rounded-lg border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
             {(error as Error).message}
           </div>
         )}
 
-        {/* Empty state */}
         {!data && !isFetching && !error && (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground/40 text-sm">
             Configure the strategy and click{" "}
-            <span className="text-red-400 font-medium ml-1">Run Backtest</span>.
+            <span className="text-red-400 font-medium ml-1">Run Analysis</span>.
           </div>
         )}
 
-        {/* Results */}
         {data && !isFetching && (
-          <BacktestResults data={data} />
+          <StrategyAnalysisResults data={data} sellLag={frozenParams?.sell_lag ?? sellLag} />
         )}
       </main>
     </div>

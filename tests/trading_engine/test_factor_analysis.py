@@ -13,10 +13,12 @@ from trading_engine.factor_analysis import (
     percentile_breakdown,
     rarity_analysis,
 )
+from trading_engine.factor_analysis.zone_rarity import zone_rarity_analysis
 from trading_engine.factors import MovingAverageRatio
 from trading_engine.types import (
     FactorSeries,
     InsufficientDataError,
+    PriceFrame,
 )
 
 from tests.trading_engine.conftest import make_price_frame
@@ -74,6 +76,119 @@ class TestRarityAnalysis:
         # Should have low-end percentiles
         assert 1 in result.percentiles
         assert 5 in result.percentiles
+
+
+class TestZoneRarityRecoveryMode:
+    def _prices_and_factor(
+        self,
+        closes: list[float],
+        factors: list[float],
+    ) -> tuple[PriceFrame, FactorSeries]:
+        idx = pd.date_range("2024-01-01", periods=len(closes), freq="D")
+        prices = PriceFrame(
+            symbol="TEST",
+            source="test",
+            data=pd.DataFrame({
+                "open": closes,
+                "high": closes,
+                "low": closes,
+                "close": closes,
+                "volume": [1] * len(closes),
+            }, index=idx),
+        )
+        factor = FactorSeries(
+            name="test_factor",
+            values=pd.Series(factors, index=idx),
+        )
+        return prices, factor
+
+    def test_factor_recovery_ends_when_factor_exits_zone(self):
+        prices, factor = self._prices_and_factor(
+            closes=[100, 90, 80, 85, 88, 90],
+            factors=[2, -2, -1, 1, 2, 3],
+        )
+
+        result = zone_rarity_analysis(
+            factor,
+            prices,
+            zones=[50],
+            quick_recovery_days=0,
+            recovery_mode="factor",
+        )
+
+        entry = result.entries[0]
+        assert entry.is_active is False
+        assert entry.days_to_recovery == 3
+        assert entry.recovery_date == pd.Timestamp("2024-01-05").date()
+
+    def test_price_recovery_waits_until_entry_price_recovers(self):
+        prices, factor = self._prices_and_factor(
+            closes=[100, 90, 80, 85, 88, 90],
+            factors=[2, -2, -1, 1, 2, 3],
+        )
+
+        result = zone_rarity_analysis(
+            factor,
+            prices,
+            zones=[50],
+            quick_recovery_days=0,
+            recovery_mode="price",
+        )
+
+        entry = result.entries[0]
+        assert entry.is_active is False
+        assert entry.days_to_recovery == 4
+        assert entry.recovery_date == pd.Timestamp("2024-01-06").date()
+
+    def test_price_recovery_can_remain_active_after_factor_exits_zone(self):
+        prices, factor = self._prices_and_factor(
+            closes=[100, 90, 80, 85, 88],
+            factors=[2, -2, -1, 1, 2],
+        )
+
+        result = zone_rarity_analysis(
+            factor,
+            prices,
+            zones=[50],
+            quick_recovery_days=0,
+            recovery_mode="price",
+        )
+
+        entry = result.entries[0]
+        assert entry.is_active is True
+        assert entry.days_to_recovery is None
+        assert result.current_zone == 50
+
+    def test_mae_percentiles_are_worst_tail_thresholds(self):
+        prices, factor = self._prices_and_factor(
+            closes=[
+                100, 100, 95, 100,
+                100, 100, 90, 100,
+                100, 100, 80, 100,
+                100, 100, 70, 100,
+            ],
+            factors=[
+                2, -1, -1, 2,
+                2, -1, -1, 2,
+                2, -1, -1, 2,
+                2, -1, -1, 2,
+            ],
+        )
+
+        result = zone_rarity_analysis(
+            factor,
+            prices,
+            zones=[25],
+            mae_percentiles=[5, 10, 50],
+            quick_recovery_days=0,
+            recovery_mode="price",
+        )
+
+        stats = result.zone_stats[0]
+        assert stats.mmae_pct == pytest.approx(30)
+        assert stats.mae_by_percentile[5] == pytest.approx(28.5)
+        assert stats.mae_by_percentile[10] == pytest.approx(27)
+        assert stats.mae_by_percentile[50] == pytest.approx(15)
 
 
 # =============================================================================

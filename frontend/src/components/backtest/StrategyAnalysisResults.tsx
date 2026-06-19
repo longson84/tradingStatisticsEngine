@@ -21,12 +21,14 @@ import { DrawdownDurationAnalysis } from "./DrawdownDurationAnalysis"
 import { RollingReturn } from "./RollingReturn"
 import { AnnualReturns } from "./AnnualReturns"
 import { EarlyTradeBehavior } from "./EarlyTradeBehavior"
+import { SellLagBelowMA } from "./SellLagBelowMA"
 
 interface Props {
   data: SingleTickerAnalysis
+  sellLag: number
 }
 
-export function BacktestResults({ data }: Props) {
+export function StrategyAnalysisResults({ data, sellLag }: Props) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
@@ -78,6 +80,8 @@ export function BacktestResults({ data }: Props) {
       <CurrentPositionCard position={data.current_position} />
       <PerformanceSummaryCard data={data.strategy} />
 
+      <SellLagBelowMA data={data.undercut_distribution} sellLag={sellLag} />
+
       <BahComparison strategy={data.strategy} bah={data.bah} />
       <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} label="Strategy" />
       <DrawdownPeriods equityStrategy={data.equity_curve_bah} tickerPrices={data.ticker_prices} label="Buy &amp; Hold" />
@@ -85,12 +89,14 @@ export function BacktestResults({ data }: Props) {
         equityStrategy={data.equity_curve_strategy}
         equityBah={data.equity_curve_bah}
         strategyLabel={data.strategy_label}
+        currentDepthPct={data.strategy.current_drawdown_pct}
       />
 
       <DrawdownDurationAnalysis
         equityStrategy={data.equity_curve_strategy}
         equityBah={data.equity_curve_bah}
         strategyLabel={data.strategy_label}
+        currentDurationDays={data.strategy.current_drawdown_days}
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">

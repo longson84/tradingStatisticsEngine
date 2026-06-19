@@ -40,7 +40,7 @@ export function TradeLog({ trades, equityStrategy, equityBah }: Props) {
               <th colSpan={3} className="py-1.5 px-3 text-left font-semibold">Trade</th>
               <th colSpan={4} className="py-1.5 px-3 text-left font-semibold border-l border-border">Execution</th>
               <th colSpan={5} className="py-1.5 px-3 text-left font-semibold border-l border-border">Risk Metrics</th>
-              <th colSpan={2} className="py-1.5 px-3 text-left font-semibold border-l border-border">Portfolio</th>
+              <th colSpan={2} className="py-1.5 px-3 text-left font-semibold border-l border-border">Equity</th>
             </tr>
             {/* Column header */}
             <tr className="bg-card border-b border-border text-muted-foreground uppercase tracking-wide">

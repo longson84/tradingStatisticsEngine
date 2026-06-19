@@ -2,18 +2,34 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel
 
 from api.schemas.common import DateRange
 from trading_engine.constants import DEFAULT_QR_DAYS, DEFAULT_RARITY_ZONES
 
+CommonFactorType: TypeAlias = Literal[
+    "moving_average",
+    "distance_from_ma",
+    "bollinger",
+    "donchian",
+    "distance_from_peak",
+]
+RarityFactorType: TypeAlias = Literal[
+    "moving_average",
+    "distance_from_ma",
+    "bollinger",
+    "donchian",
+    "distance_from_peak",
+    "ahr999",
+]
+
 
 class FactorRequest(BaseModel):
     symbol: str
     date_range: DateRange
-    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak"]
+    factor_type: CommonFactorType
     # MA-specific
     period: int = 20
     ma_type: Literal["sma", "ema", "wma"] = "sma"
@@ -33,7 +49,7 @@ class FactorAnalysisResponse(BaseModel):
 class CrossSectionalRequest(BaseModel):
     symbols: list[str]
     date_range: DateRange
-    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak"]
+    factor_type: CommonFactorType
     period: int = 20
     ma_type: Literal["sma", "ema", "wma"] = "sma"
     threshold: float = 0.0
@@ -51,7 +67,7 @@ class CrossSectionalResponse(BaseModel):
 class RegimeRequest(BaseModel):
     symbols: list[str]
     date_range: DateRange
-    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak"]
+    factor_type: CommonFactorType
     period: int = 20
     ma_type: Literal["sma", "ema", "wma"] = "sma"
     threshold: float = 0.0
@@ -70,13 +86,14 @@ class RegimeResponse(BaseModel):
 class RarityRequest(BaseModel):
     symbol: str
     date_range: DateRange
-    factor_type: Literal["moving_average", "bollinger", "donchian", "distance_from_peak", "ahr999"]
+    factor_type: RarityFactorType
     period: int = 200
     ma_type: Literal["sma", "ema", "wma"] = "sma"
     std_dev: float = 2.0
     data_source: Literal["yfinance", "vnstock", "csv"] = "yfinance"
     zones: list[int] = DEFAULT_RARITY_ZONES
     quick_recovery_days: int = DEFAULT_QR_DAYS
+    recovery_mode: Literal["price", "factor"] = "price"
 
 
 class ZoneStatsSchema(BaseModel):
@@ -91,7 +108,7 @@ class ZoneStatsSchema(BaseModel):
     qr_10y: int
     avg_days: float
     mmae_pct: float
-    mae_by_percentile: dict[str, float]   # "80" → value, "85" → value, ...
+    mae_by_percentile: dict[str, float]   # percentile level -> MAE value
     is_current_zone: bool
 
 
@@ -123,19 +140,6 @@ class TimeSeriesPoint(BaseModel):
     factor: float
 
 
-class EventStudyPath(BaseModel):
-    day: int    # session offset from entry (-10 to +90)
-    mean: float
-    p25: float
-    p75: float
-
-
-class EventStudyZone(BaseModel):
-    zone_pct: int
-    count: int  # number of entries used
-    paths: list[EventStudyPath]
-
-
 class RarityAnalysisResponse(BaseModel):
     factor_name: str
     symbol: str
@@ -155,4 +159,3 @@ class RarityAnalysisResponse(BaseModel):
     zone_stats: list[ZoneStatsSchema]
     entries: list[ZoneEntrySchema]
     time_series: list[TimeSeriesPoint]
-    event_study: list[EventStudyZone]

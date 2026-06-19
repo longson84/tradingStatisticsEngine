@@ -26,6 +26,14 @@ function daysBetween(d1: string, d2: string): number {
   return Math.round((Date.parse(d2) - Date.parse(d1)) / 86_400_000)
 }
 
+function todayIsoLocal(): string {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function computeDrawdowns(
   curve: Record<string, number>,
   tickerPrices: Record<string, number>,
@@ -33,6 +41,7 @@ function computeDrawdowns(
 ): Period[] {
   const sorted = Object.entries(curve).sort(([a], [b]) => a.localeCompare(b))
   if (sorted.length < 2) return []
+  const activeEndDate = todayIsoLocal()
 
   const periods: Period[] = []
   let peak = sorted[0][1]
@@ -84,8 +93,8 @@ function computeDrawdowns(
       recoveryPx:  null,
       depthPct: (troughVal / startPeak - 1) * 100,
       daysToTrough: daysBetween(startDate, troughDate),
-      recoveryDays: null,
-      totalDays: null,
+      recoveryDays: daysBetween(troughDate, activeEndDate),
+      totalDays: daysBetween(startDate, activeEndDate),
     })
   }
 
@@ -137,11 +146,13 @@ export function DrawdownPeriods({ equityStrategy, tickerPrices, label = "Strateg
               </tr>
             </thead>
             <tbody>
-              {periods.map((p, idx) => (
-                <tr
-                  key={p.startDate}
-                  className={`border-b border-border hover:bg-blue-500/20 transition-colors ${idx % 2 === 1 ? "bg-card/40" : ""}`}
-                >
+              {periods.map((p, idx) => {
+                const isActive = p.recoveryDate == null
+                return (
+                  <tr
+                    key={p.startDate}
+                    className={`border-b border-border hover:bg-blue-500/20 transition-colors ${idx % 2 === 1 ? "bg-card/40" : ""}`}
+                  >
                   <td
                     className="py-1.5 px-3 text-muted-foreground/60 font-mono text-[10px]"
                     style={{ borderLeft: `3px solid ${stripeColor(p.depthPct)}` }}
@@ -170,17 +181,22 @@ export function DrawdownPeriods({ equityStrategy, tickerPrices, label = "Strateg
                     </span>
                   </td>
                   <td className="py-1.5 px-3 text-right text-muted-foreground">{fmtInt(p.daysToTrough)}</td>
-                  <td className="py-1.5 px-3 text-right text-muted-foreground">{p.recoveryDays != null ? fmtInt(p.recoveryDays) : "—"}</td>
-                  <td className="py-1.5 px-3 text-right text-muted-foreground">{p.totalDays != null ? fmtInt(p.totalDays) : "—"}</td>
+                  <td className="py-1.5 px-3 text-right text-muted-foreground">
+                    {p.recoveryDays != null ? `${fmtInt(p.recoveryDays)}${isActive ? " (active)" : ""}` : "—"}
+                  </td>
+                  <td className="py-1.5 px-3 text-right text-muted-foreground">
+                    {p.totalDays != null ? `${fmtInt(p.totalDays)}${isActive ? " (active)" : ""}` : "—"}
+                  </td>
 
                   <td className="py-1.5 px-3 border-l border-border/30">
-                    {p.recoveryDate == null
+                    {isActive
                       ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-yellow-500/15 text-yellow-500 font-semibold text-[10px]">● Ongoing</span>
                       : <span className="text-green-500 text-[10px] font-medium">✓ Recovered</span>
                     }
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

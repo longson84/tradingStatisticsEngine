@@ -7,6 +7,7 @@ interface Props {
   equityStrategy: Record<string, number>
   equityBah: Record<string, number>
   strategyLabel: string
+  currentDepthPct?: number
 }
 
 interface DDPeriod {
@@ -64,6 +65,13 @@ function pctile(arr: number[], p: number): number {
   return s[lo] + (s[hi] - s[lo]) * (i - lo)
 }
 
+function percentileRowForValue(values: number[], percentiles: number[], current: number | null): number | null {
+  if (current == null || !values.length) return null
+  const rows = percentiles.map(p => ({ percentile: p, value: pctile(values, p) }))
+  const match = rows.find(row => current <= row.value)
+  return match?.percentile ?? rows[rows.length - 1].percentile
+}
+
 // ── Depth Distribution Table ──────────────────────────────────────────────────
 
 const DEPTH_PCTS = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
@@ -86,14 +94,16 @@ function bahHeat(val: number): React.CSSProperties {
 }
 
 function DepthTable({
-  stratPeriods, bahPeriods, strategyLabel,
+  stratPeriods, bahPeriods, strategyLabel, currentDepth,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
   strategyLabel: string
+  currentDepth: number | null
 }) {
   const stratDepths = stratPeriods.map(p => Math.abs(p.depthPct))
   const bahDepths   = bahPeriods.map(p => Math.abs(p.depthPct))
+  const currentPercentile = percentileRowForValue(stratDepths, DEPTH_PCTS, currentDepth)
 
   return (
     <div>
@@ -115,26 +125,36 @@ function DepthTable({
               const sc = Math.round((p / 100) * stratDepths.length)
               const bc = Math.round((p / 100) * bahDepths.length)
               const isMedian = p === 50
+              const isCurrent = p === currentPercentile
               return (
                 <tr
                   key={p}
-                  className={`border-b border-border/40 ${isMedian ? "border-t border-border/60" : ""}`}
+                  className={[
+                    "border-b border-border/40",
+                    isMedian ? "border-t border-border/60" : "",
+                    isCurrent ? "bg-amber-500/12 ring-1 ring-inset ring-amber-500/35" : "",
+                  ].join(" ")}
                 >
-                  <td className={`py-1.5 px-3 ${isMedian ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                  <td className={`py-1.5 px-3 ${isMedian || isCurrent ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                     P{p}
                     {isMedian && (
                       <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal uppercase tracking-wider">
                         median
                       </span>
                     )}
+                    {isCurrent && (
+                      <span className="ml-1.5 rounded bg-amber-500/18 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        current
+                      </span>
+                    )}
                   </td>
                   <td
-                    className={`py-1.5 px-3 text-right ${isMedian ? "font-bold" : "font-medium"}`}
+                    className={`py-1.5 px-3 text-right ${isMedian || isCurrent ? "font-bold" : "font-medium"}`}
                     style={stratHeat(sv)}
                   >
                     -{sv.toFixed(1)}%
                   </td>
-                  <td className={`py-1.5 px-3 text-right ${isMedian ? "font-semibold text-foreground" : "text-foreground"}`}>
+                  <td className={`py-1.5 px-3 text-right ${isMedian || isCurrent ? "font-semibold text-foreground" : "text-foreground"}`}>
                     {sc}
                   </td>
                   <td
@@ -189,11 +209,12 @@ interface HistTooltip {
 }
 
 function DepthHistogram({
-  stratPeriods, bahPeriods, strategyLabel,
+  stratPeriods, bahPeriods, strategyLabel, currentDepth,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
   strategyLabel: string
+  currentDepth: number | null
 }) {
   const [tooltip, setTooltip] = useState<HistTooltip | null>(null)
 
@@ -202,6 +223,11 @@ function DepthHistogram({
     strat: stratPeriods.filter(p => { const a = Math.abs(p.depthPct); return a >= b.min && a < b.max }).length,
     bah:   bahPeriods.filter(p =>   { const a = Math.abs(p.depthPct); return a >= b.min && a < b.max }).length,
   }))
+  const currentBucketIndex = currentDepth == null
+    ? -1
+    : currentDepth < DD_MIN_THRESHOLD
+      ? 0
+      : counts.findIndex(b => currentDepth >= b.min && currentDepth < b.max)
   const maxCount = Math.max(...counts.flatMap(b => [b.strat, b.bah]), 1)
 
   const nBuckets = counts.length
@@ -248,8 +274,44 @@ function DepthHistogram({
             const stratW = (b.strat / maxCount) * IW
             const bahW   = (b.bah   / maxCount) * IW
             const midY   = i * rowH + rowH / 2
+            const isCurrent = i === currentBucketIndex
             return (
               <g key={b.label}>
+                {isCurrent && (
+                  <>
+                    <rect
+                      x={-MX.left + 2}
+                      y={i * rowH + 1}
+                      width={IW + MX.left + MX.right - 4}
+                      height={rowH - 2}
+                      fill="#f59e0b"
+                      fillOpacity={0.1}
+                      rx={3}
+                    />
+                    <line
+                      x1={0}
+                      y1={midY}
+                      x2={IW}
+                      y2={midY}
+                      stroke="#d97706"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                    />
+                    {currentDepth != null && (
+                      <text
+                        x={IW - 4}
+                        y={midY - 6}
+                        textAnchor="end"
+                        fontSize={10}
+                        fill="#b45309"
+                        fontWeight="700"
+                      >
+                        Current -{currentDepth.toFixed(1)}%
+                        {currentDepth < DD_MIN_THRESHOLD ? " (<5%)" : ""}
+                      </text>
+                    )}
+                  </>
+                )}
                 <rect x={0} y={y0} width={stratW || 0} height={barH}
                   fill={b.stratColor} fillOpacity={0.75} rx={2} />
                 {b.strat > 0 && (
@@ -504,11 +566,14 @@ function DepthVsRecovery({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function DrawdownDepthAnalysis({ equityStrategy, equityBah, strategyLabel }: Props) {
+export function DrawdownDepthAnalysis({ equityStrategy, equityBah, strategyLabel, currentDepthPct }: Props) {
   const { stratPeriods, bahPeriods } = useMemo(() => ({
     stratPeriods: computePeriods(equityStrategy),
     bahPeriods:   computePeriods(equityBah),
   }), [equityStrategy, equityBah])
+  const currentDepth = currentDepthPct != null && currentDepthPct < 0
+    ? Math.abs(currentDepthPct)
+    : null
 
   if (stratPeriods.length < 2 && bahPeriods.length < 2) return null
 
@@ -516,8 +581,8 @@ export function DrawdownDepthAnalysis({ equityStrategy, equityBah, strategyLabel
     <div className="space-y-4">
       <SectionTitle>Drawdown Depth — Strategy vs Buy &amp; Hold</SectionTitle>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <DepthTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
-        <DepthHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
+        <DepthTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDepth={currentDepth} />
+        <DepthHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDepth={currentDepth} />
         <DepthVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
       </div>
     </div>

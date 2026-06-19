@@ -13,12 +13,11 @@ from trading_engine import analyze_factor, analyze_universe, detect_regime, zone
 from trading_engine.factors.bollinger import BollingerBands
 from trading_engine.factors.distance_from_peak import DistanceFromPeak
 from trading_engine.factors.donchian import DonchianChannel
-from trading_engine.factors.moving_average import MovingAverageRatio
+from trading_engine.factors.moving_average import DistanceFromMovingAverage, MovingAverageRatio
 from trading_engine.factors.ahr999 import AHR999
 from trading_engine.types import Factor
 
 from api.deps import fetch_prices
-import numpy as np
 import pandas as pd
 
 from api.schemas.factor import (
@@ -31,8 +30,6 @@ from api.schemas.factor import (
     ZoneStatsSchema,
     ZoneEntrySchema,
     TimeSeriesPoint,
-    EventStudyPath,
-    EventStudyZone,
     RegimeRequest,
     RegimeResponse,
 )
@@ -44,6 +41,8 @@ router = APIRouter(prefix="/factors", tags=["factors"])
 def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 2.0) -> Factor:
     if factor_type == "moving_average":
         return MovingAverageRatio(ma_type=ma_type.upper(), length=period)
+    if factor_type == "distance_from_ma":
+        return DistanceFromMovingAverage(ma_type=ma_type.upper(), length=period)
     if factor_type == "bollinger":
         return BollingerBands(period=period, num_std=std_dev)
     if factor_type == "donchian":
@@ -158,6 +157,7 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
             prices=prices[req.symbol],
             zones=req.zones,
             quick_recovery_days=req.quick_recovery_days,
+            recovery_mode=req.recovery_mode,
         )
         # Attach factor-specific context (optional — not all factors implement context())
         factor_context = {}
@@ -180,7 +180,7 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
                 factor=float(fv),
             ))
 
-    # ── Forward returns & Event study ─────────────────────────────────────────
+    # ── Forward returns ───────────────────────────────────────────────────────
     price_arr = price_close.values.astype(float)
     dates_idx = price_close.index
     date_to_pos = {ts: i for i, ts in enumerate(dates_idx)}
@@ -197,47 +197,6 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
                     if pos + b < _n else None
             for b in _FWD_BARS
         }
-
-    day_offsets = np.arange(-10, 91)           # 101 sessions
-
-    study_zones = [z for z in req.zones if z <= 25]
-    event_study_data: list[EventStudyZone] = []
-
-    for zone_pct in study_zones:
-        zone_entries = [e for e in result.entries if e.zone_pct == zone_pct]
-        valid = [(e, date_to_pos.get(pd.Timestamp(e.start_date))) for e in zone_entries]
-        valid = [(e, idx) for e, idx in valid if idx is not None]
-        if len(valid) < 3:
-            continue
-
-        # returns matrix: shape (n_entries, 101)
-        ret_matrix = np.full((len(valid), len(day_offsets)), np.nan)
-        for i, (_, entry_idx) in enumerate(valid):
-            ep = price_arr[entry_idx]
-            if ep <= 0:
-                continue
-            target = entry_idx + day_offsets
-            mask = (target >= 0) & (target < len(price_arr))
-            ret_matrix[i, mask] = (price_arr[target[mask]] - ep) / ep * 100
-
-        paths: list[EventStudyPath] = []
-        for j, day in enumerate(day_offsets):
-            col = ret_matrix[:, j]
-            vals = col[~np.isnan(col)]
-            if len(vals) >= 3:
-                paths.append(EventStudyPath(
-                    day=int(day),
-                    mean=float(np.mean(vals)),
-                    p25=float(np.percentile(vals, 25)),
-                    p75=float(np.percentile(vals, 75)),
-                ))
-
-        if paths:
-            event_study_data.append(EventStudyZone(
-                zone_pct=zone_pct,
-                count=len(valid),
-                paths=paths,
-            ))
 
     return RarityAnalysisResponse(
         factor_name=result.factor_name,
@@ -298,5 +257,5 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
             for e in result.entries
         ],
         time_series=ts_points,
-        event_study=event_study_data,
     )
+

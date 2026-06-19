@@ -41,7 +41,47 @@ const FWD_BARS = ["20", "50", "100", "150", "200"]
 const TH = "py-2.5 px-3 font-semibold border-r border-border last:border-r-0"
 const TD = "py-2 px-3 border-r border-border last:border-r-0"
 
+function entryKey(entry: Pick<ZoneEntry, "zone_pct" | "start_date">): string {
+  return `${entry.zone_pct}|${entry.start_date}`
+}
+
 export function ZoneEntryTable({ entries }: Props) {
+  const visibleEntries = entries.filter(e => !e.is_quick_recovery)
+  const allByKey = new Map(entries.map(e => [entryKey(e), e]))
+  const visibleKeys = new Set(visibleEntries.map(entryKey))
+
+  function visibleLevel(entry: ZoneEntry): number {
+    let level = 0
+    let current: ZoneEntry | undefined = entry
+    const seen = new Set<string>()
+    while (current?.parent_zone_pct != null && current.parent_start_date != null) {
+      const parentKey = `${current.parent_zone_pct}|${current.parent_start_date}`
+      if (seen.has(parentKey)) break
+      seen.add(parentKey)
+      const parent = allByKey.get(parentKey)
+      if (!parent) break
+      if (visibleKeys.has(parentKey)) level += 1
+      current = parent
+    }
+    return level
+  }
+
+  function visibleChildrenCount(entry: ZoneEntry): number {
+    const targetKey = entryKey(entry)
+    return visibleEntries.filter(candidate => {
+      let current: ZoneEntry | undefined = candidate
+      const seen = new Set<string>()
+      while (current?.parent_zone_pct != null && current.parent_start_date != null) {
+        const parentKey = `${current.parent_zone_pct}|${current.parent_start_date}`
+        if (parentKey === targetKey) return true
+        if (seen.has(parentKey)) return false
+        seen.add(parentKey)
+        current = allByKey.get(parentKey)
+      }
+      return false
+    }).length
+  }
+
   return (
     <div className="overflow-y-auto max-h-[640px] overflow-x-auto">
       <table className="w-full text-xs tabular-nums border-collapse min-w-[1260px]">
@@ -54,39 +94,44 @@ export function ZoneEntryTable({ entries }: Props) {
             <th className={`${TH} text-left`}>Low Date</th>
             <th className={`${TH} text-right`}>MAE %</th>
             <th className={`${TH} text-right`}>Bars To Low</th>
-            <th className={`${TH} text-left`}>Status</th>
+            <th className={`${TH} text-left`}>Recover</th>
             <th className={`${TH} text-right`}>Bars To Rec</th>
             <th className={`${TH} text-right border-l-2 border-border`}>+20b</th>
             <th className={`${TH} text-right`}>+50b</th>
             <th className={`${TH} text-right`}>+100b</th>
             <th className={`${TH} text-right`}>+150b</th>
             <th className={`${TH} text-right`}>+200b</th>
-            <th className={`${TH} text-right`}>Sub-entries</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {entries.map((e, i) => (
-            <tr
-              key={i}
-              style={rowBg(e)}
-              className="hover:bg-muted/20 transition-colors"
-            >
-              {/* Start Date with indentation */}
-              <td className={`${TD} whitespace-nowrap`}>
-                <span style={{ paddingLeft: e.level * 16 + "px" }}>
-                  {e.level > 0 && (
-                    <span className="text-muted-foreground/50 mr-1.5">└</span>
-                  )}
-                  <span className="font-medium text-foreground">{fmtDate(e.start_date)}</span>
-                </span>
-              </td>
+          {visibleEntries.map((e, i) => {
+            const level = visibleLevel(e)
+            const childrenCount = visibleChildrenCount(e)
+            return (
+              <tr
+                key={`${entryKey(e)}-${i}`}
+                style={rowBg(e)}
+                className="hover:bg-muted/20 transition-colors"
+              >
+                {/* Start Date with indentation */}
+                <td className={`${TD} whitespace-nowrap`}>
+                  <span style={{ paddingLeft: level * 16 + "px" }}>
+                    {level > 0 && (
+                      <span className="text-muted-foreground/50 mr-1.5">└</span>
+                    )}
+                    <span className="font-medium text-foreground">{fmtDate(e.start_date)}</span>
+                    {childrenCount > 0 && (
+                      <span className="ml-1 text-muted-foreground">({childrenCount})</span>
+                    )}
+                  </span>
+                </td>
 
-              {/* Zone badge */}
-              <td className={`${TD} text-center`}>
-                <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-bold tracking-wide ${zoneBadgeClass(e.zone_pct)}`}>
-                  P{e.zone_pct}
-                </span>
-              </td>
+                {/* Zone badge */}
+                <td className={`${TD} text-center`}>
+                  <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-bold tracking-wide ${zoneBadgeClass(e.zone_pct)}`}>
+                    P{e.zone_pct}
+                  </span>
+                </td>
 
               <td className={`${TD} text-right font-medium text-foreground`}>{fmtPrice(e.entry_price)}</td>
               <td className={`${TD} text-right text-foreground/80`}>{fmtPrice(e.low_price)}</td>
@@ -98,7 +143,7 @@ export function ZoneEntryTable({ entries }: Props) {
 
               <td className={`${TD} text-right text-muted-foreground`}>{e.days_to_low}</td>
 
-              {/* Status pill */}
+              {/* Recovery pill */}
               <td className={TD}>
                 {e.is_active ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-400 text-[10px] font-semibold tracking-wide">
@@ -120,24 +165,21 @@ export function ZoneEntryTable({ entries }: Props) {
                 }
               </td>
 
-              {/* Forward return columns */}
-              {FWD_BARS.map((b, idx) => {
-                const val = e.forward_returns?.[b]
-                return (
-                  <td
-                    key={b}
-                    className={`${TD} text-right ${idx === 0 ? "border-l-2 border-border" : ""} ${val != null ? fwdColor(val) : "text-muted-foreground/40"}`}
-                  >
-                    {val != null ? (val >= 0 ? "+" : "") + val.toFixed(1) + "%" : "—"}
-                  </td>
-                )
-              })}
-
-              <td className={`${TD} text-right text-muted-foreground`}>
-                {e.children_count > 0 ? e.children_count : "—"}
-              </td>
-            </tr>
-          ))}
+                {/* Forward return columns */}
+                {FWD_BARS.map((b, idx) => {
+                  const val = e.forward_returns?.[b]
+                  return (
+                    <td
+                      key={b}
+                      className={`${TD} text-right ${idx === 0 ? "border-l-2 border-border" : ""} ${val != null ? fwdColor(val) : "text-muted-foreground/40"}`}
+                    >
+                      {val != null ? (val >= 0 ? "+" : "") + val.toFixed(1) + "%" : "—"}
+                    </td>
+                  )
+                })}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

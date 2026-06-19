@@ -7,6 +7,7 @@ interface Props {
   equityStrategy: Record<string, number>
   equityBah: Record<string, number>
   strategyLabel: string
+  currentDurationDays?: number
 }
 
 interface DDPeriod {
@@ -65,6 +66,13 @@ function pctile(arr: number[], p: number): number {
   return s[lo] + (s[hi] - s[lo]) * (i - lo)
 }
 
+function percentileRowForValue(values: number[], percentiles: number[], current: number | null): number | null {
+  if (current == null || !values.length) return null
+  const rows = percentiles.map(p => ({ percentile: p, value: pctile(values, p) }))
+  const match = rows.find(row => current <= row.value)
+  return match?.percentile ?? rows[rows.length - 1].percentile
+}
+
 // ── Duration Distribution Table ───────────────────────────────────────────────
 
 const DURATION_PCTS = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
@@ -88,14 +96,16 @@ function bahHeat(val: number): React.CSSProperties {
 }
 
 function DurationTable({
-  stratPeriods, bahPeriods, strategyLabel,
+  stratPeriods, bahPeriods, strategyLabel, currentDuration,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
   strategyLabel: string
+  currentDuration: number | null
 }) {
   const stratDays = stratPeriods.map(p => p.daysToTrough)
   const bahDays   = bahPeriods.map(p => p.daysToTrough)
+  const currentPercentile = percentileRowForValue(stratDays, DURATION_PCTS, currentDuration)
 
   return (
     <div>
@@ -117,26 +127,36 @@ function DurationTable({
               const sc = Math.round((p / 100) * stratDays.length)
               const bc = Math.round((p / 100) * bahDays.length)
               const isMedian = p === 50
+              const isCurrent = p === currentPercentile
               return (
                 <tr
                   key={p}
-                  className={`border-b border-border/40 ${isMedian ? "border-t border-border/60" : ""}`}
+                  className={[
+                    "border-b border-border/40",
+                    isMedian ? "border-t border-border/60" : "",
+                    isCurrent ? "bg-amber-500/12 ring-1 ring-inset ring-amber-500/35" : "",
+                  ].join(" ")}
                 >
-                  <td className={`py-1.5 px-3 ${isMedian ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                  <td className={`py-1.5 px-3 ${isMedian || isCurrent ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                     P{p}
                     {isMedian && (
                       <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal uppercase tracking-wider">
                         median
                       </span>
                     )}
+                    {isCurrent && (
+                      <span className="ml-1.5 rounded bg-amber-500/18 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        current
+                      </span>
+                    )}
                   </td>
                   <td
-                    className={`py-1.5 px-3 text-right ${isMedian ? "font-bold" : "font-medium"}`}
+                    className={`py-1.5 px-3 text-right ${isMedian || isCurrent ? "font-bold" : "font-medium"}`}
                     style={stratHeat(sv)}
                   >
                     {Math.round(sv)}d
                   </td>
-                  <td className={`py-1.5 px-3 text-right ${isMedian ? "font-semibold text-foreground" : "text-foreground"}`}>
+                  <td className={`py-1.5 px-3 text-right ${isMedian || isCurrent ? "font-semibold text-foreground" : "text-foreground"}`}>
                     {sc}
                   </td>
                   <td
@@ -192,11 +212,12 @@ interface HistTooltip {
 }
 
 function DurationHistogram({
-  stratPeriods, bahPeriods, strategyLabel,
+  stratPeriods, bahPeriods, strategyLabel, currentDuration,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
   strategyLabel: string
+  currentDuration: number | null
 }) {
   const [tooltip, setTooltip] = useState<HistTooltip | null>(null)
 
@@ -205,6 +226,9 @@ function DurationHistogram({
     strat: stratPeriods.filter(p => p.daysToTrough >= b.min && p.daysToTrough < b.max).length,
     bah:   bahPeriods.filter(p => p.daysToTrough >= b.min && p.daysToTrough < b.max).length,
   }))
+  const currentBucketIndex = currentDuration == null
+    ? -1
+    : counts.findIndex(b => currentDuration >= b.min && currentDuration < b.max)
   const maxCount = Math.max(...counts.flatMap(b => [b.strat, b.bah]), 1)
 
   const nBuckets = counts.length
@@ -253,8 +277,43 @@ function DurationHistogram({
             const stratW = (b.strat / maxCount) * IW
             const bahW   = (b.bah   / maxCount) * IW
             const midY   = i * rowH + rowH / 2
+            const isCurrent = i === currentBucketIndex
             return (
               <g key={b.label}>
+                {isCurrent && (
+                  <>
+                    <rect
+                      x={-MX.left + 2}
+                      y={i * rowH + 1}
+                      width={IW + MX.left + MX.right - 4}
+                      height={rowH - 2}
+                      fill="#f59e0b"
+                      fillOpacity={0.1}
+                      rx={3}
+                    />
+                    <line
+                      x1={0}
+                      y1={midY}
+                      x2={IW}
+                      y2={midY}
+                      stroke="#d97706"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                    />
+                    {currentDuration != null && (
+                      <text
+                        x={IW - 4}
+                        y={midY - 6}
+                        textAnchor="end"
+                        fontSize={10}
+                        fill="#b45309"
+                        fontWeight="700"
+                      >
+                        Current {currentDuration}d
+                      </text>
+                    )}
+                  </>
+                )}
                 {/* Strategy bar (top of pair) */}
                 <rect x={0} y={y0} width={stratW || 0} height={barH}
                   fill={b.stratColor} fillOpacity={0.75} rx={2} />
@@ -523,11 +582,14 @@ function DurationVsRecovery({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function DrawdownDurationAnalysis({ equityStrategy, equityBah, strategyLabel }: Props) {
+export function DrawdownDurationAnalysis({ equityStrategy, equityBah, strategyLabel, currentDurationDays }: Props) {
   const { stratPeriods, bahPeriods } = useMemo(() => ({
     stratPeriods: computePeriods(equityStrategy),
     bahPeriods:   computePeriods(equityBah),
   }), [equityStrategy, equityBah])
+  const currentDuration = currentDurationDays != null && currentDurationDays > 0
+    ? currentDurationDays
+    : null
 
   if (stratPeriods.length < 2 && bahPeriods.length < 2) return null
 
@@ -535,8 +597,8 @@ export function DrawdownDurationAnalysis({ equityStrategy, equityBah, strategyLa
     <div className="space-y-4">
       <SectionTitle>Duration of Drawdown — Strategy vs Buy &amp; Hold</SectionTitle>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <DurationTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
-        <DurationHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
+        <DurationTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDuration={currentDuration} />
+        <DurationHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDuration={currentDuration} />
         <DurationVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
       </div>
     </div>

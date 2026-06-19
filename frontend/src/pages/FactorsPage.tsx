@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { RarityResults } from "@/components/rarity/RarityResults"
 import { rarityAnalysisApi } from "@/lib/api"
-import type { FactorType, MaType, DataSource } from "@/lib/api"
+import type { FactorType, MaType, DataSource, RarityRecoveryMode } from "@/lib/api"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -14,6 +14,7 @@ interface FactorOption {
 
 const FACTOR_OPTIONS: FactorOption[] = [
   { label: "Distance From Peak", value: "distance_from_peak" },
+  { label: "Distance From MA",   value: "distance_from_ma" },
   { label: "Moving Average",     value: "moving_average" },
   { label: "Bollinger Bands",    value: "bollinger" },
   { label: "Donchian Channel",   value: "donchian" },
@@ -30,6 +31,11 @@ const MA_TYPES: Array<{ label: string; value: MaType }> = [
   { label: "SMA", value: "sma" },
   { label: "EMA", value: "ema" },
   { label: "WMA", value: "wma" },
+]
+
+const RECOVERY_MODES: Array<{ label: string; value: RarityRecoveryMode }> = [
+  { label: "Price recovers entry", value: "price" },
+  { label: "Factor exits zone", value: "factor" },
 ]
 
 // ── Analysis type tabs ────────────────────────────────────────────────────────
@@ -105,6 +111,7 @@ export function FactorsPage() {
   const [period, setPeriod]         = useState(200)
   const [maType, setMaType]         = useState<MaType>("sma")
   const [stdDev, setStdDev]         = useState(2.0)
+  const [recoveryMode, setRecoveryMode] = useState<RarityRecoveryMode>("price")
   const [qrDays, setQrDays]         = useState(5)
   const [activeTab, setActiveTab]   = useState<AnalysisType>("rarity")
 
@@ -126,11 +133,12 @@ export function FactorsPage() {
       ma_type: maType,
       std_dev: stdDev,
       quick_recovery_days: qrDays,
+      recovery_mode: recoveryMode,
       data_source: dataSource,
     })
     // If params are unchanged, force refetch
     refetch()
-  }, [symbol, factorType, period, maType, stdDev, qrDays, dataSource, refetch])
+  }, [symbol, factorType, period, maType, stdDev, recoveryMode, qrDays, dataSource, refetch])
 
   const controls = (
     <div className="space-y-4">
@@ -166,8 +174,8 @@ export function FactorsPage() {
         </div>
       )}
 
-      {/* MA Type — moving_average only */}
-      {factorType === "moving_average" && (
+      {/* MA Type — MA-based factors only */}
+      {(factorType === "moving_average" || factorType === "distance_from_ma") && (
         <div>
           <Label>MA Type</Label>
           <FormSelect value={maType} onChange={setMaType} options={MA_TYPES} />
@@ -181,6 +189,11 @@ export function FactorsPage() {
           <NumberInput value={stdDev} onChange={setStdDev} min={0.5} step={0.5} />
         </div>
       )}
+
+      <div>
+        <Label>Recovery Mode</Label>
+        <FormSelect value={recoveryMode} onChange={setRecoveryMode} options={RECOVERY_MODES} />
+      </div>
 
       {/* Quick Recovery Days */}
       <div>

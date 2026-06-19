@@ -8,10 +8,35 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? `HTTP ${res.status}`)
+    throw new Error(errorMessage(err, res.status))
   }
   return res.json()
 }
+
+function errorMessage(err: unknown, status: number): string {
+  if (err && typeof err === "object" && "detail" in err) {
+    const detail = (err as { detail: unknown }).detail
+    if (typeof detail === "string") return detail
+    if (Array.isArray(detail)) {
+      return detail.map(item => {
+        if (item && typeof item === "object" && "msg" in item) {
+          const loc = "loc" in item && Array.isArray((item as { loc?: unknown }).loc)
+            ? (item as { loc: unknown[] }).loc.join(".")
+            : "request"
+          return `${loc}: ${(item as { msg: unknown }).msg}`
+        }
+        return JSON.stringify(item)
+      }).join("; ")
+    }
+    return JSON.stringify(detail)
+  }
+  return `HTTP ${status}`
+}
+
+export type FactorType = "distance_from_peak" | "distance_from_ma" | "moving_average" | "bollinger" | "donchian" | "ahr999"
+export type MaType = "sma" | "ema" | "wma"
+export type DataSource = "yfinance" | "vnstock" | "csv"
+export type RarityRecoveryMode = "price" | "factor"
 
 // ── Rarity Analysis ──────────────────────────────────────────────────────────
 
@@ -59,19 +84,6 @@ export interface TimeSeriesPoint {
   factor: number
 }
 
-export interface EventStudyPath {
-  day: number
-  mean: number
-  p25: number
-  p75: number
-}
-
-export interface EventStudyZone {
-  zone_pct: number
-  count: number
-  paths: EventStudyPath[]
-}
-
 export interface RarityAnalysisResponse {
   factor_name: string
   symbol: string
@@ -91,14 +103,260 @@ export interface RarityAnalysisResponse {
   zone_stats: ZoneStat[]
   entries: ZoneEntry[]
   time_series: TimeSeriesPoint[]
-  event_study: EventStudyZone[]
 }
 
-export type FactorType = "distance_from_peak" | "moving_average" | "bollinger" | "donchian" | "ahr999"
-export type MaType = "sma" | "ema" | "wma"
-export type DataSource = "yfinance" | "vnstock" | "csv"
+// ── New Low Episode Analysis ────────────────────────────────────────────────
 
-// ── Strategy Backtest Analysis ────────────────────────────────────────────────
+export interface NewLowCurrentEpisode {
+  start_date: string
+  start_price: number
+  recovery_level: number
+  current_date: string
+  current_price: number
+  current_down_pct: number
+  current_return_pct: number
+  max_down_pct: number
+  sessions_elapsed: number
+  ignored_new_lows: number
+  low_date: string
+  low_price: number
+  days_to_low: number
+  recovery_needed_pct: number
+  max_down_percentile: number
+  ignored_lows_percentile: number
+  duration_percentile: number
+}
+
+export interface NewLowForwardStats {
+  horizon: number
+  count: number
+  return_percentiles: Record<string, number>
+  max_down_percentiles: Record<string, number>
+}
+
+export interface NewLowEpisode {
+  start_date: string
+  start_price: number
+  recovery_level: number
+  recovered: boolean
+  recovery_date: string | null
+  recovery_sessions: number | null
+  ignored_new_lows: number
+  low_date: string
+  low_price: number
+  days_to_low: number
+  max_down_pct: number
+  forward_returns: Record<string, number | null>
+  forward_max_down: Record<string, number | null>
+}
+
+export interface NewLowTimeSeriesPoint {
+  date: string
+  close: number
+  is_new_low: boolean
+}
+
+export interface NewLowSymbolResult {
+  symbol: string
+  first_date: string
+  last_date: string
+  total_bars: number
+  latest_price: number
+  lookback_sessions: number
+  quick_recovery_sessions: number
+  raw_new_low_bars: number
+  kept_episodes: number
+  completed_episodes: number
+  active_episodes: number
+  quick_ignored_episodes: number
+  total_ignored_new_lows: number
+  max_down_percentiles: Record<string, number>
+  recovery_session_percentiles: Record<string, number>
+  ignored_new_low_percentiles: Record<string, number>
+  current: NewLowCurrentEpisode | null
+  forward_stats: NewLowForwardStats[]
+  episodes: NewLowEpisode[]
+  time_series: NewLowTimeSeriesPoint[]
+}
+
+export interface NewLowEpisodesResponse {
+  results: NewLowSymbolResult[]
+}
+
+// ── SEC Fundamental Dashboard ───────────────────────────────────────────────
+
+export interface FundamentalRow {
+  fiscal_year: number
+  filed: string | null
+  filing_accepted_at: string | null
+  filing_timing: string | null
+  reaction_session_date: string | null
+  filing_return_pct: number | null
+  revenue: number | null
+  revenue_yoy_pct: number | null
+  gross_profit: number | null
+  operating_income: number | null
+  operating_income_yoy_pct: number | null
+  operating_margin_pct: number | null
+  net_income: number | null
+  net_income_yoy_pct: number | null
+  free_cash_flow: number | null
+  free_cash_flow_yoy_pct: number | null
+  free_cash_flow_margin_pct: number | null
+  capex: number | null
+  capex_to_revenue_pct: number | null
+  cash_and_short_term_investments: number | null
+  debt: number | null
+  net_cash: number | null
+  debt_to_fcf: number | null
+  equity: number | null
+  eps_diluted: number | null
+  eps_yoy_pct: number | null
+  diluted_shares: number | null
+}
+
+export interface FundamentalQuarterRow {
+  period_end: string
+  filed: string | null
+  filing_accepted_at: string | null
+  filing_timing: string | null
+  reaction_session_date: string | null
+  filing_return_pct: number | null
+  revenue: number | null
+  revenue_yoy_pct: number | null
+  revenue_qoq_pct: number | null
+  operating_income: number | null
+  operating_income_yoy_pct: number | null
+  operating_margin_pct: number | null
+  net_income: number | null
+  net_income_yoy_pct: number | null
+  free_cash_flow: number | null
+  free_cash_flow_yoy_pct: number | null
+  free_cash_flow_margin_pct: number | null
+  capex: number | null
+  capex_to_revenue_pct: number | null
+  cash_and_short_term_investments: number | null
+  debt: number | null
+  net_cash: number | null
+  eps_diluted: number | null
+  eps_yoy_pct: number | null
+  diluted_shares: number | null
+}
+
+export interface FundamentalSummary {
+  revenue_cagr_pct: number | null
+  operating_income_cagr_pct: number | null
+  net_income_cagr_pct: number | null
+  free_cash_flow_cagr_pct: number | null
+  eps_cagr_pct: number | null
+  latest_operating_margin_pct: number | null
+  latest_fcf_margin_pct: number | null
+  latest_capex_to_revenue_pct: number | null
+  latest_debt_to_fcf: number | null
+  latest_net_cash: number | null
+  share_count_change_pct: number | null
+}
+
+export interface FundamentalResponse {
+  symbol: string
+  cik: string
+  entity_name: string
+  requested_current_year: number
+  first_year: number | null
+  last_year: number | null
+  rows: FundamentalRow[]
+  quarter_rows: FundamentalQuarterRow[]
+  summary: FundamentalSummary
+}
+
+// ── Growth Dashboard ───────────────────────────────────────────────────────
+
+export interface GrowthMetricSnapshot {
+  metric: string
+  latest_value: number | null
+  latest_yoy_pct: number | null
+  cagr_3y_pct: number | null
+  cagr_5y_pct: number | null
+  cagr_10y_pct: number | null
+  latest_margin_pct: number | null
+}
+
+export interface QuarterlyGrowthSnapshot {
+  metric: string
+  latest_value: number | null
+  latest_yoy_pct: number | null
+  previous_yoy_pct: number | null
+  average_4q_yoy_pct: number | null
+  latest_qoq_pct: number | null
+  direction: string | null
+}
+
+export interface AnnualGrowthRow {
+  fiscal_year: number
+  revenue: number | null
+  revenue_yoy_pct: number | null
+  gross_profit_yoy_pct: number | null
+  operating_income_yoy_pct: number | null
+  net_income_yoy_pct: number | null
+  free_cash_flow_yoy_pct: number | null
+  eps_yoy_pct: number | null
+  share_count_yoy_pct: number | null
+  operating_margin_pct: number | null
+  free_cash_flow_margin_pct: number | null
+}
+
+export interface QuarterlyGrowthRow {
+  period_end: string
+  revenue: number | null
+  revenue_yoy_pct: number | null
+  revenue_qoq_pct: number | null
+  operating_income_yoy_pct: number | null
+  net_income_yoy_pct: number | null
+  free_cash_flow_yoy_pct: number | null
+  eps_yoy_pct: number | null
+  operating_margin_pct: number | null
+  free_cash_flow_margin_pct: number | null
+}
+
+export interface GrowthQualitySummary {
+  revenue_cagr_5y_pct: number | null
+  operating_income_cagr_5y_pct: number | null
+  free_cash_flow_cagr_5y_pct: number | null
+  eps_cagr_5y_pct: number | null
+  latest_operating_margin_pct: number | null
+  latest_fcf_margin_pct: number | null
+  operating_margin_change_5y_pct: number | null
+  fcf_margin_change_5y_pct: number | null
+  share_count_change_5y_pct: number | null
+}
+
+export interface GrowthAnalysisResponse {
+  symbol: string
+  cik: string
+  entity_name: string
+  requested_current_year: number
+  first_year: number | null
+  last_year: number | null
+  annual_metrics: GrowthMetricSnapshot[]
+  quarterly_metrics: QuarterlyGrowthSnapshot[]
+  annual_rows: AnnualGrowthRow[]
+  quarterly_rows: QuarterlyGrowthRow[]
+  summary: GrowthQualitySummary
+}
+
+export interface GrowthAssessmentResponse {
+  provider: string
+  model: string
+  good_things: string[]
+  bad_things: string[]
+  risks: string[]
+  opportunities: string[]
+  investment_considerations: string[]
+  disclaimer: string
+  prompt: string
+}
+
+// ── SMA Strategy Analysis ───────────────────────────────────────────────────
 
 export type StrategyType = "buy_and_hold" | "price_vs_ma"
 
@@ -214,7 +472,7 @@ export interface SingleTickerAnalysis {
   undercut_distribution: UndercutDistributionRow[] | null
 }
 
-export function backtestAnalyzeApi(params: {
+export function smaStrategyAnalysisApi(params: {
   symbol: string
   ma_type: MaType
   ma_length: number
@@ -249,6 +507,7 @@ export function rarityAnalysisApi(params: {
   std_dev?: number
   exit_length?: number
   quick_recovery_days?: number
+  recovery_mode?: RarityRecoveryMode
   data_source?: DataSource
   zones?: number[]
 }): Promise<RarityAnalysisResponse> {
@@ -260,8 +519,60 @@ export function rarityAnalysisApi(params: {
     ma_type: params.ma_type ?? "sma",
     std_dev: params.std_dev ?? 2.0,
     quick_recovery_days: params.quick_recovery_days ?? 5,
+    recovery_mode: params.recovery_mode ?? "price",
     data_source: params.data_source ?? "yfinance",
     zones: params.zones,
     date_range: { start: "2000-01-01", end: today },
   })
+}
+
+export function newLowEpisodesApi(params: {
+  symbols: string[]
+  lookback_sessions: number
+  quick_recovery_sessions: number
+  data_source?: DataSource
+  start?: string
+  end?: string
+  forward_horizons?: number[]
+}): Promise<NewLowEpisodesResponse> {
+  const today = new Date().toISOString().slice(0, 10)
+  return post("/events/new-low-episodes", {
+    symbols: params.symbols.map(s => s.toUpperCase().trim()).filter(Boolean),
+    lookback_sessions: params.lookback_sessions,
+    quick_recovery_sessions: params.quick_recovery_sessions,
+    data_source: params.data_source ?? "yfinance",
+    forward_horizons: params.forward_horizons ?? [5, 10, 20, 50, 100, 150, 200],
+    date_range: { start: params.start ?? "1980-01-01", end: params.end ?? today },
+  })
+}
+
+export function fundamentalsSecApi(params: {
+  symbol: string
+  current_year: number
+  years?: number
+  data_source?: "yfinance" | "vnstock"
+}): Promise<FundamentalResponse> {
+  return post("/fundamentals/sec", {
+    symbol: params.symbol.toUpperCase().trim(),
+    current_year: params.current_year,
+    years: params.years ?? 20,
+    data_source: params.data_source ?? "yfinance",
+  })
+}
+
+export function growthAnalysisApi(params: {
+  symbol: string
+  current_year: number
+  years?: number
+}): Promise<GrowthAnalysisResponse> {
+  return post("/fundamentals/growth", {
+    symbol: params.symbol.toUpperCase().trim(),
+    current_year: params.current_year,
+    years: params.years ?? 20,
+    data_source: "yfinance",
+  })
+}
+
+export function growthAssessmentApi(growth: GrowthAnalysisResponse): Promise<GrowthAssessmentResponse> {
+  return post("/fundamentals/growth/assessment", { growth })
 }

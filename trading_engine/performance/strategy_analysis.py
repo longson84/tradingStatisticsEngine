@@ -15,6 +15,7 @@ import pandas as pd
 
 from trading_engine import run_portfolio
 from trading_engine.strategy.buy_and_hold import BuyAndHold
+from trading_engine.strategy.factor_threshold import FactorThresholdStrategy
 from trading_engine.types import Portfolio, PortfolioResult, PriceFrame, Strategy, StrategySlot, Trade
 
 
@@ -117,6 +118,19 @@ class HealthRow:
 
 
 @dataclass
+class UndercutDistributionRow:
+    """One row in the undercut distribution.
+
+    Counts how many winning trades had exactly `undercuts` temporary
+    dips below MA that recovered (without triggering the exit countdown).
+    """
+
+    undercuts: int
+    trade_count: int
+    pct_of_winners: float
+
+
+@dataclass
 class SingleTickerAnalysis:
     symbol: str
     strategy_label: str
@@ -139,6 +153,7 @@ class SingleTickerAnalysis:
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
     ticker_prices: dict[str, float]
+    undercut_distribution: list[UndercutDistributionRow] | None = None
 
 
 # =============================================================================
@@ -204,6 +219,8 @@ def run_single_ticker_analysis(
     winner_mfes = [t.mfe_pct for t in winners if t.mfe_pct is not None]
     loser_mfes  = [t.mfe_pct for t in losers  if t.mfe_pct is not None]
 
+    undercut_distribution = _compute_undercut_distribution(strategy, winners, price_frame)
+
     return SingleTickerAnalysis(
         symbol=symbol,
         strategy_label=strategy_label,
@@ -226,7 +243,114 @@ def run_single_ticker_analysis(
         equity_curve_strategy={str(ts.date()): float(v) for ts, v in result.equity_curve.items()},
         equity_curve_bah={str(ts.date()): float(v) for ts, v in bah_result.equity_curve.items()},
         ticker_prices={str(ts.date()): float(v) for ts, v in price_frame.data["close"].items()},
+        undercut_distribution=undercut_distribution,
     )
+
+
+# =============================================================================
+# Undercut distribution — temporary dips below MA during winning trades
+# =============================================================================
+
+
+def _compute_undercut_distribution(
+    strategy: Strategy,
+    winners: list[Trade],
+    price_frame: PriceFrame,
+) -> list[UndercutDistributionRow] | None:
+    """Count how many temporary "undercut" events each winning trade had.
+
+    An *undercut* is a run of consecutive bars where close <= MA that
+    recovers (close returns above MA) without lasting long enough to
+    trigger the exit (i.e. run length < sell_lag + 1).
+
+    The terminal run that reaches the exit bar (should be exactly
+    sell_lag + 1 bars) is the exit trigger itself — not an undercut.
+
+    Returns a distribution: for each distinct undercut count, how many
+    winning trades had exactly that number of undercuts.
+    Returns None when not applicable (non-MA strategy or sell_lag == 0).
+    """
+    if not isinstance(strategy, FactorThresholdStrategy):
+        return None
+    if strategy.sell_lag <= 0:
+        return None
+
+    factor = strategy.factor
+    if not (hasattr(factor, "ma_type") and hasattr(factor, "length")):
+        return None
+
+    from trading_engine.factors.moving_average import compute_ma
+
+    sell_lag = strategy.sell_lag
+    max_run_for_undercut = sell_lag  # runs of 1..sell_lag bars are undercuts
+    close = price_frame.data["close"]
+    ma = compute_ma(close, factor.ma_type, factor.length)
+
+    # Build date→integer-position lookup
+    date_to_idx: dict[Any, int] = {ts: i for i, ts in enumerate(close.index)}
+
+    trade_undercuts: list[int] = []  # one entry per winning trade
+
+    for t in winners:
+        if t.exit_date is None:
+            continue
+        entry_ts = pd.Timestamp(str(t.entry_date))
+        exit_ts = pd.Timestamp(str(t.exit_date))
+        entry_idx = date_to_idx.get(entry_ts)
+        exit_idx = date_to_idx.get(exit_ts)
+        if entry_idx is None or exit_idx is None or entry_idx >= exit_idx:
+            continue
+
+        undercuts = 0
+        i = entry_idx
+        while i <= exit_idx:
+            close_val = float(close.iloc[i])
+            ma_val = float(ma.iloc[i])
+            if pd.isna(ma_val) or close_val > ma_val:
+                i += 1
+                continue
+
+            # Start of a below-MA run
+            run_start = i
+            while i <= exit_idx:
+                c = float(close.iloc[i])
+                m = float(ma.iloc[i])
+                if pd.isna(m) or c > m:
+                    break
+                i += 1
+            run_length = i - run_start
+
+            if i > exit_idx:
+                # Run reached the exit bar — this is the exit trigger.
+                # The final exit countdown needs sell_lag + 1 consecutive
+                # below-MA bars, so the terminal run at exit should have
+                # that length.  Do NOT count it as an undercut.
+                pass
+            else:
+                # Run ended with a recovery (close > MA at position i).
+                if run_length <= max_run_for_undercut:
+                    undercuts += 1
+            # i now points at the recovery bar — loop continues from there
+
+        trade_undercuts.append(undercuts)
+
+    if not trade_undercuts:
+        return []
+
+    # Build distribution
+    from collections import Counter
+    counter = Counter(trade_undercuts)
+    total = len(trade_undercuts)
+    result: list[UndercutDistributionRow] = []
+    for count in sorted(counter.keys()):
+        cnt = counter[count]
+        result.append(UndercutDistributionRow(
+            undercuts=count,
+            trade_count=cnt,
+            pct_of_winners=round(cnt / total * 100, 2),
+        ))
+
+    return result
 
 
 # =============================================================================
