@@ -232,6 +232,12 @@ interface BucketStat {
   checkpoints: Record<number, { count: number; wins: number; avgFinal: number } | null>
 }
 
+type OpenTradeBuckets = Partial<Record<Checkpoint, { bucketLabel: string; value: number; entryDate: string }>>
+
+function bucketFor(value: number) {
+  return BUCKETS.find(bucket => value >= bucket.min && value < bucket.max) ?? null
+}
+
 function winRateBadge(wr: number): React.ReactNode {
   return (
     <span className="tabular-nums text-foreground">
@@ -254,10 +260,11 @@ function avgFinalBadge(avg: number): React.ReactNode {
   )
 }
 
-function WinRateTable({ bucketStats, totals, scatterPoints }: {
+function WinRateTable({ bucketStats, totals, scatterPoints, openTradeBuckets }: {
   bucketStats: BucketStat[]
   totals: Record<number, number>
   scatterPoints: Record<Checkpoint, ScatterPoint[]>
+  openTradeBuckets: OpenTradeBuckets
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
@@ -299,14 +306,19 @@ function WinRateTable({ bucketStats, totals, scatterPoints }: {
               {CHECKPOINTS.map(bar => {
                 const s = row.checkpoints[bar]
                 const total = totals[bar] || 0
+                const open = openTradeBuckets[bar]?.bucketLabel === row.label ? openTradeBuckets[bar] : null
                 if (!s || s.count === 0) {
                   return (
                     <Fragment key={bar}>
-                      <td className="py-1.5 px-3 text-center text-muted-foreground/40 border-l border-border">—</td>
+                      <td className="py-1.5 px-3 text-center text-muted-foreground/40 border-l border-border">
+                        —
+                      </td>
                       <td className="py-1.5 px-3 text-center text-muted-foreground/40">—</td>
                       <td className="py-1.5 px-3 text-center text-muted-foreground/40">—</td>
                       <td className="py-1.5 px-3 text-center text-muted-foreground/40">—</td>
-                      <td className="py-1.5 px-3 text-center text-muted-foreground/40">—</td>
+                      <td className="py-1.5 px-3 text-center text-muted-foreground/40">
+                        {open ? <OpenTradeBadge open={open} bar={bar} /> : "—"}
+                      </td>
                       <td className="py-1.5 px-3 text-center text-muted-foreground/40">—</td>
                     </Fragment>
                   )
@@ -316,11 +328,18 @@ function WinRateTable({ bucketStats, totals, scatterPoints }: {
                 const wr = (s.wins / s.count) * 100
                 return (
                   <Fragment key={bar}>
-                    <td className="py-1.5 px-3 text-right text-foreground border-l border-border">{s.count}</td>
+                    <td className="py-1.5 px-3 text-right text-foreground border-l border-border">
+                      {s.count}
+                    </td>
                     <td className="py-1.5 px-3 text-right text-muted-foreground">{pctTotal.toFixed(0)}%</td>
                     <td className="py-1.5 px-3 text-right text-green-400">{s.wins}</td>
                     <td className="py-1.5 px-3 text-right text-red-400">{losses}</td>
-                    <td className="py-1.5 px-3 text-right">{winRateBadge(wr)}</td>
+                    <td className="py-1.5 px-3 text-right">
+                      <span className="inline-flex items-center justify-end gap-1.5">
+                        {open && <OpenTradeBadge open={open} bar={bar} />}
+                        {winRateBadge(wr)}
+                      </span>
+                    </td>
                     <td className="py-1.5 px-3 text-right">{avgFinalBadge(s.avgFinal)}</td>
                   </Fragment>
                 )
@@ -363,6 +382,17 @@ function WinRateTable({ bucketStats, totals, scatterPoints }: {
   )
 }
 
+function OpenTradeBadge({ open, bar }: { open: { value: number; entryDate: string }; bar: Checkpoint }) {
+  return (
+    <span
+      title={`Current open trade: first ${bar}d min ${fmt(open.value)} from ${open.entryDate}`}
+      className="inline-flex rounded bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
+    >
+      Open
+    </span>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function EarlyTradeBehavior({ trades }: Props) {
@@ -371,6 +401,7 @@ export function EarlyTradeBehavior({ trades }: Props) {
   )
 
   if (closed.length === 0) return null
+  const openTrade = trades.find(t => t.exit_date == null && t.early_returns)
 
   // Build scatter points per checkpoint
   const scatterPoints: Record<Checkpoint, ScatterPoint[]> = {
@@ -386,6 +417,21 @@ export function EarlyTradeBehavior({ trades }: Props) {
           win: t.return_pct > 0,
           entryDate: t.entry_date,
         })
+      }
+    }
+  }
+  const openTradeBuckets: OpenTradeBuckets = {}
+  if (openTrade) {
+    for (const bar of CHECKPOINTS) {
+      const early = openTrade.early_returns[String(bar)]
+      if (early == null) continue
+      const bucket = bucketFor(early)
+      if (bucket) {
+        openTradeBuckets[bar] = {
+          bucketLabel: bucket.label,
+          value: early,
+          entryDate: openTrade.entry_date,
+        }
       }
     }
   }
@@ -418,6 +464,7 @@ export function EarlyTradeBehavior({ trades }: Props) {
         bucketStats={bucketStats}
         totals={{ 2: scatterPoints[2].length, 5: scatterPoints[5].length, 10: scatterPoints[10].length }}
         scatterPoints={scatterPoints}
+        openTradeBuckets={openTradeBuckets}
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-6">
@@ -433,6 +480,12 @@ export function EarlyTradeBehavior({ trades }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 opacity-70" />Losers
         </span>
+        {Object.keys(openTradeBuckets).length > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block rounded bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">Open</span>
+            Current open trade bucket
+          </span>
+        )}
         <span className="ml-auto text-muted-foreground/50">x = lowest close in first N bars; trades closed before window excluded</span>
       </div>
     </div>

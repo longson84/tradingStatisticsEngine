@@ -1,0 +1,346 @@
+{
+  "id": "VN30",
+  "name": "VN30 Index",
+  "description": "Saved snapshot of VN30 constituents from VNStock KBS, enriched with company names, exchange, and KBS industry classification.",
+  "as_of": "2026-07-26",
+  "fetched_at": "2026-07-26T10:09:50+00:00",
+  "sources": [
+    {
+      "name": "VNStock 3.5.0 — KBS Listing API",
+      "url": "https://vnstocks.com/docs/du-lieu-tong-hop/co-phieu"
+    }
+  ],
+  "symbols": [
+    {
+      "symbol": "ACB",
+      "yfinance_symbol": "ACB",
+      "name": "Asia Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Á Châu",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "BID",
+      "yfinance_symbol": "BID",
+      "name": "Joint Stock Commercial Bank for Investment and Development of Vietnam",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "BSR",
+      "yfinance_symbol": "BSR",
+      "name": "Petrovietnam Refining And Petrochemical Corporation",
+      "sector": "Supporting Manufacturing",
+      "industry": "SX Phụ trợ",
+      "exchange": "HOSE",
+      "local_name": "CTCP - Tổng Công ty Lọc hóa dầu Việt Nam",
+      "industry_code": 26,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "CTG",
+      "yfinance_symbol": "CTG",
+      "name": "Vietnam Joint Stock Commercial Bank For Industry And Trade",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Công Thương Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "FPT",
+      "yfinance_symbol": "FPT",
+      "name": "FPT Corporation",
+      "sector": "Information Technology",
+      "industry": "Công nghệ và thông tin",
+      "exchange": "HOSE",
+      "local_name": "CTCP FPT",
+      "industry_code": 6,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "GAS",
+      "yfinance_symbol": "GAS",
+      "name": "PetroVietnam Gas Joint Stock Corporation",
+      "sector": "Utilities",
+      "industry": "Tiện ích",
+      "exchange": "HOSE",
+      "local_name": "Tổng Công ty Khí Việt Nam - CTCP",
+      "industry_code": 22,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "GVR",
+      "yfinance_symbol": "GVR",
+      "name": "Viet Nam Rubber Group - Joint Stock Company",
+      "sector": "Plastics & Chemicals",
+      "industry": "SX Nhựa - Hóa chất",
+      "exchange": "HOSE",
+      "local_name": "Tập đoàn Công nghiệp Cao su Việt Nam - CTCP",
+      "industry_code": 18,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "HDB",
+      "yfinance_symbol": "HDB",
+      "name": "Ho Chi Minh City Development Joint Stock Commercial Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "HPG",
+      "yfinance_symbol": "HPG",
+      "name": "Hoa Phat Group Joint Stock Company",
+      "sector": "Construction Materials",
+      "industry": "Vật liệu xây dựng",
+      "exchange": "HOSE",
+      "local_name": "CTCP Tập đoàn Hòa Phát",
+      "industry_code": 21,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "LPB",
+      "yfinance_symbol": "LPB",
+      "name": "Fortune Vietnam Joint Stock Commercial Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Lộc Phát Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "MBB",
+      "yfinance_symbol": "MBB",
+      "name": "Military Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Quân đội",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "MSN",
+      "yfinance_symbol": "MSN",
+      "name": "Masan Group Corporation",
+      "sector": "Food & Beverage",
+      "industry": "Thực phẩm - Đồ uống",
+      "exchange": "HOSE",
+      "local_name": "CTCP Tập đoàn Masan",
+      "industry_code": 19,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "MWG",
+      "yfinance_symbol": "MWG",
+      "name": "Mobile World Investment Corporation",
+      "sector": "Retail",
+      "industry": "Bán lẻ",
+      "exchange": "HOSE",
+      "local_name": "CTCP Đầu tư Thế giới Di động",
+      "industry_code": 7,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "PLX",
+      "yfinance_symbol": "PLX",
+      "name": "VietNam National Petroleum Group",
+      "sector": "Wholesale",
+      "industry": "Bán buôn",
+      "exchange": "HOSE",
+      "local_name": "Tập đoàn Xăng Dầu Việt Nam",
+      "industry_code": 1,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "SAB",
+      "yfinance_symbol": "SAB",
+      "name": "Saigon Beer - Alcohol - Beverage Corporation",
+      "sector": "Food & Beverage",
+      "industry": "Thực phẩm - Đồ uống",
+      "exchange": "HOSE",
+      "local_name": "Tổng Công ty cổ phần Bia - Rượu - Nước giải khát Sài Gòn",
+      "industry_code": 19,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "SHB",
+      "yfinance_symbol": "SHB",
+      "name": "Saigon Hanoi Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Sài Gòn - Hà Nội",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "SSB",
+      "yfinance_symbol": "SSB",
+      "name": "Southeast Asia Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Đông Nam Á",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "SSI",
+      "yfinance_symbol": "SSI",
+      "name": "SSI Securities Corporation",
+      "sector": "Securities",
+      "industry": "Chứng khoán",
+      "exchange": "HOSE",
+      "local_name": "CTCP Chứng khoán SSI",
+      "industry_code": 5,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "STB",
+      "yfinance_symbol": "STB",
+      "name": "Saigon Treasure Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Sài Gòn Tài Lộc",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "TCB",
+      "yfinance_symbol": "TCB",
+      "name": "Vietnam Technological and Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Kỹ thương Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "TPB",
+      "yfinance_symbol": "TPB",
+      "name": "Tien Phong Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Tiên Phong",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VCB",
+      "yfinance_symbol": "VCB",
+      "name": "Joint Stock Commercial Bank for Foreign Trade of Vietnam",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Ngoại thương Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VHM",
+      "yfinance_symbol": "VHM",
+      "name": "Vinhomes Joint Stock Company",
+      "sector": "Real Estate",
+      "industry": "Bất động sản",
+      "exchange": "HOSE",
+      "local_name": "CTCP Vinhomes",
+      "industry_code": 3,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VIB",
+      "yfinance_symbol": "VIB",
+      "name": "Vietnam International Commercial Joint Stock Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Quốc tế Việt Nam",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VIC",
+      "yfinance_symbol": "VIC",
+      "name": "Vingroup Joint Stock Company",
+      "sector": "Real Estate",
+      "industry": "Bất động sản",
+      "exchange": "HOSE",
+      "local_name": "Tập đoàn VINGROUP - CTCP",
+      "industry_code": 3,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VJC",
+      "yfinance_symbol": "VJC",
+      "name": "Vietjet Aviation Joint Stock Company",
+      "sector": "Transportation & Warehousing",
+      "industry": "Vận tải - kho bãi",
+      "exchange": "HOSE",
+      "local_name": "CTCP Hàng không Vietjet",
+      "industry_code": 23,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VNM",
+      "yfinance_symbol": "VNM",
+      "name": "Vietnam Dairy Products Joint Stock Company",
+      "sector": "Food & Beverage",
+      "industry": "Thực phẩm - Đồ uống",
+      "exchange": "HOSE",
+      "local_name": "CTCP Sữa Việt Nam",
+      "industry_code": 19,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VPB",
+      "yfinance_symbol": "VPB",
+      "name": "Vietnam Prosperity Joint Stock Commercial Bank",
+      "sector": "Banking",
+      "industry": "Ngân hàng",
+      "exchange": "HOSE",
+      "local_name": "Ngân hàng TMCP Việt Nam Thịnh Vượng",
+      "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VPL",
+      "yfinance_symbol": "VPL",
+      "name": "Vinpearl Joint Stock Company",
+      "sector": "Hospitality & Entertainment",
+      "industry": "Dịch vụ lưu trú, ăn uống, giải trí",
+      "exchange": "HOSE",
+      "local_name": "CTCP Vinpearl",
+      "industry_code": 25,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VRE",
+      "yfinance_symbol": "VRE",
+      "name": "Vincom Retail Joint Stock Company",
+      "sector": "Real Estate",
+      "industry": "Bất động sản",
+      "exchange": "HOSE",
+      "local_name": "CTCP Vincom Retail",
+      "industry_code": 3,
+      "data_source": "vnstock"
+    }
+  ],
+  "symbol_count": 30
+}

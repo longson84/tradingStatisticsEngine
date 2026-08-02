@@ -20,6 +20,7 @@ import { DrawdownDepthAnalysis } from "./DrawdownDepthAnalysis"
 import { DrawdownDurationAnalysis } from "./DrawdownDurationAnalysis"
 import { RollingReturn } from "./RollingReturn"
 import { AnnualReturns } from "./AnnualReturns"
+import { RunningWinRate } from "./RunningWinRate"
 import { EarlyTradeBehavior } from "./EarlyTradeBehavior"
 import { SellLagBelowMA } from "./SellLagBelowMA"
 
@@ -71,9 +72,10 @@ export function StrategyAnalysisResults({ data, sellLag }: Props) {
         equityBah={data.equity_curve_bah}
       />
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <RollingReturn equityStrategy={data.equity_curve_strategy} equityBah={data.equity_curve_bah} />
         <AnnualReturns equityStrategy={data.equity_curve_strategy} equityBah={data.equity_curve_bah} strategyLabel={data.strategy_label} />
+        <RunningWinRate trades={data.trades} />
       </div>
 
       <TimeFrame data={data} />

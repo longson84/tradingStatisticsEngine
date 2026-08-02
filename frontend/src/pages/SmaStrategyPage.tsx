@@ -61,12 +61,12 @@ function NumberInput({
 type FrozenParams = Parameters<typeof smaStrategyAnalysisApi>[0]
 
 export function SmaStrategyPage() {
-  const [symbol, setSymbol]               = useState("MSFT")
+  const [symbol, setSymbol]               = useState("BTC-USD")
   const [dataSource, setDataSource]       = useState<DataSource>("yfinance")
   const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)
-  const [sellLag, setSellLag]             = useState(0)
+  const [sellLag, setSellLag]             = useState(2)
   const [initialCapital, setInitialCapital] = useState(10_000)
   const [fromDate, setFromDate]           = useState("")
 

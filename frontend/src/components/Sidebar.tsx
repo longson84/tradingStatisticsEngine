@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { Activity, BarChart2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database } from "lucide-react"
+import { Activity, BarChart2, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, Gauge, HardDriveDownload, ChartNoAxesCombined } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -8,7 +8,10 @@ const sections = [
   {
     label: "Factor Analysis",
     links: [
-      { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2 },
+      { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2, end: true },
+      { to: "/factor-rarity/predefined", label: "Predefined", icon: BarChart2 },
+      { to: "/market/health", label: "Market Health", icon: Gauge },
+      { to: "/market-data", label: "Market Data", icon: HardDriveDownload },
     ],
   },
   {
@@ -21,6 +24,8 @@ const sections = [
   {
     label: "Company Analysis",
     links: [
+      { to: "/company/lists", label: "Companies", icon: Building2 },
+      { to: "/company/price-history", label: "Price History", icon: ChartNoAxesCombined },
       { to: "/fundamentals", label: "Fundamentals", icon: Database },
       { to: "/company/growth", label: "Growth Dashboard", icon: Activity },
     ],

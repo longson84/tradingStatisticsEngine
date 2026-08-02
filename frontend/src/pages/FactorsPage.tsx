@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
+import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
 import { RarityResults } from "@/components/rarity/RarityResults"
 import { rarityAnalysisApi } from "@/lib/api"
 import type { FactorType, MaType, DataSource, RarityRecoveryMode } from "@/lib/api"
@@ -47,36 +48,6 @@ const ANALYSIS_TABS: Array<{ label: string; value: AnalysisType }> = [
 ]
 
 // ── Small reusable form controls ──────────────────────────────────────────────
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-      {children}
-    </span>
-  )
-}
-
-function FormSelect<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T
-  onChange: (v: T) => void
-  options: Array<{ label: string; value: T }>
-}) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value as T)}
-      className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-ring"
-    >
-      {options.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  )
-}
 
 function NumberInput({
   value,

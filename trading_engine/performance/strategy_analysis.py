@@ -480,18 +480,28 @@ def _compute_trade_rows(trades: list[Trade], price_frame: PriceFrame) -> list[Tr
         if t.mfe_pct is not None and t.return_pct is not None and t.return_pct > 0 and t.mfe_pct != 0:
             retracement = (t.mfe_pct - t.return_pct) / abs(t.mfe_pct) * 100
 
-        # Early-bar min returns — lowest return within first N bars while still open
+        # Early-bar min returns — lowest return within first N bars while still open.
+        # For closed trades, exclude the exit bar. For open trades, include data
+        # through the latest available close.
         early_returns: dict[str, float | None] = {}
-        if t.exit_date is not None and t.entry_price > 0:
+        if t.entry_price > 0:
             entry_ts = pd.Timestamp(str(t.entry_date))
-            exit_ts  = pd.Timestamp(str(t.exit_date))
             entry_idx = date_to_idx.get(entry_ts)
-            exit_idx  = date_to_idx.get(exit_ts)
+            exit_idx = None
+            if t.exit_date is not None:
+                exit_ts = pd.Timestamp(str(t.exit_date))
+                exit_idx = date_to_idx.get(exit_ts)
+
             for n in EARLY_BARS:
                 key = str(n)
-                # Bars from entry+1 up to min(entry+n, exit-1) — must have at least 1 bar open
-                if entry_idx is not None and exit_idx is not None and entry_idx + 1 < exit_idx:
-                    end_bar = min(entry_idx + n, exit_idx - 1)
+                if entry_idx is None:
+                    early_returns[key] = None
+                    continue
+
+                last_open_idx = exit_idx - 1 if exit_idx is not None else len(close) - 1
+                # Bars from entry+1 up to min(entry+n, last_open_idx) — must have at least 1 bar open.
+                if entry_idx + 1 <= last_open_idx:
+                    end_bar = min(entry_idx + n, last_open_idx)
                     window = close.iloc[entry_idx + 1 : end_bar + 1]
                     min_price = float(window.min())
                     early_returns[key] = (min_price / t.entry_price - 1) * 100

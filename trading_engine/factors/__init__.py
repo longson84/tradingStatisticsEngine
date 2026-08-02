@@ -13,6 +13,7 @@ from trading_engine.factors.bollinger import BollingerBands
 from trading_engine.factors.donchian import DonchianChannel
 from trading_engine.factors.distance_from_peak import DistanceFromPeak
 from trading_engine.factors.ahr999 import AHR999
+from trading_engine.factors.relative_strength import normalized_relative_strength
 
 __all__ = [
     "MovingAverage",
@@ -22,4 +23,5 @@ __all__ = [
     "DonchianChannel",
     "DistanceFromPeak",
     "AHR999",
+    "normalized_relative_strength",
 ]

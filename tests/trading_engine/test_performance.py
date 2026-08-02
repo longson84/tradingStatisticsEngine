@@ -16,6 +16,7 @@ import pytest
 
 from trading_engine import run_comparison
 from trading_engine.performance import analyze_performance
+from trading_engine.performance.strategy_analysis import _compute_trade_rows
 from trading_engine.factors.moving_average import MovingAverageRatio
 from trading_engine.strategy import BuyAndHold, FactorThresholdStrategy
 from trading_engine.types import (
@@ -23,6 +24,7 @@ from trading_engine.types import (
     PerformanceReport,
     Portfolio,
     PortfolioResult,
+    PriceFrame,
     StrategySlot,
     Trade,
     WeightEvent,
@@ -120,6 +122,46 @@ class TestAnalyzePerformance:
         report = analyze_performance(result)
         assert report.total_return_pct == 0.0
         assert report.sharpe_ratio == 0.0
+
+    def test_compute_trade_rows_includes_early_returns_for_open_trade(self):
+        dates = pd.date_range("2024-01-01", periods=12, freq="B")
+        close = pd.Series(
+            [100, 98, 96, 99, 97, 102, 101, 103, 104, 105, 106, 107],
+            index=dates,
+            dtype=float,
+        )
+        prices = PriceFrame(
+            symbol="TEST",
+            data=pd.DataFrame({
+                "open": close,
+                "high": close,
+                "low": close,
+                "close": close,
+                "volume": 1_000_000.0,
+            }),
+            source="synthetic",
+        )
+        trade = Trade(
+            symbol="TEST",
+            direction="long",
+            entry_date=dates[0].date(),
+            entry_price=100.0,
+            entry_weight=1.0,
+            exit_date=None,
+            exit_price=None,
+            return_pct=None,
+            holding_days=None,
+            mae_pct=-4.0,
+            mfe_pct=7.0,
+            weight_history=[],
+        )
+
+        row = _compute_trade_rows([trade], prices)[0]
+
+        assert row.exit_date is None
+        assert row.early_returns["2"] == pytest.approx(-4.0)
+        assert row.early_returns["5"] == pytest.approx(-4.0)
+        assert row.early_returns["10"] == pytest.approx(-4.0)
 
 
 # =============================================================================

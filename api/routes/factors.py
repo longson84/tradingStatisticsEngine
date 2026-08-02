@@ -6,8 +6,10 @@ POST /factors/regime    — regime labels derived from cross-sectional breadth
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from fastapi import APIRouter, HTTPException
-from trading_engine.types import FactorComputeError, InsufficientDataError
+from trading_engine.types import FactorComputeError, InsufficientDataError, PriceFrame
 
 from trading_engine import analyze_factor, analyze_universe, detect_regime, zone_rarity_analysis
 from trading_engine.factors.bollinger import BollingerBands
@@ -27,6 +29,10 @@ from api.schemas.factor import (
     FactorAnalysisResponse,
     RarityRequest,
     RarityAnalysisResponse,
+    PredefinedRarityRequest,
+    PredefinedRarityResponse,
+    PredefinedRarityRow,
+    PredefinedRarityTable,
     ZoneStatsSchema,
     ZoneEntrySchema,
     TimeSeriesPoint,
@@ -36,6 +42,33 @@ from api.schemas.factor import (
 from api.utils import date_key
 
 router = APIRouter(prefix="/factors", tags=["factors"])
+
+_PREDEFINED_PERCENTILES = [5, 10, 15, 20, 25, 50, 75, 80, 90, 95]
+_PREDEFINED_FACTORS: tuple[tuple[str, str, Factor], ...] = (
+    (
+        "distance_ma50",
+        "Distance from MA50",
+        DistanceFromMovingAverage(ma_type="SMA", length=50),
+    ),
+    (
+        "distance_ma100",
+        "Distance from MA100",
+        DistanceFromMovingAverage(ma_type="SMA", length=100),
+    ),
+    (
+        "distance_ma150",
+        "Distance from MA150",
+        DistanceFromMovingAverage(ma_type="SMA", length=150),
+    ),
+    (
+        "distance_ma200",
+        "Distance from MA200",
+        DistanceFromMovingAverage(ma_type="SMA", length=200),
+    ),
+    ("distance_high_100", "Distance from Highest 100 Days", DistanceFromPeak(window=100)),
+    ("distance_high_150", "Distance from Highest 150 Days", DistanceFromPeak(window=150)),
+    ("distance_high_200", "Distance from Highest 200 Days", DistanceFromPeak(window=200)),
+)
 
 
 def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 2.0) -> Factor:
@@ -52,6 +85,48 @@ def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 
     if factor_type == "ahr999":
         return AHR999()
     raise HTTPException(status_code=400, detail=f"Unknown factor type: {factor_type!r}")
+
+
+def _normalise_symbols(symbols: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for raw in symbols:
+        symbol = raw.strip().upper()
+        if symbol and symbol not in seen:
+            result.append(symbol)
+            seen.add(symbol)
+    return result
+
+
+def _predefined_row(symbol: str, factor: Factor, prices: PriceFrame) -> PredefinedRarityRow:
+    series = factor.compute(prices)
+    values = series.values.dropna()
+    if values.empty:
+        raise InsufficientDataError(f"No factor values for {symbol}")
+
+    current = float(values.iloc[-1])
+    percentile_values = values.quantile([p / 100 for p in _PREDEFINED_PERCENTILES])
+    factor_context = factor.context(prices) if hasattr(factor, "context") else {}
+    reference_price = factor_context.get("ma_value", factor_context.get("peak_price"))
+    if reference_price is None:
+        raise InsufficientDataError(f"No reference price for {symbol}")
+    p50 = float(percentile_values.loc[0.5])
+
+    return PredefinedRarityRow(
+        symbol=symbol,
+        first_date=values.index[0].date(),
+        last_date=values.index[-1].date(),
+        observations=len(values),
+        reference_price=float(reference_price),
+        p50_price=float(reference_price) * (1 + p50),
+        current_price=float(reference_price) * (1 + current),
+        current_value_pct=current * 100,
+        current_percentile=float((values <= current).mean() * 100),
+        percentiles={
+            f"p{p}": float(percentile_values.loc[p / 100] * 100)
+            for p in _PREDEFINED_PERCENTILES
+        },
+    )
 
 
 @router.post("/analyze", response_model=FactorAnalysisResponse)
@@ -78,6 +153,47 @@ def analyze_factor_endpoint(req: FactorRequest) -> FactorAnalysisResponse:
         current_percentile=result.current_percentile,
         history_length_days=result.history_length_days,
         percentiles={f"p{k}": v for k, v in result.percentiles.items()},
+    )
+
+
+@router.post("/predefined-rarity", response_model=PredefinedRarityResponse)
+def predefined_rarity_endpoint(req: PredefinedRarityRequest) -> PredefinedRarityResponse:
+    symbols = _normalise_symbols(req.symbols)
+    if not symbols:
+        raise HTTPException(status_code=400, detail="symbols must not be empty")
+
+    prices = fetch_prices(
+        symbols,
+        date(1900, 1, 1),
+        date.today() + timedelta(days=1),
+        req.data_source,
+    )
+
+    errors = [f"{symbol}: no data loaded" for symbol in symbols if symbol not in prices]
+    tables: list[PredefinedRarityTable] = []
+
+    for factor_key, factor_name, factor in _PREDEFINED_FACTORS:
+        rows: list[PredefinedRarityRow] = []
+        for symbol in symbols:
+            if symbol not in prices:
+                continue
+            try:
+                rows.append(_predefined_row(symbol, factor, prices[symbol]))
+            except (FactorComputeError, InsufficientDataError, ValueError) as exc:
+                errors.append(f"{symbol} / {factor_name}: {exc}")
+
+        tables.append(
+            PredefinedRarityTable(
+                factor_key=factor_key,
+                factor_name=factor_name,
+                rows=rows,
+            )
+        )
+
+    return PredefinedRarityResponse(
+        percentile_columns=[f"p{p}" for p in _PREDEFINED_PERCENTILES],
+        tables=tables,
+        errors=errors,
     )
 
 
@@ -258,4 +374,3 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
         ],
         time_series=ts_points,
     )
-

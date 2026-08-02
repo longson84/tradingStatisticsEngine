@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.schemas.common import DateRange
 from trading_engine.constants import DEFAULT_QR_DAYS, DEFAULT_RARITY_ZONES
@@ -159,3 +159,46 @@ class RarityAnalysisResponse(BaseModel):
     zone_stats: list[ZoneStatsSchema]
     entries: list[ZoneEntrySchema]
     time_series: list[TimeSeriesPoint]
+
+
+# ── Predefined Multi-Symbol Rarity Tables ────────────────────────────────────
+
+class PredefinedRarityRequest(BaseModel):
+    symbols: list[str]
+    data_source: Literal["yfinance", "vnstock", "csv"] = "yfinance"
+
+
+class PredefinedRarityRow(BaseModel):
+    symbol: str
+    first_date: date
+    last_date: date
+    observations: int
+    reference_price: float
+    p50_price: float
+    current_price: float
+    current_value_pct: float
+    current_percentile: float
+    percentiles: dict[str, float]
+
+
+PredefinedRarityFactorKey: TypeAlias = Literal[
+    "distance_ma50",
+    "distance_ma100",
+    "distance_ma150",
+    "distance_ma200",
+    "distance_high_100",
+    "distance_high_150",
+    "distance_high_200",
+]
+
+
+class PredefinedRarityTable(BaseModel):
+    factor_key: PredefinedRarityFactorKey
+    factor_name: str
+    rows: list[PredefinedRarityRow]
+
+
+class PredefinedRarityResponse(BaseModel):
+    percentile_columns: list[str]
+    tables: list[PredefinedRarityTable]
+    errors: list[str] = Field(default_factory=list)

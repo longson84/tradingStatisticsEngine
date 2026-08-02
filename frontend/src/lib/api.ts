@@ -13,6 +13,24 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(errorMessage(err, res.status))
+  }
+  return res.json()
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(errorMessage(err, res.status))
+  }
+  return res.json()
+}
+
 function errorMessage(err: unknown, status: number): string {
   if (err && typeof err === "object" && "detail" in err) {
     const detail = (err as { detail: unknown }).detail
@@ -103,6 +121,241 @@ export interface RarityAnalysisResponse {
   zone_stats: ZoneStat[]
   entries: ZoneEntry[]
   time_series: TimeSeriesPoint[]
+}
+
+export type PredefinedRarityFactorKey =
+  | "distance_ma50"
+  | "distance_ma100"
+  | "distance_ma150"
+  | "distance_ma200"
+  | "distance_high_100"
+  | "distance_high_150"
+  | "distance_high_200"
+
+export interface PredefinedRarityRow {
+  symbol: string
+  first_date: string
+  last_date: string
+  observations: number
+  reference_price: number
+  p50_price: number
+  current_price: number
+  current_value_pct: number
+  current_percentile: number
+  percentiles: Record<string, number>
+}
+
+export interface PredefinedRarityTable {
+  factor_key: PredefinedRarityFactorKey
+  factor_name: string
+  rows: PredefinedRarityRow[]
+}
+
+export interface PredefinedRarityResponse {
+  percentile_columns: string[]
+  tables: PredefinedRarityTable[]
+  errors: string[]
+}
+
+export type SymbolListId =
+  | "US_ALL"
+  | "US100"
+  | "US2000"
+  | "US500"
+  | "US30"
+  | "VN_ALL"
+  | "VN30"
+  | "VN100"
+
+export interface SymbolListSummary {
+  id: SymbolListId
+  name: string
+  description: string
+  symbol_count: number
+  as_of: string | null
+  fetched_at: string | null
+}
+
+export interface SymbolListItem {
+  symbol: string
+  yfinance_symbol: string
+  name: string
+  sector: string | null
+  industry: string | null
+  exchange: string | null
+  metadata: Record<string, unknown>
+}
+
+export interface SymbolListResponse extends SymbolListSummary {
+  sources: Array<Record<string, string>>
+  symbols: SymbolListItem[]
+}
+
+export interface SymbolListsResponse {
+  lists: SymbolListSummary[]
+}
+
+export interface MarketHealthWeights {
+  within_10: number
+  within_20: number
+  within_30: number
+  not_below_40: number
+}
+
+export interface MarketHealthPoint {
+  date: string
+  health_score: number
+  median_distance: number
+  p10_distance: number
+  p20_distance: number
+  p80_distance: number
+  p90_distance: number
+  within_10: number
+  within_20: number
+  within_30: number
+  stress_40: number
+  coverage_pct: number
+  eligible_count: number
+  change_5: number | null
+  change_20: number | null
+  ema_gap: number
+}
+
+export interface MarketHealthCache {
+  fetched_at: string
+  first_date: string
+  last_date: string
+  symbol_count: number
+  source: string
+  price_basis: string
+}
+
+export interface MarketHealthDistributionBucket {
+  label: string
+  min_distance: number | null
+  max_distance: number | null
+  count: number
+  percentage: number
+  cumulative_percentage: number
+}
+
+export interface MarketHealthStockDistance {
+  symbol: string
+  date: string
+  current_price: number
+  rolling_high: number
+  distance: number
+}
+
+export interface MarketHealthDistributionResponse {
+  universe: MarketHealthMarket["universe"]
+  date: string
+  window: number
+  min_distance: number | null
+  max_distance: number | null
+  stocks: MarketHealthStockDistance[]
+}
+
+export interface MarketHealthMarket {
+  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  universe_size: number
+  regime: string
+  cache: MarketHealthCache
+  current: MarketHealthPoint
+  series: MarketHealthPoint[]
+  distribution: MarketHealthDistributionBucket[]
+}
+
+export interface MarketHealthRunResponse {
+  window: number
+  minimum_coverage: number
+  weights: MarketHealthWeights
+  markets: MarketHealthMarket[]
+}
+
+export interface MarketDataJob {
+  id: string
+  market: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  mode: "incremental" | "full"
+  dataset: "prices" | "fundamentals"
+  status: "queued" | "running" | "completed" | "failed"
+  current: number
+  total: number
+  message: string
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+}
+
+export interface MarketDataCacheStatus {
+  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  exists: boolean
+  size_bytes: number
+  fetched_at: string | null
+  first_date: string | null
+  last_date: string | null
+  symbol_count: number | null
+  row_count: number | null
+  source: string | null
+  price_basis: string | null
+  errors: Array<Record<string, string>>
+  latest_job: MarketDataJob | null
+  fundamentals_exists: boolean
+  fundamentals_fetched_at: string | null
+  fundamentals_symbol_count: number
+  fundamentals_snapshot_count: number
+  fundamentals_size_bytes: number
+  latest_fundamentals_job: MarketDataJob | null
+}
+
+export interface MarketDataStatusResponse {
+  cache_directory: string
+  fundamentals_cache_directory: string
+  markets: MarketDataCacheStatus[]
+}
+
+export interface SymbolPricePoint {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number | null
+  eps_ttm: number | null
+  shares_outstanding: number | null
+  trailing_pe: number | null
+  trailing_pb: number | null
+  relative_strength: number | null
+}
+
+export interface SymbolPriceHistoryResponse {
+  symbol: string
+  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  source: string
+  price_basis: string
+  fetched_at: string
+  first_date: string
+  last_date: string
+  row_count: number
+  relative_strength_benchmark: "VN30" | "SPX"
+  trailing_pe_source: string | null
+  trailing_pe_method: string | null
+  trailing_pe_fetched_at: string | null
+  fundamentals_fields: string[]
+  provider_reported_pe: number | null
+  provider_reported_pb: number | null
+  provider_ratio_effective_date: string | null
+  provider_ratio_period: string | null
+  shares_growth_pct: number | null
+  shares_growth_cagr_pct: number | null
+  shares_growth_observed_years: number | null
+  shares_growth_start_date: string | null
+  shares_growth_full_10y: boolean
+  shares_cagr_5y_pct: number | null
+  shares_cagr_5y_observed_years: number | null
+  shares_cagr_5y_start_date: string | null
+  shares_cagr_full_5y: boolean
+  prices: SymbolPricePoint[]
 }
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
@@ -524,6 +777,78 @@ export function rarityAnalysisApi(params: {
     zones: params.zones,
     date_range: { start: "2000-01-01", end: today },
   })
+}
+
+export function predefinedRarityApi(params: {
+  symbols: string[]
+  data_source?: DataSource
+}): Promise<PredefinedRarityResponse> {
+  return post("/factors/predefined-rarity", {
+    symbols: params.symbols.map(s => s.toUpperCase().trim()).filter(Boolean),
+    data_source: params.data_source ?? "yfinance",
+  })
+}
+
+export function symbolListsApi(): Promise<SymbolListsResponse> {
+  return get("/symbol-lists")
+}
+
+export function symbolListApi(id: SymbolListId): Promise<SymbolListResponse> {
+  return get(`/symbol-lists/${id}`)
+}
+
+export function marketHealthRunApi(
+  weights: MarketHealthWeights
+): Promise<MarketHealthRunResponse> {
+  return post("/market-health/run", {
+    weights,
+    window: 200,
+    minimum_coverage: 0.8,
+  })
+}
+
+export function marketHealthDistributionApi(params: {
+  universe: MarketHealthMarket["universe"]
+  date: string
+  window?: number
+  min_distance: number | null
+  max_distance: number | null
+}): Promise<MarketHealthDistributionResponse> {
+  const query = new URLSearchParams({
+    date: params.date,
+    window: String(params.window ?? 200),
+  })
+  if (params.min_distance != null) query.set("min_distance", String(params.min_distance))
+  if (params.max_distance != null) query.set("max_distance", String(params.max_distance))
+  return get(`/market-health/${params.universe}/distribution?${query}`)
+}
+
+export function marketDataStatusApi(): Promise<MarketDataStatusResponse> {
+  return get("/market-data/status")
+}
+
+export function symbolPriceHistoryApi(
+  symbol: string,
+  universe: SymbolPriceHistoryResponse["universe"]
+): Promise<SymbolPriceHistoryResponse> {
+  const query = new URLSearchParams({ universe })
+  return get(
+    `/market-data/symbols/${encodeURIComponent(symbol.toUpperCase().trim())}/history?${query}`
+  )
+}
+
+export function marketDataRefreshApi(
+  market: "US500" | "US2000" | "US100" | "VN100" | "VN30",
+  mode: "incremental" | "full",
+  dataset: "prices" | "fundamentals" = "prices"
+): Promise<MarketDataJob> {
+  return post(`/market-data/${market}/refresh?mode=${mode}&dataset=${dataset}`, {})
+}
+
+export function marketDataClearApi(
+  market: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+): Promise<{ universe: string; cleared: boolean }> {
+  return del(`/market-data/${market}`)
 }
 
 export function newLowEpisodesApi(params: {

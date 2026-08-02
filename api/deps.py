@@ -28,8 +28,8 @@ def get_loader(source: str) -> DataLoader:
     if source == "yfinance":
         return YFinanceLoader()
     if source == "vnstock":
-        from trading_engine.data.vnstock_loader import VnStockLoader
-        return VnStockLoader()
+        from trading_engine.data.vnstock_loader import VNStockLoader
+        return VNStockLoader()
     raise HTTPException(status_code=400, detail=f"Unsupported data source: {source!r}")
 
 

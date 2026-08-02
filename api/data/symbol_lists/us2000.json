@@ -1,0 +1,15 @@
+{
+  "id": "US2000",
+  "name": "Russell 2000",
+  "description": "Saved exchange-listed equity holdings snapshot of the iShares Russell 2000 ETF (IWM), used as a practical constituent proxy for the Russell 2000 Index. Unlisted CVRs, escrow positions, zero-price residual claims, private holdings, cash, and derivatives are excluded.",
+  "as_of": "Jul 30, 2026",
+  "fetched_at": "2026-08-01T00:00:00+00:00",
+  "sources": [
+    {
+      "name": "iShares Russell 2000 ETF (IWM) holdings",
+      "url": "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv"
+    }
+  ],
+  "symbols_file": "us2000_symbols.csv",
+  "symbol_count": 1954
+}

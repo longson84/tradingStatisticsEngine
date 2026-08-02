@@ -10,10 +10,16 @@ from trading_engine.factor_analysis.time_series import (
 )
 from trading_engine.factor_analysis.cross_sectional import analyze_cross_section
 from trading_engine.factor_analysis.regime import detect_regime
+from trading_engine.factor_analysis.market_health import (
+    classify_market_health,
+    compute_market_health,
+)
 
 __all__ = [
     "percentile_breakdown",
     "rarity_analysis",
     "analyze_cross_section",
     "detect_regime",
+    "compute_market_health",
+    "classify_market_health",
 ]

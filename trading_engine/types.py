@@ -203,6 +203,52 @@ class RegimeConfig:
     thresholds: tuple[float, float]  # (lower, upper) for risk_off/transition/risk_on
 
 
+@dataclass(frozen=True)
+class MarketHealthWeights:
+    """Coefficients for the distance-from-high market health score."""
+
+    within_10: float = 0.35
+    within_20: float = 0.30
+    within_30: float = 0.20
+    not_below_40: float = 0.15
+
+
+@dataclass(frozen=True)
+class MarketHealthDistributionBucket:
+    """One current distance-from-high band in a market-health result."""
+
+    label: str
+    min_distance: float | None
+    max_distance: float | None
+    count: int
+    percentage: float
+    cumulative_percentage: float
+
+
+@dataclass(frozen=True)
+class MarketHealthStockDistance:
+    """One symbol's distance from its trailing high on a selected session."""
+
+    symbol: str
+    date: date
+    current_price: float
+    rolling_high: float
+    distance: float
+
+
+@dataclass
+class MarketHealthResult:
+    """Daily cross-sectional distance-from-high market health series."""
+
+    universe: str
+    universe_size: int
+    window: int
+    minimum_coverage: float
+    weights: MarketHealthWeights
+    series: pd.DataFrame
+    distribution: list[MarketHealthDistributionBucket]
+
+
 # =============================================================================
 # Layer 4: Strategy
 # =============================================================================
