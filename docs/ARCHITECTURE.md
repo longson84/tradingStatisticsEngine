@@ -98,6 +98,53 @@ explicit migration and a source capable of providing reliable membership dates.
 - PostgreSQL-specific extensions are added only when a demonstrated workload
   requires them. TimescaleDB is not part of the initial architecture.
 
+## Application layering
+
+The backend dependency direction is:
+
+```text
+route -> service -> repository protocol
+                    ^
+wiring -> SQLAlchemy repository -> database models
+```
+
+- Repositories contain persistence queries and return persistence-neutral
+  records. They do not implement business rules and never commit transactions.
+- Services implement use cases and depend on repository protocols. Service
+  modules must not import FastAPI, SQLAlchemy, or concrete database models.
+- Routes validate HTTP input, call one service use case, map service errors to
+  HTTP responses, and serialize explicit Pydantic response models.
+- SQLAlchemy models never cross the API boundary and are never serialized
+  directly to the frontend.
+- Dependency wiring belongs in `api/deps.py`; routes must not construct engines,
+  sessions, repositories, or services.
+- Collection queries have deterministic ordering and explicit upper bounds.
+- Write use cases define one transaction boundary. A future unit-of-work
+  abstraction may expose that boundary to services; repositories still do not
+  call `commit`.
+
+The frontend is independent from backend implementation layers. It communicates
+only through HTTP clients and generated API contracts. Frontend code must never
+depend on repository, service, ORM, or database concepts.
+
+## End-to-end contracts
+
+FastAPI Pydantic request and response schemas are the canonical HTTP contract.
+The checked-in `frontend/openapi.json` and
+`frontend/src/lib/generated/api-schema.ts` are generated artifacts; do not edit
+them manually.
+
+- Give stable `operation_id` values to endpoints consumed through generated
+  operation types.
+- Run `pnpm generate:api` whenever a Pydantic schema, route parameter, response,
+  or operation ID changes.
+- Frontend clients derive request and response types from the generated schema
+  instead of declaring parallel interfaces.
+- Run `pnpm check:api-types` in validation to detect contract drift.
+- Runtime parsing may be added at untrusted external boundaries. Within this
+  application, generated types provide compile-time alignment while Pydantic
+  performs backend runtime validation.
+
 ## Decision log
 
 ### 2026-08-02 — PostgreSQL persistence foundation
@@ -115,3 +162,18 @@ read paths until imported data has verified parity.
 Consequences: overlapping list membership no longer requires duplicated company
 records in the database. PostgreSQL becomes a local runtime dependency. File
 caches remain temporarily during an incremental migration.
+
+### 2026-08-02 — Layered company reads and generated web contracts
+
+Context: moving Companies from static files to PostgreSQL could couple routes or
+React components to persistence details, while handwritten Pydantic and
+TypeScript interfaces could silently drift.
+
+Decision: separate repository protocols, SQLAlchemy repository implementations,
+application services, and FastAPI routes. Use FastAPI OpenAPI as the source for
+generated frontend request and response types. Enforce key dependency boundaries
+with tests.
+
+Consequences: the UI can change independently from persistence, services can be
+tested without FastAPI or SQLAlchemy, and API contract changes become explicit
+generated diffs. Contract generation is now part of the validation workflow.

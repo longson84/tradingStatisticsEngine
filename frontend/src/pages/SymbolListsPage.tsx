@@ -5,13 +5,12 @@ import { useSearchParams } from "react-router"
 import { CompanyTable, type CompanyRow } from "@/components/company/CompanyTable"
 import { Sidebar } from "@/components/Sidebar"
 import {
+  companiesApi,
+  companyUniversesApi,
   marketHealthDistributionApi,
-  symbolListApi,
-  symbolListsApi,
+  type CompanyUniverseId,
   type MarketHealthMarket,
   type MarketHealthStockDistance,
-  type SymbolListId,
-  type SymbolListResponse,
 } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -19,13 +18,9 @@ import { cn } from "@/lib/utils"
 const ALL_SECTORS = "ALL"
 const ALL_SOURCES = "ALL"
 const UNKNOWN_SECTOR = "Unknown"
-const FEATURED_LIST_IDS: SymbolListId[] = ["US_ALL", "VN_ALL"]
+const FEATURED_LIST_IDS: CompanyUniverseId[] = ["US_ALL", "VN_ALL"]
 const SOURCE_ORDER = [
-  "Nasdaq-100",
-  "S&P 500",
-  "Dow Jones Industrial Average",
-  "VN30 Index",
-  "VN100 Index",
+  "US100", "US500", "US2000", "US30", "VN30", "VN100",
 ]
 const HEALTH_UNIVERSES: MarketHealthMarket["universe"][] = [
   "US500", "US2000", "US100", "VN100", "VN30",
@@ -39,15 +34,6 @@ interface HealthDrilldown {
   max_distance: number | null
 }
 
-interface CompanyListView {
-  id: string
-  name: string
-  description: string
-  as_of: string | null
-  fetched_at: string | null
-  rows: CompanyRow[]
-}
-
 export function SymbolListsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchKey = searchParams.toString()
@@ -55,21 +41,21 @@ export function SymbolListsPage() {
     () => parseHealthDrilldown(new URLSearchParams(searchKey)),
     [searchKey],
   )
-  const [selectedListId, setSelectedListId] = useState<SymbolListId>("US_ALL")
-  const activeListId: SymbolListId = drilldown?.universe ?? selectedListId
+  const [selectedListId, setSelectedListId] = useState<CompanyUniverseId>("US_ALL")
+  const activeListId: CompanyUniverseId = drilldown?.universe ?? selectedListId
   const [activeSource, setActiveSource] = useState(ALL_SOURCES)
   const [activeSector, setActiveSector] = useState(ALL_SECTORS)
   const [query, setQuery] = useState("")
 
   const { data: availableLists } = useQuery({
     queryKey: ["company-symbol-lists"],
-    queryFn: symbolListsApi,
+    queryFn: companyUniversesApi,
     retry: false,
   })
 
   const { data: list, isFetching, error } = useQuery({
     queryKey: ["company-symbol-list", activeListId],
-    queryFn: () => symbolListApi(activeListId),
+    queryFn: () => companiesApi({ universe: activeListId }),
     retry: false,
   })
 
@@ -84,31 +70,28 @@ export function SymbolListsPage() {
     health.data?.stocks.map(stock => [stock.symbol, stock]) ?? []
   ), [health.data])
 
-  const data = useMemo(() => {
-    if (!list) return null
-    return toCompanyListView(list)
-  }, [list])
+  const data = list ?? null
 
   const sectorOptions = useMemo(() => {
     if (!data) return []
     const drilldownRows = drilldown
-      ? data.rows.filter(row => healthBySymbol.has(row.yfinance_symbol))
-      : data.rows
+      ? data.companies.filter(row => healthBySymbol.has(row.ticker))
+      : data.companies
     const sourceRows = filterRowsBySource(drilldownRows, activeSource)
     return buildSectorOptions(sourceRows)
   }, [activeSource, data, drilldown, healthBySymbol])
 
   const sourceOptions = useMemo(() => {
     if (!data) return []
-    return buildSourceOptions(data.rows)
+    return buildSourceOptions(data.companies)
   }, [data])
 
   const filteredRows = useMemo(() => {
     if (!data) return []
     const needle = query.trim().toLowerCase()
 
-    const rows = data.rows.filter(row => {
-      if (drilldown && !healthBySymbol.has(row.yfinance_symbol)) return false
+    const rows = data.companies.filter(row => {
+      if (drilldown && !healthBySymbol.has(row.ticker)) return false
       if (activeSource !== ALL_SOURCES && !row.lists.includes(activeSource)) {
         return false
       }
@@ -120,9 +103,8 @@ export function SymbolListsPage() {
       if (!needle) return true
 
       const haystack = [
-        row.symbol,
-        row.yfinance_symbol,
-        row.name,
+        row.ticker,
+        row.company_name,
         row.sector,
         row.industry,
         row.exchange,
@@ -133,9 +115,9 @@ export function SymbolListsPage() {
     })
     if (!drilldown) return rows
     return rows.sort((a, b) => (
-      healthBySymbol.get(b.yfinance_symbol)?.distance ?? -Infinity
+      healthBySymbol.get(b.ticker)?.distance ?? -Infinity
     ) - (
-      healthBySymbol.get(a.yfinance_symbol)?.distance ?? -Infinity
+      healthBySymbol.get(a.ticker)?.distance ?? -Infinity
     ))
   }, [activeSector, activeSource, data, drilldown, healthBySymbol, query])
 
@@ -153,7 +135,7 @@ export function SymbolListsPage() {
             </div>
             {data && (
               <div className="text-xs text-muted-foreground text-right">
-                <div>{fmtInt(drilldown ? healthBySymbol.size : data.rows.length)} companies</div>
+                <div>{fmtInt(drilldown ? healthBySymbol.size : data.total)} companies</div>
                 <div>{data.as_of ? `As of ${data.as_of}` : "Static list"}</div>
               </div>
             )}
@@ -161,7 +143,7 @@ export function SymbolListsPage() {
 
           <FilterGroup label="Saved list">
             {FEATURED_LIST_IDS.map(listId => {
-              const summary = availableLists?.lists.find(item => item.id === listId)
+              const summary = availableLists?.universes.find(item => item.id === listId)
               return (
                 <FilterButton
                   key={listId}
@@ -174,7 +156,7 @@ export function SymbolListsPage() {
                     setQuery("")
                   }}
                 >
-                  {savedListLabel(listId)}{summary ? ` (${fmtInt(summary.symbol_count)})` : ""}
+                  {savedListLabel(listId)}{summary ? ` (${fmtInt(summary.company_count)})` : ""}
                 </FilterButton>
               )
             })}
@@ -314,23 +296,6 @@ function FilterButton({
   )
 }
 
-function toCompanyListView(list: SymbolListResponse): CompanyListView {
-  return {
-    id: list.id,
-    name: list.name,
-    description: list.description,
-    as_of: list.as_of,
-    fetched_at: list.fetched_at,
-    rows: list.symbols.map(row => {
-      const sourceLists = parseSourceLists(row.metadata.source_lists)
-      return {
-        ...row,
-        lists: sourceLists.length > 0 ? sourceLists : [list.name],
-      }
-    }),
-  }
-}
-
 function filterRowsBySource(rows: CompanyRow[], source: string) {
   if (source === ALL_SOURCES) return rows
   return rows.filter(row => row.lists.includes(source))
@@ -371,12 +336,7 @@ function buildSectorOptions(rows: CompanyRow[]) {
   ]
 }
 
-function parseSourceLists(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === "string")
-}
-
-function savedListLabel(listId: SymbolListId): string {
+function savedListLabel(listId: CompanyUniverseId): string {
   if (listId === "US_ALL") return "US Companies"
   if (listId === "VN_ALL") return "VN Companies"
   return listId
@@ -384,12 +344,10 @@ function savedListLabel(listId: SymbolListId): string {
 
 
 function listBadgeLabel(list: string): string {
-  if (list.includes("Nasdaq")) return "Nasdaq 100"
-  if (list.includes("S&P")) return "S&P 500"
-  if (list.includes("Russell")) return "Russell 2000"
-  if (list.includes("Dow")) return "Dow Jones"
-  if (list.includes("VN30")) return "VN30"
-  if (list.includes("VN100")) return "VN100"
+  if (list === "US100") return "Nasdaq 100"
+  if (list === "US500") return "S&P 500"
+  if (list === "US2000") return "Russell 2000"
+  if (list === "US30") return "Dow Jones"
   return list
 }
 

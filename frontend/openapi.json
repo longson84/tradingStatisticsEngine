@@ -1,0 +1,6958 @@
+{
+  "components": {
+    "schemas": {
+      "AnalyzeRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "initial_capital": {
+            "default": 10000.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuyAndHoldConfig"
+              },
+              {
+                "$ref": "#/components/schemas/PriceVsMAConfig"
+              }
+            ],
+            "title": "Strategy"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "strategy"
+        ],
+        "title": "AnalyzeRequest",
+        "type": "object"
+      },
+      "AnnualGrowthRowSchema": {
+        "properties": {
+          "eps_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Yoy Pct"
+          },
+          "fiscal_year": {
+            "title": "Fiscal Year",
+            "type": "integer"
+          },
+          "free_cash_flow_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Margin Pct"
+          },
+          "free_cash_flow_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Yoy Pct"
+          },
+          "gross_profit_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Profit Yoy Pct"
+          },
+          "net_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income Yoy Pct"
+          },
+          "operating_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Yoy Pct"
+          },
+          "operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margin Pct"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "revenue_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Yoy Pct"
+          },
+          "share_count_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Count Yoy Pct"
+          }
+        },
+        "required": [
+          "fiscal_year",
+          "revenue",
+          "revenue_yoy_pct",
+          "gross_profit_yoy_pct",
+          "operating_income_yoy_pct",
+          "net_income_yoy_pct",
+          "free_cash_flow_yoy_pct",
+          "eps_yoy_pct",
+          "share_count_yoy_pct",
+          "operating_margin_pct",
+          "free_cash_flow_margin_pct"
+        ],
+        "title": "AnnualGrowthRowSchema",
+        "type": "object"
+      },
+      "BacktestRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "initial_capital": {
+            "default": 10000.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "max_leverage": {
+            "default": 1.0,
+            "title": "Max Leverage",
+            "type": "number"
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuyAndHoldConfig"
+              },
+              {
+                "$ref": "#/components/schemas/PriceVsMAConfig"
+              }
+            ],
+            "title": "Strategy"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols",
+          "date_range",
+          "strategy"
+        ],
+        "title": "BacktestRequest",
+        "type": "object"
+      },
+      "BuyAndHoldConfig": {
+        "properties": {
+          "type": {
+            "const": "buy_and_hold",
+            "default": "buy_and_hold",
+            "title": "Type",
+            "type": "string"
+          },
+          "weight": {
+            "default": 1.0,
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "title": "BuyAndHoldConfig",
+        "type": "object"
+      },
+      "CompanyListResponse": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyResponse"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "id": {
+            "enum": [
+              "US_ALL",
+              "US100",
+              "US2000",
+              "US500",
+              "US30",
+              "VN_ALL",
+              "VN30",
+              "VN100"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "market",
+          "description",
+          "total",
+          "offset",
+          "limit",
+          "companies"
+        ],
+        "title": "CompanyListResponse",
+        "type": "object"
+      },
+      "CompanyResponse": {
+        "properties": {
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "lists": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "company_name",
+          "market",
+          "lists"
+        ],
+        "title": "CompanyResponse",
+        "type": "object"
+      },
+      "CompanyUniverseResponse": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "company_count": {
+            "title": "Company Count",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "id": {
+            "enum": [
+              "US_ALL",
+              "US100",
+              "US2000",
+              "US500",
+              "US30",
+              "VN_ALL",
+              "VN30",
+              "VN100"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "market",
+          "description",
+          "company_count"
+        ],
+        "title": "CompanyUniverseResponse",
+        "type": "object"
+      },
+      "CompanyUniversesResponse": {
+        "properties": {
+          "universes": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyUniverseResponse"
+            },
+            "title": "Universes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "universes"
+        ],
+        "title": "CompanyUniversesResponse",
+        "type": "object"
+      },
+      "CrossSectionalRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "factor_type": {
+            "enum": [
+              "moving_average",
+              "distance_from_ma",
+              "bollinger",
+              "donchian",
+              "distance_from_peak"
+            ],
+            "title": "Factor Type",
+            "type": "string"
+          },
+          "ma_type": {
+            "default": "sma",
+            "enum": [
+              "sma",
+              "ema",
+              "wma"
+            ],
+            "title": "Ma Type",
+            "type": "string"
+          },
+          "period": {
+            "default": 20,
+            "title": "Period",
+            "type": "integer"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          },
+          "threshold": {
+            "default": 0.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbols",
+          "date_range",
+          "factor_type"
+        ],
+        "title": "CrossSectionalRequest",
+        "type": "object"
+      },
+      "CrossSectionalResponse": {
+        "properties": {
+          "breadth": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Breadth",
+            "type": "object"
+          },
+          "factor_name": {
+            "title": "Factor Name",
+            "type": "string"
+          },
+          "pct_above": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Pct Above",
+            "type": "object"
+          },
+          "universe": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Universe",
+            "type": "array"
+          },
+          "universe_median": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Universe Median",
+            "type": "object"
+          }
+        },
+        "required": [
+          "factor_name",
+          "universe",
+          "breadth",
+          "pct_above",
+          "universe_median"
+        ],
+        "title": "CrossSectionalResponse",
+        "type": "object"
+      },
+      "CurrentPositionResponse": {
+        "properties": {
+          "entry_date": {
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "holding_days": {
+            "title": "Holding Days",
+            "type": "integer"
+          },
+          "mae_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae Pct"
+          },
+          "mfe_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mfe Pct"
+          },
+          "unrealized_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Return Pct"
+          }
+        },
+        "required": [
+          "entry_date",
+          "entry_price",
+          "holding_days",
+          "unrealized_return_pct",
+          "mae_pct",
+          "mfe_pct"
+        ],
+        "title": "CurrentPositionResponse",
+        "type": "object"
+      },
+      "DateRange": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "DateRange",
+        "type": "object"
+      },
+      "DistributionRowResponse": {
+        "properties": {
+          "cumulative_count": {
+            "title": "Cumulative Count",
+            "type": "integer"
+          },
+          "percentile": {
+            "title": "Percentile",
+            "type": "integer"
+          },
+          "value_pct": {
+            "title": "Value Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "percentile",
+          "value_pct",
+          "cumulative_count"
+        ],
+        "title": "DistributionRowResponse",
+        "type": "object"
+      },
+      "FactorAnalysisResponse": {
+        "properties": {
+          "current_percentile": {
+            "title": "Current Percentile",
+            "type": "number"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "factor_name": {
+            "title": "Factor Name",
+            "type": "string"
+          },
+          "history_length_days": {
+            "title": "History Length Days",
+            "type": "integer"
+          },
+          "percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Percentiles",
+            "type": "object"
+          }
+        },
+        "required": [
+          "factor_name",
+          "current_value",
+          "current_percentile",
+          "history_length_days",
+          "percentiles"
+        ],
+        "title": "FactorAnalysisResponse",
+        "type": "object"
+      },
+      "FactorRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "factor_type": {
+            "enum": [
+              "moving_average",
+              "distance_from_ma",
+              "bollinger",
+              "donchian",
+              "distance_from_peak"
+            ],
+            "title": "Factor Type",
+            "type": "string"
+          },
+          "ma_type": {
+            "default": "sma",
+            "enum": [
+              "sma",
+              "ema",
+              "wma"
+            ],
+            "title": "Ma Type",
+            "type": "string"
+          },
+          "period": {
+            "default": 20,
+            "title": "Period",
+            "type": "integer"
+          },
+          "std_dev": {
+            "default": 2.0,
+            "title": "Std Dev",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "date_range",
+          "factor_type"
+        ],
+        "title": "FactorRequest",
+        "type": "object"
+      },
+      "FundamentalQuarterRowSchema": {
+        "properties": {
+          "capex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capex"
+          },
+          "capex_to_revenue_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capex To Revenue Pct"
+          },
+          "cash_and_short_term_investments": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash And Short Term Investments"
+          },
+          "debt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt"
+          },
+          "diluted_shares": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diluted Shares"
+          },
+          "eps_diluted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Diluted"
+          },
+          "eps_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Yoy Pct"
+          },
+          "filed": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filed"
+          },
+          "filing_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Accepted At"
+          },
+          "filing_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Return Pct"
+          },
+          "filing_timing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Timing"
+          },
+          "free_cash_flow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow"
+          },
+          "free_cash_flow_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Margin Pct"
+          },
+          "free_cash_flow_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Yoy Pct"
+          },
+          "net_cash": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Cash"
+          },
+          "net_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income"
+          },
+          "net_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income Yoy Pct"
+          },
+          "operating_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income"
+          },
+          "operating_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Yoy Pct"
+          },
+          "operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margin Pct"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "reaction_session_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Session Date"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "revenue_qoq_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Qoq Pct"
+          },
+          "revenue_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Yoy Pct"
+          }
+        },
+        "required": [
+          "period_end",
+          "filed",
+          "filing_accepted_at",
+          "filing_timing",
+          "reaction_session_date",
+          "filing_return_pct",
+          "revenue",
+          "revenue_yoy_pct",
+          "revenue_qoq_pct",
+          "operating_income",
+          "operating_income_yoy_pct",
+          "operating_margin_pct",
+          "net_income",
+          "net_income_yoy_pct",
+          "free_cash_flow",
+          "free_cash_flow_yoy_pct",
+          "free_cash_flow_margin_pct",
+          "capex",
+          "capex_to_revenue_pct",
+          "cash_and_short_term_investments",
+          "debt",
+          "net_cash",
+          "eps_diluted",
+          "eps_yoy_pct",
+          "diluted_shares"
+        ],
+        "title": "FundamentalQuarterRowSchema",
+        "type": "object"
+      },
+      "FundamentalRequest": {
+        "properties": {
+          "current_year": {
+            "maximum": 2100.0,
+            "minimum": 1990.0,
+            "title": "Current Year",
+            "type": "integer"
+          },
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "years": {
+            "default": 20,
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol",
+          "current_year"
+        ],
+        "title": "FundamentalRequest",
+        "type": "object"
+      },
+      "FundamentalResponse": {
+        "properties": {
+          "cik": {
+            "title": "Cik",
+            "type": "string"
+          },
+          "entity_name": {
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "first_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Year"
+          },
+          "last_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Year"
+          },
+          "quarter_rows": {
+            "items": {
+              "$ref": "#/components/schemas/FundamentalQuarterRowSchema"
+            },
+            "title": "Quarter Rows",
+            "type": "array"
+          },
+          "requested_current_year": {
+            "title": "Requested Current Year",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/FundamentalRowSchema"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FundamentalSummarySchema"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "cik",
+          "entity_name",
+          "requested_current_year",
+          "first_year",
+          "last_year",
+          "rows",
+          "quarter_rows",
+          "summary"
+        ],
+        "title": "FundamentalResponse",
+        "type": "object"
+      },
+      "FundamentalRowSchema": {
+        "properties": {
+          "capex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capex"
+          },
+          "capex_to_revenue_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capex To Revenue Pct"
+          },
+          "cash_and_short_term_investments": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash And Short Term Investments"
+          },
+          "debt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt"
+          },
+          "debt_to_fcf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt To Fcf"
+          },
+          "diluted_shares": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diluted Shares"
+          },
+          "eps_diluted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Diluted"
+          },
+          "eps_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Yoy Pct"
+          },
+          "equity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equity"
+          },
+          "filed": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filed"
+          },
+          "filing_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Accepted At"
+          },
+          "filing_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Return Pct"
+          },
+          "filing_timing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Timing"
+          },
+          "fiscal_year": {
+            "title": "Fiscal Year",
+            "type": "integer"
+          },
+          "free_cash_flow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow"
+          },
+          "free_cash_flow_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Margin Pct"
+          },
+          "free_cash_flow_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Yoy Pct"
+          },
+          "gross_profit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Profit"
+          },
+          "net_cash": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Cash"
+          },
+          "net_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income"
+          },
+          "net_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income Yoy Pct"
+          },
+          "operating_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income"
+          },
+          "operating_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Yoy Pct"
+          },
+          "operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margin Pct"
+          },
+          "reaction_session_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Session Date"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "revenue_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Yoy Pct"
+          }
+        },
+        "required": [
+          "fiscal_year",
+          "filed",
+          "filing_accepted_at",
+          "filing_timing",
+          "reaction_session_date",
+          "filing_return_pct",
+          "revenue",
+          "revenue_yoy_pct",
+          "gross_profit",
+          "operating_income",
+          "operating_income_yoy_pct",
+          "operating_margin_pct",
+          "net_income",
+          "net_income_yoy_pct",
+          "free_cash_flow",
+          "free_cash_flow_yoy_pct",
+          "free_cash_flow_margin_pct",
+          "capex",
+          "capex_to_revenue_pct",
+          "cash_and_short_term_investments",
+          "debt",
+          "net_cash",
+          "debt_to_fcf",
+          "equity",
+          "eps_diluted",
+          "eps_yoy_pct",
+          "diluted_shares"
+        ],
+        "title": "FundamentalRowSchema",
+        "type": "object"
+      },
+      "FundamentalSummarySchema": {
+        "properties": {
+          "eps_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Cagr Pct"
+          },
+          "free_cash_flow_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Cagr Pct"
+          },
+          "latest_capex_to_revenue_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Capex To Revenue Pct"
+          },
+          "latest_debt_to_fcf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Debt To Fcf"
+          },
+          "latest_fcf_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Fcf Margin Pct"
+          },
+          "latest_net_cash": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Net Cash"
+          },
+          "latest_operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Operating Margin Pct"
+          },
+          "net_income_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income Cagr Pct"
+          },
+          "operating_income_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Cagr Pct"
+          },
+          "revenue_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Cagr Pct"
+          },
+          "share_count_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Count Change Pct"
+          }
+        },
+        "required": [
+          "revenue_cagr_pct",
+          "operating_income_cagr_pct",
+          "net_income_cagr_pct",
+          "free_cash_flow_cagr_pct",
+          "eps_cagr_pct",
+          "latest_operating_margin_pct",
+          "latest_fcf_margin_pct",
+          "latest_capex_to_revenue_pct",
+          "latest_debt_to_fcf",
+          "latest_net_cash",
+          "share_count_change_pct"
+        ],
+        "title": "FundamentalSummarySchema",
+        "type": "object"
+      },
+      "GrowthAnalysisResponse": {
+        "properties": {
+          "annual_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/GrowthMetricSnapshotSchema"
+            },
+            "title": "Annual Metrics",
+            "type": "array"
+          },
+          "annual_rows": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualGrowthRowSchema"
+            },
+            "title": "Annual Rows",
+            "type": "array"
+          },
+          "cik": {
+            "title": "Cik",
+            "type": "string"
+          },
+          "entity_name": {
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "first_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Year"
+          },
+          "last_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Year"
+          },
+          "quarterly_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/QuarterlyGrowthSnapshotSchema"
+            },
+            "title": "Quarterly Metrics",
+            "type": "array"
+          },
+          "quarterly_rows": {
+            "items": {
+              "$ref": "#/components/schemas/QuarterlyGrowthRowSchema"
+            },
+            "title": "Quarterly Rows",
+            "type": "array"
+          },
+          "requested_current_year": {
+            "title": "Requested Current Year",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/GrowthQualitySummarySchema"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "cik",
+          "entity_name",
+          "requested_current_year",
+          "first_year",
+          "last_year",
+          "annual_metrics",
+          "quarterly_metrics",
+          "annual_rows",
+          "quarterly_rows",
+          "summary"
+        ],
+        "title": "GrowthAnalysisResponse",
+        "type": "object"
+      },
+      "GrowthAssessmentRequest": {
+        "properties": {
+          "growth": {
+            "$ref": "#/components/schemas/GrowthAnalysisResponse"
+          }
+        },
+        "required": [
+          "growth"
+        ],
+        "title": "GrowthAssessmentRequest",
+        "type": "object"
+      },
+      "GrowthAssessmentResponse": {
+        "properties": {
+          "bad_things": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bad Things",
+            "type": "array"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "good_things": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Good Things",
+            "type": "array"
+          },
+          "investment_considerations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Investment Considerations",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "opportunities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Opportunities",
+            "type": "array"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "risks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "good_things",
+          "bad_things",
+          "risks",
+          "opportunities",
+          "investment_considerations",
+          "disclaimer",
+          "prompt"
+        ],
+        "title": "GrowthAssessmentResponse",
+        "type": "object"
+      },
+      "GrowthMetricSnapshotSchema": {
+        "properties": {
+          "cagr_10y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr 10Y Pct"
+          },
+          "cagr_3y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr 3Y Pct"
+          },
+          "cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr 5Y Pct"
+          },
+          "latest_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Margin Pct"
+          },
+          "latest_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Value"
+          },
+          "latest_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Yoy Pct"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "latest_value",
+          "latest_yoy_pct",
+          "cagr_3y_pct",
+          "cagr_5y_pct",
+          "cagr_10y_pct",
+          "latest_margin_pct"
+        ],
+        "title": "GrowthMetricSnapshotSchema",
+        "type": "object"
+      },
+      "GrowthQualitySummarySchema": {
+        "properties": {
+          "eps_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Cagr 5Y Pct"
+          },
+          "fcf_margin_change_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcf Margin Change 5Y Pct"
+          },
+          "free_cash_flow_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Cagr 5Y Pct"
+          },
+          "latest_fcf_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Fcf Margin Pct"
+          },
+          "latest_operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Operating Margin Pct"
+          },
+          "operating_income_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Cagr 5Y Pct"
+          },
+          "operating_margin_change_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margin Change 5Y Pct"
+          },
+          "revenue_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Cagr 5Y Pct"
+          },
+          "share_count_change_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Count Change 5Y Pct"
+          }
+        },
+        "required": [
+          "revenue_cagr_5y_pct",
+          "operating_income_cagr_5y_pct",
+          "free_cash_flow_cagr_5y_pct",
+          "eps_cagr_5y_pct",
+          "latest_operating_margin_pct",
+          "latest_fcf_margin_pct",
+          "operating_margin_change_5y_pct",
+          "fcf_margin_change_5y_pct",
+          "share_count_change_5y_pct"
+        ],
+        "title": "GrowthQualitySummarySchema",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthRowResponse": {
+        "properties": {
+          "p10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P10"
+          },
+          "p15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P15"
+          },
+          "p20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P20"
+          },
+          "p25": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P25"
+          },
+          "p5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P5"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50"
+          },
+          "p75": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P75"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          },
+          "trades": {
+            "title": "Trades",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "trades",
+          "p5",
+          "p10",
+          "p15",
+          "p20",
+          "p25",
+          "p50",
+          "p75",
+          "p90",
+          "p95"
+        ],
+        "title": "HealthRowResponse",
+        "type": "object"
+      },
+      "MarketDataCacheStatus": {
+        "properties": {
+          "errors": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "fundamentals_exists": {
+            "default": false,
+            "title": "Fundamentals Exists",
+            "type": "boolean"
+          },
+          "fundamentals_fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundamentals Fetched At"
+          },
+          "fundamentals_size_bytes": {
+            "default": 0,
+            "title": "Fundamentals Size Bytes",
+            "type": "integer"
+          },
+          "fundamentals_snapshot_count": {
+            "default": 0,
+            "title": "Fundamentals Snapshot Count",
+            "type": "integer"
+          },
+          "fundamentals_symbol_count": {
+            "default": 0,
+            "title": "Fundamentals Symbol Count",
+            "type": "integer"
+          },
+          "last_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Date"
+          },
+          "latest_fundamentals_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketDataJobResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketDataJobResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Basis"
+          },
+          "row_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Count"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "symbol_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Count"
+          },
+          "universe": {
+            "title": "Universe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "universe",
+          "exists",
+          "size_bytes"
+        ],
+        "title": "MarketDataCacheStatus",
+        "type": "object"
+      },
+      "MarketDataClearResponse": {
+        "properties": {
+          "cleared": {
+            "title": "Cleared",
+            "type": "boolean"
+          },
+          "universe": {
+            "title": "Universe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "universe",
+          "cleared"
+        ],
+        "title": "MarketDataClearResponse",
+        "type": "object"
+      },
+      "MarketDataJobResponse": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "dataset": {
+            "default": "prices",
+            "enum": [
+              "prices",
+              "fundamentals"
+            ],
+            "title": "Dataset",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "market": {
+            "title": "Market",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "incremental",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "market",
+          "mode",
+          "status",
+          "current",
+          "total",
+          "message",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "MarketDataJobResponse",
+        "type": "object"
+      },
+      "MarketDataStatusResponse": {
+        "properties": {
+          "cache_directory": {
+            "title": "Cache Directory",
+            "type": "string"
+          },
+          "fundamentals_cache_directory": {
+            "title": "Fundamentals Cache Directory",
+            "type": "string"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketDataCacheStatus"
+            },
+            "title": "Markets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cache_directory",
+          "fundamentals_cache_directory",
+          "markets"
+        ],
+        "title": "MarketDataStatusResponse",
+        "type": "object"
+      },
+      "MarketHealthDistributionBucketResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "cumulative_percentage": {
+            "title": "Cumulative Percentage",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Distance"
+          },
+          "min_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Distance"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "min_distance",
+          "max_distance",
+          "count",
+          "percentage",
+          "cumulative_percentage"
+        ],
+        "title": "MarketHealthDistributionBucketResponse",
+        "type": "object"
+      },
+      "MarketHealthDistributionResponse": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "max_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Distance"
+          },
+          "min_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Distance"
+          },
+          "stocks": {
+            "items": {
+              "$ref": "#/components/schemas/MarketHealthStockDistanceResponse"
+            },
+            "title": "Stocks",
+            "type": "array"
+          },
+          "universe": {
+            "title": "Universe",
+            "type": "string"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "universe",
+          "date",
+          "window",
+          "min_distance",
+          "max_distance",
+          "stocks"
+        ],
+        "title": "MarketHealthDistributionResponse",
+        "type": "object"
+      },
+      "MarketHealthPointResponse": {
+        "properties": {
+          "change_20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change 20"
+          },
+          "change_5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change 5"
+          },
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "ema_gap": {
+            "title": "Ema Gap",
+            "type": "number"
+          },
+          "health_score": {
+            "title": "Health Score",
+            "type": "number"
+          },
+          "median_distance": {
+            "title": "Median Distance",
+            "type": "number"
+          },
+          "p10_distance": {
+            "title": "P10 Distance",
+            "type": "number"
+          },
+          "p20_distance": {
+            "title": "P20 Distance",
+            "type": "number"
+          },
+          "p80_distance": {
+            "title": "P80 Distance",
+            "type": "number"
+          },
+          "p90_distance": {
+            "title": "P90 Distance",
+            "type": "number"
+          },
+          "stress_40": {
+            "title": "Stress 40",
+            "type": "number"
+          },
+          "within_10": {
+            "title": "Within 10",
+            "type": "number"
+          },
+          "within_20": {
+            "title": "Within 20",
+            "type": "number"
+          },
+          "within_30": {
+            "title": "Within 30",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "health_score",
+          "median_distance",
+          "p10_distance",
+          "p20_distance",
+          "p80_distance",
+          "p90_distance",
+          "within_10",
+          "within_20",
+          "within_30",
+          "stress_40",
+          "coverage_pct",
+          "eligible_count",
+          "change_5",
+          "change_20",
+          "ema_gap"
+        ],
+        "title": "MarketHealthPointResponse",
+        "type": "object"
+      },
+      "MarketHealthRunRequest": {
+        "properties": {
+          "minimum_coverage": {
+            "default": 0.8,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Minimum Coverage",
+            "type": "number"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/MarketHealthWeightsRequest"
+          },
+          "window": {
+            "default": 200,
+            "maximum": 500.0,
+            "minimum": 20.0,
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "title": "MarketHealthRunRequest",
+        "type": "object"
+      },
+      "MarketHealthRunResponse": {
+        "properties": {
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketHealthUniverseResponse"
+            },
+            "title": "Markets",
+            "type": "array"
+          },
+          "minimum_coverage": {
+            "title": "Minimum Coverage",
+            "type": "number"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/MarketHealthWeightsRequest"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window",
+          "minimum_coverage",
+          "weights",
+          "markets"
+        ],
+        "title": "MarketHealthRunResponse",
+        "type": "object"
+      },
+      "MarketHealthStockDistanceResponse": {
+        "properties": {
+          "current_price": {
+            "title": "Current Price",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "distance": {
+            "title": "Distance",
+            "type": "number"
+          },
+          "rolling_high": {
+            "title": "Rolling High",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "date",
+          "current_price",
+          "rolling_high",
+          "distance"
+        ],
+        "title": "MarketHealthStockDistanceResponse",
+        "type": "object"
+      },
+      "MarketHealthUniverseResponse": {
+        "properties": {
+          "cache": {
+            "$ref": "#/components/schemas/MarketHistoryCacheResponse"
+          },
+          "current": {
+            "$ref": "#/components/schemas/MarketHealthPointResponse"
+          },
+          "distribution": {
+            "items": {
+              "$ref": "#/components/schemas/MarketHealthDistributionBucketResponse"
+            },
+            "title": "Distribution",
+            "type": "array"
+          },
+          "regime": {
+            "title": "Regime",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/MarketHealthPointResponse"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "universe": {
+            "title": "Universe",
+            "type": "string"
+          },
+          "universe_size": {
+            "title": "Universe Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "universe",
+          "universe_size",
+          "regime",
+          "cache",
+          "current",
+          "series",
+          "distribution"
+        ],
+        "title": "MarketHealthUniverseResponse",
+        "type": "object"
+      },
+      "MarketHealthWeightsRequest": {
+        "properties": {
+          "not_below_40": {
+            "default": 0.15,
+            "minimum": 0.0,
+            "title": "Not Below 40",
+            "type": "number"
+          },
+          "within_10": {
+            "default": 0.35,
+            "minimum": 0.0,
+            "title": "Within 10",
+            "type": "number"
+          },
+          "within_20": {
+            "default": 0.3,
+            "minimum": 0.0,
+            "title": "Within 20",
+            "type": "number"
+          },
+          "within_30": {
+            "default": 0.2,
+            "minimum": 0.0,
+            "title": "Within 30",
+            "type": "number"
+          }
+        },
+        "title": "MarketHealthWeightsRequest",
+        "type": "object"
+      },
+      "MarketHistoryCacheResponse": {
+        "properties": {
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "symbol_count": {
+            "title": "Symbol Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fetched_at",
+          "first_date",
+          "last_date",
+          "symbol_count",
+          "source",
+          "price_basis"
+        ],
+        "title": "MarketHistoryCacheResponse",
+        "type": "object"
+      },
+      "MonthlyStatRowResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "p10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P10"
+          },
+          "p15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P15"
+          },
+          "p20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P20"
+          },
+          "p25": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P25"
+          },
+          "p5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P5"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50"
+          },
+          "p75": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P75"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          }
+        },
+        "required": [
+          "label",
+          "count",
+          "p5",
+          "p10",
+          "p15",
+          "p20",
+          "p25",
+          "p50",
+          "p75",
+          "p90",
+          "p95"
+        ],
+        "title": "MonthlyStatRowResponse",
+        "type": "object"
+      },
+      "NewLowCurrentEpisodeSchema": {
+        "properties": {
+          "current_date": {
+            "format": "date",
+            "title": "Current Date",
+            "type": "string"
+          },
+          "current_down_pct": {
+            "title": "Current Down Pct",
+            "type": "number"
+          },
+          "current_price": {
+            "title": "Current Price",
+            "type": "number"
+          },
+          "current_return_pct": {
+            "title": "Current Return Pct",
+            "type": "number"
+          },
+          "days_to_low": {
+            "title": "Days To Low",
+            "type": "integer"
+          },
+          "duration_percentile": {
+            "title": "Duration Percentile",
+            "type": "number"
+          },
+          "ignored_lows_percentile": {
+            "title": "Ignored Lows Percentile",
+            "type": "number"
+          },
+          "ignored_new_lows": {
+            "title": "Ignored New Lows",
+            "type": "integer"
+          },
+          "low_date": {
+            "format": "date",
+            "title": "Low Date",
+            "type": "string"
+          },
+          "low_price": {
+            "title": "Low Price",
+            "type": "number"
+          },
+          "max_down_pct": {
+            "title": "Max Down Pct",
+            "type": "number"
+          },
+          "max_down_percentile": {
+            "title": "Max Down Percentile",
+            "type": "number"
+          },
+          "recovery_level": {
+            "title": "Recovery Level",
+            "type": "number"
+          },
+          "recovery_needed_pct": {
+            "title": "Recovery Needed Pct",
+            "type": "number"
+          },
+          "sessions_elapsed": {
+            "title": "Sessions Elapsed",
+            "type": "integer"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "start_price": {
+            "title": "Start Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_date",
+          "start_price",
+          "recovery_level",
+          "current_date",
+          "current_price",
+          "current_down_pct",
+          "current_return_pct",
+          "max_down_pct",
+          "sessions_elapsed",
+          "ignored_new_lows",
+          "low_date",
+          "low_price",
+          "days_to_low",
+          "recovery_needed_pct",
+          "max_down_percentile",
+          "ignored_lows_percentile",
+          "duration_percentile"
+        ],
+        "title": "NewLowCurrentEpisodeSchema",
+        "type": "object"
+      },
+      "NewLowEpisodeSchema": {
+        "properties": {
+          "days_to_low": {
+            "title": "Days To Low",
+            "type": "integer"
+          },
+          "forward_max_down": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Forward Max Down",
+            "type": "object"
+          },
+          "forward_returns": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Forward Returns",
+            "type": "object"
+          },
+          "ignored_new_lows": {
+            "title": "Ignored New Lows",
+            "type": "integer"
+          },
+          "low_date": {
+            "format": "date",
+            "title": "Low Date",
+            "type": "string"
+          },
+          "low_price": {
+            "title": "Low Price",
+            "type": "number"
+          },
+          "max_down_pct": {
+            "title": "Max Down Pct",
+            "type": "number"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "recovery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Date"
+          },
+          "recovery_level": {
+            "title": "Recovery Level",
+            "type": "number"
+          },
+          "recovery_sessions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Sessions"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "start_price": {
+            "title": "Start Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_date",
+          "start_price",
+          "recovery_level",
+          "recovered",
+          "recovery_date",
+          "recovery_sessions",
+          "ignored_new_lows",
+          "low_date",
+          "low_price",
+          "days_to_low",
+          "max_down_pct",
+          "forward_returns",
+          "forward_max_down"
+        ],
+        "title": "NewLowEpisodeSchema",
+        "type": "object"
+      },
+      "NewLowEpisodesRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "forward_horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Forward Horizons",
+            "type": "array"
+          },
+          "lookback_sessions": {
+            "default": 50,
+            "minimum": 2.0,
+            "title": "Lookback Sessions",
+            "type": "integer"
+          },
+          "quick_recovery_sessions": {
+            "default": 2,
+            "minimum": 0.0,
+            "title": "Quick Recovery Sessions",
+            "type": "integer"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols",
+          "date_range"
+        ],
+        "title": "NewLowEpisodesRequest",
+        "type": "object"
+      },
+      "NewLowEpisodesResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowSymbolResultSchema"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "NewLowEpisodesResponse",
+        "type": "object"
+      },
+      "NewLowForwardStatsSchema": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "horizon": {
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "max_down_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Max Down Percentiles",
+            "type": "object"
+          },
+          "return_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Return Percentiles",
+            "type": "object"
+          }
+        },
+        "required": [
+          "horizon",
+          "count",
+          "return_percentiles",
+          "max_down_percentiles"
+        ],
+        "title": "NewLowForwardStatsSchema",
+        "type": "object"
+      },
+      "NewLowSymbolResultSchema": {
+        "properties": {
+          "active_episodes": {
+            "title": "Active Episodes",
+            "type": "integer"
+          },
+          "completed_episodes": {
+            "title": "Completed Episodes",
+            "type": "integer"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewLowCurrentEpisodeSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "episodes": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowEpisodeSchema"
+            },
+            "title": "Episodes",
+            "type": "array"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "forward_stats": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowForwardStatsSchema"
+            },
+            "title": "Forward Stats",
+            "type": "array"
+          },
+          "ignored_new_low_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Ignored New Low Percentiles",
+            "type": "object"
+          },
+          "kept_episodes": {
+            "title": "Kept Episodes",
+            "type": "integer"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "latest_price": {
+            "title": "Latest Price",
+            "type": "number"
+          },
+          "lookback_sessions": {
+            "title": "Lookback Sessions",
+            "type": "integer"
+          },
+          "max_down_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Max Down Percentiles",
+            "type": "object"
+          },
+          "quick_ignored_episodes": {
+            "title": "Quick Ignored Episodes",
+            "type": "integer"
+          },
+          "quick_recovery_sessions": {
+            "title": "Quick Recovery Sessions",
+            "type": "integer"
+          },
+          "raw_new_low_bars": {
+            "title": "Raw New Low Bars",
+            "type": "integer"
+          },
+          "recovery_session_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Recovery Session Percentiles",
+            "type": "object"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "time_series": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowTimeSeriesPointSchema"
+            },
+            "title": "Time Series",
+            "type": "array"
+          },
+          "total_bars": {
+            "title": "Total Bars",
+            "type": "integer"
+          },
+          "total_ignored_new_lows": {
+            "title": "Total Ignored New Lows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol",
+          "first_date",
+          "last_date",
+          "total_bars",
+          "latest_price",
+          "lookback_sessions",
+          "quick_recovery_sessions",
+          "raw_new_low_bars",
+          "kept_episodes",
+          "completed_episodes",
+          "active_episodes",
+          "quick_ignored_episodes",
+          "total_ignored_new_lows",
+          "max_down_percentiles",
+          "recovery_session_percentiles",
+          "ignored_new_low_percentiles",
+          "current",
+          "forward_stats",
+          "episodes",
+          "time_series"
+        ],
+        "title": "NewLowSymbolResultSchema",
+        "type": "object"
+      },
+      "NewLowTimeSeriesPointSchema": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "is_new_low": {
+            "title": "Is New Low",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "close",
+          "is_new_low"
+        ],
+        "title": "NewLowTimeSeriesPointSchema",
+        "type": "object"
+      },
+      "PerformanceSummaryResponse": {
+        "properties": {
+          "avg_holding_days": {
+            "title": "Avg Holding Days",
+            "type": "number"
+          },
+          "avg_loss_pct": {
+            "title": "Avg Loss Pct",
+            "type": "number"
+          },
+          "avg_win_pct": {
+            "title": "Avg Win Pct",
+            "type": "number"
+          },
+          "best_trade_pct": {
+            "title": "Best Trade Pct",
+            "type": "number"
+          },
+          "cagr_pct": {
+            "title": "Cagr Pct",
+            "type": "number"
+          },
+          "calmar_ratio": {
+            "title": "Calmar Ratio",
+            "type": "number"
+          },
+          "current_drawdown_days": {
+            "title": "Current Drawdown Days",
+            "type": "integer"
+          },
+          "current_drawdown_pct": {
+            "title": "Current Drawdown Pct",
+            "type": "number"
+          },
+          "max_consec_losses": {
+            "title": "Max Consec Losses",
+            "type": "integer"
+          },
+          "max_drawdown_pct": {
+            "title": "Max Drawdown Pct",
+            "type": "number"
+          },
+          "profit_factor": {
+            "title": "Profit Factor",
+            "type": "number"
+          },
+          "sharpe_ratio": {
+            "title": "Sharpe Ratio",
+            "type": "number"
+          },
+          "time_in_market_pct": {
+            "title": "Time In Market Pct",
+            "type": "number"
+          },
+          "total_return_pct": {
+            "title": "Total Return Pct",
+            "type": "number"
+          },
+          "total_trades": {
+            "title": "Total Trades",
+            "type": "integer"
+          },
+          "win_rate_pct": {
+            "title": "Win Rate Pct",
+            "type": "number"
+          },
+          "worst_trade_pct": {
+            "title": "Worst Trade Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_return_pct",
+          "cagr_pct",
+          "sharpe_ratio",
+          "max_drawdown_pct",
+          "current_drawdown_pct",
+          "current_drawdown_days",
+          "calmar_ratio",
+          "win_rate_pct",
+          "avg_win_pct",
+          "avg_loss_pct",
+          "max_consec_losses",
+          "best_trade_pct",
+          "worst_trade_pct",
+          "total_trades",
+          "avg_holding_days",
+          "profit_factor",
+          "time_in_market_pct"
+        ],
+        "title": "PerformanceSummaryResponse",
+        "type": "object"
+      },
+      "PortfolioResultResponse": {
+        "properties": {
+          "equity_curve": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Equity Curve",
+            "type": "object"
+          },
+          "final_nav": {
+            "title": "Final Nav",
+            "type": "number"
+          },
+          "total_return_pct": {
+            "title": "Total Return Pct",
+            "type": "number"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/TradeSchema"
+            },
+            "title": "Trades",
+            "type": "array"
+          },
+          "weights": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "equity_curve",
+          "trades",
+          "weights",
+          "total_return_pct",
+          "final_nav"
+        ],
+        "title": "PortfolioResultResponse",
+        "type": "object"
+      },
+      "PredefinedRarityRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols"
+        ],
+        "title": "PredefinedRarityRequest",
+        "type": "object"
+      },
+      "PredefinedRarityResponse": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "percentile_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Percentile Columns",
+            "type": "array"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/PredefinedRarityTable"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "percentile_columns",
+          "tables"
+        ],
+        "title": "PredefinedRarityResponse",
+        "type": "object"
+      },
+      "PredefinedRarityRow": {
+        "properties": {
+          "current_percentile": {
+            "title": "Current Percentile",
+            "type": "number"
+          },
+          "current_price": {
+            "title": "Current Price",
+            "type": "number"
+          },
+          "current_value_pct": {
+            "title": "Current Value Pct",
+            "type": "number"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "p50_price": {
+            "title": "P50 Price",
+            "type": "number"
+          },
+          "percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Percentiles",
+            "type": "object"
+          },
+          "reference_price": {
+            "title": "Reference Price",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "first_date",
+          "last_date",
+          "observations",
+          "reference_price",
+          "p50_price",
+          "current_price",
+          "current_value_pct",
+          "current_percentile",
+          "percentiles"
+        ],
+        "title": "PredefinedRarityRow",
+        "type": "object"
+      },
+      "PredefinedRarityTable": {
+        "properties": {
+          "factor_key": {
+            "enum": [
+              "distance_ma50",
+              "distance_ma100",
+              "distance_ma150",
+              "distance_ma200",
+              "distance_high_100",
+              "distance_high_150",
+              "distance_high_200"
+            ],
+            "title": "Factor Key",
+            "type": "string"
+          },
+          "factor_name": {
+            "title": "Factor Name",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PredefinedRarityRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "factor_key",
+          "factor_name",
+          "rows"
+        ],
+        "title": "PredefinedRarityTable",
+        "type": "object"
+      },
+      "PriceVsMAConfig": {
+        "description": "Price vs Moving Average strategy.\n\nGoes long when close > MA, flat otherwise.\nbuy_lag / sell_lag: confirmation bars required before entry / exit.",
+        "properties": {
+          "buy_lag": {
+            "default": 0,
+            "title": "Buy Lag",
+            "type": "integer"
+          },
+          "ma_length": {
+            "default": 50,
+            "title": "Ma Length",
+            "type": "integer"
+          },
+          "ma_type": {
+            "default": "sma",
+            "enum": [
+              "sma",
+              "ema",
+              "wma"
+            ],
+            "title": "Ma Type",
+            "type": "string"
+          },
+          "sell_lag": {
+            "default": 0,
+            "title": "Sell Lag",
+            "type": "integer"
+          },
+          "type": {
+            "const": "price_vs_ma",
+            "default": "price_vs_ma",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "PriceVsMAConfig",
+        "type": "object"
+      },
+      "QuarterlyGrowthRowSchema": {
+        "properties": {
+          "eps_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Yoy Pct"
+          },
+          "free_cash_flow_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Margin Pct"
+          },
+          "free_cash_flow_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Cash Flow Yoy Pct"
+          },
+          "net_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Income Yoy Pct"
+          },
+          "operating_income_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Income Yoy Pct"
+          },
+          "operating_margin_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margin Pct"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "revenue_qoq_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Qoq Pct"
+          },
+          "revenue_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Yoy Pct"
+          }
+        },
+        "required": [
+          "period_end",
+          "revenue",
+          "revenue_yoy_pct",
+          "revenue_qoq_pct",
+          "operating_income_yoy_pct",
+          "net_income_yoy_pct",
+          "free_cash_flow_yoy_pct",
+          "eps_yoy_pct",
+          "operating_margin_pct",
+          "free_cash_flow_margin_pct"
+        ],
+        "title": "QuarterlyGrowthRowSchema",
+        "type": "object"
+      },
+      "QuarterlyGrowthSnapshotSchema": {
+        "properties": {
+          "average_4q_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average 4Q Yoy Pct"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "latest_qoq_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Qoq Pct"
+          },
+          "latest_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Value"
+          },
+          "latest_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Yoy Pct"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "previous_yoy_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Yoy Pct"
+          }
+        },
+        "required": [
+          "metric",
+          "latest_value",
+          "latest_yoy_pct",
+          "previous_yoy_pct",
+          "average_4q_yoy_pct",
+          "latest_qoq_pct",
+          "direction"
+        ],
+        "title": "QuarterlyGrowthSnapshotSchema",
+        "type": "object"
+      },
+      "RarityAnalysisResponse": {
+        "properties": {
+          "current_percentile": {
+            "title": "Current Percentile",
+            "type": "number"
+          },
+          "current_price": {
+            "title": "Current Price",
+            "type": "number"
+          },
+          "current_value": {
+            "title": "Current Value",
+            "type": "number"
+          },
+          "current_zone": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Zone"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneEntrySchema"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "factor_context": {
+            "additionalProperties": true,
+            "title": "Factor Context",
+            "type": "object"
+          },
+          "factor_name": {
+            "title": "Factor Name",
+            "type": "string"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "max_potential_drop_pct": {
+            "title": "Max Potential Drop Pct",
+            "type": "number"
+          },
+          "sessions_in_zone": {
+            "title": "Sessions In Zone",
+            "type": "integer"
+          },
+          "stats_date": {
+            "format": "date",
+            "title": "Stats Date",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "time_series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPoint"
+            },
+            "title": "Time Series",
+            "type": "array"
+          },
+          "total_bars": {
+            "title": "Total Bars",
+            "type": "integer"
+          },
+          "zone_entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zone Entry Date"
+          },
+          "zone_entry_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zone Entry Price"
+          },
+          "zone_stats": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneStatsSchema"
+            },
+            "title": "Zone Stats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "factor_name",
+          "symbol",
+          "stats_date",
+          "first_date",
+          "last_date",
+          "total_bars",
+          "current_price",
+          "current_value",
+          "current_percentile",
+          "current_zone",
+          "zone_entry_date",
+          "zone_entry_price",
+          "sessions_in_zone",
+          "max_potential_drop_pct",
+          "factor_context",
+          "zone_stats",
+          "entries",
+          "time_series"
+        ],
+        "title": "RarityAnalysisResponse",
+        "type": "object"
+      },
+      "RarityRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "factor_type": {
+            "enum": [
+              "moving_average",
+              "distance_from_ma",
+              "bollinger",
+              "donchian",
+              "distance_from_peak",
+              "ahr999"
+            ],
+            "title": "Factor Type",
+            "type": "string"
+          },
+          "ma_type": {
+            "default": "sma",
+            "enum": [
+              "sma",
+              "ema",
+              "wma"
+            ],
+            "title": "Ma Type",
+            "type": "string"
+          },
+          "period": {
+            "default": 200,
+            "title": "Period",
+            "type": "integer"
+          },
+          "quick_recovery_days": {
+            "default": 5,
+            "title": "Quick Recovery Days",
+            "type": "integer"
+          },
+          "recovery_mode": {
+            "default": "price",
+            "enum": [
+              "price",
+              "factor"
+            ],
+            "title": "Recovery Mode",
+            "type": "string"
+          },
+          "std_dev": {
+            "default": 2.0,
+            "title": "Std Dev",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "zones": {
+            "default": [
+              1,
+              5,
+              10,
+              15,
+              20,
+              25,
+              30
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "date_range",
+          "factor_type"
+        ],
+        "title": "RarityRequest",
+        "type": "object"
+      },
+      "RegimeRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "factor_type": {
+            "enum": [
+              "moving_average",
+              "distance_from_ma",
+              "bollinger",
+              "donchian",
+              "distance_from_peak"
+            ],
+            "title": "Factor Type",
+            "type": "string"
+          },
+          "lower_threshold": {
+            "default": 0.4,
+            "title": "Lower Threshold",
+            "type": "number"
+          },
+          "ma_type": {
+            "default": "sma",
+            "enum": [
+              "sma",
+              "ema",
+              "wma"
+            ],
+            "title": "Ma Type",
+            "type": "string"
+          },
+          "period": {
+            "default": 20,
+            "title": "Period",
+            "type": "integer"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          },
+          "threshold": {
+            "default": 0.0,
+            "title": "Threshold",
+            "type": "number"
+          },
+          "upper_threshold": {
+            "default": 0.6,
+            "title": "Upper Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbols",
+          "date_range",
+          "factor_type"
+        ],
+        "title": "RegimeRequest",
+        "type": "object"
+      },
+      "RegimeResponse": {
+        "properties": {
+          "breadth": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Breadth",
+            "type": "object"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          }
+        },
+        "required": [
+          "labels",
+          "breadth"
+        ],
+        "title": "RegimeResponse",
+        "type": "object"
+      },
+      "SingleTickerAnalysisResponse": {
+        "properties": {
+          "bah": {
+            "$ref": "#/components/schemas/PerformanceSummaryResponse"
+          },
+          "current_position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentPositionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "equity_curve_bah": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Equity Curve Bah",
+            "type": "object"
+          },
+          "equity_curve_strategy": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Equity Curve Strategy",
+            "type": "object"
+          },
+          "from_date": {
+            "title": "From Date",
+            "type": "string"
+          },
+          "health_by_year": {
+            "items": {
+              "$ref": "#/components/schemas/HealthRowResponse"
+            },
+            "title": "Health By Year",
+            "type": "array"
+          },
+          "mae_percentiles_winners": {
+            "items": {
+              "$ref": "#/components/schemas/DistributionRowResponse"
+            },
+            "title": "Mae Percentiles Winners",
+            "type": "array"
+          },
+          "mfe_percentiles_losers": {
+            "items": {
+              "$ref": "#/components/schemas/DistributionRowResponse"
+            },
+            "title": "Mfe Percentiles Losers",
+            "type": "array"
+          },
+          "mfe_percentiles_winners": {
+            "items": {
+              "$ref": "#/components/schemas/DistributionRowResponse"
+            },
+            "title": "Mfe Percentiles Winners",
+            "type": "array"
+          },
+          "monthly_returns_bah": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Monthly Returns Bah",
+            "type": "object"
+          },
+          "monthly_returns_strategy": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Monthly Returns Strategy",
+            "type": "object"
+          },
+          "monthly_stats_by_calendar": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyStatRowResponse"
+            },
+            "title": "Monthly Stats By Calendar",
+            "type": "array"
+          },
+          "monthly_stats_by_entry_month": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyStatRowResponse"
+            },
+            "title": "Monthly Stats By Entry Month",
+            "type": "array"
+          },
+          "return_percentiles": {
+            "items": {
+              "$ref": "#/components/schemas/DistributionRowResponse"
+            },
+            "title": "Return Percentiles",
+            "type": "array"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/PerformanceSummaryResponse"
+          },
+          "strategy_label": {
+            "title": "Strategy Label",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ticker_prices": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Ticker Prices",
+            "type": "object"
+          },
+          "to_date": {
+            "title": "To Date",
+            "type": "string"
+          },
+          "total_bars": {
+            "title": "Total Bars",
+            "type": "integer"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/TradeRowResponse"
+            },
+            "title": "Trades",
+            "type": "array"
+          },
+          "undercut_distribution": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/UndercutDistributionRowResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undercut Distribution"
+          }
+        },
+        "required": [
+          "symbol",
+          "strategy_label",
+          "from_date",
+          "to_date",
+          "total_bars",
+          "current_position",
+          "strategy",
+          "bah",
+          "trades",
+          "return_percentiles",
+          "mae_percentiles_winners",
+          "mfe_percentiles_winners",
+          "mfe_percentiles_losers",
+          "monthly_returns_strategy",
+          "monthly_returns_bah",
+          "monthly_stats_by_calendar",
+          "monthly_stats_by_entry_month",
+          "health_by_year",
+          "equity_curve_strategy",
+          "equity_curve_bah",
+          "ticker_prices"
+        ],
+        "title": "SingleTickerAnalysisResponse",
+        "type": "object"
+      },
+      "SweepErrorItem": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "error"
+        ],
+        "title": "SweepErrorItem",
+        "type": "object"
+      },
+      "SweepRequest": {
+        "properties": {
+          "data_source": {
+            "default": "yfinance",
+            "enum": [
+              "yfinance",
+              "vnstock",
+              "csv"
+            ],
+            "title": "Data Source",
+            "type": "string"
+          },
+          "date_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "initial_capital": {
+            "default": 10000.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "max_leverage": {
+            "default": 1.0,
+            "title": "Max Leverage",
+            "type": "number"
+          },
+          "max_workers": {
+            "default": 4,
+            "title": "Max Workers",
+            "type": "integer"
+          },
+          "strategies": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BuyAndHoldConfig"
+                },
+                {
+                  "$ref": "#/components/schemas/PriceVsMAConfig"
+                }
+              ]
+            },
+            "title": "Strategies",
+            "type": "array"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols",
+          "date_range",
+          "strategies"
+        ],
+        "title": "SweepRequest",
+        "type": "object"
+      },
+      "SweepResponse": {
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/SweepErrorItem"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SweepResultItem"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "errors"
+        ],
+        "title": "SweepResponse",
+        "type": "object"
+      },
+      "SweepResultItem": {
+        "properties": {
+          "equity_curve": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Equity Curve",
+            "type": "object"
+          },
+          "final_nav": {
+            "title": "Final Nav",
+            "type": "number"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "total_return_pct": {
+            "title": "Total Return Pct",
+            "type": "number"
+          },
+          "trade_count": {
+            "title": "Trade Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "equity_curve",
+          "total_return_pct",
+          "final_nav",
+          "trade_count"
+        ],
+        "title": "SweepResultItem",
+        "type": "object"
+      },
+      "SymbolListItem": {
+        "properties": {
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "yfinance_symbol": {
+            "title": "Yfinance Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "yfinance_symbol",
+          "name"
+        ],
+        "title": "SymbolListItem",
+        "type": "object"
+      },
+      "SymbolListResponse": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "symbol_count": {
+            "title": "Symbol Count",
+            "type": "integer"
+          },
+          "symbols": {
+            "items": {
+              "$ref": "#/components/schemas/SymbolListItem"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "symbol_count",
+          "sources",
+          "symbols"
+        ],
+        "title": "SymbolListResponse",
+        "type": "object"
+      },
+      "SymbolListSummary": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "symbol_count": {
+            "title": "Symbol Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "symbol_count"
+        ],
+        "title": "SymbolListSummary",
+        "type": "object"
+      },
+      "SymbolListsResponse": {
+        "properties": {
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/SymbolListSummary"
+            },
+            "title": "Lists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lists"
+        ],
+        "title": "SymbolListsResponse",
+        "type": "object"
+      },
+      "SymbolPriceHistoryResponse": {
+        "properties": {
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "first_date": {
+            "title": "First Date",
+            "type": "string"
+          },
+          "fundamentals_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fundamentals Fields",
+            "type": "array"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": "string"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "prices": {
+            "items": {
+              "$ref": "#/components/schemas/SymbolPricePointResponse"
+            },
+            "title": "Prices",
+            "type": "array"
+          },
+          "provider_ratio_effective_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Ratio Effective Date"
+          },
+          "provider_ratio_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Ratio Period"
+          },
+          "provider_reported_pb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Reported Pb"
+          },
+          "provider_reported_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Reported Pe"
+          },
+          "relative_strength_benchmark": {
+            "enum": [
+              "VN30",
+              "SPX"
+            ],
+            "title": "Relative Strength Benchmark",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "shares_cagr_5y_observed_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Observed Years"
+          },
+          "shares_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Pct"
+          },
+          "shares_cagr_5y_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Start Date"
+          },
+          "shares_cagr_full_5y": {
+            "default": false,
+            "title": "Shares Cagr Full 5Y",
+            "type": "boolean"
+          },
+          "shares_growth_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Cagr Pct"
+          },
+          "shares_growth_full_10y": {
+            "default": false,
+            "title": "Shares Growth Full 10Y",
+            "type": "boolean"
+          },
+          "shares_growth_observed_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Observed Years"
+          },
+          "shares_growth_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Pct"
+          },
+          "shares_growth_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Start Date"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trailing_pe_fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Fetched At"
+          },
+          "trailing_pe_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Method"
+          },
+          "trailing_pe_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Source"
+          },
+          "universe": {
+            "enum": [
+              "US500",
+              "US2000",
+              "US100",
+              "VN100",
+              "VN30"
+            ],
+            "title": "Universe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "universe",
+          "source",
+          "price_basis",
+          "fetched_at",
+          "first_date",
+          "last_date",
+          "row_count",
+          "relative_strength_benchmark",
+          "prices"
+        ],
+        "title": "SymbolPriceHistoryResponse",
+        "type": "object"
+      },
+      "SymbolPricePointResponse": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "eps_ttm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Ttm"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "open": {
+            "title": "Open",
+            "type": "number"
+          },
+          "relative_strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Strength"
+          },
+          "shares_outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Outstanding"
+          },
+          "trailing_pb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pb"
+          },
+          "trailing_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "date",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "title": "SymbolPricePointResponse",
+        "type": "object"
+      },
+      "TimeSeriesPoint": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "factor": {
+            "title": "Factor",
+            "type": "number"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "price",
+          "factor"
+        ],
+        "title": "TimeSeriesPoint",
+        "type": "object"
+      },
+      "TradeRowResponse": {
+        "properties": {
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "early_returns": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "default": {},
+            "title": "Early Returns",
+            "type": "object"
+          },
+          "entry_date": {
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "exit_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Date"
+          },
+          "exit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Price"
+          },
+          "holding_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Days"
+          },
+          "mae_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae Pct"
+          },
+          "mae_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae Price"
+          },
+          "mfe_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mfe Pct"
+          },
+          "mfe_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mfe Price"
+          },
+          "retracement_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retracement Pct"
+          },
+          "return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "direction",
+          "entry_date",
+          "exit_date",
+          "entry_price",
+          "exit_price",
+          "return_pct",
+          "holding_days",
+          "mae_pct",
+          "mfe_pct",
+          "mae_price",
+          "mfe_price",
+          "retracement_pct"
+        ],
+        "title": "TradeRowResponse",
+        "type": "object"
+      },
+      "TradeSchema": {
+        "properties": {
+          "direction": {
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "entry_weight": {
+            "title": "Entry Weight",
+            "type": "number"
+          },
+          "exit_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Date"
+          },
+          "exit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Price"
+          },
+          "holding_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Days"
+          },
+          "mae_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae Pct"
+          },
+          "mfe_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mfe Pct"
+          },
+          "return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "weight_history": {
+            "items": {
+              "$ref": "#/components/schemas/WeightEventSchema"
+            },
+            "title": "Weight History",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "direction",
+          "entry_date",
+          "entry_price",
+          "entry_weight",
+          "exit_date",
+          "exit_price",
+          "weight_history",
+          "return_pct",
+          "holding_days",
+          "mae_pct",
+          "mfe_pct"
+        ],
+        "title": "TradeSchema",
+        "type": "object"
+      },
+      "UndercutDistributionRowResponse": {
+        "properties": {
+          "pct_of_winners": {
+            "title": "Pct Of Winners",
+            "type": "number"
+          },
+          "trade_count": {
+            "title": "Trade Count",
+            "type": "integer"
+          },
+          "undercuts": {
+            "title": "Undercuts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "undercuts",
+          "trade_count",
+          "pct_of_winners"
+        ],
+        "title": "UndercutDistributionRowResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WeightEventSchema": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weight",
+          "price"
+        ],
+        "title": "WeightEventSchema",
+        "type": "object"
+      },
+      "ZoneEntrySchema": {
+        "properties": {
+          "bars_elapsed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bars Elapsed"
+          },
+          "children_count": {
+            "title": "Children Count",
+            "type": "integer"
+          },
+          "days_to_low": {
+            "title": "Days To Low",
+            "type": "integer"
+          },
+          "days_to_recovery": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days To Recovery"
+          },
+          "entry_factor": {
+            "title": "Entry Factor",
+            "type": "number"
+          },
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "forward_returns": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Forward Returns",
+            "type": "object"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_quick_recovery": {
+            "title": "Is Quick Recovery",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "low_date": {
+            "format": "date",
+            "title": "Low Date",
+            "type": "string"
+          },
+          "low_factor": {
+            "title": "Low Factor",
+            "type": "number"
+          },
+          "low_price": {
+            "title": "Low Price",
+            "type": "number"
+          },
+          "mae_pct": {
+            "title": "Mae Pct",
+            "type": "number"
+          },
+          "parent_start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Start Date"
+          },
+          "parent_zone_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Zone Pct"
+          },
+          "recovery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Date"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "zone_pct": {
+            "title": "Zone Pct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "zone_pct",
+          "start_date",
+          "entry_price",
+          "entry_factor",
+          "low_price",
+          "low_date",
+          "low_factor",
+          "mae_pct",
+          "days_to_low",
+          "recovery_date",
+          "days_to_recovery",
+          "bars_elapsed",
+          "forward_returns",
+          "is_active",
+          "is_quick_recovery",
+          "level",
+          "children_count",
+          "parent_zone_pct",
+          "parent_start_date"
+        ],
+        "title": "ZoneEntrySchema",
+        "type": "object"
+      },
+      "ZoneStatsSchema": {
+        "properties": {
+          "avg_days": {
+            "title": "Avg Days",
+            "type": "number"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "count_10y": {
+            "title": "Count 10Y",
+            "type": "integer"
+          },
+          "count_5y": {
+            "title": "Count 5Y",
+            "type": "integer"
+          },
+          "is_current_zone": {
+            "title": "Is Current Zone",
+            "type": "boolean"
+          },
+          "mae_by_percentile": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Mae By Percentile",
+            "type": "object"
+          },
+          "mmae_pct": {
+            "title": "Mmae Pct",
+            "type": "number"
+          },
+          "qr_10y": {
+            "title": "Qr 10Y",
+            "type": "integer"
+          },
+          "qr_5y": {
+            "title": "Qr 5Y",
+            "type": "integer"
+          },
+          "qr_count": {
+            "title": "Qr Count",
+            "type": "integer"
+          },
+          "qr_pct": {
+            "title": "Qr Pct",
+            "type": "number"
+          },
+          "threshold_value": {
+            "title": "Threshold Value",
+            "type": "number"
+          },
+          "zone_pct": {
+            "title": "Zone Pct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "zone_pct",
+          "threshold_value",
+          "count",
+          "qr_count",
+          "qr_pct",
+          "count_5y",
+          "qr_5y",
+          "count_10y",
+          "qr_10y",
+          "avg_days",
+          "mmae_pct",
+          "mae_by_percentile",
+          "is_current_zone"
+        ],
+        "title": "ZoneStatsSchema",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Backtesting and factor analysis API",
+    "title": "Trading Statistics Engine",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/backtest": {
+      "post": {
+        "operationId": "run_backtest_backtest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Backtest",
+        "tags": [
+          "backtest"
+        ]
+      }
+    },
+    "/backtest/analyze": {
+      "post": {
+        "description": "Full analytics for a single-ticker strategy: performance, trades, heatmaps, health.",
+        "operationId": "analyze_single_ticker_backtest_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleTickerAnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze Single Ticker",
+        "tags": [
+          "backtest"
+        ]
+      }
+    },
+    "/companies": {
+      "get": {
+        "operationId": "listCompanies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "universe",
+            "required": false,
+            "schema": {
+              "default": "US_ALL",
+              "enum": [
+                "US_ALL",
+                "US100",
+                "US2000",
+                "US500",
+                "US30",
+                "VN_ALL",
+                "VN30",
+                "VN100"
+              ],
+              "title": "Universe",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sector",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sector"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exchange"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Companies",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/companies/universes": {
+      "get": {
+        "operationId": "listCompanyUniverses",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyUniversesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Company Universes",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/events/new-low-episodes": {
+      "post": {
+        "operationId": "new_low_episodes_endpoint_events_new_low_episodes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewLowEpisodesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewLowEpisodesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Low Episodes Endpoint",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/factors/analyze": {
+      "post": {
+        "operationId": "analyze_factor_endpoint_factors_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FactorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactorAnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze Factor Endpoint",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/factors/predefined-rarity": {
+      "post": {
+        "operationId": "predefined_rarity_endpoint_factors_predefined_rarity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredefinedRarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredefinedRarityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Predefined Rarity Endpoint",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/factors/rarity": {
+      "post": {
+        "operationId": "rarity_analysis_endpoint_factors_rarity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RarityAnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rarity Analysis Endpoint",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/factors/regime": {
+      "post": {
+        "operationId": "detect_regime_endpoint_factors_regime_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegimeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detect Regime Endpoint",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/factors/universe": {
+      "post": {
+        "operationId": "analyze_universe_endpoint_factors_universe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrossSectionalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrossSectionalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze Universe Endpoint",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/fundamentals/growth": {
+      "post": {
+        "operationId": "growth_fundamentals_endpoint_fundamentals_growth_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundamentalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthAnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Growth Fundamentals Endpoint",
+        "tags": [
+          "fundamentals"
+        ]
+      }
+    },
+    "/fundamentals/growth/assessment": {
+      "post": {
+        "operationId": "growth_assessment_endpoint_fundamentals_growth_assessment_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrowthAssessmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthAssessmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Growth Assessment Endpoint",
+        "tags": [
+          "fundamentals"
+        ]
+      }
+    },
+    "/fundamentals/sec": {
+      "post": {
+        "operationId": "sec_fundamentals_endpoint_fundamentals_sec_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundamentalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sec Fundamentals Endpoint",
+        "tags": [
+          "fundamentals"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/market-data/jobs/{job_id}": {
+      "get": {
+        "operationId": "market_data_job_market_data_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Market Data Job",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/market-data/status": {
+      "get": {
+        "operationId": "market_data_status_market_data_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Market Data Status",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/market-data/symbols/{symbol}/history": {
+      "get": {
+        "operationId": "symbol_price_history_market_data_symbols__symbol__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "universe",
+            "required": true,
+            "schema": {
+              "title": "Universe",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymbolPriceHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Symbol Price History",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/market-data/{market}": {
+      "delete": {
+        "operationId": "clear_market_data_market_data__market__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "title": "Market",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataClearResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Market Data",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/market-data/{market}/refresh": {
+      "post": {
+        "operationId": "refresh_market_data_market_data__market__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "title": "Market",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "incremental",
+              "enum": [
+                "incremental",
+                "full"
+              ],
+              "title": "Mode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataset",
+            "required": false,
+            "schema": {
+              "default": "prices",
+              "enum": [
+                "prices",
+                "fundamentals"
+              ],
+              "title": "Dataset",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Market Data",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/market-health/run": {
+      "post": {
+        "operationId": "run_market_health_market_health_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketHealthRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketHealthRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Market Health",
+        "tags": [
+          "market-health"
+        ]
+      }
+    },
+    "/market-health/{universe}/distribution": {
+      "get": {
+        "operationId": "market_health_distribution_market_health__universe__distribution_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "universe",
+            "required": true,
+            "schema": {
+              "title": "Universe",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 20,
+              "title": "Window",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_distance",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Distance"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_distance",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Distance"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketHealthDistributionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Market Health Distribution",
+        "tags": [
+          "market-health"
+        ]
+      }
+    },
+    "/sweep": {
+      "post": {
+        "operationId": "run_sweep_sweep_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SweepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SweepResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Sweep",
+        "tags": [
+          "sweep"
+        ]
+      }
+    },
+    "/symbol-lists": {
+      "get": {
+        "operationId": "list_symbol_lists_symbol_lists_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymbolListsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Symbol Lists",
+        "tags": [
+          "symbol-lists"
+        ]
+      }
+    },
+    "/symbol-lists/{list_id}": {
+      "get": {
+        "operationId": "get_symbol_list_symbol_lists__list_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "required": true,
+            "schema": {
+              "title": "List Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymbolListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Symbol List",
+        "tags": [
+          "symbol-lists"
+        ]
+      }
+    }
+  }
+}

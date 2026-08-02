@@ -3,8 +3,8 @@ import { ExternalLink, Search, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { CompanyTable, type CompanyRow } from "@/components/company/CompanyTable"
 import {
+  companiesApi,
   marketHealthDistributionApi,
-  symbolListApi,
   type MarketHealthDistributionBucket,
   type MarketHealthMarket,
 } from "@/lib/api"
@@ -34,11 +34,11 @@ export function MarketHealthDrilldownDrawer({
   })
   const companies = useQuery({
     queryKey: ["market-health-company-list", market.universe],
-    queryFn: () => symbolListApi(market.universe),
+    queryFn: () => companiesApi({ universe: market.universe }),
     retry: false,
   })
   const companyBySymbol = useMemo(() => new Map(
-    companies.data?.symbols.map(company => [company.yfinance_symbol, company]) ?? []
+    companies.data?.companies.map(company => [company.ticker, company]) ?? []
   ), [companies.data])
   const healthBySymbol = useMemo(() => new Map(
     distribution.data?.stocks.map(stock => [stock.symbol, stock]) ?? []
@@ -48,25 +48,24 @@ export function MarketHealthDrilldownDrawer({
     return (distribution.data?.stocks ?? []).flatMap(stock => {
       const company = companyBySymbol.get(stock.symbol)
       const row: CompanyRow = company
-        ? { ...company, lists: [companies.data?.name ?? market.universe] }
+        ? company
         : {
-            symbol: stock.symbol,
-            yfinance_symbol: stock.symbol,
-            name: stock.symbol,
+            ticker: stock.symbol,
+            company_name: stock.symbol,
+            market: market.universe.startsWith("VN") ? "VN" : "US",
             sector: null,
             industry: null,
             exchange: null,
-            metadata: {},
             lists: [market.universe],
           }
       if (!needle) return [row]
-      const searchable = [row.symbol, row.name, row.sector, row.industry]
+      const searchable = [row.ticker, row.company_name, row.sector, row.industry]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
       return searchable.includes(needle) ? [row] : []
     })
-  }, [companies.data?.name, companyBySymbol, distribution.data?.stocks, market.universe, query])
+  }, [companyBySymbol, distribution.data?.stocks, market.universe, query])
   const companiesUrl = buildCompaniesUrl(params)
 
   useEffect(() => {

@@ -18,6 +18,8 @@
     "lint:frontend": "pnpm --filter frontend lint",
     "preview": "pnpm --filter frontend preview",
     "type-check": "pnpm --filter frontend type-check",
+    "generate:api": "uv run python -m scripts.export_openapi && pnpm --filter frontend generate:api",
+    "check:api-types": "pnpm generate:api && git diff --exit-code -- frontend/openapi.json frontend/src/lib/generated/api-schema.ts",
     "test": "uv run pytest",
     "test:watch": "uv run pytest -w",
     "start": "pnpm run dev",

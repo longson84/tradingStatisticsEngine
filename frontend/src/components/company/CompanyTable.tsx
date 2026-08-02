@@ -1,10 +1,8 @@
-import type { MarketHealthStockDistance, SymbolListItem } from "@/lib/api"
+import type { CompanyResponse, MarketHealthStockDistance } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
-export interface CompanyRow extends SymbolListItem {
-  lists: string[]
-}
+export type CompanyRow = CompanyResponse
 
 
 export function CompanyTable({
@@ -29,16 +27,15 @@ export function CompanyTable({
             {showHealth && <th className="px-3 py-2 text-right font-medium">200D High</th>}
             {showHealth && <th className="px-3 py-2 text-right font-medium">Distance</th>}
             <th className="px-3 py-2 text-left font-medium">List</th>
-            <th className="px-3 py-2 text-left font-medium">Info</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map(row => {
-            const health = healthBySymbol?.get(row.yfinance_symbol)
+            const health = healthBySymbol?.get(row.ticker)
             return (
-              <tr key={`${row.yfinance_symbol}-${row.lists.join("-")}`} className="hover:bg-muted/30">
-                <td className="px-3 py-2 font-semibold tabular-nums">{row.yfinance_symbol}</td>
-                <td className="min-w-72 px-3 py-2">{row.name}</td>
+              <tr key={`${row.market}-${row.ticker}`} className="hover:bg-muted/30">
+                <td className="px-3 py-2 font-semibold tabular-nums">{row.ticker}</td>
+                <td className="min-w-72 px-3 py-2">{row.company_name}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.sector ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.industry ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.exchange ?? "n/a"}</td>
@@ -72,13 +69,12 @@ export function CompanyTable({
                     ))}
                   </div>
                 </td>
-                <td className="px-3 py-2 text-muted-foreground">{formatCompanyInfo(row)}</td>
               </tr>
             )
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={showHealth ? 10 : 7} className="px-3 py-10 text-center text-muted-foreground">
+              <td colSpan={showHealth ? 9 : 6} className="px-3 py-10 text-center text-muted-foreground">
                 No companies match the current filters.
               </td>
             </tr>
@@ -90,36 +86,21 @@ export function CompanyTable({
 }
 
 
-function formatCompanyInfo(row: CompanyRow): string {
-  const parts: string[] = []
-  const metadata = row.metadata
-  if (typeof metadata.market_cap === "string" && metadata.market_cap) parts.push(`Market cap ${metadata.market_cap}`)
-  if (typeof metadata.index_weight === "number") parts.push(`Weight ${metadata.index_weight.toFixed(2)}%`)
-  if (typeof metadata.date_added === "string" && metadata.date_added) parts.push(`Added ${metadata.date_added}`)
-  if (typeof metadata.headquarters === "string" && metadata.headquarters) parts.push(metadata.headquarters)
-  if (typeof metadata.founded === "string" && metadata.founded) parts.push(`Founded ${metadata.founded}`)
-  if (typeof metadata.local_name === "string" && metadata.local_name) parts.push(metadata.local_name)
-  return parts.join(" | ") || "n/a"
-}
-
-
 function listBadgeLabel(list: string): string {
-  if (list.includes("Nasdaq")) return "Nasdaq 100"
-  if (list.includes("S&P")) return "S&P 500"
-  if (list.includes("Russell")) return "Russell 2000"
-  if (list.includes("Dow")) return "Dow Jones"
-  if (list.includes("VN30")) return "VN30"
-  if (list.includes("VN100")) return "VN100"
+  if (list === "US100") return "Nasdaq 100"
+  if (list === "US500") return "S&P 500"
+  if (list === "US2000") return "Russell 2000"
+  if (list === "US30") return "Dow Jones"
   return list
 }
 
 
 function listBadgeTone(list: string): string {
-  if (list.includes("Nasdaq")) return "bg-sky-500/18 text-sky-800 dark:text-sky-200"
-  if (list.includes("S&P")) return "bg-emerald-500/18 text-emerald-800 dark:text-emerald-200"
-  if (list.includes("Russell")) return "bg-purple-500/18 text-purple-800 dark:text-purple-200"
-  if (list.includes("Dow")) return "bg-amber-500/22 text-amber-900 dark:text-amber-200"
-  if (list.includes("VN30")) return "bg-red-500/18 text-red-800 dark:text-red-200"
-  if (list.includes("VN100")) return "bg-violet-500/18 text-violet-800 dark:text-violet-200"
+  if (list === "US100") return "bg-sky-500/18 text-sky-800 dark:text-sky-200"
+  if (list === "US500") return "bg-emerald-500/18 text-emerald-800 dark:text-emerald-200"
+  if (list === "US2000") return "bg-purple-500/18 text-purple-800 dark:text-purple-200"
+  if (list === "US30") return "bg-amber-500/22 text-amber-900 dark:text-amber-200"
+  if (list === "VN30") return "bg-red-500/18 text-red-800 dark:text-red-200"
+  if (list === "VN100") return "bg-violet-500/18 text-violet-800 dark:text-violet-200"
   return "bg-muted text-muted-foreground"
 }

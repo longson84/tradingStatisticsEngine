@@ -1,3 +1,5 @@
+import type { components, operations } from "@/lib/generated/api-schema"
+
 const BASE = "http://localhost:8000"
 
 async function post<T>(path: string, body: unknown): Promise<T> {
@@ -194,6 +196,14 @@ export interface SymbolListResponse extends SymbolListSummary {
 export interface SymbolListsResponse {
   lists: SymbolListSummary[]
 }
+
+export type CompanyResponse = components["schemas"]["CompanyResponse"]
+export type CompanyListResponse = components["schemas"]["CompanyListResponse"]
+export type CompanyUniversesResponse = components["schemas"]["CompanyUniversesResponse"]
+export type CompanyUniverseId = CompanyListResponse["id"]
+export type CompanyListQuery = NonNullable<
+  operations["listCompanies"]["parameters"]["query"]
+>
 
 export interface MarketHealthWeights {
   within_10: number
@@ -795,6 +805,21 @@ export function symbolListsApi(): Promise<SymbolListsResponse> {
 
 export function symbolListApi(id: SymbolListId): Promise<SymbolListResponse> {
   return get(`/symbol-lists/${id}`)
+}
+
+export function companyUniversesApi(): Promise<CompanyUniversesResponse> {
+  return get("/companies/universes")
+}
+
+export function companiesApi(
+  params: CompanyListQuery = {},
+): Promise<CompanyListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) query.set(key, String(value))
+  }
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/companies${suffix}`)
 }
 
 export function marketHealthRunApi(

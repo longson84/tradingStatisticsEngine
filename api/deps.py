@@ -6,9 +6,17 @@ All data-fetching logic lives here — the trading_engine library stays loader-a
 from __future__ import annotations
 
 from datetime import date
+from functools import lru_cache
+from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
+
+from api.db.session import create_db_engine
+from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
+from api.services.company_service import CompanyService
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
 from trading_engine.factors.moving_average import MovingAverageRatio
@@ -21,6 +29,22 @@ from api.schemas.backtest import (
     PriceVsMAConfig,
     StrategyConfig,
 )
+
+
+@lru_cache(maxsize=1)
+def get_database_engine() -> Engine:
+    return create_db_engine()
+
+
+def get_db_session() -> Iterator[Session]:
+    with Session(get_database_engine()) as session:
+        yield session
+
+
+def get_company_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> CompanyService:
+    return CompanyService(SqlAlchemyCompanyRepository(session))
 
 
 def get_loader(source: str) -> DataLoader:
