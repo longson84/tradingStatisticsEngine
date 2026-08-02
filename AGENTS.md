@@ -20,6 +20,11 @@ Use `uv` for Python dependencies and `pnpm` for JavaScript dependencies. Do not 
 
 ## Core Architecture
 
+`docs/ARCHITECTURE.md` is the canonical record of architecture, data rules, and
+durable conventions. Update it in the same change whenever a system boundary,
+canonical data model, point-in-time/provenance rule, persistence workflow, or
+versioned analytical formula changes.
+
 Keep `trading_engine` independent from application frameworks. It must work from notebooks, scripts, tests, and FastAPI without importing FastAPI, React/frontend code, Streamlit, or UI/runtime-specific dependencies.
 
 The engine follows this domain flow:

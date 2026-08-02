@@ -1,34 +1,25 @@
 """Static reusable symbol-list endpoints."""
 from __future__ import annotations
 
-import csv
 import json
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from api.schemas.symbol_list import SymbolListItem, SymbolListResponse, SymbolListSummary, SymbolListsResponse
+from api.symbol_list_data import (
+    DATA_DIR as _DATA_DIR,
+    LIST_FILES as _LIST_FILES,
+    US_LIST_FILES as _US_LIST_FILES,
+    VN_LIST_FILES as _VN_LIST_FILES,
+    load_static_payload as _load_static_payload,
+    read_static_payload as _read_static_payload,
+)
 
 router = APIRouter(prefix="/symbol-lists", tags=["symbol-lists"])
 
-_DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "symbol_lists"
 _US_COMBINED_LIST_ID = "US_ALL"
 _VN_COMBINED_LIST_ID = "VN_ALL"
-_US_LIST_FILES = {
-    "US100": "us100.json",
-    "US2000": "us2000.json",
-    "US500": "us500.json",
-    "US30": "us30.json",
-}
-_VN_LIST_FILES = {
-    "VN30": "vn30.json",
-    "VN100": "vn100.json",
-}
-_LIST_FILES = {
-    **_US_LIST_FILES,
-    **_VN_LIST_FILES,
-}
 
 
 def _load_payload(list_id: str) -> dict[str, Any]:
@@ -66,26 +57,6 @@ def _load_payload(list_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Symbol list file not found: {file_name}") from exc
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=500, detail=f"Invalid symbol list JSON: {file_name}") from exc
-
-
-def _load_static_payload(list_id: str) -> dict[str, Any]:
-    file_name = _LIST_FILES[list_id]
-    path = _DATA_DIR / file_name
-    return _read_static_payload(path)
-
-
-def _read_static_payload(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text())
-    symbols_file = payload.get("symbols_file")
-    if not symbols_file:
-        return payload
-
-    with (path.parent / str(symbols_file)).open(newline="") as handle:
-        rows = []
-        for row in csv.DictReader(handle):
-            rows.append({key: value or None for key, value in row.items()})
-    payload["symbols"] = rows
-    return payload
 
 
 def _combined_payload(
