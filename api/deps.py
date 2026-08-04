@@ -16,7 +16,16 @@ from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
 from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
+from api.repositories.sqlalchemy_fundamental_repository import (
+    SqlAlchemyFundamentalRepository,
+)
+from api.repositories.sqlalchemy_price_bar_repository import (
+    SqlAlchemyPriceBarRepository,
+)
 from api.services.company_service import CompanyService
+from api.services.fundamental_service import FundamentalService
+from api.services.price_history_service import PriceHistoryService
+from api.services.price_storage_service import PriceStorageService
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
 from trading_engine.factors.moving_average import MovingAverageRatio
@@ -41,10 +50,35 @@ def get_db_session() -> Iterator[Session]:
         yield session
 
 
+def get_db_transaction_session() -> Iterator[Session]:
+    """Provide an API-owned unit of work for maintenance mutations."""
+    with Session(get_database_engine()) as session:
+        with session.begin():
+            yield session
+
+
 def get_company_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> CompanyService:
     return CompanyService(SqlAlchemyCompanyRepository(session))
+
+
+def get_fundamental_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> FundamentalService:
+    return FundamentalService(SqlAlchemyFundamentalRepository(session))
+
+
+def get_price_history_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> PriceHistoryService:
+    return PriceHistoryService(SqlAlchemyPriceBarRepository(session))
+
+
+def get_price_storage_service(
+    session: Annotated[Session, Depends(get_db_transaction_session)],
+) -> PriceStorageService:
+    return PriceStorageService(SqlAlchemyPriceBarRepository(session))
 
 
 def get_loader(source: str) -> DataLoader:

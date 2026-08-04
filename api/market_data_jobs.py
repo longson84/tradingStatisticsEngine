@@ -1,4 +1,4 @@
-"""In-process registry for background market-history refresh jobs."""
+"""In-process registry for background market-data refresh jobs."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -10,7 +10,7 @@ from threading import Lock, Thread
 from typing import Literal
 from uuid import uuid4
 
-from api.market_history import PROJECT_ROOT, SUPPORTED_UNIVERSES
+from api.market_data_config import PROJECT_ROOT, SUPPORTED_UNIVERSES
 
 
 JobMode = Literal["incremental", "full"]
@@ -129,6 +129,10 @@ def _run_job(job_id: str) -> None:
             "scripts.refresh_market_fundamentals",
             "--market",
             market.lower(),
+            "--mode",
+            mode,
+            "--job-id",
+            job_id,
         ]
     else:
         command = [
@@ -175,13 +179,13 @@ def _run_job(job_id: str) -> None:
             current_job.status = "failed"
             current_job.finished_at = _now()
             current_job.error = str(exc)
-            current_job.message = "Refresh failed; the previous cache was kept"
+            current_job.message = "Refresh failed; the previous data was kept"
     else:
         with _lock:
             current_job = _jobs[job_id]
             current_job.status = "completed"
             current_job.finished_at = _now()
-            current_job.message = "Cache updated successfully"
+            current_job.message = "Market data updated successfully"
             if current_job.total:
                 current_job.current = current_job.total
     finally:

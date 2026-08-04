@@ -20,56 +20,6 @@ def _rows(symbol: str, dates: list[str], closes: list[float]) -> pd.DataFrame:
     })
 
 
-def test_reusable_us_history_prefers_cache_with_newer_symbol_data(monkeypatch):
-    caches = {
-        "US500": _rows("AAA", ["2026-07-30", "2026-07-31"], [10.0, 11.0]),
-        "US100": _rows(
-            "AAA",
-            ["2026-07-30", "2026-07-31", "2026-08-03"],
-            [20.0, 21.0, 22.0],
-        ),
-    }
-    monkeypatch.setattr(
-        refresh_market_history,
-        "_existing_cache",
-        lambda universe: caches.get(universe, pd.DataFrame()),
-    )
-
-    result = refresh_market_history._reusable_us_history(
-        "US500",
-        ["AAA"],
-        include_target=True,
-    )
-
-    assert result["date"].max().date() == date(2026, 8, 3)
-    assert result.loc[result["date"] == "2026-07-30", "close"].item() == 20.0
-
-
-def test_reusable_vn_history_prefers_newer_vn100_overlap(monkeypatch):
-    caches = {
-        "VN30": _rows("FPT", ["2026-07-30", "2026-07-31"], [10.0, 11.0]),
-        "VN100": _rows(
-            "FPT",
-            ["2026-07-30", "2026-07-31", "2026-08-03"],
-            [20.0, 21.0, 22.0],
-        ),
-    }
-    monkeypatch.setattr(
-        refresh_market_history,
-        "_existing_cache",
-        lambda universe: caches.get(universe, pd.DataFrame()),
-    )
-
-    result = refresh_market_history._reusable_vn_history(
-        "VN30",
-        ["FPT"],
-        include_target=True,
-    )
-
-    assert result["date"].max().date() == date(2026, 8, 3)
-    assert result.loc[result["date"] == "2026-07-30", "close"].item() == 20.0
-
-
 def test_us2000_snapshot_contains_official_listed_equity_holdings():
     symbols = refresh_market_history._symbols("US2000")
 
@@ -124,20 +74,3 @@ def test_full_download_plan_can_trust_cache_rebuilt_earlier_in_same_run():
     )
 
     assert plan == {date(1900, 1, 1): ["NEW"]}
-
-
-def test_explicit_empty_reuse_set_ignores_older_related_caches(monkeypatch):
-    monkeypatch.setattr(
-        refresh_market_history,
-        "_existing_cache",
-        lambda universe: _rows("AAA", ["2020-01-02"], [10.0]),
-    )
-
-    result = refresh_market_history._reusable_us_history(
-        "US2000",
-        ["AAA"],
-        include_target=False,
-        reuse_from=(),
-    )
-
-    assert result.empty

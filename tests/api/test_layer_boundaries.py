@@ -26,6 +26,37 @@ def test_company_route_depends_on_service_not_repository_or_database():
     )
 
 
+def test_price_routes_do_not_depend_on_repository_or_database_models():
+    for filename in ("market_data.py", "market_health.py"):
+        imports = _imports(PROJECT_ROOT / "api" / "routes" / filename)
+        assert not any(
+            imported.startswith("api.repositories") or imported.startswith("api.db")
+            for imported in imports
+        ), f"{filename} crosses the route boundary: {imports}"
+
+
+def test_application_has_no_legacy_fundamentals_cache_module():
+    assert not (PROJECT_ROOT / "api" / "fundamentals_cache.py").exists()
+    for root in (PROJECT_ROOT / "api", PROJECT_ROOT / "scripts"):
+        for path in root.rglob("*.py"):
+            assert "api.fundamentals_cache" not in _imports(path)
+
+
+def test_sqlalchemy_repositories_are_not_imported_outside_dependency_wiring():
+    allowed = PROJECT_ROOT / "api" / "deps.py"
+    violations = []
+    for path in (PROJECT_ROOT / "api").rglob("*.py"):
+        if path == allowed or "repositories" in path.parts:
+            continue
+        imports = _imports(path)
+        if any(
+            imported.startswith("api.repositories.sqlalchemy_")
+            for imported in imports
+        ):
+            violations.append(path.relative_to(PROJECT_ROOT))
+    assert violations == []
+
+
 def _imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text())
     result: set[str] = set()

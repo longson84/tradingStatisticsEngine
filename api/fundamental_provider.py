@@ -1,20 +1,10 @@
-"""Persistent point-in-time fundamentals cache and provider adapters."""
+"""Provider adapters producing normalized point-in-time fundamental frames."""
 from __future__ import annotations
 
-import json
-import csv
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
 
-from trading_engine.types import DataLoadError
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_FUNDAMENTALS_DIR = PROJECT_ROOT / ".cache" / "fundamentals"
-SYMBOL_LIST_DIR = PROJECT_ROOT / "api" / "data" / "symbol_lists"
 FundamentalMarket = Literal["US", "VN"]
 IDENTITY_COLUMNS = ["effective_date", "period_end", "period"]
 VALUE_COLUMNS = [
@@ -46,121 +36,16 @@ VALUE_COLUMNS = [
 FUNDAMENTAL_COLUMNS = IDENTITY_COLUMNS + VALUE_COLUMNS
 
 
-def universe_symbols(universe: str) -> list[str]:
-    snapshot = json.loads((SYMBOL_LIST_DIR / f"{universe.lower()}.json").read_text())
-    key = "yfinance_symbol" if universe.upper().startswith("US") else "symbol"
-    if symbols_file := snapshot.get("symbols_file"):
-        with (SYMBOL_LIST_DIR / str(symbols_file)).open(newline="") as handle:
-            rows = list(csv.DictReader(handle))
-    else:
-        rows = snapshot["symbols"]
-    return [str(row[key]).upper() for row in rows]
-
-
-def load_cached_fundamentals(
-    symbol: str,
-    market: FundamentalMarket,
-    *,
-    cache_dir: Path = DEFAULT_FUNDAMENTALS_DIR,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Read one symbol without making a provider request."""
-    csv_path, manifest_path = cache_paths(symbol, market, cache_dir)
-    if not csv_path.exists() or not manifest_path.exists():
-        raise DataLoadError(
-            f"Fundamentals cache for {symbol.upper()} is missing. Refresh {market} "
-            "fundamentals from Market Data."
-        )
-    try:
-        frame = pd.read_csv(
-            csv_path,
-            parse_dates=["effective_date", "period_end"],
-        )
-        manifest = json.loads(manifest_path.read_text())
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise DataLoadError(f"Invalid fundamentals cache for {symbol.upper()}: {exc}") from exc
-    if not {"effective_date", "period", "eps_ttm"}.issubset(frame.columns):
-        raise DataLoadError(f"Invalid fundamentals fields for {symbol.upper()}")
-    return frame, manifest
-
-
-def refresh_symbol_fundamentals(
-    symbol: str,
-    market: FundamentalMarket,
-    *,
-    cache_dir: Path = DEFAULT_FUNDAMENTALS_DIR,
-    fetched_at: datetime | None = None,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Fetch, merge, and atomically persist all available provider snapshots."""
+def fetch_provider_fundamentals(
+    symbol: str, market: FundamentalMarket
+) -> tuple[pd.DataFrame, str, str]:
+    """Fetch normalized snapshots without reading or writing local files."""
     normalized = symbol.upper().strip()
     if market == "VN":
-        fetched, method = _fetch_vn_fundamentals(normalized)
-        source = "vnstock-vci-4.0.5"
-    else:
-        fetched, method = _fetch_us_fundamentals(normalized)
-        source = "yfinance"
-
-    try:
-        existing, _ = load_cached_fundamentals(normalized, market, cache_dir=cache_dir)
-    except DataLoadError:
-        existing = empty_fundamentals()
-    merged = merge_fundamentals(existing, fetched)
-    if merged.empty:
-        raise DataLoadError(f"No fundamentals returned for {normalized}")
-
-    current = fetched_at or datetime.now(timezone.utc)
-    manifest = {
-        "symbol": normalized,
-        "market": market,
-        "source": source,
-        "method": method,
-        "fetched_at": current.replace(microsecond=0).isoformat(),
-        "first_effective_date": str(merged["effective_date"].min().date()),
-        "last_effective_date": str(merged["effective_date"].max().date()),
-        "snapshot_count": len(merged),
-        "fields": [column for column in VALUE_COLUMNS if merged[column].notna().any()],
-    }
-    save_fundamentals(normalized, market, merged, manifest, cache_dir=cache_dir)
-    return merged, manifest
-
-
-def fundamentals_cache_status(
-    symbols: list[str],
-    market: FundamentalMarket,
-    *,
-    cache_dir: Path = DEFAULT_FUNDAMENTALS_DIR,
-) -> dict[str, Any]:
-    """Summarize shared per-symbol caches for one universe."""
-    manifests: list[dict[str, Any]] = []
-    size_bytes = 0
-    snapshot_count = 0
-    for symbol in symbols:
-        csv_path, manifest_path = cache_paths(symbol, market, cache_dir)
-        if not csv_path.exists() or not manifest_path.exists():
-            continue
-        try:
-            manifest = json.loads(manifest_path.read_text())
-        except (OSError, json.JSONDecodeError):
-            continue
-        manifests.append(manifest)
-        size_bytes += csv_path.stat().st_size + manifest_path.stat().st_size
-        snapshot_count += int(manifest.get("snapshot_count", 0))
-    fetched = [str(item["fetched_at"]) for item in manifests if item.get("fetched_at")]
-    return {
-        "exists": bool(manifests),
-        "fetched_at": max(fetched) if fetched else None,
-        "symbol_count": len(manifests),
-        "snapshot_count": snapshot_count,
-        "size_bytes": size_bytes,
-    }
-
-
-def cache_paths(
-    symbol: str,
-    market: FundamentalMarket,
-    cache_dir: Path = DEFAULT_FUNDAMENTALS_DIR,
-) -> tuple[Path, Path]:
-    stem = f"{market.lower()}-{symbol.lower().strip()}"
-    return cache_dir / f"{stem}.csv", cache_dir / f"{stem}.json"
+        frame, method = _fetch_vn_fundamentals(normalized)
+        return frame, "vnstock-vci-4.0.5", method
+    frame, method = _fetch_us_fundamentals(normalized)
+    return frame, "yfinance", method
 
 
 def merge_fundamentals(existing: pd.DataFrame, fetched: pd.DataFrame) -> pd.DataFrame:
@@ -206,24 +91,6 @@ def normalize_fundamentals(frame: pd.DataFrame) -> pd.DataFrame:
 
 def empty_fundamentals() -> pd.DataFrame:
     return pd.DataFrame(columns=FUNDAMENTAL_COLUMNS)
-
-
-def save_fundamentals(
-    symbol: str,
-    market: FundamentalMarket,
-    frame: pd.DataFrame,
-    manifest: dict[str, Any],
-    *,
-    cache_dir: Path = DEFAULT_FUNDAMENTALS_DIR,
-) -> None:
-    csv_path, manifest_path = cache_paths(symbol, market, cache_dir)
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-    csv_tmp = csv_path.with_suffix(".csv.tmp")
-    manifest_tmp = manifest_path.with_suffix(".json.tmp")
-    normalize_fundamentals(frame).to_csv(csv_tmp, index=False)
-    manifest_tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
-    csv_tmp.replace(csv_path)
-    manifest_tmp.replace(manifest_path)
 
 
 def _fetch_us_fundamentals(symbol: str) -> tuple[pd.DataFrame, str]:

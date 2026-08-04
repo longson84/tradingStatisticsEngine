@@ -1,13 +1,15 @@
-"""Market-health endpoint computed entirely from persistent local history caches."""
+"""Market-health endpoint computed from canonical PostgreSQL price history."""
 from __future__ import annotations
 
 import math
 
-from datetime import date
+from datetime import date, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.market_history import load_cached_market_history
+from api.deps import get_price_history_service
 from api.schemas.market_health import (
     MarketHealthPointResponse,
     MarketHealthDistributionBucketResponse,
@@ -24,14 +26,19 @@ from trading_engine.factor_analysis.market_health import (
     compute_market_health,
 )
 from trading_engine.types import (
-    DataLoadError,
     InsufficientDataError,
     MarketHealthWeights,
+)
+from api.services.price_history_service import (
+    PriceHistoryNotFoundError,
+    PriceHistoryService,
+    UnknownPriceUniverseError,
 )
 
 
 router = APIRouter(prefix="/market-health", tags=["market-health"])
 _UNIVERSES = ("US500", "US2000", "US100", "VN100", "VN30")
+_DISPLAY_YEARS = 5
 
 
 def _optional_number(value: float) -> float | None:
@@ -62,6 +69,9 @@ def _point(timestamp, row) -> MarketHealthPointResponse:
 @router.get("/{universe}/distribution", response_model=MarketHealthDistributionResponse)
 def market_health_distribution(
     universe: str,
+    price_history_service: Annotated[
+        PriceHistoryService, Depends(get_price_history_service)
+    ],
     date_value: date = Query(alias="date"),
     window: int = Query(default=200, ge=20, le=500),
     min_distance: float | None = Query(default=None),
@@ -80,15 +90,24 @@ def market_health_distribution(
             detail="min_distance must be lower than max_distance",
         )
     try:
-        prices, _ = load_cached_market_history(normalized)
+        stored = price_history_service.get_universe_history(
+            normalized,
+            start=date_value - timedelta(days=window * 2),
+            end=date_value,
+        )
         stocks = compute_market_distance_snapshot(
-            prices,
+            stored.prices,
             as_of=date_value,
             window=window,
             min_distance=min_distance,
             max_distance=max_distance,
         )
-    except (DataLoadError, InsufficientDataError, ValueError) as exc:
+    except (
+        PriceHistoryNotFoundError,
+        UnknownPriceUniverseError,
+        InsufficientDataError,
+        ValueError,
+    ) as exc:
         raise HTTPException(status_code=422, detail=f"{normalized}: {exc}") from exc
     return MarketHealthDistributionResponse(
         universe=normalized,
@@ -101,24 +120,44 @@ def market_health_distribution(
 
 
 @router.post("/run", response_model=MarketHealthRunResponse)
-def run_market_health(req: MarketHealthRunRequest) -> MarketHealthRunResponse:
+def run_market_health(
+    req: MarketHealthRunRequest,
+    price_history_service: Annotated[
+        PriceHistoryService, Depends(get_price_history_service)
+    ],
+) -> MarketHealthRunResponse:
     weights = MarketHealthWeights(**req.weights.model_dump())
     markets: list[MarketHealthUniverseResponse] = []
 
     for universe in _UNIVERSES:
         try:
-            prices, manifest = load_cached_market_history(universe)
+            latest_date = price_history_service.get_latest_date(universe)
+            display_start = _subtract_years(latest_date, _DISPLAY_YEARS)
+            load_start = display_start - timedelta(days=req.window * 2)
+            stored = price_history_service.get_universe_history(
+                universe, start=load_start, end=latest_date
+            )
             result = compute_market_health(
-                prices,
+                stored.prices,
                 universe=universe,
                 weights=weights,
                 window=req.window,
                 minimum_coverage=req.minimum_coverage,
             )
-        except (DataLoadError, InsufficientDataError, ValueError) as exc:
+            displayed_series = result.series.loc[pd.Timestamp(display_start):]
+            if displayed_series.empty:
+                raise InsufficientDataError(
+                    f"No market-health observations on or after {display_start}"
+                )
+        except (
+            PriceHistoryNotFoundError,
+            UnknownPriceUniverseError,
+            InsufficientDataError,
+            ValueError,
+        ) as exc:
             raise HTTPException(status_code=422, detail=f"{universe}: {exc}") from exc
 
-        points = [_point(timestamp, row) for timestamp, row in result.series.iterrows()]
+        points = [_point(timestamp, row) for timestamp, row in displayed_series.iterrows()]
         current = points[-1]
         markets.append(
             MarketHealthUniverseResponse(
@@ -129,12 +168,12 @@ def run_market_health(req: MarketHealthRunRequest) -> MarketHealthRunResponse:
                     current.change_20,
                 ),
                 cache=MarketHistoryCacheResponse(
-                    fetched_at=str(manifest["fetched_at"]),
-                    first_date=manifest["first_date"],
-                    last_date=manifest["last_date"],
-                    symbol_count=int(manifest["symbol_count"]),
-                    source=str(manifest["source"]),
-                    price_basis=str(manifest["price_basis"]),
+                    fetched_at=stored.metadata.fetched_at.isoformat(),
+                    first_date=stored.metadata.first_date,
+                    last_date=stored.metadata.last_date,
+                    symbol_count=stored.metadata.symbol_count,
+                    source=_metadata_source(stored.metadata.sources),
+                    price_basis=_display_price_basis(stored.metadata.price_basis),
                 ),
                 current=current,
                 series=points,
@@ -158,3 +197,21 @@ def run_market_health(req: MarketHealthRunRequest) -> MarketHealthRunResponse:
         weights=req.weights,
         markets=markets,
     )
+
+
+def _subtract_years(value: date, years: int) -> date:
+    try:
+        return value.replace(year=value.year - years)
+    except ValueError:
+        return value.replace(month=2, day=28, year=value.year - years)
+
+
+def _metadata_source(sources: tuple[str, ...]) -> str:
+    return sources[0] if len(sources) == 1 else ", ".join(sources)
+
+
+def _display_price_basis(price_basis: str) -> str:
+    return {
+        "adjusted": "auto-adjusted OHLC",
+        "provider_unspecified": "provider OHLC (adjustment unspecified)",
+    }.get(price_basis, price_basis)

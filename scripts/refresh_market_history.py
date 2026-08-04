@@ -1,4 +1,4 @@
-"""Refresh persistent US and Vietnam OHLCV market-health caches.
+"""Refresh canonical US and Vietnam OHLCV history in PostgreSQL.
 
 Usage:
     uv run python -m scripts.refresh_market_history --market all
@@ -17,12 +17,19 @@ import json
 import time
 
 import pandas as pd
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from api.benchmark_history import (
     DEFAULT_BENCHMARK_DIR,
     save_benchmark_history,
 )
-from api.market_history import DEFAULT_CACHE_DIR, PROJECT_ROOT, save_market_history
+from api.db.session import create_db_engine
+from api.market_data_config import DEFAULT_REFRESH_CHECKPOINT_DIR, PROJECT_ROOT
+from api.repositories.sqlalchemy_price_bar_repository import (
+    SqlAlchemyPriceBarRepository,
+)
+from api.services.price_refresh_service import PriceRefreshService
 
 
 SNAPSHOT_DIR = PROJECT_ROOT / "api" / "data" / "symbol_lists"
@@ -60,34 +67,6 @@ def _normalise_frame(raw: pd.DataFrame, symbol: str) -> pd.DataFrame:
     )
 
 
-def _manifest(
-    universe: str,
-    data: pd.DataFrame,
-    *,
-    source: str,
-    price_basis: str,
-    errors: list[dict[str, str]],
-) -> dict:
-    return {
-        "universe": universe,
-        "fetched_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "first_date": str(pd.to_datetime(data["date"]).min().date()),
-        "last_date": str(pd.to_datetime(data["date"]).max().date()),
-        "symbol_count": int(data["symbol"].nunique()),
-        "row_count": len(data),
-        "source": source,
-        "price_basis": price_basis,
-        "errors": errors,
-    }
-
-
-def _existing_cache(universe: str) -> pd.DataFrame:
-    path = DEFAULT_CACHE_DIR / f"{universe.lower()}.csv"
-    if not path.exists():
-        return pd.DataFrame()
-    return pd.read_csv(path, parse_dates=["date"])
-
-
 def _existing_benchmark(benchmark: str) -> pd.DataFrame:
     path = DEFAULT_BENCHMARK_DIR / f"{benchmark.lower()}.csv"
     if not path.exists():
@@ -95,73 +74,6 @@ def _existing_benchmark(benchmark: str) -> pd.DataFrame:
     frame = pd.read_csv(path, parse_dates=["date"])
     frame["symbol"] = BENCHMARK_SYMBOLS[benchmark]
     return frame
-
-
-def _reusable_history(
-    universe: str,
-    symbols: list[str],
-    *,
-    include_target: bool,
-    universe_group: tuple[str, ...],
-) -> pd.DataFrame:
-    """Combine related caches, preferring the freshest cache per symbol."""
-    cache_order = [candidate for candidate in universe_group if candidate != universe]
-    if include_target:
-        cache_order.append(universe)
-
-    candidates: list[pd.DataFrame] = []
-    for priority, candidate in enumerate(cache_order):
-        frame = _existing_cache(candidate)
-        if frame.empty:
-            continue
-        frame = frame[frame["symbol"].astype(str).isin(symbols)].copy()
-        if frame.empty:
-            continue
-        frame["_cache_last"] = frame.groupby("symbol")["date"].transform("max")
-        frame["_source_priority"] = priority
-        candidates.append(frame)
-
-    if not candidates:
-        return pd.DataFrame()
-    combined = pd.concat(candidates, ignore_index=True)
-    combined = combined.sort_values(
-        ["symbol", "date", "_cache_last", "_source_priority"]
-    ).drop_duplicates(["symbol", "date"], keep="last")
-    return combined.drop(columns=["_cache_last", "_source_priority"])
-
-
-def _reusable_us_history(
-    universe: str,
-    symbols: list[str],
-    *,
-    include_target: bool,
-    reuse_from: tuple[str, ...] | None = None,
-) -> pd.DataFrame:
-    return _reusable_history(
-        universe,
-        symbols,
-        include_target=include_target,
-        universe_group=(
-            ("US500", "US2000", "US100")
-            if reuse_from is None
-            else reuse_from
-        ),
-    )
-
-
-def _reusable_vn_history(
-    universe: str,
-    symbols: list[str],
-    *,
-    include_target: bool,
-    reuse_from: tuple[str, ...] | None = None,
-) -> pd.DataFrame:
-    return _reusable_history(
-        universe,
-        symbols,
-        include_target=include_target,
-        universe_group=("VN100", "VN30") if reuse_from is None else reuse_from,
-    )
 
 
 def _latest_expected_session(end: date) -> date:
@@ -179,9 +91,11 @@ def _market_download_plan(
     mode: str,
     *,
     assume_existing_complete: bool = False,
+    market: str = "VN",
 ) -> dict[date, list[str]]:
     """Group stale symbols by the first date that still needs downloading."""
-    expected_latest = _latest_expected_session(end)
+    expected_date = end - timedelta(days=1) if market == "US" else end
+    expected_latest = _latest_expected_session(expected_date)
     grouped: dict[date, list[str]] = {}
     rows_by_symbol = (
         {str(symbol): rows for symbol, rows in existing.groupby("symbol", sort=False)}
@@ -283,6 +197,7 @@ def refresh_benchmark(
         full_start,
         end,
         mode,
+        market="US" if benchmark == "SPX" else "VN",
     )
     frames: list[pd.DataFrame] = []
     if plan:
@@ -333,32 +248,32 @@ def refresh_benchmark(
 
 
 def refresh_us_market(
+    engine: Engine,
     universe: str,
     full_start: date,
     end: date,
     mode: str,
     *,
-    reuse_from: tuple[str, ...] | None = None,
-) -> None:
+    already_refreshed: set[str] | None = None,
+) -> set[str]:
     symbols = _symbols(universe)
-    existing = _reusable_us_history(
-        universe,
-        symbols,
-        include_target=mode == "incremental",
-        reuse_from=reuse_from,
-    )
-    plan = _market_download_plan(
-        existing,
-        symbols,
-        full_start,
-        end,
-        mode,
-        assume_existing_complete=mode == "full" and reuse_from is not None,
-    )
-    download_total = sum(len(group) for group in plan.values())
+    with Session(engine) as session:
+        service = PriceRefreshService(SqlAlchemyPriceBarRepository(session))
+        plan = service.plan(
+            universe,
+            symbols,
+            full_start=full_start,
+            end=end,
+            mode=mode,
+            already_refreshed=already_refreshed,
+        )
+    grouped_plan: dict[date, list[str]] = {}
+    for symbol, start in plan.requested_starts.items():
+        grouped_plan.setdefault(start, []).append(symbol)
+    download_total = len(plan.requested_starts)
     reused = len(symbols) - download_total
     print(
-        f"{universe}: reusing {reused}/{len(symbols)} symbols from US caches; "
+        f"{universe}: reusing {reused}/{len(symbols)} symbols from PostgreSQL; "
         f"downloading {download_total}",
         flush=True,
     )
@@ -366,7 +281,7 @@ def refresh_us_market(
     frames: list[pd.DataFrame] = []
     errors: list[dict[str, str]] = []
     progress_offset = 0
-    for start, group in sorted(plan.items()):
+    for start, group in sorted(grouped_plan.items()):
         for chunk_start in range(0, len(group), US_DOWNLOAD_BATCH_SIZE):
             chunk = group[chunk_start:chunk_start + US_DOWNLOAD_BATCH_SIZE]
             group_frames, group_errors = _download_us_batch(
@@ -387,68 +302,64 @@ def refresh_us_market(
             f"{universe} refresh failed for {len(errors)} symbols: {errors}"
         )
 
-    data = _merge_cache(existing, frames, symbols)
-    save_market_history(
-        universe,
-        data,
-        _manifest(
-            universe,
-            data,
-            source="yfinance",
-            price_basis="auto-adjusted OHLC",
-            errors=errors,
-        ),
-    )
+    fetched_at = datetime.now(timezone.utc).replace(microsecond=0)
+    with Session(engine) as session:
+        with session.begin():
+            stored = PriceRefreshService(
+                SqlAlchemyPriceBarRepository(session)
+            ).store_frames(
+                universe,
+                frames,
+                source="yfinance",
+                fetched_at=fetched_at,
+            )
     print(
-        f"{universe}: cached {data['symbol'].nunique()} symbols; errors={len(errors)}",
+        f"{universe}: stored={stored.stored_rows} rejected={stored.rejected_rows} "
+        f"errors={len(errors)}",
         flush=True,
     )
+    failed_symbols = {str(error["symbol"]) for error in errors}
+    return set(symbols) - failed_symbols
 
 
 def refresh_vn_market(
+    engine: Engine,
     universe: str,
     full_start: date,
     end: date,
     delay: float,
     mode: str,
     *,
-    reuse_from: tuple[str, ...] | None = None,
-) -> None:
+    already_refreshed: set[str] | None = None,
+) -> set[str]:
     from vnstock import Quote
 
     symbols = _symbols(universe)
-    existing = _reusable_vn_history(
-        universe,
-        symbols,
-        include_target=mode == "incremental",
-        reuse_from=reuse_from,
-    )
-    plan = _market_download_plan(
-        existing,
-        symbols,
-        full_start,
-        end,
-        mode,
-        assume_existing_complete=mode == "full" and reuse_from is not None,
-    )
-    start_by_symbol = {
-        symbol: start
-        for start, group in plan.items()
-        for symbol in group
-    }
+    with Session(engine) as session:
+        plan = PriceRefreshService(
+            SqlAlchemyPriceBarRepository(session)
+        ).plan(
+            universe,
+            symbols,
+            full_start=full_start,
+            end=end,
+            mode=mode,
+            already_refreshed=already_refreshed,
+        )
+    start_by_symbol = plan.requested_starts
     requested_symbols = [symbol for symbol in symbols if symbol in start_by_symbol]
     download_total = len(requested_symbols)
     reused = len(symbols) - download_total
     print(
-        f"{universe}: reusing {reused}/{len(symbols)} symbols from VN caches; "
+        f"{universe}: reusing {reused}/{len(symbols)} symbols from PostgreSQL; "
         f"downloading {download_total}",
         flush=True,
     )
 
     stem = universe.lower()
-    checkpoint_path = DEFAULT_CACHE_DIR / f"{stem}.refresh.csv"
-    checkpoint_manifest_path = DEFAULT_CACHE_DIR / f"{stem}.refresh.json"
-    DEFAULT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    checkpoint_path = DEFAULT_REFRESH_CHECKPOINT_DIR / f"{stem}.refresh.csv"
+    checkpoint_manifest_path = DEFAULT_REFRESH_CHECKPOINT_DIR / f"{stem}.refresh.json"
+    DEFAULT_REFRESH_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
     errors: list[dict[str, str]] = []
     completed_symbols: set[str] = set()
@@ -462,7 +373,11 @@ def refresh_vn_market(
             and checkpoint_manifest.get("source") == "VCI"
         ):
             checkpoint = pd.read_csv(checkpoint_path, parse_dates=["date"])
-            frames.append(checkpoint)
+            checkpoint = checkpoint[
+                checkpoint["symbol"].astype(str).isin(requested_symbols)
+            ]
+            if not checkpoint.empty:
+                frames.append(checkpoint)
             completed_symbols = set(checkpoint["symbol"].astype(str))
             print(
                 f"{universe}: resuming {len(completed_symbols)}/{download_total} "
@@ -516,24 +431,25 @@ def refresh_vn_market(
             f"{universe} refresh failed for {len(errors)} symbols: {errors}"
         )
 
-    data = _merge_cache(existing, frames, symbols)
-    save_market_history(
-        universe,
-        data,
-        _manifest(
-            universe,
-            data,
-            source="vnstock-vci",
-            price_basis="provider OHLC (adjustment unspecified)",
-            errors=errors,
-        ),
-    )
+    fetched_at = datetime.now(timezone.utc).replace(microsecond=0)
+    with Session(engine) as session:
+        with session.begin():
+            stored = PriceRefreshService(
+                SqlAlchemyPriceBarRepository(session)
+            ).store_frames(
+                universe,
+                frames,
+                source="vnstock-vci",
+                fetched_at=fetched_at,
+            )
     checkpoint_path.unlink(missing_ok=True)
     checkpoint_manifest_path.unlink(missing_ok=True)
     print(
-        f"{universe}: cached {data['symbol'].nunique()} symbols; errors=0",
+        f"{universe}: stored={stored.stored_rows} rejected={stored.rejected_rows} "
+        "errors=0",
         flush=True,
     )
+    return set(symbols)
 
 
 def main() -> None:
@@ -555,7 +471,9 @@ def main() -> None:
         default="full",
     )
     parser.add_argument("--vn-delay", type=float, default=4.1)
+    parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
+    engine = create_db_engine(args.database_url)
 
     end = date.today()
     if args.calendar_days is None:
@@ -567,48 +485,59 @@ def main() -> None:
 
     if args.market == "all":
         refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market(
-            "US2000", us_full_start, end, args.mode, reuse_from=()
+        refreshed_us = refresh_us_market(
+            engine, "US2000", us_full_start, end, args.mode
         )
-        refresh_us_market(
-            "US500", us_full_start, end, args.mode, reuse_from=("US2000",)
+        refreshed_us |= refresh_us_market(
+            engine,
+            "US500",
+            us_full_start,
+            end,
+            args.mode,
+            already_refreshed=refreshed_us,
         )
-        refresh_us_market(
+        refreshed_us |= refresh_us_market(
+            engine,
             "US100",
             us_full_start,
             end,
             args.mode,
-            reuse_from=("US2000", "US500"),
+            already_refreshed=refreshed_us,
         )
         refresh_benchmark("VN30", vn_full_start, end, args.mode)
-        refresh_vn_market(
-            "VN100", vn_full_start, end, args.vn_delay, args.mode, reuse_from=()
+        refreshed_vn = refresh_vn_market(
+            engine, "VN100", vn_full_start, end, args.vn_delay, args.mode
         )
         refresh_vn_market(
+            engine,
             "VN30",
             vn_full_start,
             end,
             args.vn_delay,
             args.mode,
-            reuse_from=("VN100",),
+            already_refreshed=refreshed_vn,
         )
         return
 
     if args.market == "us2000":
         refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market("US2000", us_full_start, end, args.mode)
+        refresh_us_market(engine, "US2000", us_full_start, end, args.mode)
     elif args.market == "us500":
         refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market("US500", us_full_start, end, args.mode)
+        refresh_us_market(engine, "US500", us_full_start, end, args.mode)
     elif args.market == "us100":
         refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market("US100", us_full_start, end, args.mode)
+        refresh_us_market(engine, "US100", us_full_start, end, args.mode)
     elif args.market == "vn100":
         refresh_benchmark("VN30", vn_full_start, end, args.mode)
-        refresh_vn_market("VN100", vn_full_start, end, args.vn_delay, args.mode)
+        refresh_vn_market(
+            engine, "VN100", vn_full_start, end, args.vn_delay, args.mode
+        )
     elif args.market == "vn30":
         refresh_benchmark("VN30", vn_full_start, end, args.mode)
-        refresh_vn_market("VN30", vn_full_start, end, args.vn_delay, args.mode)
+        refresh_vn_market(
+            engine, "VN30", vn_full_start, end, args.vn_delay, args.mode
+        )
 
 
 if __name__ == "__main__":

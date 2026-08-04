@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import backtest, companies, events, factors, fundamentals, market_data, market_health, sweep, symbol_lists
+from api.routes import backtest, companies, events, factors, fundamentals, market_data, market_health, sweep
 
 app = FastAPI(
     title="Trading Statistics Engine",
@@ -32,7 +32,6 @@ app.include_router(factors.router)
 app.include_router(events.router)
 app.include_router(fundamentals.router)
 app.include_router(companies.router)
-app.include_router(symbol_lists.router)
 app.include_router(market_health.router)
 app.include_router(market_data.router)
 

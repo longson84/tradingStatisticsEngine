@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import pandas as pd
 
-from api.market_history import PROJECT_ROOT
+from api.market_data_config import PROJECT_ROOT
 from trading_engine.types import DataLoadError, PriceFrame
 
 

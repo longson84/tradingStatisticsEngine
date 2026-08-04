@@ -78,6 +78,7 @@ def test_openapi_company_contract_is_generated_from_canonical_schema():
     schema = app.openapi()
 
     assert schema["paths"]["/companies"]["get"]["operationId"] == "listCompanies"
+    assert not any(path.startswith("/symbol-lists") for path in schema["paths"])
     properties = schema["components"]["schemas"]["CompanyResponse"]["properties"]
     assert set(properties) == {
         "ticker", "company_name", "market", "sector", "industry", "exchange", "lists"

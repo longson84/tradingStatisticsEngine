@@ -381,40 +381,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/symbol-lists": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Symbol Lists */
-        get: operations["list_symbol_lists_symbol_lists_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/symbol-lists/{list_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Symbol List */
-        get: operations["get_symbol_list_symbol_lists__list_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1031,11 +997,6 @@ export interface components {
             /** Fundamentals Fetched At */
             fundamentals_fetched_at?: string | null;
             /**
-             * Fundamentals Size Bytes
-             * @default 0
-             */
-            fundamentals_size_bytes: number;
-            /**
              * Fundamentals Snapshot Count
              * @default 0
              */
@@ -1053,21 +1014,34 @@ export interface components {
             price_basis?: string | null;
             /** Row Count */
             row_count?: number | null;
-            /** Size Bytes */
-            size_bytes: number;
             /** Source */
             source?: string | null;
             /** Symbol Count */
             symbol_count?: number | null;
-            /** Universe */
-            universe: string;
+            /**
+             * Universe
+             * @enum {string}
+             */
+            universe: "US500" | "US2000" | "US100" | "VN100" | "VN30";
         };
         /** MarketDataClearResponse */
         MarketDataClearResponse: {
+            /** Affected Universes */
+            affected_universes: ("US500" | "US2000" | "US100" | "VN100" | "VN30")[];
             /** Cleared */
             cleared: boolean;
-            /** Universe */
-            universe: string;
+            /** Deleted Rows */
+            deleted_rows: number;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /**
+             * Requested Universe
+             * @enum {string}
+             */
+            requested_universe: "US500" | "US2000" | "US100" | "VN100" | "VN30";
         };
         /** MarketDataJobResponse */
         MarketDataJobResponse: {
@@ -1085,8 +1059,11 @@ export interface components {
             finished_at: string | null;
             /** Id */
             id: string;
-            /** Market */
-            market: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US500" | "US2000" | "US100" | "VN100" | "VN30";
             /** Message */
             message: string;
             /**
@@ -1106,12 +1083,18 @@ export interface components {
         };
         /** MarketDataStatusResponse */
         MarketDataStatusResponse: {
-            /** Cache Directory */
-            cache_directory: string;
-            /** Fundamentals Cache Directory */
-            fundamentals_cache_directory: string;
+            /**
+             * Fundamentals Storage
+             * @constant
+             */
+            fundamentals_storage: "PostgreSQL";
             /** Markets */
             markets: components["schemas"]["MarketDataCacheStatus"][];
+            /**
+             * Price Storage
+             * @constant
+             */
+            price_storage: "PostgreSQL";
         };
         /** MarketHealthDistributionBucketResponse */
         MarketHealthDistributionBucketResponse: {
@@ -1977,66 +1960,6 @@ export interface components {
             total_return_pct: number;
             /** Trade Count */
             trade_count: number;
-        };
-        /** SymbolListItem */
-        SymbolListItem: {
-            /** Exchange */
-            exchange?: string | null;
-            /** Industry */
-            industry?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-            /** Name */
-            name: string;
-            /** Sector */
-            sector?: string | null;
-            /** Symbol */
-            symbol: string;
-            /** Yfinance Symbol */
-            yfinance_symbol: string;
-        };
-        /** SymbolListResponse */
-        SymbolListResponse: {
-            /** As Of */
-            as_of?: string | null;
-            /** Description */
-            description: string;
-            /** Fetched At */
-            fetched_at?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Sources */
-            sources: {
-                [key: string]: string;
-            }[];
-            /** Symbol Count */
-            symbol_count: number;
-            /** Symbols */
-            symbols: components["schemas"]["SymbolListItem"][];
-        };
-        /** SymbolListSummary */
-        SymbolListSummary: {
-            /** As Of */
-            as_of?: string | null;
-            /** Description */
-            description: string;
-            /** Fetched At */
-            fetched_at?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Symbol Count */
-            symbol_count: number;
-        };
-        /** SymbolListsResponse */
-        SymbolListsResponse: {
-            /** Lists */
-            lists: components["schemas"]["SymbolListSummary"][];
         };
         /** SymbolPriceHistoryResponse */
         SymbolPriceHistoryResponse: {
@@ -3013,57 +2936,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_symbol_lists_symbol_lists_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SymbolListsResponse"];
-                };
-            };
-        };
-    };
-    get_symbol_list_symbol_lists__list_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                list_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SymbolListResponse"];
                 };
             };
             /** @description Validation Error */

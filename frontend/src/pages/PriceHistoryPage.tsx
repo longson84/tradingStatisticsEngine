@@ -9,16 +9,17 @@ import {
 } from "@/components/market/SymbolPriceHistoryChart"
 import { Badge } from "@/components/ui/badge"
 import {
-  symbolListApi,
+  companiesApi,
   symbolPriceHistoryApi,
-  type SymbolListItem,
+  type CompanyResponse,
+  type CompanyUniverseId,
   type SymbolPriceHistoryResponse,
 } from "@/lib/api"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
 
 
 type CachedUniverse = SymbolPriceHistoryResponse["universe"]
-type CompanyMarket = "US_ALL" | "VN_ALL"
+type CompanyMarket = Extract<CompanyUniverseId, "US_ALL" | "VN_ALL">
 
 const MARKET_OPTIONS: Array<{ label: string; value: CompanyMarket }> = [
   { label: "US Companies", value: "US_ALL" },
@@ -40,9 +41,9 @@ export function PriceHistoryPage() {
     emaLengths: [] as number[],
   })
 
-  const symbols = useQuery({
-    queryKey: ["symbol-list", market],
-    queryFn: () => symbolListApi(market),
+  const companies = useQuery({
+    queryKey: ["companies", market],
+    queryFn: () => companiesApi({ universe: market }),
   })
   const history = useQuery({
     queryKey: ["symbol-price-history", selection.universe, selection.ticker],
@@ -51,10 +52,9 @@ export function PriceHistoryPage() {
   })
 
   const normalizedTicker = ticker.toUpperCase().trim()
-  const selectedSymbol = symbols.data?.symbols.find(item => (
-    item.yfinance_symbol.toUpperCase() === normalizedTicker
-    || item.symbol.toUpperCase() === normalizedTicker
-  ))
+  const selectedCompany = companies.data?.companies.find(
+    item => item.ticker.toUpperCase() === normalizedTicker
+  )
   const prices = history.data?.prices ?? []
   const first = prices[0]
   const latest = prices[prices.length - 1]
@@ -66,12 +66,12 @@ export function PriceHistoryPage() {
   const isVietnam = history.data?.universe.startsWith("VN") ?? selection.universe.startsWith("VN")
 
   const viewHistory = () => {
-    if (!selectedSymbol) return
+    if (!selectedCompany) return
     setCursorSnapshot(null)
     setSelection({
       market,
-      universe: historyUniverse(market, selectedSymbol),
-      ticker: selectedSymbol.yfinance_symbol.toUpperCase(),
+      universe: historyUniverse(market, selectedCompany),
+      ticker: selectedCompany.ticker.toUpperCase(),
       smaLengths: parseIndicatorLengths(smaInput),
       emaLengths: parseIndicatorLengths(emaInput),
     })
@@ -98,27 +98,27 @@ export function PriceHistoryPage() {
           value={ticker}
           onChange={event => setTicker(event.target.value.toUpperCase())}
           onKeyDown={event => {
-            if (event.key === "Enter" && selectedSymbol) {
+            if (event.key === "Enter" && selectedCompany) {
               viewHistory()
             }
           }}
-          placeholder={symbols.isPending ? "Loading tickers…" : "Search ticker or company"}
+          placeholder={companies.isPending ? "Loading tickers…" : "Search ticker or company"}
           className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none"
           aria-label="Ticker"
         />
         <datalist id="price-history-symbols">
-          {symbols.data?.symbols.map(item => (
+          {companies.data?.companies.map(item => (
             <option
-              key={item.symbol}
-              value={item.yfinance_symbol}
-              label={`${item.symbol} · ${item.name}`}
+              key={`${item.market}-${item.ticker}`}
+              value={item.ticker}
+              label={`${item.ticker} · ${item.company_name}`}
             />
           ))}
         </datalist>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          {symbols.data
-            ? `${symbols.data.symbol_count.toLocaleString()} tickers available`
-            : "Choose from the locally cached market lists."}
+          {companies.data
+            ? `${companies.data.total.toLocaleString()} tickers available`
+            : "Choose from the PostgreSQL company universe."}
         </p>
       </div>
 
@@ -151,7 +151,7 @@ export function PriceHistoryPage() {
 
       <button
         onClick={viewHistory}
-        disabled={!selectedSymbol || history.isFetching}
+        disabled={!selectedCompany || history.isFetching}
         className="w-full rounded-md bg-primary py-2.5 text-sm font-semibold tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {history.isFetching ? "Loading…" : "View history"}
@@ -335,16 +335,12 @@ function companyMarketLabel(market: CompanyMarket): string {
 }
 
 
-function historyUniverse(market: CompanyMarket, symbol: SymbolListItem): CachedUniverse {
-  const sourceIds = Array.isArray(symbol.metadata.source_ids)
-    ? symbol.metadata.source_ids.map(String)
-    : []
-
+function historyUniverse(market: CompanyMarket, company: CompanyResponse): CachedUniverse {
   if (market === "VN_ALL") {
-    return sourceIds.includes("VN30") ? "VN30" : "VN100"
+    return company.lists.includes("VN30") ? "VN30" : "VN100"
   }
-  if (sourceIds.includes("US100")) return "US100"
-  if (sourceIds.includes("US500") || sourceIds.includes("US30")) return "US500"
+  if (company.lists.includes("US100")) return "US100"
+  if (company.lists.includes("US500") || company.lists.includes("US30")) return "US500"
   return "US2000"
 }
 

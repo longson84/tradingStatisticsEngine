@@ -42,8 +42,10 @@ export function MarketDataPage() {
   })
 
   const clearMarket = (market: Market) => {
+    const marketCode = market.startsWith("US") ? "US" : "VN"
+    const affected = marketCode === "US" ? "US2000, US500, and US100" : "VN100 and VN30"
     const confirmed = window.confirm(
-      `Clear the local ${market} price-history cache? Market Health cannot calculate ${market} until you rebuild it.`
+      `Clear every stored ${marketCode} price bar? This affects ${affected}. Price History and Market Health will be unavailable for them until rebuilt.`
     )
     if (confirmed) clear.mutate(market)
   }
@@ -63,10 +65,11 @@ export function MarketDataPage() {
         </div>
 
         <div className="mb-5 rounded-lg border border-border bg-card px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Market Health&apos;s Run button only reads these local files. Update downloads recent
-          sessions and merges them into the cache; Full rebuild requests maximum provider history.
-          Fundamentals are retained indefinitely and refresh only when requested here. A failed
-          refresh keeps the previous cache unchanged.
+          Price History and Market Health read canonical PostgreSQL price bars. Update downloads
+          recent sessions and upserts them; Full rebuild requests maximum provider history.
+          Fundamental reads and refresh writes use canonical PostgreSQL point-in-time data.
+          Incremental refreshes reuse recently updated overlapping symbols; full refreshes bypass
+          the reuse window. A failed symbol write leaves its existing database rows unchanged.
         </div>
 
         {status.isPending && (
@@ -96,9 +99,9 @@ export function MarketDataPage() {
 
         {status.data && (
           <div className="mt-5 rounded-md border border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground">
-            Local cache directory: <span className="font-mono">{status.data.cache_directory}</span>
+            Price storage: <span className="font-mono">{status.data.price_storage}</span>
             <br />
-            Fundamentals: <span className="font-mono">{status.data.fundamentals_cache_directory}</span>
+            Fundamental storage: <span className="font-mono">{status.data.fundamentals_storage}</span>
           </div>
         )}
       </main>
@@ -126,6 +129,9 @@ function MarketCacheCard({
   const running = [job, fundamentalsJob].some(
     item => item?.status === "queued" || item?.status === "running"
   )
+  const canClearMarket = market.universe === "US2000" || market.universe === "VN100"
+  const marketCode = market.universe.startsWith("US") ? "US" : "VN"
+  const errors = market.errors ?? []
 
   return (
     <section className="rounded-lg border border-border bg-card p-5">
@@ -151,10 +157,10 @@ function MarketCacheCard({
       <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 text-xs sm:grid-cols-3">
         <Datum label="Latest session" value={market.last_date ?? "—"} />
         <Datum label="First session" value={market.first_date ?? "—"} />
-        <Datum label="Fetched" value={formatDateTime(market.fetched_at)} />
-        <Datum label="Symbols" value={formatInteger(market.symbol_count)} />
-        <Datum label="Rows" value={formatInteger(market.row_count)} />
-        <Datum label="File size" value={formatBytes(market.size_bytes)} />
+        <Datum label="Fetched" value={formatDateTime(market.fetched_at ?? null)} />
+        <Datum label="Symbols" value={formatInteger(market.symbol_count ?? null)} />
+        <Datum label="Rows" value={formatInteger(market.row_count ?? null)} />
+        <Datum label="Storage" value="PostgreSQL" />
       </div>
 
       <div className="mt-5 rounded-md border border-border bg-muted/20 p-3">
@@ -165,15 +171,15 @@ function MarketCacheCard({
           </Badge>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
-          <Datum label="Fetched" value={formatDateTime(market.fundamentals_fetched_at)} />
-          <Datum label="Snapshots" value={market.fundamentals_snapshot_count.toLocaleString()} />
-          <Datum label="File size" value={formatBytes(market.fundamentals_size_bytes)} />
+          <Datum label="Fetched" value={formatDateTime(market.fundamentals_fetched_at ?? null)} />
+          <Datum label="Snapshots" value={(market.fundamentals_snapshot_count ?? 0).toLocaleString()} />
+          <Datum label="Storage" value="PostgreSQL" />
         </div>
       </div>
 
-      {market.errors.length > 0 && (
+      {errors.length > 0 && (
         <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">
-          {market.errors.length} ticker{market.errors.length === 1 ? "" : "s"} unavailable or kept from older cached history.
+          {errors.length} refresh error{errors.length === 1 ? "" : "s"}; existing database rows were retained.
         </p>
       )}
 
@@ -205,13 +211,15 @@ function MarketCacheCard({
             >
               <RefreshCw /> Full rebuild
             </Button>
-            <Button
-              variant="destructive"
-              disabled={mutating || running || !market.exists}
-              onClick={onClear}
-            >
-              <Trash2 /> Clear cache
-            </Button>
+            {canClearMarket && (
+              <Button
+                variant="destructive"
+                disabled={mutating || running || !market.exists}
+                onClick={onClear}
+              >
+                <Trash2 /> Clear all {marketCode} prices
+              </Button>
+            )}
           </div>
         </details>
       </div>
@@ -279,12 +287,4 @@ function formatDateTime(value: string | null): string {
 
 function formatInteger(value: number | null): string {
   return value == null ? "—" : value.toLocaleString()
-}
-
-
-function formatBytes(value: number): string {
-  if (!value) return "—"
-  const units = ["B", "KB", "MB", "GB"]
-  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
-  return `${(value / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
 }

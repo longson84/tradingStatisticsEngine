@@ -64,10 +64,13 @@ port 5434 to avoid other local PostgreSQL projects. The connection is selected
 through `DATABASE_URL`; committed credentials are development-only and must not
 be reused outside a local machine.
 
-CSV and JSON snapshots remain valid ingestion inputs during migration. They are
-not removed until database row counts, key coverage, and application behavior
-have been verified. Existing read paths remain file-backed until their separate
-migration is complete.
+CSV and JSON snapshots remain valid ingestion inputs during migration. Company
+snapshots under `api/data/symbol_lists/` are importer inputs and rollback
+evidence only; all application company reads use PostgreSQL through the Company
+service. Price History and Market Health read canonical daily bars from
+PostgreSQL, and price refreshes incrementally upsert the same table. Price
+status and maintenance operations also use PostgreSQL. Benchmarks and
+fundamentals remain file-backed until their separate migrations are verified.
 
 ### Initial company schema
 
@@ -77,10 +80,42 @@ migration is complete.
   US30, VN30, and VN100.
 - `universe_memberships` implements the many-to-many relationship between
   instruments and universes.
+- `price_bars` stores canonical daily OHLCV observations once per instrument,
+  session, and price basis.
+- `price_bar_coverages` stores one derived operational summary per instrument
+  and price basis. It accelerates status and refresh planning; it is rebuilt
+  from canonical bars and is never an analytical price source.
 
 The initial membership table represents current saved snapshots. It is not
 historical membership data. Effective-dated membership will require a later
 explicit migration and a source capable of providing reliable membership dates.
+
+### Daily price schema
+
+- `price_bars` stores one canonical daily OHLCV observation per instrument,
+  trading date, and price basis.
+- `price_basis` distinguishes adjusted, unadjusted, and provider-unspecified
+  observations. Refresh code must use an explicit stable value; it must not
+  infer adjustment semantics from the provider name.
+- `source` and `fetched_at` preserve the provenance of the currently selected
+  canonical observation. A later refresh may replace that observation
+  atomically but must not create a duplicate provider copy for the same key.
+- `currency` identifies the monetary currency and `price_scale` converts the
+  stored quote into one currency unit. For example, a VN quote stored in
+  thousands of VND uses `currency = VND` and `price_scale = 1000`.
+- Provider OHLCV observations use PostgreSQL double precision because upstream
+  market data already arrives as floating point and analytical workloads favor
+  compact numeric arrays. Exact decimal types remain appropriate for accounting
+  and transactional monetary values.
+- Weekly and monthly bars are derived from daily observations and are not stored
+  as duplicate source data at this stage.
+- The one-time universe CSV importer and its source caches were removed after
+  database, price-history, and Market Health parity were verified. PostgreSQL
+  backups, rather than CSV application caches, are the recovery mechanism for
+  canonical price bars.
+- Provider rows with non-positive or non-finite prices, inverted high/low, or
+  negative/non-finite volume are reported and omitted. The canonical table's
+  constraints preserve the same minimum quality boundary for future writers.
 
 ## Database conventions
 
@@ -127,6 +162,13 @@ The frontend is independent from backend implementation layers. It communicates
 only through HTTP clients and generated API contracts. Frontend code must never
 depend on repository, service, ORM, or database concepts.
 
+Price-history reads follow the same boundary. `PriceBarRepository` exposes
+persistence-neutral records and streaming range queries. `PriceHistoryService`
+selects the market's canonical price basis and constructs engine `PriceFrame`
+objects plus provenance metadata. Only dependency wiring may instantiate the
+SQLAlchemy implementation. Price History and Market Health consume this service;
+routes do not access ORM models or repository implementations.
+
 ## End-to-end contracts
 
 FastAPI Pydantic request and response schemas are the canonical HTTP contract.
@@ -140,7 +182,8 @@ them manually.
   or operation ID changes.
 - Frontend clients derive request and response types from the generated schema
   instead of declaring parallel interfaces.
-- Run `pnpm check:api-types` in validation to detect contract drift.
+- Run `pnpm check:api-types` in validation to regenerate into temporary files
+  and detect contract drift independently of the current Git state.
 - Runtime parsing may be added at untrusted external boundaries. Within this
   application, generated types provide compile-time alignment while Pydantic
   performs backend runtime validation.
@@ -177,3 +220,296 @@ with tests.
 Consequences: the UI can change independently from persistence, services can be
 tested without FastAPI or SQLAlchemy, and API contract changes become explicit
 generated diffs. Contract generation is now part of the validation workflow.
+
+### 2026-08-02 — Complete company read cutover
+
+Context: after the Companies page moved to PostgreSQL, Price History still used
+the legacy `/symbol-lists` API and handwritten TypeScript contracts to populate
+its ticker selector.
+
+Decision: migrate Price History to the generated `/companies` contract and
+remove the legacy symbol-list HTTP routes, schemas, frontend types, and route
+tests. Retain the saved symbol-list files and `api/symbol_list_data.py` solely as
+inputs to the idempotent PostgreSQL importer.
+
+Consequences: PostgreSQL is the single application read source for company and
+universe membership data. Company metadata no longer has two public contracts,
+while reproducible source snapshots remain available for re-import and audit.
+
+### 2026-08-03 — Canonical daily price-bar storage
+
+Context: market price histories are still stored in overlapping universe CSV
+caches. The same ticker can appear in multiple files, and later market-health
+and relative-strength calculations need efficient symbol-range and
+cross-sectional date reads.
+
+Decision: add canonical `price_bars` keyed by instrument, trading date, and
+price basis. Store provider and fetch provenance plus explicit currency and
+price scale. Index trading date for cross-sectional work and rely on the unique
+key for instrument date-range reads. Preserve daily bars as the source grain;
+derive weekly and monthly views when reading.
+
+Consequences: the schema can hold each instrument's daily history once despite
+overlapping universes. Existing CSV caches remain the active read source until
+a separate, verified importer and repository cutover are implemented.
+
+### 2026-08-03 — Transactional price-cache import
+
+Context: importing overlapping universe files independently could duplicate
+bars, silently overwrite newer observations, or commit only part of the market
+when a later file is invalid.
+
+Decision: stage each CSV with PostgreSQL `COPY` inside one transaction, validate
+it, and upsert by the canonical instrument/date/basis key. Process broader
+universes first, update only from a newer manifest, and reject conflicting rows
+that claim the same fetch timestamp. Keep the file read path unchanged during
+this import stage.
+
+Consequences: the existing 1.3 GB cache can be loaded efficiently and rerun
+without rewriting unchanged rows. Invalid provider observations are counted but
+do not prevent valid market history from migrating. The files cannot be removed
+until refresh writes and application reads have separately moved to PostgreSQL.
+
+### 2026-08-03 — Price-history repository and service boundary
+
+Context: PostgreSQL contains canonical bars, but routes must not query ORM
+models directly and market-health needs a bulk path that does not materialize
+ORM entities.
+
+Decision: introduce a persistence-neutral price-bar repository protocol with
+streaming symbol/universe range queries, a SQLAlchemy projection repository,
+and a price-history service that returns `PriceFrame` data with explicit source,
+basis, currency, scale, and coverage metadata. Construct the concrete repository
+only in `api/deps.py`.
+
+Consequences: the next read cutover can replace CSV calls at the route boundary
+without changing analytical code or coupling HTTP/UI code to PostgreSQL. This
+stage initially did not change application reads.
+
+### 2026-08-03 — Price History and Market Health read cutover
+
+Context: after canonical price bars and service boundaries were verified, the
+two analytical read paths still depended on overlapping universe CSV files.
+Loading every historical database row for Market Health would also materialize
+far more data than its intended five-year display requires.
+
+Decision: inject `PriceHistoryService` into the Price History and Market Health
+routes. Preserve the public source and price-basis labels. For Market Health,
+query five years plus a rolling-window warm-up, stream rows in ticker order, and
+return the five-year calculated series. The distribution drill-down queries only
+the requested date and its warm-up range.
+
+Consequences: these application reads no longer depend on the market-history
+CSV files, and UI/analytical code remains independent from persistence.
+Benchmark and fundamental files are separate migrations.
+
+### 2026-08-03 — Incremental PostgreSQL price refresh
+
+Context: after the read cutover, provider refresh jobs still planned from and
+rewrote overlapping universe CSV files. This made the old files operationally
+necessary and could redownload the same US100/VN30 constituent after a broader
+universe had already refreshed it.
+
+Decision: plan incremental refreshes from per-instrument PostgreSQL coverage,
+request a seven-calendar-day overlap only for stale symbols, validate provider
+rows in the price-refresh service, and upsert with the canonical
+instrument/date/basis key. Network calls occur outside transactions; each
+universe write is one short transaction. An all-market full refresh processes
+US2000, US500, US100, then VN100 and VN30, carrying successful ticker identities
+forward to avoid repeated downloads. VNStock continues to use VCI and its
+rate-safe checkpoint between provider calls; benchmark refresh remains a
+separate file-backed workflow.
+
+Because the application runs in Vietnam time, the latest expected US session is
+the previous completed weekday; the current local weekday may be used for VN.
+This prevents a daytime refresh in Vietnam from repeatedly treating the not-yet-
+opened US session as missing.
+
+Consequences: price refresh no longer reads or writes universe CSV history and
+can resume incrementally from the database. Transient VN download checkpoints
+are not canonical data.
+
+### 2026-08-03 — Price storage parity and maintenance cutover
+
+Context: price reads and refresh writes used PostgreSQL, but the Market Data
+page still reported and deleted old universe CSV files. A universe-scoped
+database delete is unsafe because canonical bars are shared by overlapping
+universes such as US100, US500, and US2000.
+
+Decision: derive Market Data coverage, row counts, sources, basis, and refresh
+time through a persistence-neutral price-storage service backed by PostgreSQL.
+Maintain per-instrument coverage summaries transactionally with price writes so
+operational queries do not repeatedly scan millions of daily bars.
+Clear operations are market-scoped: clearing any US entry removes all US price
+bars, and clearing a VN entry removes all VN price bars. The UI exposes one
+explicit clear action per market and names every affected universe before
+confirmation. API mutation transactions are owned by the dependency boundary;
+repositories never commit. Market Data response types in the frontend are
+generated from the OpenAPI contract.
+
+Verification compared representative OHLCV histories and recalculated Market
+Health from PostgreSQL against the frozen CSV copies. US100 matched across
+1,332 shared output sessions and VN30 across 1,324; the only observed difference
+was floating-point noise of approximately 2.1e-14 in one median value.
+
+Consequences: no application price read, refresh, status, or clear path depends
+on universe or single-symbol CSV files. Those files and their legacy
+loader/import tooling were deleted after verification. Benchmark histories,
+fundamental snapshots, and transient VN refresh recovery checkpoints remain
+separate file-backed concerns.
+
+### 2026-08-03 — Point-in-time fundamental persistence model
+
+Context: the file-backed fundamental snapshots mix report identity, accounting
+facts, derived TTM measures, and sparse provider valuation ratios in one wide
+row. Finance analysis must distinguish the period described by a report from
+the first market session on which the report could have been known, and must
+retain later restatements without rewriting historical knowledge.
+
+Decision: persist report identity and availability in `fundamental_reports` and
+normalized numeric metrics in `fundamental_facts`. Every report has a stable
+source-specific `report_key`, `period_end`, optional publication timestamp, and
+required `effective_session_date`. Facts use exact numeric values with explicit
+unit, currency, scale, period basis, provenance kind, and calculation version.
+Original and restated reports are separate rows, so an as-known-on-date query
+selects only reports whose effective session is not later than the requested
+date.
+
+Sparse P/E, P/B, P/S, or EV/EBITDA values explicitly reported by a provider are
+stored separately in `provider_valuation_observations` for comparison and audit.
+They are not forward-filled as the canonical daily series. Daily valuation is
+calculated from the daily PostgreSQL close and the latest eligible point-in-time
+fundamental. `fundamental_refresh_runs` durably records provider version, counts,
+status, and errors for one universe refresh.
+
+Consequences: the schema supports revisions, new metrics, different currencies,
+reported versus derived values, and reproducible calculation versions without
+adding daily valuation duplication. This stage adds persistence only; existing
+fundamental cache reads and refresh writes remain unchanged until importer and
+repository/service parity are separately verified.
+
+### 2026-08-03 — Legacy fundamentals import
+
+Context: after the point-in-time schema existed, 2,511 per-instrument CSV and
+manifest pairs remained the only populated source for the current Price History
+fundamental overlays.
+
+Decision: import every complete cache pair atomically and idempotently. Each
+legacy effective-date row becomes a report with a deterministic source key;
+the importer does not invent unavailable publication or provider-observation
+timestamps. Accounting and derived facts are normalized with exact numeric
+values, while market cap and provider ratios become sparse valuation
+observations with explicit units. Unknown instruments or malformed identities
+abort the transaction. Non-finite individual values are omitted and reported.
+
+The verified import contains 138,866 reports, 274,654 facts, and 18,600 provider
+valuation observations for 2,511 instruments. Re-running produced identical
+counts. Six non-finite `VN-BVH` revenue values were omitted. Latest FPT and PNJ
+facts and valuation observations matched their source caches exactly at the
+database's ten-decimal storage precision.
+
+Consequences: PostgreSQL now contains a verified copy of the existing
+point-in-time fundamentals, but application reads and provider refresh writes
+remain file-backed. The next stage is a persistence-neutral repository and
+service; no UI route should query these tables directly.
+
+### 2026-08-03 — Fundamental repository and service boundary
+
+Context: normalized PostgreSQL rows are intentionally different from the wide
+per-symbol frame consumed by the existing Price History calculations. Routes
+and React components must not depend on SQLAlchemy models or reconstruct that
+projection independently.
+
+Decision: `FundamentalRepository` is the persistence-neutral read contract and
+`SqlAlchemyFundamentalRepository` is its PostgreSQL implementation. The
+`FundamentalService` owns the application projection from reports, facts, and
+sparse provider valuations into the existing wide point-in-time frame. Concrete
+repository construction lives only in `api/deps.py`. Period labels and provider
+methodology are explicit report attributes because they are part of the current
+consumer contract and cannot be inferred reliably after import.
+
+The service normalizes market and ticker identity, preserves report-effective
+dates, exposes source and methodology metadata, and aggregates universe status.
+It does not calculate valuation ratios or contain SQLAlchemy queries. Daily P/E
+and P/B remain downstream calculations that combine price bars with the latest
+eligible point-in-time facts.
+
+Consequences: service and repository behavior can be tested independently, and
+future storage implementations can satisfy the same contract without changing
+the UI. Live FPT and PNJ projections were verified against the legacy cache for
+all identity and numeric columns. Application routes and refresh writes remain
+file-backed until their separate cutover stages; the cache is retained until no
+runtime reader or writer depends on it.
+
+### 2026-08-03 — Fundamental read cutover
+
+Context: the repository/service projection matched the imported cache, so
+application reads no longer needed to depend on per-symbol CSV files. Keeping
+two read implementations would allow Price History and Market Data status to
+disagree about the same stored facts.
+
+Decision: Price History obtains point-in-time snapshots and metadata through
+`FundamentalService`. Market Data obtains per-universe fundamental coverage from
+the same service. Routes depend only on services injected by `api/deps.py`; they
+do not import the legacy cache or SQLAlchemy repositories. The existing API
+response fields remain stable during this transition, but the former cache-path
+field reports `PostgreSQL`, and per-universe file size is zero because shared
+normalized rows have no meaningful file-size measure.
+
+Missing fundamentals remain non-fatal for Price History. Database and
+programming failures are no longer swallowed as if a company simply lacked
+reports. Provider-reported ratios remain sparse comparison values; daily P/E
+and P/B continue to be calculated from PostgreSQL prices and eligible facts.
+
+Consequences: Price History and fundamental coverage status now read only from
+PostgreSQL. The provider refresh worker still writes the legacy cache during
+this intermediate stage, so its database write cutover is the next required
+step before the old cache can be removed.
+
+### 2026-08-03 — Fundamental refresh write cutover
+
+Context: after the read cutover, a file-backed refresh would not update the
+canonical data read by Price History. It also based cross-universe reuse on JSON
+manifests and ignored the requested full-versus-incremental mode.
+
+Decision: the fundamentals worker now obtains universe constituents from the
+company repository and uses report `fetched_at` values in PostgreSQL for its
+12-hour overlap-reuse window. Provider calls occur outside database
+transactions. Each successful symbol is converted by
+`FundamentalWriteService` and upserted atomically through
+`FundamentalRepository`; existing report keys are reused so refreshed facts do
+not duplicate migrated history. Incremental mode reuses recently refreshed
+symbols. Full mode bypasses data from before that run while still reusing an
+overlapping ticker refreshed earlier in the same ordered all-universe run.
+
+Every universe run is recorded in `fundamental_refresh_runs` with requested,
+reused, succeeded, and failed counts plus a bounded error summary. A failure for
+one symbol rolls back only that symbol and preserves all previously stored
+facts. The API and UI now describe both price and fundamental storage as
+PostgreSQL; file-size and cache-directory fields were removed from the typed
+contract.
+
+Consequences: application reads and normal refresh writes no longer require
+fundamental CSV files. A live FPT VCI refresh upserted 33 reports, 462 facts, and
+198 valuation observations while retaining exactly 33 stored reports. The
+legacy cache/import utilities may now be removed in a separate cleanup after a
+final dependency audit.
+
+### 2026-08-04 — Fundamental cache removal
+
+Context: PostgreSQL parity, read cutover, and refresh-write cutover were all
+verified, leaving the one-time CSV importer and cache helpers as dead migration
+code. Keeping them would preserve a second, misleading persistence convention
+and retain 5,022 migrated files occupying approximately 25 MB.
+
+Decision: provider acquisition and frame normalization live in
+`api/fundamental_provider.py`, which performs no filesystem persistence. The
+one-time importer, its CLI, cache-only tests, and `api/fundamentals_cache.py`
+were removed. The `.cache/fundamentals` directory was permanently deleted only
+after the full test suite, production build, API-contract check, refresh-worker
+import check, and live FPT/PNJ plus five-universe PostgreSQL reads succeeded.
+
+Consequences: PostgreSQL is the sole fundamental persistence system. Normal
+reads and refreshes cannot recreate the deleted CSV directory. Historical data
+is retained in normalized reports, facts, and sparse valuation observations;
+provider refreshes remain the recovery path for future data acquisition.

@@ -159,44 +159,6 @@ export interface PredefinedRarityResponse {
   errors: string[]
 }
 
-export type SymbolListId =
-  | "US_ALL"
-  | "US100"
-  | "US2000"
-  | "US500"
-  | "US30"
-  | "VN_ALL"
-  | "VN30"
-  | "VN100"
-
-export interface SymbolListSummary {
-  id: SymbolListId
-  name: string
-  description: string
-  symbol_count: number
-  as_of: string | null
-  fetched_at: string | null
-}
-
-export interface SymbolListItem {
-  symbol: string
-  yfinance_symbol: string
-  name: string
-  sector: string | null
-  industry: string | null
-  exchange: string | null
-  metadata: Record<string, unknown>
-}
-
-export interface SymbolListResponse extends SymbolListSummary {
-  sources: Array<Record<string, string>>
-  symbols: SymbolListItem[]
-}
-
-export interface SymbolListsResponse {
-  lists: SymbolListSummary[]
-}
-
 export type CompanyResponse = components["schemas"]["CompanyResponse"]
 export type CompanyListResponse = components["schemas"]["CompanyListResponse"]
 export type CompanyUniversesResponse = components["schemas"]["CompanyUniversesResponse"]
@@ -283,46 +245,10 @@ export interface MarketHealthRunResponse {
   markets: MarketHealthMarket[]
 }
 
-export interface MarketDataJob {
-  id: string
-  market: "US500" | "US2000" | "US100" | "VN100" | "VN30"
-  mode: "incremental" | "full"
-  dataset: "prices" | "fundamentals"
-  status: "queued" | "running" | "completed" | "failed"
-  current: number
-  total: number
-  message: string
-  started_at: string | null
-  finished_at: string | null
-  error: string | null
-}
-
-export interface MarketDataCacheStatus {
-  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
-  exists: boolean
-  size_bytes: number
-  fetched_at: string | null
-  first_date: string | null
-  last_date: string | null
-  symbol_count: number | null
-  row_count: number | null
-  source: string | null
-  price_basis: string | null
-  errors: Array<Record<string, string>>
-  latest_job: MarketDataJob | null
-  fundamentals_exists: boolean
-  fundamentals_fetched_at: string | null
-  fundamentals_symbol_count: number
-  fundamentals_snapshot_count: number
-  fundamentals_size_bytes: number
-  latest_fundamentals_job: MarketDataJob | null
-}
-
-export interface MarketDataStatusResponse {
-  cache_directory: string
-  fundamentals_cache_directory: string
-  markets: MarketDataCacheStatus[]
-}
+export type MarketDataJob = components["schemas"]["MarketDataJobResponse"]
+export type MarketDataCacheStatus = components["schemas"]["MarketDataCacheStatus"]
+export type MarketDataStatusResponse = components["schemas"]["MarketDataStatusResponse"]
+export type MarketDataClearResponse = components["schemas"]["MarketDataClearResponse"]
 
 export interface SymbolPricePoint {
   date: string
@@ -799,14 +725,6 @@ export function predefinedRarityApi(params: {
   })
 }
 
-export function symbolListsApi(): Promise<SymbolListsResponse> {
-  return get("/symbol-lists")
-}
-
-export function symbolListApi(id: SymbolListId): Promise<SymbolListResponse> {
-  return get(`/symbol-lists/${id}`)
-}
-
 export function companyUniversesApi(): Promise<CompanyUniversesResponse> {
   return get("/companies/universes")
 }
@@ -872,7 +790,7 @@ export function marketDataRefreshApi(
 
 export function marketDataClearApi(
   market: "US500" | "US2000" | "US100" | "VN100" | "VN30"
-): Promise<{ universe: string; cleared: boolean }> {
+): Promise<MarketDataClearResponse> {
   return del(`/market-data/${market}`)
 }
 

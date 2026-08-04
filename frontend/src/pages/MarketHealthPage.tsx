@@ -108,10 +108,10 @@ export function MarketHealthPage() {
 
         {!run.data && !run.isPending && !run.error && (
           <div className="rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
-            <h2 className="text-sm font-semibold">Ready to calculate from cached history</h2>
+            <h2 className="text-sm font-semibold">Ready to calculate from saved history</h2>
             <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
-              Adjust the coefficients and click Run. The indicator reads the five selected US and
-              Vietnam universe caches only; it does not query Yahoo Finance or VNStock.
+              Adjust the coefficients and click Run. The indicator reads saved local histories for
+              the five US and Vietnam universes; it does not query Yahoo Finance or VNStock.
             </p>
           </div>
         )}

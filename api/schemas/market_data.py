@@ -6,9 +6,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+MarketUniverse = Literal["US500", "US2000", "US100", "VN100", "VN30"]
+
+
 class MarketDataJobResponse(BaseModel):
     id: str
-    market: str
+    market: MarketUniverse
     mode: Literal["incremental", "full"]
     dataset: Literal["prices", "fundamentals"] = "prices"
     status: Literal["queued", "running", "completed", "failed"]
@@ -21,9 +24,8 @@ class MarketDataJobResponse(BaseModel):
 
 
 class MarketDataCacheStatus(BaseModel):
-    universe: str
+    universe: MarketUniverse
     exists: bool
-    size_bytes: int
     fetched_at: str | None = None
     first_date: str | None = None
     last_date: str | None = None
@@ -37,18 +39,20 @@ class MarketDataCacheStatus(BaseModel):
     fundamentals_fetched_at: str | None = None
     fundamentals_symbol_count: int = 0
     fundamentals_snapshot_count: int = 0
-    fundamentals_size_bytes: int = 0
     latest_fundamentals_job: MarketDataJobResponse | None = None
 
 
 class MarketDataStatusResponse(BaseModel):
-    cache_directory: str
-    fundamentals_cache_directory: str
+    price_storage: Literal["PostgreSQL"]
+    fundamentals_storage: Literal["PostgreSQL"]
     markets: list[MarketDataCacheStatus]
 
 
 class MarketDataClearResponse(BaseModel):
-    universe: str
+    requested_universe: MarketUniverse
+    market: Literal["US", "VN"]
+    affected_universes: list[MarketUniverse]
+    deleted_rows: int
     cleared: bool
 
 

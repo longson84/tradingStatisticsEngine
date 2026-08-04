@@ -2256,11 +2256,6 @@
             ],
             "title": "Fundamentals Fetched At"
           },
-          "fundamentals_size_bytes": {
-            "default": 0,
-            "title": "Fundamentals Size Bytes",
-            "type": "integer"
-          },
           "fundamentals_snapshot_count": {
             "default": 0,
             "title": "Fundamentals Snapshot Count",
@@ -2324,10 +2319,6 @@
             ],
             "title": "Row Count"
           },
-          "size_bytes": {
-            "title": "Size Bytes",
-            "type": "integer"
-          },
           "source": {
             "anyOf": [
               {
@@ -2351,31 +2342,73 @@
             "title": "Symbol Count"
           },
           "universe": {
+            "enum": [
+              "US500",
+              "US2000",
+              "US100",
+              "VN100",
+              "VN30"
+            ],
             "title": "Universe",
             "type": "string"
           }
         },
         "required": [
           "universe",
-          "exists",
-          "size_bytes"
+          "exists"
         ],
         "title": "MarketDataCacheStatus",
         "type": "object"
       },
       "MarketDataClearResponse": {
         "properties": {
+          "affected_universes": {
+            "items": {
+              "enum": [
+                "US500",
+                "US2000",
+                "US100",
+                "VN100",
+                "VN30"
+              ],
+              "type": "string"
+            },
+            "title": "Affected Universes",
+            "type": "array"
+          },
           "cleared": {
             "title": "Cleared",
             "type": "boolean"
           },
-          "universe": {
-            "title": "Universe",
+          "deleted_rows": {
+            "title": "Deleted Rows",
+            "type": "integer"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "requested_universe": {
+            "enum": [
+              "US500",
+              "US2000",
+              "US100",
+              "VN100",
+              "VN30"
+            ],
+            "title": "Requested Universe",
             "type": "string"
           }
         },
         "required": [
-          "universe",
+          "requested_universe",
+          "market",
+          "affected_universes",
+          "deleted_rows",
           "cleared"
         ],
         "title": "MarketDataClearResponse",
@@ -2423,6 +2456,13 @@
             "type": "string"
           },
           "market": {
+            "enum": [
+              "US500",
+              "US2000",
+              "US100",
+              "VN100",
+              "VN30"
+            ],
             "title": "Market",
             "type": "string"
           },
@@ -2481,12 +2521,9 @@
       },
       "MarketDataStatusResponse": {
         "properties": {
-          "cache_directory": {
-            "title": "Cache Directory",
-            "type": "string"
-          },
-          "fundamentals_cache_directory": {
-            "title": "Fundamentals Cache Directory",
+          "fundamentals_storage": {
+            "const": "PostgreSQL",
+            "title": "Fundamentals Storage",
             "type": "string"
           },
           "markets": {
@@ -2495,11 +2532,16 @@
             },
             "title": "Markets",
             "type": "array"
+          },
+          "price_storage": {
+            "const": "PostgreSQL",
+            "title": "Price Storage",
+            "type": "string"
           }
         },
         "required": [
-          "cache_directory",
-          "fundamentals_cache_directory",
+          "price_storage",
+          "fundamentals_storage",
           "markets"
         ],
         "title": "MarketDataStatusResponse",
@@ -4695,202 +4737,6 @@
         "title": "SweepResultItem",
         "type": "object"
       },
-      "SymbolListItem": {
-        "properties": {
-          "exchange": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exchange"
-          },
-          "industry": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Industry"
-          },
-          "metadata": {
-            "additionalProperties": true,
-            "title": "Metadata",
-            "type": "object"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sector": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sector"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "yfinance_symbol": {
-            "title": "Yfinance Symbol",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "yfinance_symbol",
-          "name"
-        ],
-        "title": "SymbolListItem",
-        "type": "object"
-      },
-      "SymbolListResponse": {
-        "properties": {
-          "as_of": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "As Of"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fetched At"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sources": {
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Sources",
-            "type": "array"
-          },
-          "symbol_count": {
-            "title": "Symbol Count",
-            "type": "integer"
-          },
-          "symbols": {
-            "items": {
-              "$ref": "#/components/schemas/SymbolListItem"
-            },
-            "title": "Symbols",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "symbol_count",
-          "sources",
-          "symbols"
-        ],
-        "title": "SymbolListResponse",
-        "type": "object"
-      },
-      "SymbolListSummary": {
-        "properties": {
-          "as_of": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "As Of"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fetched At"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "symbol_count": {
-            "title": "Symbol Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "symbol_count"
-        ],
-        "title": "SymbolListSummary",
-        "type": "object"
-      },
-      "SymbolListsResponse": {
-        "properties": {
-          "lists": {
-            "items": {
-              "$ref": "#/components/schemas/SymbolListSummary"
-            },
-            "title": "Lists",
-            "type": "array"
-          }
-        },
-        "required": [
-          "lists"
-        ],
-        "title": "SymbolListsResponse",
-        "type": "object"
-      },
       "SymbolPriceHistoryResponse": {
         "properties": {
           "fetched_at": {
@@ -6888,69 +6734,6 @@
         "summary": "Run Sweep",
         "tags": [
           "sweep"
-        ]
-      }
-    },
-    "/symbol-lists": {
-      "get": {
-        "operationId": "list_symbol_lists_symbol_lists_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SymbolListsResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Symbol Lists",
-        "tags": [
-          "symbol-lists"
-        ]
-      }
-    },
-    "/symbol-lists/{list_id}": {
-      "get": {
-        "operationId": "get_symbol_list_symbol_lists__list_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "list_id",
-            "required": true,
-            "schema": {
-              "title": "List Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SymbolListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Symbol List",
-        "tags": [
-          "symbol-lists"
         ]
       }
     }

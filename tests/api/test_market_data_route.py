@@ -1,49 +1,96 @@
 """Tests for local market-history cache management endpoints."""
 from __future__ import annotations
 
-import json
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi import HTTPException
 
 from api.market_data_jobs import MarketDataJob
+from api.repositories.price_bar_repository import PriceBarStatusRecord
+from api.repositories.fundamental_repository import FundamentalStatusRecord
 from api.routes import market_data
+from api.services.price_storage_service import PriceMarketClearResult
 
 
-def test_cache_status_reads_manifest_and_file_size(tmp_path, monkeypatch):
-    (tmp_path / "us100.csv").write_text("symbol,date,close\nA,2026-01-01,1\n")
-    (tmp_path / "us100.json").write_text(json.dumps({
-        "fetched_at": "2026-08-01T00:00:00+00:00",
-        "first_date": "2021-01-01",
-        "last_date": "2026-07-31",
-        "symbol_count": 100,
-        "row_count": 125_000,
-        "source": "yfinance",
-        "price_basis": "auto-adjusted OHLC",
-        "errors": [],
-    }))
+class StubPriceStorageService:
+    def __init__(self, status: PriceBarStatusRecord | None = None):
+        self.status = status
+        self.cleared: str | None = None
+
+    def get_status(self, universe: str) -> PriceBarStatusRecord | None:
+        return self.status
+
+    def clear_market_for_universe(self, universe: str) -> PriceMarketClearResult:
+        self.cleared = universe
+        return PriceMarketClearResult(
+            market="VN",
+            affected_universes=("VN100", "VN30"),
+            deleted_rows=42,
+        )
+
+
+class StubFundamentalService:
+    def __init__(self, status: FundamentalStatusRecord | None = None):
+        self.status = status
+
+    def get_universe_status(self, universe: str) -> FundamentalStatusRecord | None:
+        return self.status
+
+
+def test_cache_status_reads_postgresql_summary(monkeypatch):
+    service = StubPriceStorageService(PriceBarStatusRecord(
+        universe="US100",
+        market="US",
+        fetched_at=datetime(2026, 8, 1, tzinfo=UTC),
+        first_date=date(2021, 1, 1),
+        last_date=date(2026, 7, 31),
+        symbol_count=100,
+        row_count=125_000,
+        sources=("yfinance",),
+        price_basis="adjusted",
+    ))
     monkeypatch.setattr(market_data, "get_latest_job", lambda universe, dataset="prices": None)
+    fundamental_service = StubFundamentalService(FundamentalStatusRecord(
+        universe="US100",
+        market="US",
+        fetched_at=datetime(2026, 8, 2, tzinfo=UTC),
+        first_effective_date=date(2010, 1, 1),
+        last_effective_date=date(2026, 7, 31),
+        symbol_count=99,
+        report_count=7_619,
+        fact_count=12_022,
+        valuation_count=0,
+        sources=("yfinance",),
+    ))
 
-    result = market_data._cache_status("US100", tmp_path, tmp_path / "fundamentals")
+    result = market_data._cache_status("US100", service, fundamental_service)
 
     assert result.exists is True
     assert result.last_date == "2026-07-31"
     assert result.symbol_count == 100
-    assert result.size_bytes == (tmp_path / "us100.csv").stat().st_size
+    assert result.row_count == 125_000
+    assert result.source == "yfinance"
+    assert result.price_basis == "auto-adjusted OHLC"
+    assert result.fundamentals_exists is True
+    assert result.fundamentals_symbol_count == 99
+    assert result.fundamentals_snapshot_count == 7_619
+    assert result.fundamentals_fetched_at == "2026-08-02T00:00:00+00:00"
 
 
 def test_market_data_status_includes_us500(monkeypatch):
     monkeypatch.setattr(
         market_data,
         "_cache_status",
-        lambda universe: market_data.MarketDataCacheStatus(
+        lambda universe, price_service, fundamental_service: market_data.MarketDataCacheStatus(
             universe=universe,
             exists=False,
-            size_bytes=0,
         ),
     )
 
-    result = market_data.market_data_status()
+    result = market_data.market_data_status(
+        StubPriceStorageService(), StubFundamentalService()
+    )
 
     assert [market.universe for market in result.markets] == [
         "US500",
@@ -52,6 +99,7 @@ def test_market_data_status_includes_us500(monkeypatch):
         "VN100",
         "VN30",
     ]
+    assert result.fundamentals_storage == "PostgreSQL"
 
 
 def test_refresh_market_data_returns_background_job(monkeypatch):
@@ -79,21 +127,17 @@ def test_refresh_market_data_rejects_duplicate_job(monkeypatch):
     assert exc_info.value.status_code == 409
 
 
-def test_clear_market_data_removes_only_selected_cache(tmp_path, monkeypatch):
-    for filename in (
-        "vn100.csv",
-        "vn100.json",
-        "vn100.refresh.csv",
-        "vn100.refresh.json",
-        "us100.csv",
-    ):
-        (tmp_path / filename).write_text("test")
-    monkeypatch.setattr(market_data, "DEFAULT_CACHE_DIR", tmp_path)
+def test_clear_market_data_clears_shared_market_rows(monkeypatch):
+    service = StubPriceStorageService()
     monkeypatch.setattr(market_data, "get_active_job", lambda universe: None)
-    monkeypatch.setattr(market_data, "clear_job_history", lambda universe: None)
+    cleared_jobs: list[str] = []
+    monkeypatch.setattr(market_data, "clear_job_history", cleared_jobs.append)
 
-    result = market_data.clear_market_data("vn100")
+    result = market_data.clear_market_data("vn100", service)
 
     assert result.cleared is True
-    assert not list(tmp_path.glob("vn100*"))
-    assert (tmp_path / "us100.csv").exists()
+    assert result.market == "VN"
+    assert result.deleted_rows == 42
+    assert result.affected_universes == ["VN100", "VN30"]
+    assert service.cleared == "VN100"
+    assert cleared_jobs == ["VN100", "VN30"]
