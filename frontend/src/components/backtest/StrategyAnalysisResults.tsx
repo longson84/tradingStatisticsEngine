@@ -82,7 +82,7 @@ export function StrategyAnalysisResults({ data, sellLag }: Props) {
       <CurrentPositionCard position={data.current_position} />
       <PerformanceSummaryCard data={data.strategy} />
 
-      <SellLagBelowMA data={data.undercut_distribution} sellLag={sellLag} />
+      <SellLagBelowMA data={data.undercut_distribution ?? null} sellLag={sellLag} />
 
       <BahComparison strategy={data.strategy} bah={data.bah} />
       <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} label="Strategy" />

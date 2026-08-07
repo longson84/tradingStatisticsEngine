@@ -144,7 +144,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--market",
-        choices=("all", "us2000", "us500", "us100", "vn100", "vn30"),
+        choices=(
+            "all", "us2000", "us500", "us100",
+            "vnall", "vn100", "vn30", "vnmid", "vnsml",
+        ),
         default="all",
     )
     parser.add_argument("--us-delay", type=float, default=0.25)
@@ -156,8 +159,11 @@ def main() -> None:
         ("US2000", args.us_delay),
         ("US500", args.us_delay),
         ("US100", args.us_delay),
+        ("VNALL", args.vn_delay),
         ("VN100", args.vn_delay),
         ("VN30", args.vn_delay),
+        ("VNMID", args.vn_delay),
+        ("VNSML", args.vn_delay),
     )
     if args.market == "all":
         full_run_started_at = datetime.now(timezone.utc)

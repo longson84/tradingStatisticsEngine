@@ -15,6 +15,19 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(errorMessage(err, res.status))
+  }
+  return res.json()
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
   if (!res.ok) {
@@ -53,111 +66,22 @@ function errorMessage(err: unknown, status: number): string {
   return `HTTP ${status}`
 }
 
-export type FactorType = "distance_from_peak" | "distance_from_ma" | "moving_average" | "bollinger" | "donchian" | "ahr999"
-export type MaType = "sma" | "ema" | "wma"
+export type FactorType = components["schemas"]["RarityRequest"]["factor_type"]
+export type MaType = components["schemas"]["RarityRequest"]["ma_type"]
 export type DataSource = "yfinance" | "vnstock" | "csv"
-export type RarityRecoveryMode = "price" | "factor"
+export type RarityRecoveryMode = components["schemas"]["RarityRequest"]["recovery_mode"]
 
 // ── Rarity Analysis ──────────────────────────────────────────────────────────
 
-export interface ZoneStat {
-  zone_pct: number
-  threshold_value: number
-  count: number
-  qr_count: number
-  qr_pct: number
-  count_5y: number
-  qr_5y: number
-  count_10y: number
-  qr_10y: number
-  avg_days: number
-  mmae_pct: number
-  mae_by_percentile: Record<string, number>
-  is_current_zone: boolean
-}
+export type ZoneStat = components["schemas"]["ZoneStatsSchema"]
+export type ZoneEntry = components["schemas"]["ZoneEntrySchema"]
+export type TimeSeriesPoint = components["schemas"]["TimeSeriesPoint"]
+export type RarityAnalysisResponse = components["schemas"]["RarityAnalysisResponse"]
 
-export interface ZoneEntry {
-  zone_pct: number
-  start_date: string
-  entry_price: number
-  entry_factor: number
-  low_price: number
-  low_date: string
-  low_factor: number
-  mae_pct: number
-  days_to_low: number
-  recovery_date: string | null
-  days_to_recovery: number | null
-  bars_elapsed: number | null
-  forward_returns: Record<string, number | null>
-  is_active: boolean
-  is_quick_recovery: boolean
-  level: number
-  children_count: number
-  parent_zone_pct: number | null
-  parent_start_date: string | null
-}
-
-export interface TimeSeriesPoint {
-  date: string
-  price: number
-  factor: number
-}
-
-export interface RarityAnalysisResponse {
-  factor_name: string
-  symbol: string
-  stats_date: string
-  first_date: string
-  last_date: string
-  total_bars: number
-  current_price: number
-  current_value: number
-  current_percentile: number
-  current_zone: number | null
-  zone_entry_date: string | null
-  zone_entry_price: number | null
-  sessions_in_zone: number
-  max_potential_drop_pct: number
-  factor_context: Record<string, unknown>
-  zone_stats: ZoneStat[]
-  entries: ZoneEntry[]
-  time_series: TimeSeriesPoint[]
-}
-
-export type PredefinedRarityFactorKey =
-  | "distance_ma50"
-  | "distance_ma100"
-  | "distance_ma150"
-  | "distance_ma200"
-  | "distance_high_100"
-  | "distance_high_150"
-  | "distance_high_200"
-
-export interface PredefinedRarityRow {
-  symbol: string
-  first_date: string
-  last_date: string
-  observations: number
-  reference_price: number
-  p50_price: number
-  current_price: number
-  current_value_pct: number
-  current_percentile: number
-  percentiles: Record<string, number>
-}
-
-export interface PredefinedRarityTable {
-  factor_key: PredefinedRarityFactorKey
-  factor_name: string
-  rows: PredefinedRarityRow[]
-}
-
-export interface PredefinedRarityResponse {
-  percentile_columns: string[]
-  tables: PredefinedRarityTable[]
-  errors: string[]
-}
+export type PredefinedRarityFactorKey = components["schemas"]["PredefinedRarityTable"]["factor_key"]
+export type PredefinedRarityRow = components["schemas"]["PredefinedRarityRow"]
+export type PredefinedRarityTable = components["schemas"]["PredefinedRarityTable"]
+export type PredefinedRarityResponse = components["schemas"]["PredefinedRarityResponse"]
 
 export type CompanyResponse = components["schemas"]["CompanyResponse"]
 export type CompanyListResponse = components["schemas"]["CompanyListResponse"]
@@ -166,31 +90,25 @@ export type CompanyUniverseId = CompanyListResponse["id"]
 export type CompanyListQuery = NonNullable<
   operations["listCompanies"]["parameters"]["query"]
 >
-
-export interface MarketHealthWeights {
-  within_10: number
-  within_20: number
-  within_30: number
-  not_below_40: number
-}
+export type WatchlistSummary = components["schemas"]["WatchlistSummaryResponse"]
+export type Watchlist = components["schemas"]["WatchlistResponse"]
+export type WatchlistListResponse = components["schemas"]["WatchlistListResponse"]
+export type WatchlistCreateRequest = components["schemas"]["WatchlistCreateRequest"]
+export type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateRequest"]
+export type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
+export type WatchlistRefreshJob = components["schemas"]["WatchlistRefreshJobResponse"]
+export type WatchlistRefreshJobsResponse = components["schemas"]["WatchlistRefreshJobsResponse"]
 
 export interface MarketHealthPoint {
   date: string
-  health_score: number
   median_distance: number
-  p10_distance: number
-  p20_distance: number
-  p80_distance: number
-  p90_distance: number
-  within_10: number
-  within_20: number
-  within_30: number
-  stress_40: number
   coverage_pct: number
   eligible_count: number
-  change_5: number | null
-  change_20: number | null
-  ema_gap: number
+}
+
+export interface MarketHealthSeriesPoint {
+  date: string
+  median_distance: number
 }
 
 export interface MarketHealthCache {
@@ -229,19 +147,17 @@ export interface MarketHealthDistributionResponse {
 }
 
 export interface MarketHealthMarket {
-  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML"
   universe_size: number
-  regime: string
   cache: MarketHealthCache
   current: MarketHealthPoint
-  series: MarketHealthPoint[]
+  series: MarketHealthSeriesPoint[]
   distribution: MarketHealthDistributionBucket[]
 }
 
 export interface MarketHealthRunResponse {
   window: number
   minimum_coverage: number
-  weights: MarketHealthWeights
   markets: MarketHealthMarket[]
 }
 
@@ -266,7 +182,7 @@ export interface SymbolPricePoint {
 
 export interface SymbolPriceHistoryResponse {
   symbol: string
-  universe: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  universe: MarketDataCacheStatus["universe"]
   source: string
   price_basis: string
   fetched_at: string
@@ -548,132 +464,29 @@ export interface GrowthAssessmentResponse {
 // ── SMA Strategy Analysis ───────────────────────────────────────────────────
 
 export type StrategyType = "buy_and_hold" | "price_vs_ma"
-
-export interface PerformanceSummary {
-  total_return_pct: number
-  cagr_pct: number
-  sharpe_ratio: number
-  max_drawdown_pct: number
-  current_drawdown_pct: number
-  current_drawdown_days: number
-  calmar_ratio: number
-  win_rate_pct: number
-  avg_win_pct: number
-  avg_loss_pct: number
-  max_consec_losses: number
-  best_trade_pct: number
-  worst_trade_pct: number
-  total_trades: number
-  avg_holding_days: number
-  profit_factor: number
-  time_in_market_pct: number
-}
-
-export interface CurrentPosition {
-  entry_date: string
-  entry_price: number
-  holding_days: number
-  unrealized_return_pct: number | null
-  mae_pct: number | null
-  mfe_pct: number | null
-}
-
-export interface TradeRow {
-  symbol: string
-  direction: string
-  entry_date: string
-  exit_date: string | null
-  entry_price: number
-  exit_price: number | null
-  return_pct: number | null
-  holding_days: number | null
-  mae_pct: number | null
-  mfe_pct: number | null
-  mae_price: number | null
-  mfe_price: number | null
-  retracement_pct: number | null
-  early_returns: Record<string, number | null>
-}
-
-export interface DistributionRow {
-  percentile: number
-  value_pct: number
-  cumulative_count: number
-}
-
-
-export interface MonthlyStatRow {
-  label: string
-  count: number
-  p5: number | null
-  p10: number | null
-  p15: number | null
-  p20: number | null
-  p25: number | null
-  p50: number | null
-  p75: number | null
-  p90: number | null
-  p95: number | null
-}
-
-export interface HealthRow {
-  year: number
-  trades: number
-  p5: number | null
-  p10: number | null
-  p15: number | null
-  p20: number | null
-  p25: number | null
-  p50: number | null
-  p75: number | null
-  p90: number | null
-  p95: number | null
-}
-
-export interface UndercutDistributionRow {
-  undercuts: number
-  trade_count: number
-  pct_of_winners: number
-}
-
-export interface SingleTickerAnalysis {
-  symbol: string
-  strategy_label: string
-  from_date: string
-  to_date: string
-  total_bars: number
-  current_position: CurrentPosition | null
-  strategy: PerformanceSummary
-  bah: PerformanceSummary
-  trades: TradeRow[]
-  return_percentiles: DistributionRow[]
-  mae_percentiles_winners: DistributionRow[]
-  mfe_percentiles_winners: DistributionRow[]
-  mfe_percentiles_losers: DistributionRow[]
-  monthly_returns_strategy: Record<string, Record<string, number | null>>
-  monthly_returns_bah: Record<string, Record<string, number | null>>
-  monthly_stats_by_calendar: MonthlyStatRow[]
-  monthly_stats_by_entry_month: MonthlyStatRow[]
-  health_by_year: HealthRow[]
-  equity_curve_strategy: Record<string, number>
-  equity_curve_bah: Record<string, number>
-  ticker_prices: Record<string, number>
-  undercut_distribution: UndercutDistributionRow[] | null
-}
+export type PerformanceSummary = components["schemas"]["PerformanceSummaryResponse"]
+export type CurrentPosition = components["schemas"]["CurrentPositionResponse"]
+export type TradeRow = components["schemas"]["TradeRowResponse"]
+export type DistributionRow = components["schemas"]["DistributionRowResponse"]
+export type MonthlyStatRow = components["schemas"]["MonthlyStatRowResponse"]
+export type HealthRow = components["schemas"]["HealthRowResponse"]
+export type UndercutDistributionRow = components["schemas"]["UndercutDistributionRowResponse"]
+export type SingleTickerAnalysis = components["schemas"]["SingleTickerAnalysisResponse"]
 
 export function smaStrategyAnalysisApi(params: {
-  symbol: string
+  market: "US" | "VN"
+  ticker: string
   ma_type: MaType
   ma_length: number
   buy_lag: number
   sell_lag: number
   initial_capital: number
-  data_source: DataSource
   start?: string
   end?: string
 }): Promise<SingleTickerAnalysis> {
   return post("/backtest/analyze", {
-    symbol: params.symbol.toUpperCase().trim(),
+    market: params.market,
+    ticker: params.ticker.toUpperCase().trim(),
     strategy: {
       type: "price_vs_ma",
       ma_type: params.ma_type,
@@ -682,14 +495,14 @@ export function smaStrategyAnalysisApi(params: {
       sell_lag: params.sell_lag,
     },
     initial_capital: params.initial_capital,
-    data_source: params.data_source,
     start: params.start ?? null,
     end: params.end ?? null,
   })
 }
 
 export function rarityAnalysisApi(params: {
-  symbol: string
+  market: "US" | "VN"
+  ticker: string
   factor_type: FactorType
   period: number
   ma_type?: MaType
@@ -697,31 +510,26 @@ export function rarityAnalysisApi(params: {
   exit_length?: number
   quick_recovery_days?: number
   recovery_mode?: RarityRecoveryMode
-  data_source?: DataSource
   zones?: number[]
 }): Promise<RarityAnalysisResponse> {
-  const today = new Date().toISOString().slice(0, 10)
   return post("/factors/rarity", {
-    symbol: params.symbol.toUpperCase().trim(),
+    market: params.market,
+    ticker: params.ticker.toUpperCase().trim(),
     factor_type: params.factor_type,
     period: params.period,
     ma_type: params.ma_type ?? "sma",
     std_dev: params.std_dev ?? 2.0,
     quick_recovery_days: params.quick_recovery_days ?? 5,
     recovery_mode: params.recovery_mode ?? "price",
-    data_source: params.data_source ?? "yfinance",
     zones: params.zones,
-    date_range: { start: "2000-01-01", end: today },
   })
 }
 
 export function predefinedRarityApi(params: {
-  symbols: string[]
-  data_source?: DataSource
+  watchlist_id: number
 }): Promise<PredefinedRarityResponse> {
   return post("/factors/predefined-rarity", {
-    symbols: params.symbols.map(s => s.toUpperCase().trim()).filter(Boolean),
-    data_source: params.data_source ?? "yfinance",
+    watchlist_id: params.watchlist_id,
   })
 }
 
@@ -740,11 +548,43 @@ export function companiesApi(
   return get(`/companies${suffix}`)
 }
 
+export function watchlistsApi(market?: "US" | "VN"): Promise<WatchlistListResponse> {
+  const suffix = market ? `?market=${market}` : ""
+  return get(`/watchlists${suffix}`)
+}
+
+export function watchlistApi(id: number): Promise<Watchlist> {
+  return get(`/watchlists/${id}`)
+}
+
+export function createWatchlistApi(request: WatchlistCreateRequest): Promise<Watchlist> {
+  return post("/watchlists", request)
+}
+
+export function updateWatchlistApi(
+  id: number,
+  request: WatchlistUpdateRequest,
+): Promise<Watchlist> {
+  return put(`/watchlists/${id}`, request)
+}
+
+export function deleteWatchlistApi(id: number): Promise<WatchlistDeleteResponse> {
+  return del(`/watchlists/${id}`)
+}
+
+export function refreshWatchlistPricesApi(id: number): Promise<WatchlistRefreshJob> {
+  return post(`/watchlists/${id}/refresh`, {})
+}
+
+export function watchlistRefreshJobsApi(): Promise<WatchlistRefreshJobsResponse> {
+  return get("/watchlists/refresh-jobs")
+}
+
 export function marketHealthRunApi(
-  weights: MarketHealthWeights
+  universes: MarketHealthMarket["universe"][],
 ): Promise<MarketHealthRunResponse> {
   return post("/market-health/run", {
-    weights,
+    universes,
     window: 200,
     minimum_coverage: 0.8,
   })
@@ -781,7 +621,7 @@ export function symbolPriceHistoryApi(
 }
 
 export function marketDataRefreshApi(
-  market: "US500" | "US2000" | "US100" | "VN100" | "VN30",
+  market: MarketDataCacheStatus["universe"],
   mode: "incremental" | "full",
   dataset: "prices" | "fundamentals" = "prices"
 ): Promise<MarketDataJob> {
@@ -789,7 +629,7 @@ export function marketDataRefreshApi(
 }
 
 export function marketDataClearApi(
-  market: "US500" | "US2000" | "US100" | "VN100" | "VN30"
+  market: MarketDataCacheStatus["universe"]
 ): Promise<MarketDataClearResponse> {
   return del(`/market-data/${market}`)
 }

@@ -3,16 +3,6 @@
     "schemas": {
       "AnalyzeRequest": {
         "properties": {
-          "data_source": {
-            "default": "yfinance",
-            "enum": [
-              "yfinance",
-              "vnstock",
-              "csv"
-            ],
-            "title": "Data Source",
-            "type": "string"
-          },
           "end": {
             "anyOf": [
               {
@@ -29,6 +19,14 @@
             "default": 10000.0,
             "title": "Initial Capital",
             "type": "number"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
           },
           "start": {
             "anyOf": [
@@ -53,13 +51,14 @@
             ],
             "title": "Strategy"
           },
-          "symbol": {
-            "title": "Symbol",
+          "ticker": {
+            "title": "Ticker",
             "type": "string"
           }
         },
         "required": [
-          "symbol",
+          "market",
+          "ticker",
           "strategy"
         ],
         "title": "AnalyzeRequest",
@@ -311,8 +310,11 @@
               "US500",
               "US30",
               "VN_ALL",
+              "VNALL",
+              "VN100",
               "VN30",
-              "VN100"
+              "VNMID",
+              "VNSML"
             ],
             "title": "Id",
             "type": "string"
@@ -464,8 +466,11 @@
               "US500",
               "US30",
               "VN_ALL",
+              "VNALL",
+              "VN100",
               "VN30",
-              "VN100"
+              "VNMID",
+              "VNSML"
             ],
             "title": "Id",
             "type": "string"
@@ -2204,6 +2209,27 @@
       },
       "MarketDataCacheStatus": {
         "properties": {
+          "checked_no_new_bar_count": {
+            "default": 0,
+            "title": "Checked No New Bar Count",
+            "type": "integer"
+          },
+          "coverage_through": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Through"
+          },
+          "current_symbol_count": {
+            "default": 0,
+            "title": "Current Symbol Count",
+            "type": "integer"
+          },
           "errors": {
             "items": {
               "additionalProperties": {
@@ -2217,6 +2243,22 @@
           "exists": {
             "title": "Exists",
             "type": "boolean"
+          },
+          "expected_session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Session"
+          },
+          "failed_refresh_symbol_count": {
+            "default": 0,
+            "title": "Failed Refresh Symbol Count",
+            "type": "integer"
           },
           "fetched_at": {
             "anyOf": [
@@ -2255,6 +2297,28 @@
               }
             ],
             "title": "Fundamentals Fetched At"
+          },
+          "fundamentals_oldest_fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundamentals Oldest Fetched At"
+          },
+          "fundamentals_recent_activity_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundamentals Recent Activity At"
           },
           "fundamentals_snapshot_count": {
             "default": 0,
@@ -2297,6 +2361,11 @@
               }
             ]
           },
+          "missing_symbol_count": {
+            "default": 0,
+            "title": "Missing Symbol Count",
+            "type": "integer"
+          },
           "price_basis": {
             "anyOf": [
               {
@@ -2307,6 +2376,17 @@
               }
             ],
             "title": "Price Basis"
+          },
+          "recent_activity_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Activity At"
           },
           "row_count": {
             "anyOf": [
@@ -2330,6 +2410,11 @@
             ],
             "title": "Source"
           },
+          "stale_symbol_count": {
+            "default": 0,
+            "title": "Stale Symbol Count",
+            "type": "integer"
+          },
           "symbol_count": {
             "anyOf": [
               {
@@ -2346,11 +2431,19 @@
               "US500",
               "US2000",
               "US100",
+              "VNALL",
               "VN100",
-              "VN30"
+              "VN30",
+              "VNMID",
+              "VNSML"
             ],
             "title": "Universe",
             "type": "string"
+          },
+          "universe_symbol_count": {
+            "default": 0,
+            "title": "Universe Symbol Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -2368,8 +2461,11 @@
                 "US500",
                 "US2000",
                 "US100",
+                "VNALL",
                 "VN100",
-                "VN30"
+                "VN30",
+                "VNMID",
+                "VNSML"
               ],
               "type": "string"
             },
@@ -2397,8 +2493,11 @@
               "US500",
               "US2000",
               "US100",
+              "VNALL",
               "VN100",
-              "VN30"
+              "VN30",
+              "VNMID",
+              "VNSML"
             ],
             "title": "Requested Universe",
             "type": "string"
@@ -2460,8 +2559,11 @@
               "US500",
               "US2000",
               "US100",
+              "VNALL",
               "VN100",
-              "VN30"
+              "VN30",
+              "VNMID",
+              "VNSML"
             ],
             "title": "Market",
             "type": "string"
@@ -2657,28 +2759,6 @@
       },
       "MarketHealthPointResponse": {
         "properties": {
-          "change_20": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Change 20"
-          },
-          "change_5": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Change 5"
-          },
           "coverage_pct": {
             "title": "Coverage Pct",
             "type": "number"
@@ -2692,68 +2772,16 @@
             "title": "Eligible Count",
             "type": "integer"
           },
-          "ema_gap": {
-            "title": "Ema Gap",
-            "type": "number"
-          },
-          "health_score": {
-            "title": "Health Score",
-            "type": "number"
-          },
           "median_distance": {
             "title": "Median Distance",
-            "type": "number"
-          },
-          "p10_distance": {
-            "title": "P10 Distance",
-            "type": "number"
-          },
-          "p20_distance": {
-            "title": "P20 Distance",
-            "type": "number"
-          },
-          "p80_distance": {
-            "title": "P80 Distance",
-            "type": "number"
-          },
-          "p90_distance": {
-            "title": "P90 Distance",
-            "type": "number"
-          },
-          "stress_40": {
-            "title": "Stress 40",
-            "type": "number"
-          },
-          "within_10": {
-            "title": "Within 10",
-            "type": "number"
-          },
-          "within_20": {
-            "title": "Within 20",
-            "type": "number"
-          },
-          "within_30": {
-            "title": "Within 30",
             "type": "number"
           }
         },
         "required": [
           "date",
-          "health_score",
           "median_distance",
-          "p10_distance",
-          "p20_distance",
-          "p80_distance",
-          "p90_distance",
-          "within_10",
-          "within_20",
-          "within_30",
-          "stress_40",
           "coverage_pct",
-          "eligible_count",
-          "change_5",
-          "change_20",
-          "ema_gap"
+          "eligible_count"
         ],
         "title": "MarketHealthPointResponse",
         "type": "object"
@@ -2767,8 +2795,24 @@
             "title": "Minimum Coverage",
             "type": "number"
           },
-          "weights": {
-            "$ref": "#/components/schemas/MarketHealthWeightsRequest"
+          "universes": {
+            "items": {
+              "enum": [
+                "US500",
+                "US2000",
+                "US100",
+                "VNALL",
+                "VN100",
+                "VN30",
+                "VNMID",
+                "VNSML"
+              ],
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Universes",
+            "type": "array"
           },
           "window": {
             "default": 200,
@@ -2794,9 +2838,6 @@
             "title": "Minimum Coverage",
             "type": "number"
           },
-          "weights": {
-            "$ref": "#/components/schemas/MarketHealthWeightsRequest"
-          },
           "window": {
             "title": "Window",
             "type": "integer"
@@ -2805,10 +2846,28 @@
         "required": [
           "window",
           "minimum_coverage",
-          "weights",
           "markets"
         ],
         "title": "MarketHealthRunResponse",
+        "type": "object"
+      },
+      "MarketHealthSeriesPointResponse": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "median_distance": {
+            "title": "Median Distance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "median_distance"
+        ],
+        "title": "MarketHealthSeriesPointResponse",
         "type": "object"
       },
       "MarketHealthStockDistanceResponse": {
@@ -2860,18 +2919,24 @@
             "title": "Distribution",
             "type": "array"
           },
-          "regime": {
-            "title": "Regime",
-            "type": "string"
-          },
           "series": {
             "items": {
-              "$ref": "#/components/schemas/MarketHealthPointResponse"
+              "$ref": "#/components/schemas/MarketHealthSeriesPointResponse"
             },
             "title": "Series",
             "type": "array"
           },
           "universe": {
+            "enum": [
+              "US500",
+              "US2000",
+              "US100",
+              "VNALL",
+              "VN100",
+              "VN30",
+              "VNMID",
+              "VNSML"
+            ],
             "title": "Universe",
             "type": "string"
           },
@@ -2883,43 +2948,12 @@
         "required": [
           "universe",
           "universe_size",
-          "regime",
           "cache",
           "current",
           "series",
           "distribution"
         ],
         "title": "MarketHealthUniverseResponse",
-        "type": "object"
-      },
-      "MarketHealthWeightsRequest": {
-        "properties": {
-          "not_below_40": {
-            "default": 0.15,
-            "minimum": 0.0,
-            "title": "Not Below 40",
-            "type": "number"
-          },
-          "within_10": {
-            "default": 0.35,
-            "minimum": 0.0,
-            "title": "Within 10",
-            "type": "number"
-          },
-          "within_20": {
-            "default": 0.3,
-            "minimum": 0.0,
-            "title": "Within 20",
-            "type": "number"
-          },
-          "within_30": {
-            "default": 0.2,
-            "minimum": 0.0,
-            "title": "Within 30",
-            "type": "number"
-          }
-        },
-        "title": "MarketHealthWeightsRequest",
         "type": "object"
       },
       "MarketHistoryCacheResponse": {
@@ -3692,37 +3726,49 @@
       },
       "PredefinedRarityRequest": {
         "properties": {
-          "data_source": {
-            "default": "yfinance",
-            "enum": [
-              "yfinance",
-              "vnstock",
-              "csv"
-            ],
-            "title": "Data Source",
-            "type": "string"
-          },
-          "symbols": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Symbols",
-            "type": "array"
+          "watchlist_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Watchlist Id",
+            "type": "integer"
           }
         },
         "required": [
-          "symbols"
+          "watchlist_id"
         ],
         "title": "PredefinedRarityRequest",
         "type": "object"
       },
       "PredefinedRarityResponse": {
         "properties": {
+          "available_symbols": {
+            "title": "Available Symbols",
+            "type": "integer"
+          },
           "errors": {
             "items": {
               "type": "string"
             },
             "title": "Errors",
+            "type": "array"
+          },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "missing_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Symbols",
             "type": "array"
           },
           "percentile_columns": {
@@ -3732,15 +3778,47 @@
             "title": "Percentile Columns",
             "type": "array"
           },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "requested_symbols": {
+            "title": "Requested Symbols",
+            "type": "integer"
+          },
+          "stale_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Stale Symbols",
+            "type": "array"
+          },
           "tables": {
             "items": {
               "$ref": "#/components/schemas/PredefinedRarityTable"
             },
             "title": "Tables",
             "type": "array"
+          },
+          "watchlist_id": {
+            "title": "Watchlist Id",
+            "type": "integer"
+          },
+          "watchlist_name": {
+            "title": "Watchlist Name",
+            "type": "string"
           }
         },
         "required": [
+          "watchlist_id",
+          "watchlist_name",
+          "market",
+          "requested_symbols",
+          "available_symbols",
+          "stale_symbols",
+          "missing_symbols",
+          "expected_last_session",
+          "price_basis",
           "percentile_columns",
           "tables"
         ],
@@ -4115,12 +4193,22 @@
             ],
             "title": "Current Zone"
           },
+          "data_last_session": {
+            "format": "date",
+            "title": "Data Last Session",
+            "type": "string"
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/ZoneEntrySchema"
             },
             "title": "Entries",
             "type": "array"
+          },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
           },
           "factor_context": {
             "additionalProperties": true,
@@ -4136,14 +4224,49 @@
             "title": "First Date",
             "type": "string"
           },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
           "last_date": {
             "format": "date",
             "title": "Last Date",
             "type": "string"
           },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
           "max_potential_drop_pct": {
             "title": "Max Potential Drop Pct",
             "type": "number"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "price_source": {
+            "title": "Price Source",
+            "type": "string"
+          },
+          "refresh_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Warning"
+          },
+          "refreshed": {
+            "title": "Refreshed",
+            "type": "boolean"
           },
           "sessions_in_zone": {
             "title": "Sessions In Zone",
@@ -4218,34 +4341,27 @@
           "factor_context",
           "zone_stats",
           "entries",
-          "time_series"
+          "time_series",
+          "market",
+          "expected_last_session",
+          "data_last_session",
+          "refreshed",
+          "is_stale",
+          "price_source",
+          "price_basis"
         ],
         "title": "RarityAnalysisResponse",
         "type": "object"
       },
       "RarityRequest": {
         "properties": {
-          "data_source": {
-            "default": "yfinance",
-            "enum": [
-              "yfinance",
-              "vnstock",
-              "csv"
-            ],
-            "title": "Data Source",
-            "type": "string"
-          },
-          "date_range": {
-            "$ref": "#/components/schemas/DateRange"
-          },
           "factor_type": {
             "enum": [
               "moving_average",
               "distance_from_ma",
               "bollinger",
               "donchian",
-              "distance_from_peak",
-              "ahr999"
+              "distance_from_peak"
             ],
             "title": "Factor Type",
             "type": "string"
@@ -4258,6 +4374,14 @@
               "wma"
             ],
             "title": "Ma Type",
+            "type": "string"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
             "type": "string"
           },
           "period": {
@@ -4284,8 +4408,8 @@
             "title": "Std Dev",
             "type": "number"
           },
-          "symbol": {
-            "title": "Symbol",
+          "ticker": {
+            "title": "Ticker",
             "type": "string"
           },
           "zones": {
@@ -4306,8 +4430,8 @@
           }
         },
         "required": [
-          "symbol",
-          "date_range",
+          "market",
+          "ticker",
           "factor_type"
         ],
         "title": "RarityRequest",
@@ -4424,6 +4548,11 @@
               }
             ]
           },
+          "data_last_session": {
+            "format": "date",
+            "title": "Data Last Session",
+            "type": "string"
+          },
           "equity_curve_bah": {
             "additionalProperties": {
               "type": "number"
@@ -4438,6 +4567,11 @@
             "title": "Equity Curve Strategy",
             "type": "object"
           },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
+          },
           "from_date": {
             "title": "From Date",
             "type": "string"
@@ -4449,12 +4583,24 @@
             "title": "Health By Year",
             "type": "array"
           },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
           "mae_percentiles_winners": {
             "items": {
               "$ref": "#/components/schemas/DistributionRowResponse"
             },
             "title": "Mae Percentiles Winners",
             "type": "array"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
           },
           "mfe_percentiles_losers": {
             "items": {
@@ -4517,6 +4663,29 @@
             },
             "title": "Monthly Stats By Entry Month",
             "type": "array"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "price_source": {
+            "title": "Price Source",
+            "type": "string"
+          },
+          "refresh_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Warning"
+          },
+          "refreshed": {
+            "title": "Refreshed",
+            "type": "boolean"
           },
           "return_percentiles": {
             "items": {
@@ -4594,7 +4763,14 @@
           "health_by_year",
           "equity_curve_strategy",
           "equity_curve_bah",
-          "ticker_prices"
+          "ticker_prices",
+          "market",
+          "expected_last_session",
+          "data_last_session",
+          "refreshed",
+          "is_stale",
+          "price_source",
+          "price_basis"
         ],
         "title": "SingleTickerAnalysisResponse",
         "type": "object"
@@ -4958,8 +5134,11 @@
               "US500",
               "US2000",
               "US100",
+              "VNALL",
               "VN100",
-              "VN30"
+              "VN30",
+              "VNMID",
+              "VNSML"
             ],
             "title": "Universe",
             "type": "string"
@@ -5435,6 +5614,388 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WatchlistCreateRequest": {
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Description",
+            "type": "string"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "market"
+        ],
+        "title": "WatchlistCreateRequest",
+        "type": "object"
+      },
+      "WatchlistDeleteResponse": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "deleted"
+        ],
+        "title": "WatchlistDeleteResponse",
+        "type": "object"
+      },
+      "WatchlistListResponse": {
+        "properties": {
+          "watchlists": {
+            "items": {
+              "$ref": "#/components/schemas/WatchlistSummaryResponse"
+            },
+            "title": "Watchlists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "watchlists"
+        ],
+        "title": "WatchlistListResponse",
+        "type": "object"
+      },
+      "WatchlistMemberResponse": {
+        "properties": {
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "company_name",
+          "market",
+          "position"
+        ],
+        "title": "WatchlistMemberResponse",
+        "type": "object"
+      },
+      "WatchlistRefreshJobResponse": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "watchlist_id": {
+            "title": "Watchlist Id",
+            "type": "integer"
+          },
+          "watchlist_name": {
+            "title": "Watchlist Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "watchlist_id",
+          "watchlist_name",
+          "market",
+          "status",
+          "current",
+          "total",
+          "message",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "WatchlistRefreshJobResponse",
+        "type": "object"
+      },
+      "WatchlistRefreshJobsResponse": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "title": "WatchlistRefreshJobsResponse",
+        "type": "object"
+      },
+      "WatchlistResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/WatchlistMemberResponse"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "market",
+          "description",
+          "member_count",
+          "created_at",
+          "updated_at",
+          "members"
+        ],
+        "title": "WatchlistResponse",
+        "type": "object"
+      },
+      "WatchlistSummaryResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "market",
+          "description",
+          "member_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WatchlistSummaryResponse",
+        "type": "object"
+      },
+      "WatchlistUpdateRequest": {
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WatchlistUpdateRequest",
+        "type": "object"
+      },
       "WeightEventSchema": {
         "properties": {
           "date": {
@@ -5796,8 +6357,11 @@
                 "US500",
                 "US30",
                 "VN_ALL",
+                "VNALL",
+                "VN100",
                 "VN30",
-                "VN100"
+                "VNMID",
+                "VNSML"
               ],
               "title": "Universe",
               "type": "string"
@@ -6734,6 +7298,335 @@
         "summary": "Run Sweep",
         "tags": [
           "sweep"
+        ]
+      }
+    },
+    "/watchlists": {
+      "get": {
+        "operationId": "listWatchlists",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "US",
+                    "VN"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Market"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Watchlists",
+        "tags": [
+          "watchlists"
+        ]
+      },
+      "post": {
+        "operationId": "createWatchlist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Watchlist",
+        "tags": [
+          "watchlists"
+        ]
+      }
+    },
+    "/watchlists/refresh-jobs": {
+      "get": {
+        "operationId": "listWatchlistRefreshJobs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistRefreshJobsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Watchlist Refresh Jobs",
+        "tags": [
+          "watchlists"
+        ]
+      }
+    },
+    "/watchlists/refresh-jobs/{job_id}": {
+      "get": {
+        "operationId": "getWatchlistRefreshJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Watchlist Refresh Job",
+        "tags": [
+          "watchlists"
+        ]
+      }
+    },
+    "/watchlists/{watchlist_id}": {
+      "delete": {
+        "operationId": "deleteWatchlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "watchlist_id",
+            "required": true,
+            "schema": {
+              "title": "Watchlist Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistDeleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Watchlist",
+        "tags": [
+          "watchlists"
+        ]
+      },
+      "get": {
+        "operationId": "getWatchlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "watchlist_id",
+            "required": true,
+            "schema": {
+              "title": "Watchlist Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Watchlist",
+        "tags": [
+          "watchlists"
+        ]
+      },
+      "put": {
+        "operationId": "updateWatchlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "watchlist_id",
+            "required": true,
+            "schema": {
+              "title": "Watchlist Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Watchlist",
+        "tags": [
+          "watchlists"
+        ]
+      }
+    },
+    "/watchlists/{watchlist_id}/refresh": {
+      "post": {
+        "operationId": "refreshWatchlistPrices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "watchlist_id",
+            "required": true,
+            "schema": {
+              "title": "Watchlist Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Watchlist Prices",
+        "tags": [
+          "watchlists"
         ]
       }
     }

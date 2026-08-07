@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 
 from trading_engine.factor_analysis.market_health import (
-    classify_market_health,
     compute_market_distance_snapshot,
     compute_market_health,
+    compute_market_health_from_closes,
 )
-from trading_engine.types import MarketHealthWeights, PriceFrame
+from trading_engine.types import PriceFrame
 
 
 def _prices(symbol: str, close: list[float], dates: pd.DatetimeIndex) -> PriceFrame:
@@ -29,7 +29,7 @@ def _prices(symbol: str, close: list[float], dates: pd.DatetimeIndex) -> PriceFr
     )
 
 
-def test_market_health_combines_equal_weight_breadth_components():
+def test_market_health_reports_cross_sectional_median_distance():
     dates = pd.date_range("2024-01-01", periods=205, freq="B")
     prices = {
         "AT_HIGH": _prices("AT_HIGH", [100.0] * 205, dates),
@@ -45,35 +45,78 @@ def test_market_health_combines_equal_weight_breadth_components():
     current = result.series.iloc[-1]
 
     assert current["median_distance"] == pytest.approx(-25.0)
-    assert current["within_10"] == pytest.approx(50.0)
-    assert current["within_20"] == pytest.approx(50.0)
-    assert current["within_30"] == pytest.approx(50.0)
-    assert current["stress_40"] == pytest.approx(50.0)
-    assert current["health_score"] == pytest.approx(50.0)
     assert current["coverage_pct"] == pytest.approx(100.0)
+    assert current["eligible_count"] == 2
+    assert list(result.series.columns) == [
+        "median_distance",
+        "coverage_pct",
+        "eligible_count",
+    ]
 
 
-def test_custom_weights_are_normalized_to_a_zero_to_100_score():
+def test_market_health_carries_forward_a_missing_trading_session():
     dates = pd.date_range("2024-01-01", periods=205, freq="B")
+    incomplete = [100.0] * 205
+    incomplete[-2] = float("nan")
     prices = {
         "AT_HIGH": _prices("AT_HIGH", [100.0] * 205, dates),
-        "DOWN_15": _prices("DOWN_15", [100.0] * 204 + [85.0], dates),
+        "INCOMPLETE": _prices("INCOMPLETE", incomplete, dates),
     }
 
     result = compute_market_health(
         prices,
         universe="TEST",
-        weights=MarketHealthWeights(
-            within_10=2.0,
-            within_20=0.0,
-            within_30=0.0,
-            not_below_40=0.0,
-        ),
         window=200,
         minimum_coverage=1.0,
     )
 
-    assert result.series.iloc[-1]["health_score"] == pytest.approx(50.0)
+    assert result.series.index[-1] == dates[-1]
+    assert dates[-2] in result.series.index
+    assert (result.series["eligible_count"] == 2).all()
+
+
+def test_distance_snapshot_carries_forward_a_missing_session():
+    dates = pd.date_range("2024-01-01", periods=205, freq="B")
+    incomplete_dates = dates.delete(-1)
+    prices = {
+        "ACTIVE": _prices("ACTIVE", [100.0] * 205, dates),
+        "NO_TRADE": _prices(
+            "NO_TRADE",
+            [100.0] * 203 + [80.0],
+            incomplete_dates,
+        ),
+    }
+
+    rows = compute_market_distance_snapshot(
+        prices,
+        as_of=dates[-1].date(),
+        window=200,
+    )
+
+    by_symbol = {row.symbol: row for row in rows}
+    assert by_symbol["NO_TRADE"].current_price == 80.0
+    assert by_symbol["NO_TRADE"].distance == pytest.approx(-20.0)
+
+
+def test_close_matrix_path_matches_price_frame_path():
+    dates = pd.date_range("2024-01-01", periods=205, freq="B")
+    prices = {
+        "A": _prices("A", [100.0] * 205, dates),
+        "B": _prices("B", [100.0] * 204 + [75.0], dates),
+    }
+    closes = pd.concat(
+        {symbol: frame.data["close"] for symbol, frame in prices.items()}, axis=1
+    )
+
+    from_frames = compute_market_health(
+        prices, universe="TEST", window=200, minimum_coverage=1.0
+    )
+    from_matrix = compute_market_health_from_closes(
+        closes, universe="TEST", window=200, minimum_coverage=1.0
+    )
+
+    pd.testing.assert_frame_equal(from_frames.series, from_matrix.series)
+    assert from_frames.distribution == from_matrix.distribution
 
 
 def test_current_distribution_counts_non_overlapping_distance_bands():
@@ -155,14 +198,8 @@ def test_market_health_does_not_look_ahead():
     )
 
     pd.testing.assert_series_equal(
-        before.series["health_score"].iloc[:-1],
-        after.series["health_score"].iloc[:-1],
+        before.series["median_distance"].iloc[:-1],
+        after.series["median_distance"].iloc[:-1],
     )
-    assert before.series["health_score"].iloc[-1] == pytest.approx(100.0)
-    assert after.series["health_score"].iloc[-1] == pytest.approx(0.0)
-
-
-def test_regime_classification_combines_level_and_direction():
-    assert classify_market_health(72.0, 5.0) == "strong_improving"
-    assert classify_market_health(32.0, -4.0) == "weak_deteriorating"
-    assert classify_market_health(51.0, 1.0) == "mixed_stable"
+    assert before.series["median_distance"].iloc[-1] == pytest.approx(0.0)
+    assert after.series["median_distance"].iloc[-1] == pytest.approx(-80.0)

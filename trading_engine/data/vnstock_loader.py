@@ -1,7 +1,7 @@
 """VNStock data loader — fetches OHLCV data from Vietnamese stock market."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -26,6 +26,8 @@ class VNStockLoader:
 
         sources_to_try = [self.source, self._fallback]
 
+        candidates: list[PriceFrame] = []
+        expected_session = end - timedelta(days=1)
         for source in sources_to_try:
             last_error: Exception | None = None
             for attempt in range(self.MAX_RETRIES + 1):
@@ -37,7 +39,10 @@ class VNStockLoader:
                         interval="1D",
                     )
                     if raw is not None and not raw.empty:
-                        return self._normalize(raw, symbol)
+                        candidate = self._normalize(raw, symbol, source)
+                        candidates.append(candidate)
+                        if candidate.data.index.max().date() >= expected_session:
+                            return candidate
                     break  # empty result, try next source
                 except Exception as e:
                     last_error = e
@@ -45,13 +50,15 @@ class VNStockLoader:
                         continue
                     break  # exhausted retries for this source
 
+        if candidates:
+            return max(candidates, key=lambda item: item.data.index.max())
         raise DataLoadError(
             f"No data for {symbol} from vnstock (tried: {sources_to_try}). "
             f"Last error: {last_error}"
         )
 
     @staticmethod
-    def _normalize(raw: pd.DataFrame, symbol: str) -> PriceFrame:
+    def _normalize(raw: pd.DataFrame, symbol: str, source: str) -> PriceFrame:
         """Normalize vnstock output to standard PriceFrame format."""
         raw = raw.copy()
         raw["time"] = pd.to_datetime(raw["time"]).dt.normalize()
@@ -70,4 +77,8 @@ class VNStockLoader:
         keep = [c for c in ["open", "high", "low", "close", "volume"] if c in raw.columns]
         df = raw[keep].dropna(subset=["open", "high", "low", "close"])
 
-        return PriceFrame(symbol=symbol.upper(), data=df, source="vnstock")
+        return PriceFrame(
+            symbol=symbol.upper(),
+            data=df,
+            source=f"vnstock-{source.lower()}",
+        )

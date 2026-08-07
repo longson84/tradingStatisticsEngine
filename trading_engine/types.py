@@ -204,16 +204,6 @@ class RegimeConfig:
 
 
 @dataclass(frozen=True)
-class MarketHealthWeights:
-    """Coefficients for the distance-from-high market health score."""
-
-    within_10: float = 0.35
-    within_20: float = 0.30
-    within_30: float = 0.20
-    not_below_40: float = 0.15
-
-
-@dataclass(frozen=True)
 class MarketHealthDistributionBucket:
     """One current distance-from-high band in a market-health result."""
 
@@ -238,13 +228,12 @@ class MarketHealthStockDistance:
 
 @dataclass
 class MarketHealthResult:
-    """Daily cross-sectional distance-from-high market health series."""
+    """Daily cross-sectional median distance-from-high series."""
 
     universe: str
     universe_size: int
     window: int
     minimum_coverage: float
-    weights: MarketHealthWeights
     series: pd.DataFrame
     distribution: list[MarketHealthDistributionBucket]
 

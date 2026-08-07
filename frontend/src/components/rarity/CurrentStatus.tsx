@@ -29,7 +29,6 @@ const FACTOR_CONTEXT: Record<FactorType, Array<{ key: string; label: string; fmt
     { key: "lower_channel",  label: "Lower channel",  fmt: "price" },
     { key: "channel_width",  label: "Channel width",  fmt: "price" },
   ],
-  ahr999: [],
 }
 
 function fmtCtxValue(value: unknown, fmt: Fmt): string {

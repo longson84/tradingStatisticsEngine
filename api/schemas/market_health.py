@@ -2,40 +2,40 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
-class MarketHealthWeightsRequest(BaseModel):
-    within_10: float = Field(default=0.35, ge=0)
-    within_20: float = Field(default=0.30, ge=0)
-    within_30: float = Field(default=0.20, ge=0)
-    not_below_40: float = Field(default=0.15, ge=0)
+MarketHealthUniverse = Literal[
+    "US500", "US2000", "US100",
+    "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+]
 
 
 class MarketHealthRunRequest(BaseModel):
-    weights: MarketHealthWeightsRequest = Field(default_factory=MarketHealthWeightsRequest)
     window: int = Field(default=200, ge=20, le=500)
     minimum_coverage: float = Field(default=0.8, gt=0, le=1)
+    universes: list[MarketHealthUniverse] = Field(
+        default_factory=lambda: [
+            "US500", "US2000", "US100",
+            "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+        ],
+        min_length=1,
+        max_length=8,
+    )
 
 
 class MarketHealthPointResponse(BaseModel):
     date: date
-    health_score: float
     median_distance: float
-    p10_distance: float
-    p20_distance: float
-    p80_distance: float
-    p90_distance: float
-    within_10: float
-    within_20: float
-    within_30: float
-    stress_40: float
     coverage_pct: float
     eligible_count: int
-    change_5: float | None
-    change_20: float | None
-    ema_gap: float
+
+
+class MarketHealthSeriesPointResponse(BaseModel):
+    date: date
+    median_distance: float
 
 
 class MarketHistoryCacheResponse(BaseModel):
@@ -57,12 +57,11 @@ class MarketHealthDistributionBucketResponse(BaseModel):
 
 
 class MarketHealthUniverseResponse(BaseModel):
-    universe: str
+    universe: MarketHealthUniverse
     universe_size: int
-    regime: str
     cache: MarketHistoryCacheResponse
     current: MarketHealthPointResponse
-    series: list[MarketHealthPointResponse]
+    series: list[MarketHealthSeriesPointResponse]
     distribution: list[MarketHealthDistributionBucketResponse]
 
 
@@ -86,5 +85,4 @@ class MarketHealthDistributionResponse(BaseModel):
 class MarketHealthRunResponse(BaseModel):
     window: int
     minimum_coverage: float
-    weights: MarketHealthWeightsRequest
     markets: list[MarketHealthUniverseResponse]

@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useState } from "react"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { Link } from "react-router"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { Sidebar } from "@/components/Sidebar"
 import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
 import {
   predefinedRarityApi,
-  type DataSource,
+  watchlistsApi,
   type PredefinedRarityFactorKey,
   type PredefinedRarityResponse,
   type PredefinedRarityRow,
@@ -13,69 +14,77 @@ import {
 import { fmtDate, fmtInt, fmtPct, fmtPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-type StockDataSource = Exclude<DataSource, "csv">
+type Market = "US" | "VN"
 
-const DEFAULT_SYMBOLS: Record<StockDataSource, string> = {
-  yfinance: "KO, COST, MCD, DPZ, MSFT, GOOGL, AMZN",
-  vnstock: "FPT, VNM, HPG, VCB, MWG, VIC, SSI",
-}
-
-const STOCK_SOURCES: Array<{ label: string; value: StockDataSource }> = [
-  { label: "Yahoo Finance", value: "yfinance" },
-  { label: "VN Stock", value: "vnstock" },
+const MARKET_OPTIONS: Array<{ label: string; value: Market }> = [
+  { label: "US Companies", value: "US" },
+  { label: "VN Companies", value: "VN" },
 ]
 
-function parseSymbols(value: string) {
-  return value
-    .split(/[\s,]+/)
-    .map(s => s.trim().toUpperCase())
-    .filter(Boolean)
-}
-
 export function PredefinedFactorsRarityPage() {
-  const [dataSource, setDataSource] = useState<StockDataSource>("yfinance")
-  const [symbolsText, setSymbolsText] = useState(DEFAULT_SYMBOLS.yfinance)
-  const [runId, setRunId] = useState(0)
-  const [params, setParams] = useState<Parameters<typeof predefinedRarityApi>[0] | null>(null)
-  const symbols = useMemo(() => parseSymbols(symbolsText), [symbolsText])
-
-  const { data, isFetching, error } = useQuery({
-    queryKey: ["predefined-rarity", params, runId],
-    queryFn: () => predefinedRarityApi(params!),
-    enabled: params != null,
-    retry: false,
+  const [market, setMarket] = useState<Market>("US")
+  const [watchlistId, setWatchlistId] = useState("")
+  const watchlists = useQuery({
+    queryKey: ["watchlists", market],
+    queryFn: () => watchlistsApi(market),
   })
+  const {
+    mutate: runAnalysis,
+    data,
+    isPending: isFetching,
+    error,
+  } = useMutation({
+    mutationFn: predefinedRarityApi,
+  })
+  const selectedWatchlist = watchlists.data?.watchlists.find(
+    row => String(row.id) === watchlistId
+  )
 
   const controls = (
     <div className="space-y-4">
       <div>
-        <Label>Data Source</Label>
+        <Label>Company market</Label>
         <FormSelect
-          value={dataSource}
-          onChange={source => {
-            setDataSource(source)
-            setSymbolsText(DEFAULT_SYMBOLS[source])
+          value={market}
+          onChange={value => {
+            setMarket(value)
+            setWatchlistId("")
           }}
-          options={STOCK_SOURCES}
+          options={MARKET_OPTIONS}
         />
       </div>
 
       <div>
-        <Label>Symbols</Label>
-        <textarea
-          value={symbolsText}
-          onChange={e => setSymbolsText(e.target.value.toUpperCase())}
-          rows={7}
-          className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground uppercase resize-none focus:outline-none focus:border-ring"
-        />
+        <Label>Watchlist</Label>
+        <select
+          value={watchlistId}
+          onChange={event => setWatchlistId(event.target.value)}
+          className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none"
+        >
+          <option value="">Select a watchlist</option>
+          {watchlists.data?.watchlists.map(row => (
+            <option key={row.id} value={row.id}>
+              {row.name} ({row.member_count})
+            </option>
+          ))}
+        </select>
+        {selectedWatchlist && (
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {selectedWatchlist.member_count.toLocaleString()} PostgreSQL companies
+          </p>
+        )}
+        {!watchlists.isPending && watchlists.data?.watchlists.length === 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            No {market} watchlists. <Link to="/company/watchlists" className="text-primary hover:underline">Create one</Link>.
+          </p>
+        )}
       </div>
 
       <button
         onClick={() => {
-          setParams({ symbols, data_source: dataSource })
-          setRunId(id => id + 1)
+          runAnalysis({ watchlist_id: Number(watchlistId) })
         }}
-        disabled={isFetching || symbols.length === 0}
+        disabled={isFetching || !selectedWatchlist || selectedWatchlist.member_count === 0}
         className="w-full py-2.5 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground text-sm font-semibold transition-colors tracking-wide"
       >
         {isFetching ? "Analysing..." : "Analyse"}
@@ -96,10 +105,8 @@ export function PredefinedFactorsRarityPage() {
           </div>
           {data && (
             <div className="text-xs text-muted-foreground text-right">
-              <div>{fmtInt(data.tables[0]?.rows.length ?? 0)} symbols</div>
-              <div>
-                {params?.data_source === "vnstock" ? "VNStock" : "Yahoo Finance"}
-              </div>
+              <div>{data.watchlist_name}</div>
+              <div>{fmtInt(data.available_symbols)} / {fmtInt(data.requested_symbols)} symbols · {data.market}</div>
             </div>
           )}
         </div>
@@ -114,15 +121,15 @@ export function PredefinedFactorsRarityPage() {
 
         {!data && !isFetching && !error && (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground/50">
-            Configure the symbols and run the analysis.
+            Choose a saved watchlist and run the analysis.
           </div>
         )}
 
         {data && !isFetching && (
           <div className="mt-5 space-y-6">
-            {data.errors.length > 0 && (
+            {(data.errors?.length ?? 0) > 0 && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
-                {data.errors.join("; ")}
+                {data.errors?.join("; ")}
               </div>
             )}
 

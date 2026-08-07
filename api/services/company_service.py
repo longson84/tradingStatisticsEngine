@@ -15,7 +15,7 @@ from api.repositories.company_repository import (
 ALL_UNIVERSES = {"US_ALL": "US", "VN_ALL": "VN"}
 UNIVERSE_ORDER = (
     "US_ALL", "US100", "US2000", "US500", "US30",
-    "VN_ALL", "VN30", "VN100",
+    "VN_ALL", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
 )
 
 

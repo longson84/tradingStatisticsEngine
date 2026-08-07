@@ -1,13 +1,13 @@
 {
   "id": "VN30",
   "name": "VN30 Index",
-  "description": "Saved snapshot of VN30 constituents from VNStock KBS, enriched with company names, exchange, and KBS industry classification.",
-  "as_of": "2026-07-26",
-  "fetched_at": "2026-07-26T10:09:50+00:00",
+  "description": "Current VN30 constituents from VNStock KBS, enriched with company names, exchange, and KBS industry classification.",
+  "as_of": "2026-08-05",
+  "fetched_at": "2026-08-05T03:04:28+00:00",
   "sources": [
     {
-      "name": "VNStock 3.5.0 — KBS Listing API",
-      "url": "https://vnstocks.com/docs/du-lieu-tong-hop/co-phieu"
+      "name": "VNStock 4.0.5 — KBS Listing API",
+      "url": "https://vnstocks.com/docs/vnstock/tra-cuu-thong-tin-tham-chieu-reference"
     }
   ],
   "symbols": [
@@ -133,6 +133,17 @@
       "data_source": "vnstock"
     },
     {
+      "symbol": "MCH",
+      "yfinance_symbol": "MCH",
+      "name": "Masan Consumer Corporation",
+      "sector": "Food & Beverage",
+      "industry": "Thực phẩm - Đồ uống",
+      "exchange": "HOSE",
+      "local_name": "CTCP Hàng tiêu dùng Masan",
+      "industry_code": 19,
+      "data_source": "vnstock"
+    },
+    {
       "symbol": "MSN",
       "yfinance_symbol": "MSN",
       "name": "Masan Group Corporation",
@@ -152,17 +163,6 @@
       "exchange": "HOSE",
       "local_name": "CTCP Đầu tư Thế giới Di động",
       "industry_code": 7,
-      "data_source": "vnstock"
-    },
-    {
-      "symbol": "PLX",
-      "yfinance_symbol": "PLX",
-      "name": "VietNam National Petroleum Group",
-      "sector": "Wholesale",
-      "industry": "Bán buôn",
-      "exchange": "HOSE",
-      "local_name": "Tập đoàn Xăng Dầu Việt Nam",
-      "industry_code": 1,
       "data_source": "vnstock"
     },
     {
@@ -232,14 +232,14 @@
       "data_source": "vnstock"
     },
     {
-      "symbol": "TPB",
-      "yfinance_symbol": "TPB",
-      "name": "Tien Phong Commercial Joint Stock Bank",
-      "sector": "Banking",
-      "industry": "Ngân hàng",
+      "symbol": "TCX",
+      "yfinance_symbol": "TCX",
+      "name": "Techcom Securities Joint Stock Company",
+      "sector": "Securities",
+      "industry": "Chứng khoán",
       "exchange": "HOSE",
-      "local_name": "Ngân hàng TMCP Tiên Phong",
-      "industry_code": 11,
+      "local_name": "CTCP Chứng khoán Kỹ Thương",
+      "industry_code": 5,
       "data_source": "vnstock"
     },
     {
@@ -341,6 +341,5 @@
       "industry_code": 3,
       "data_source": "vnstock"
     }
-  ],
-  "symbol_count": 30
+  ]
 }

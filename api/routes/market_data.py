@@ -14,12 +14,12 @@ from api.deps import (
 
 from api.market_data_jobs import (
     clear_job_history,
-    get_active_job,
     get_job,
     get_latest_job,
     start_refresh_job,
 )
-from api.market_data_config import SUPPORTED_UNIVERSES
+from api.market_data_config import SUPPORTED_UNIVERSES, US_UNIVERSES, VN_UNIVERSES
+from api.price_refresh_coordination import get_active_price_refresh
 from api.benchmark_history import load_cached_benchmark
 from api.schemas.market_data import (
     MarketDataCacheStatus,
@@ -51,8 +51,8 @@ from api.services.fundamental_service import (
 
 router = APIRouter(prefix="/market-data", tags=["market-data"])
 _UNIVERSES_BY_MARKET = {
-    "US": ("US500", "US2000", "US100"),
-    "VN": ("VN100", "VN30"),
+    "US": US_UNIVERSES,
+    "VN": VN_UNIVERSES,
 }
 
 
@@ -84,6 +84,15 @@ def _cache_status(
             fundamental_status.fetched_at.isoformat()
             if fundamental_status else None
         ),
+        "fundamentals_recent_activity_at": (
+            fundamental_status.fetched_at.isoformat()
+            if fundamental_status else None
+        ),
+        "fundamentals_oldest_fetched_at": (
+            fundamental_status.oldest_fetched_at.isoformat()
+            if fundamental_status and fundamental_status.oldest_fetched_at
+            else None
+        ),
         "fundamentals_symbol_count": (
             fundamental_status.symbol_count if fundamental_status else 0
         ),
@@ -99,9 +108,24 @@ def _cache_status(
     return MarketDataCacheStatus(
         **base,
         fetched_at=price_status.fetched_at.isoformat(),
+        recent_activity_at=price_status.fetched_at.isoformat(),
         first_date=price_status.first_date.isoformat(),
         last_date=price_status.last_date.isoformat(),
+        expected_session=(
+            price_status.expected_session.isoformat()
+            if price_status.expected_session else None
+        ),
+        coverage_through=(
+            price_status.coverage_through.isoformat()
+            if price_status.coverage_through else None
+        ),
         symbol_count=price_status.symbol_count,
+        universe_symbol_count=price_status.universe_symbol_count,
+        current_symbol_count=price_status.current_symbol_count,
+        stale_symbol_count=price_status.stale_symbol_count,
+        missing_symbol_count=price_status.missing_symbol_count,
+        checked_no_new_bar_count=price_status.checked_no_new_bar_count,
+        failed_refresh_symbol_count=price_status.failed_refresh_symbol_count,
         row_count=price_status.row_count,
         source=_metadata_source(price_status.sources),
         price_basis=_display_price_basis(price_status.price_basis),
@@ -123,7 +147,7 @@ def market_data_status(
         fundamentals_storage="PostgreSQL",
         markets=[
             _cache_status(universe, price_storage_service, fundamental_service)
-            for universe in ("US500", "US2000", "US100", "VN100", "VN30")
+            for universe in (*US_UNIVERSES, *VN_UNIVERSES)
         ],
     )
 
@@ -352,6 +376,8 @@ def symbol_price_history(
 
 
 def _metadata_source(sources: tuple[str, ...]) -> str:
+    if "mixed" in sources:
+        return "mixed"
     return sources[0] if len(sources) == 1 else ", ".join(sources)
 
 
@@ -395,14 +421,14 @@ def clear_market_data(
     normalized = _normalize_market(market)
     market_code = "VN" if normalized.startswith("VN") else "US"
     affected_universes = _UNIVERSES_BY_MARKET[market_code]
-    active = next(
-        (universe for universe in affected_universes if get_active_job(universe)),
-        None,
-    )
+    active = get_active_price_refresh(market_code)
     if active:
         raise HTTPException(
             status_code=409,
-            detail=f"Cannot clear {market_code} prices while {active} is refreshing",
+            detail=(
+                f"Cannot clear {market_code} prices while "
+                f"{active.label} is refreshing"
+            ),
         )
     result = price_storage_service.clear_market_for_universe(normalized)
     for universe in result.affected_universes:

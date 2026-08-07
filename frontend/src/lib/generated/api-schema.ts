@@ -381,18 +381,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watchlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Watchlists */
+        get: operations["listWatchlists"];
+        put?: never;
+        /** Create Watchlist */
+        post: operations["createWatchlist"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watchlists/refresh-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Watchlist Refresh Jobs */
+        get: operations["listWatchlistRefreshJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watchlists/refresh-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Watchlist Refresh Job */
+        get: operations["getWatchlistRefreshJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watchlists/{watchlist_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Watchlist */
+        get: operations["getWatchlist"];
+        /** Update Watchlist */
+        put: operations["updateWatchlist"];
+        post?: never;
+        /** Delete Watchlist */
+        delete: operations["deleteWatchlist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watchlists/{watchlist_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Watchlist Prices */
+        post: operations["refreshWatchlistPrices"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** AnalyzeRequest */
         AnalyzeRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
             /** End */
             end?: string | null;
             /**
@@ -400,12 +482,17 @@ export interface components {
              * @default 10000
              */
             initial_capital: number;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
             /** Start */
             start?: string | null;
             /** Strategy */
             strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
-            /** Symbol */
-            symbol: string;
+            /** Ticker */
+            ticker: string;
         };
         /** AnnualGrowthRowSchema */
         AnnualGrowthRowSchema: {
@@ -484,7 +571,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VN30" | "VN100";
+            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
             /** Limit */
             limit: number;
             /**
@@ -533,7 +620,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VN30" | "VN100";
+            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
             /**
              * Market
              * @enum {string}
@@ -979,12 +1066,31 @@ export interface components {
         };
         /** MarketDataCacheStatus */
         MarketDataCacheStatus: {
+            /**
+             * Checked No New Bar Count
+             * @default 0
+             */
+            checked_no_new_bar_count: number;
+            /** Coverage Through */
+            coverage_through?: string | null;
+            /**
+             * Current Symbol Count
+             * @default 0
+             */
+            current_symbol_count: number;
             /** Errors */
             errors?: {
                 [key: string]: string;
             }[];
             /** Exists */
             exists: boolean;
+            /** Expected Session */
+            expected_session?: string | null;
+            /**
+             * Failed Refresh Symbol Count
+             * @default 0
+             */
+            failed_refresh_symbol_count: number;
             /** Fetched At */
             fetched_at?: string | null;
             /** First Date */
@@ -996,6 +1102,10 @@ export interface components {
             fundamentals_exists: boolean;
             /** Fundamentals Fetched At */
             fundamentals_fetched_at?: string | null;
+            /** Fundamentals Oldest Fetched At */
+            fundamentals_oldest_fetched_at?: string | null;
+            /** Fundamentals Recent Activity At */
+            fundamentals_recent_activity_at?: string | null;
             /**
              * Fundamentals Snapshot Count
              * @default 0
@@ -1010,24 +1120,41 @@ export interface components {
             last_date?: string | null;
             latest_fundamentals_job?: components["schemas"]["MarketDataJobResponse"] | null;
             latest_job?: components["schemas"]["MarketDataJobResponse"] | null;
+            /**
+             * Missing Symbol Count
+             * @default 0
+             */
+            missing_symbol_count: number;
             /** Price Basis */
             price_basis?: string | null;
+            /** Recent Activity At */
+            recent_activity_at?: string | null;
             /** Row Count */
             row_count?: number | null;
             /** Source */
             source?: string | null;
+            /**
+             * Stale Symbol Count
+             * @default 0
+             */
+            stale_symbol_count: number;
             /** Symbol Count */
             symbol_count?: number | null;
             /**
              * Universe
              * @enum {string}
              */
-            universe: "US500" | "US2000" | "US100" | "VN100" | "VN30";
+            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
+            /**
+             * Universe Symbol Count
+             * @default 0
+             */
+            universe_symbol_count: number;
         };
         /** MarketDataClearResponse */
         MarketDataClearResponse: {
             /** Affected Universes */
-            affected_universes: ("US500" | "US2000" | "US100" | "VN100" | "VN30")[];
+            affected_universes: ("US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML")[];
             /** Cleared */
             cleared: boolean;
             /** Deleted Rows */
@@ -1041,7 +1168,7 @@ export interface components {
              * Requested Universe
              * @enum {string}
              */
-            requested_universe: "US500" | "US2000" | "US100" | "VN100" | "VN30";
+            requested_universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
         };
         /** MarketDataJobResponse */
         MarketDataJobResponse: {
@@ -1063,7 +1190,7 @@ export interface components {
              * Market
              * @enum {string}
              */
-            market: "US500" | "US2000" | "US100" | "VN100" | "VN30";
+            market: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
             /** Message */
             message: string;
             /**
@@ -1131,10 +1258,6 @@ export interface components {
         };
         /** MarketHealthPointResponse */
         MarketHealthPointResponse: {
-            /** Change 20 */
-            change_20: number | null;
-            /** Change 5 */
-            change_5: number | null;
             /** Coverage Pct */
             coverage_pct: number;
             /**
@@ -1144,28 +1267,8 @@ export interface components {
             date: string;
             /** Eligible Count */
             eligible_count: number;
-            /** Ema Gap */
-            ema_gap: number;
-            /** Health Score */
-            health_score: number;
             /** Median Distance */
             median_distance: number;
-            /** P10 Distance */
-            p10_distance: number;
-            /** P20 Distance */
-            p20_distance: number;
-            /** P80 Distance */
-            p80_distance: number;
-            /** P90 Distance */
-            p90_distance: number;
-            /** Stress 40 */
-            stress_40: number;
-            /** Within 10 */
-            within_10: number;
-            /** Within 20 */
-            within_20: number;
-            /** Within 30 */
-            within_30: number;
         };
         /** MarketHealthRunRequest */
         MarketHealthRunRequest: {
@@ -1174,7 +1277,8 @@ export interface components {
              * @default 0.8
              */
             minimum_coverage: number;
-            weights?: components["schemas"]["MarketHealthWeightsRequest"];
+            /** Universes */
+            universes?: ("US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML")[];
             /**
              * Window
              * @default 200
@@ -1187,9 +1291,18 @@ export interface components {
             markets: components["schemas"]["MarketHealthUniverseResponse"][];
             /** Minimum Coverage */
             minimum_coverage: number;
-            weights: components["schemas"]["MarketHealthWeightsRequest"];
             /** Window */
             window: number;
+        };
+        /** MarketHealthSeriesPointResponse */
+        MarketHealthSeriesPointResponse: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Median Distance */
+            median_distance: number;
         };
         /** MarketHealthStockDistanceResponse */
         MarketHealthStockDistanceResponse: {
@@ -1213,37 +1326,15 @@ export interface components {
             current: components["schemas"]["MarketHealthPointResponse"];
             /** Distribution */
             distribution: components["schemas"]["MarketHealthDistributionBucketResponse"][];
-            /** Regime */
-            regime: string;
             /** Series */
-            series: components["schemas"]["MarketHealthPointResponse"][];
-            /** Universe */
-            universe: string;
+            series: components["schemas"]["MarketHealthSeriesPointResponse"][];
+            /**
+             * Universe
+             * @enum {string}
+             */
+            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
             /** Universe Size */
             universe_size: number;
-        };
-        /** MarketHealthWeightsRequest */
-        MarketHealthWeightsRequest: {
-            /**
-             * Not Below 40
-             * @default 0.15
-             */
-            not_below_40: number;
-            /**
-             * Within 10
-             * @default 0.35
-             */
-            within_10: number;
-            /**
-             * Within 20
-             * @default 0.3
-             */
-            within_20: number;
-            /**
-             * Within 30
-             * @default 0.2
-             */
-            within_30: number;
         };
         /** MarketHistoryCacheResponse */
         MarketHistoryCacheResponse: {
@@ -1544,23 +1635,41 @@ export interface components {
         };
         /** PredefinedRarityRequest */
         PredefinedRarityRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            /** Symbols */
-            symbols: string[];
+            /** Watchlist Id */
+            watchlist_id: number;
         };
         /** PredefinedRarityResponse */
         PredefinedRarityResponse: {
+            /** Available Symbols */
+            available_symbols: number;
             /** Errors */
             errors?: string[];
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Missing Symbols */
+            missing_symbols: string[];
             /** Percentile Columns */
             percentile_columns: string[];
+            /** Price Basis */
+            price_basis: string;
+            /** Requested Symbols */
+            requested_symbols: number;
+            /** Stale Symbols */
+            stale_symbols: string[];
             /** Tables */
             tables: components["schemas"]["PredefinedRarityTable"][];
+            /** Watchlist Id */
+            watchlist_id: number;
+            /** Watchlist Name */
+            watchlist_name: string;
         };
         /** PredefinedRarityRow */
         PredefinedRarityRow: {
@@ -1694,8 +1803,18 @@ export interface components {
             current_value: number;
             /** Current Zone */
             current_zone: number | null;
+            /**
+             * Data Last Session
+             * Format: date
+             */
+            data_last_session: string;
             /** Entries */
             entries: components["schemas"]["ZoneEntrySchema"][];
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
             /** Factor Context */
             factor_context: {
                 [key: string]: unknown;
@@ -1707,13 +1826,28 @@ export interface components {
              * Format: date
              */
             first_date: string;
+            /** Is Stale */
+            is_stale: boolean;
             /**
              * Last Date
              * Format: date
              */
             last_date: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
             /** Max Potential Drop Pct */
             max_potential_drop_pct: number;
+            /** Price Basis */
+            price_basis: string;
+            /** Price Source */
+            price_source: string;
+            /** Refresh Warning */
+            refresh_warning?: string | null;
+            /** Refreshed */
+            refreshed: boolean;
             /** Sessions In Zone */
             sessions_in_zone: number;
             /**
@@ -1737,23 +1871,21 @@ export interface components {
         /** RarityRequest */
         RarityRequest: {
             /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
              * Factor Type
              * @enum {string}
              */
-            factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak" | "ahr999";
+            factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak";
             /**
              * Ma Type
              * @default sma
              * @enum {string}
              */
             ma_type: "sma" | "ema" | "wma";
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
             /**
              * Period
              * @default 200
@@ -1775,8 +1907,8 @@ export interface components {
              * @default 2
              */
             std_dev: number;
-            /** Symbol */
-            symbol: string;
+            /** Ticker */
+            ticker: string;
             /**
              * Zones
              * @default [
@@ -1849,6 +1981,11 @@ export interface components {
         SingleTickerAnalysisResponse: {
             bah: components["schemas"]["PerformanceSummaryResponse"];
             current_position: components["schemas"]["CurrentPositionResponse"] | null;
+            /**
+             * Data Last Session
+             * Format: date
+             */
+            data_last_session: string;
             /** Equity Curve Bah */
             equity_curve_bah: {
                 [key: string]: number;
@@ -1857,12 +1994,24 @@ export interface components {
             equity_curve_strategy: {
                 [key: string]: number;
             };
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
             /** From Date */
             from_date: string;
             /** Health By Year */
             health_by_year: components["schemas"]["HealthRowResponse"][];
+            /** Is Stale */
+            is_stale: boolean;
             /** Mae Percentiles Winners */
             mae_percentiles_winners: components["schemas"]["DistributionRowResponse"][];
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
             /** Mfe Percentiles Losers */
             mfe_percentiles_losers: components["schemas"]["DistributionRowResponse"][];
             /** Mfe Percentiles Winners */
@@ -1883,6 +2032,14 @@ export interface components {
             monthly_stats_by_calendar: components["schemas"]["MonthlyStatRowResponse"][];
             /** Monthly Stats By Entry Month */
             monthly_stats_by_entry_month: components["schemas"]["MonthlyStatRowResponse"][];
+            /** Price Basis */
+            price_basis: string;
+            /** Price Source */
+            price_source: string;
+            /** Refresh Warning */
+            refresh_warning?: string | null;
+            /** Refreshed */
+            refreshed: boolean;
             /** Return Percentiles */
             return_percentiles: components["schemas"]["DistributionRowResponse"][];
             strategy: components["schemas"]["PerformanceSummaryResponse"];
@@ -2028,7 +2185,7 @@ export interface components {
              * Universe
              * @enum {string}
              */
-            universe: "US500" | "US2000" | "US100" | "VN100" | "VN30";
+            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
         };
         /** SymbolPricePointResponse */
         SymbolPricePointResponse: {
@@ -2154,6 +2311,157 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WatchlistCreateRequest */
+        WatchlistCreateRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Name */
+            name: string;
+            /** Tickers */
+            tickers?: string[];
+        };
+        /** WatchlistDeleteResponse */
+        WatchlistDeleteResponse: {
+            /** Deleted */
+            deleted: boolean;
+            /** Id */
+            id: number;
+        };
+        /** WatchlistListResponse */
+        WatchlistListResponse: {
+            /** Watchlists */
+            watchlists: components["schemas"]["WatchlistSummaryResponse"][];
+        };
+        /** WatchlistMemberResponse */
+        WatchlistMemberResponse: {
+            /** Company Name */
+            company_name: string;
+            /** Exchange */
+            exchange?: string | null;
+            /** Industry */
+            industry?: string | null;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Position */
+            position: number;
+            /** Sector */
+            sector?: string | null;
+            /** Ticker */
+            ticker: string;
+        };
+        /** WatchlistRefreshJobResponse */
+        WatchlistRefreshJobResponse: {
+            /** Current */
+            current: number;
+            /** Error */
+            error: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Message */
+            message: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Total */
+            total: number;
+            /** Watchlist Id */
+            watchlist_id: number;
+            /** Watchlist Name */
+            watchlist_name: string;
+        };
+        /** WatchlistRefreshJobsResponse */
+        WatchlistRefreshJobsResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["WatchlistRefreshJobResponse"][];
+        };
+        /** WatchlistResponse */
+        WatchlistResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Id */
+            id: number;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Member Count */
+            member_count: number;
+            /** Members */
+            members: components["schemas"]["WatchlistMemberResponse"][];
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WatchlistSummaryResponse */
+        WatchlistSummaryResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Id */
+            id: number;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Member Count */
+            member_count: number;
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WatchlistUpdateRequest */
+        WatchlistUpdateRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+            /** Tickers */
+            tickers?: string[];
         };
         /** WeightEventSchema */
         WeightEventSchema: {
@@ -2325,7 +2633,7 @@ export interface operations {
     listCompanies: {
         parameters: {
             query?: {
-                universe?: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VN30" | "VN100";
+                universe?: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
                 search?: string | null;
                 sector?: string | null;
                 industry?: string | null;
@@ -2936,6 +3244,249 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listWatchlists: {
+        parameters: {
+            query?: {
+                market?: ("US" | "VN") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchlistCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listWatchlistRefreshJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistRefreshJobsResponse"];
+                };
+            };
+        };
+    };
+    getWatchlistRefreshJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistRefreshJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watchlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    updateWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watchlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchlistUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watchlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistDeleteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refreshWatchlistPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watchlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistRefreshJobResponse"];
                 };
             };
             /** @description Validation Error */

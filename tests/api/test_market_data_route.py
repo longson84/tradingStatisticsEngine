@@ -7,6 +7,10 @@ import pytest
 from fastapi import HTTPException
 
 from api.market_data_jobs import MarketDataJob
+from api.price_refresh_coordination import (
+    acquire_price_refresh,
+    release_price_refresh,
+)
 from api.repositories.price_bar_repository import PriceBarStatusRecord
 from api.repositories.fundamental_repository import FundamentalStatusRecord
 from api.routes import market_data
@@ -25,7 +29,7 @@ class StubPriceStorageService:
         self.cleared = universe
         return PriceMarketClearResult(
             market="VN",
-            affected_universes=("VN100", "VN30"),
+            affected_universes=("VNALL", "VN100", "VN30", "VNMID", "VNSML"),
             deleted_rows=42,
         )
 
@@ -49,6 +53,14 @@ def test_cache_status_reads_postgresql_summary(monkeypatch):
         row_count=125_000,
         sources=("yfinance",),
         price_basis="adjusted",
+        expected_session=date(2026, 8, 3),
+        coverage_through=date(2026, 7, 30),
+        universe_symbol_count=103,
+        current_symbol_count=97,
+        stale_symbol_count=3,
+        missing_symbol_count=3,
+        checked_no_new_bar_count=2,
+        failed_refresh_symbol_count=1,
     ))
     monkeypatch.setattr(market_data, "get_latest_job", lambda universe, dataset="prices": None)
     fundamental_service = StubFundamentalService(FundamentalStatusRecord(
@@ -62,6 +74,7 @@ def test_cache_status_reads_postgresql_summary(monkeypatch):
         fact_count=12_022,
         valuation_count=0,
         sources=("yfinance",),
+        oldest_fetched_at=datetime(2026, 7, 28, tzinfo=UTC),
     ))
 
     result = market_data._cache_status("US100", service, fundamental_service)
@@ -70,15 +83,25 @@ def test_cache_status_reads_postgresql_summary(monkeypatch):
     assert result.last_date == "2026-07-31"
     assert result.symbol_count == 100
     assert result.row_count == 125_000
+    assert result.expected_session == "2026-08-03"
+    assert result.coverage_through == "2026-07-30"
+    assert result.universe_symbol_count == 103
+    assert result.current_symbol_count == 97
+    assert result.stale_symbol_count == 3
+    assert result.missing_symbol_count == 3
+    assert result.checked_no_new_bar_count == 2
+    assert result.failed_refresh_symbol_count == 1
+    assert result.recent_activity_at == "2026-08-01T00:00:00+00:00"
     assert result.source == "yfinance"
     assert result.price_basis == "auto-adjusted OHLC"
     assert result.fundamentals_exists is True
     assert result.fundamentals_symbol_count == 99
     assert result.fundamentals_snapshot_count == 7_619
     assert result.fundamentals_fetched_at == "2026-08-02T00:00:00+00:00"
+    assert result.fundamentals_oldest_fetched_at == "2026-07-28T00:00:00+00:00"
 
 
-def test_market_data_status_includes_us500(monkeypatch):
+def test_market_data_status_includes_all_supported_universes(monkeypatch):
     monkeypatch.setattr(
         market_data,
         "_cache_status",
@@ -96,8 +119,11 @@ def test_market_data_status_includes_us500(monkeypatch):
         "US500",
         "US2000",
         "US100",
+        "VNALL",
         "VN100",
         "VN30",
+        "VNMID",
+        "VNSML",
     ]
     assert result.fundamentals_storage == "PostgreSQL"
 
@@ -129,15 +155,33 @@ def test_refresh_market_data_rejects_duplicate_job(monkeypatch):
 
 def test_clear_market_data_clears_shared_market_rows(monkeypatch):
     service = StubPriceStorageService()
-    monkeypatch.setattr(market_data, "get_active_job", lambda universe: None)
+    monkeypatch.setattr(
+        market_data, "get_active_price_refresh", lambda market: None
+    )
     cleared_jobs: list[str] = []
     monkeypatch.setattr(market_data, "clear_job_history", cleared_jobs.append)
 
-    result = market_data.clear_market_data("vn100", service)
+    result = market_data.clear_market_data("vnall", service)
 
     assert result.cleared is True
     assert result.market == "VN"
     assert result.deleted_rows == 42
-    assert result.affected_universes == ["VN100", "VN30"]
-    assert service.cleared == "VN100"
-    assert cleared_jobs == ["VN100", "VN30"]
+    assert result.affected_universes == [
+        "VNALL", "VN100", "VN30", "VNMID", "VNSML"
+    ]
+    assert service.cleared == "VNALL"
+    assert cleared_jobs == ["VNALL", "VN100", "VN30", "VNMID", "VNSML"]
+
+
+def test_clear_market_data_rejects_active_watchlist_or_universe_price_refresh():
+    service = StubPriceStorageService()
+    acquire_price_refresh("US", "job-owner", "watchlist Leaders")
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            market_data.clear_market_data("US500", service)
+    finally:
+        release_price_refresh("US", "job-owner")
+
+    assert exc_info.value.status_code == 409
+    assert "watchlist Leaders" in exc_info.value.detail
+    assert service.cleared is None

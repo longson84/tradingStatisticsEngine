@@ -10,7 +10,7 @@ from pydantic import BaseModel
 MarketCode = Literal["US", "VN"]
 CompanyUniverseId = Literal[
     "US_ALL", "US100", "US2000", "US500", "US30",
-    "VN_ALL", "VN30", "VN100",
+    "VN_ALL", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
 ]
 
 

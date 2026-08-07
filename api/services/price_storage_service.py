@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
+from api.market_sessions import latest_completed_session
 from api.repositories.price_bar_repository import (
     PriceBarMaintenanceRepository,
     PriceBarStatusRecord,
@@ -24,10 +26,14 @@ class PriceStorageService:
     def __init__(self, repository: PriceBarMaintenanceRepository):
         self._repository = repository
 
-    def get_status(self, universe: str) -> PriceBarStatusRecord | None:
+    def get_status(
+        self, universe: str, *, now: datetime | None = None
+    ) -> PriceBarStatusRecord | None:
         normalized, market = self._resolve_universe(universe)
         return self._repository.get_status(
-            normalized, DEFAULT_PRICE_BASIS[market]
+            normalized,
+            DEFAULT_PRICE_BASIS[market],
+            latest_completed_session(now or datetime.now(UTC), market),
         )
 
     def clear_market_for_universe(self, universe: str) -> PriceMarketClearResult:

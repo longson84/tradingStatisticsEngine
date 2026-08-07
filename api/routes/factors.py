@@ -6,9 +6,9 @@ POST /factors/regime    — regime labels derived from cross-sectional breadth
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from trading_engine.types import FactorComputeError, InsufficientDataError, PriceFrame
 
 from trading_engine import analyze_factor, analyze_universe, detect_regime, zone_rarity_analysis
@@ -19,7 +19,13 @@ from trading_engine.factors.moving_average import DistanceFromMovingAverage, Mov
 from trading_engine.factors.ahr999 import AHR999
 from trading_engine.types import Factor
 
-from api.deps import fetch_prices
+from api.deps import fetch_prices, get_company_price_service, get_watchlist_service
+from api.services.company_price_service import (
+    CompanyPriceService,
+    CompanyPriceUnavailableError,
+    UnknownCompanyError,
+)
+from api.services.watchlist_service import UnknownWatchlistError, WatchlistService
 import pandas as pd
 
 from api.schemas.factor import (
@@ -87,17 +93,6 @@ def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 
     raise HTTPException(status_code=400, detail=f"Unknown factor type: {factor_type!r}")
 
 
-def _normalise_symbols(symbols: list[str]) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for raw in symbols:
-        symbol = raw.strip().upper()
-        if symbol and symbol not in seen:
-            result.append(symbol)
-            seen.add(symbol)
-    return result
-
-
 def _predefined_row(symbol: str, factor: Factor, prices: PriceFrame) -> PredefinedRarityRow:
     series = factor.compute(prices)
     values = series.values.dropna()
@@ -157,19 +152,43 @@ def analyze_factor_endpoint(req: FactorRequest) -> FactorAnalysisResponse:
 
 
 @router.post("/predefined-rarity", response_model=PredefinedRarityResponse)
-def predefined_rarity_endpoint(req: PredefinedRarityRequest) -> PredefinedRarityResponse:
-    symbols = _normalise_symbols(req.symbols)
+def predefined_rarity_endpoint(
+    req: PredefinedRarityRequest,
+    watchlist_service: Annotated[
+        WatchlistService, Depends(get_watchlist_service)
+    ],
+    price_service: Annotated[
+        CompanyPriceService, Depends(get_company_price_service)
+    ],
+) -> PredefinedRarityResponse:
+    try:
+        watchlist = watchlist_service.get_watchlist(req.watchlist_id)
+    except UnknownWatchlistError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    symbols = [member.ticker for member in watchlist.members]
     if not symbols:
-        raise HTTPException(status_code=400, detail="symbols must not be empty")
+        raise HTTPException(status_code=422, detail="Watchlist has no companies")
 
-    prices = fetch_prices(
+    stored = price_service.get_stored_histories(
+        watchlist.market,
         symbols,
-        date(1900, 1, 1),
-        date.today() + timedelta(days=1),
-        req.data_source,
     )
+    prices = stored.prices
+    if not prices:
+        raise HTTPException(
+            status_code=422,
+            detail="No watchlist companies have stored PostgreSQL price history",
+        )
 
-    errors = [f"{symbol}: no data loaded" for symbol in symbols if symbol not in prices]
+    errors = [
+        f"{symbol}: no stored PostgreSQL price history"
+        for symbol in stored.missing_tickers
+    ]
+    if stored.stale_tickers:
+        errors.append(
+            "Stale through the expected market session: "
+            + ", ".join(stored.stale_tickers)
+        )
     tables: list[PredefinedRarityTable] = []
 
     for factor_key, factor_name, factor in _PREDEFINED_FACTORS:
@@ -191,6 +210,15 @@ def predefined_rarity_endpoint(req: PredefinedRarityRequest) -> PredefinedRarity
         )
 
     return PredefinedRarityResponse(
+        watchlist_id=watchlist.id,
+        watchlist_name=watchlist.name,
+        market=watchlist.market,
+        requested_symbols=len(symbols),
+        available_symbols=len(prices),
+        stale_symbols=list(stored.stale_tickers),
+        missing_symbols=list(stored.missing_tickers),
+        expected_last_session=stored.expected_last_session,
+        price_basis=stored.price_basis,
         percentile_columns=[f"p{p}" for p in _PREDEFINED_PERCENTILES],
         tables=tables,
         errors=errors,
@@ -255,22 +283,27 @@ def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
 
 
 @router.post("/rarity", response_model=RarityAnalysisResponse)
-def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
-    prices = fetch_prices(
-        [req.symbol],
-        req.date_range.start,
-        req.date_range.end,
-        req.data_source,
-    )
-    if req.symbol not in prices:
-        raise HTTPException(status_code=422, detail=f"No data for symbol {req.symbol!r}")
+def rarity_analysis_endpoint(
+    req: RarityRequest,
+    price_service: Annotated[
+        CompanyPriceService, Depends(get_company_price_service)
+    ],
+) -> RarityAnalysisResponse:
+    ticker = req.ticker.upper().strip()
+    try:
+        stored = price_service.get_current_history(req.market, ticker)
+    except UnknownCompanyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CompanyPriceUnavailableError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    prices = {ticker: stored.prices}
 
     try:
         factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
-        series = factor.compute(prices[req.symbol])
+        series = factor.compute(prices[ticker])
         result = zone_rarity_analysis(
             series=series,
-            prices=prices[req.symbol],
+            prices=prices[ticker],
             zones=req.zones,
             quick_recovery_days=req.quick_recovery_days,
             recovery_mode=req.recovery_mode,
@@ -278,14 +311,14 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
         # Attach factor-specific context (optional — not all factors implement context())
         factor_context = {}
         if hasattr(factor, "context"):
-            factor_context = factor.context(prices[req.symbol])
+            factor_context = factor.context(prices[ticker])
         result.factor_context = factor_context
 
     except (FactorComputeError, InsufficientDataError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     # ── Time series ───────────────────────────────────────────────────────────
-    price_close = prices[req.symbol].data["close"]
+    price_close = prices[ticker].data["close"]
     factor_vals = series.values.dropna()
     ts_points: list[TimeSeriesPoint] = []
     for ts, fv in factor_vals.items():
@@ -373,4 +406,12 @@ def rarity_analysis_endpoint(req: RarityRequest) -> RarityAnalysisResponse:
             for e in result.entries
         ],
         time_series=ts_points,
+        market=stored.market,
+        expected_last_session=stored.expected_last_session,
+        data_last_session=stored.data_last_session,
+        refreshed=stored.refreshed,
+        is_stale=stored.is_stale,
+        refresh_warning=stored.refresh_warning,
+        price_source=stored.price_source,
+        price_basis=stored.price_basis,
     )

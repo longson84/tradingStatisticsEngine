@@ -11,6 +11,7 @@ import pandas as pd
 from api.repositories.price_bar_repository import (
     PriceBarRefreshRepository,
     PriceBarWriteRecord,
+    PriceRefreshStateWriteRecord,
 )
 from api.services.price_history_service import DEFAULT_PRICE_BASIS
 
@@ -35,6 +36,18 @@ class PriceRefreshWriteResult:
     input_rows: int
     rejected_rows: int
     stored_rows: int
+
+
+@dataclass(frozen=True)
+class PriceRefreshAttempt:
+    ticker: str
+    attempted_through: date
+    returned_through: date | None
+    outcome: Literal["current", "checked_no_new_bar", "failed"]
+    primary_source: str
+    selected_source: str | None
+    attempted_at: datetime
+    detail: str | None = None
 
 
 class PriceRefreshService:
@@ -62,8 +75,14 @@ class PriceRefreshService:
         skipped_overlap = already_refreshed or set()
         coverage = {
             row.ticker: row
-            for row in self._repository.list_coverage(
-                normalized, DEFAULT_PRICE_BASIS[market]
+            for row in self._repository.list_symbol_coverages(
+                market, normalized_symbols, DEFAULT_PRICE_BASIS[market]
+            )
+        }
+        refresh_states = {
+            row.ticker: row
+            for row in self._repository.list_refresh_states(
+                market, normalized_symbols, DEFAULT_PRICE_BASIS[market]
             )
         }
         expected_latest = _latest_expected_session(end, market)
@@ -74,9 +93,16 @@ class PriceRefreshService:
                 reused.append(symbol)
                 continue
             existing = coverage.get(symbol)
+            refresh_state = refresh_states.get(symbol)
             if mode == "full" or existing is None:
                 requested[symbol] = full_start
             elif existing.last_date >= expected_latest:
+                reused.append(symbol)
+            elif (
+                refresh_state is not None
+                and refresh_state.attempted_through >= expected_latest
+                and refresh_state.outcome == "checked_no_new_bar"
+            ):
                 reused.append(symbol)
             else:
                 requested[symbol] = max(
@@ -160,6 +186,34 @@ class PriceRefreshService:
             rejected_rows=rejected_rows,
             stored_rows=stored_rows,
         )
+
+    def record_attempts(
+        self,
+        universe: str,
+        attempts: list[PriceRefreshAttempt],
+    ) -> int:
+        _, market = self._resolve_universe(universe)
+        records: list[PriceRefreshStateWriteRecord] = []
+        for attempt in attempts:
+            if attempt.attempted_at.tzinfo is None:
+                raise PriceRefreshError("Refresh attempted_at must be timezone-aware")
+            if attempt.returned_through and attempt.returned_through > attempt.attempted_through:
+                raise PriceRefreshError(
+                    "Refresh returned_through must not exceed attempted_through"
+                )
+            records.append(PriceRefreshStateWriteRecord(
+                market=market,
+                ticker=attempt.ticker.upper().strip(),
+                price_basis=DEFAULT_PRICE_BASIS[market],
+                attempted_through=attempt.attempted_through,
+                returned_through=attempt.returned_through,
+                outcome=attempt.outcome,
+                primary_source=attempt.primary_source,
+                selected_source=attempt.selected_source,
+                detail=attempt.detail,
+                attempted_at=attempt.attempted_at,
+            ))
+        return self._repository.upsert_refresh_states(records)
 
     def _resolve_universe(self, universe: str) -> tuple[str, str]:
         normalized = universe.upper().strip()

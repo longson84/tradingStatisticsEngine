@@ -22,7 +22,6 @@ RarityFactorType: TypeAlias = Literal[
     "bollinger",
     "donchian",
     "distance_from_peak",
-    "ahr999",
 ]
 
 
@@ -84,13 +83,12 @@ class RegimeResponse(BaseModel):
 # ── Rarity Analysis ──────────────────────────────────────────────────────────
 
 class RarityRequest(BaseModel):
-    symbol: str
-    date_range: DateRange
+    market: Literal["US", "VN"]
+    ticker: str
     factor_type: RarityFactorType
     period: int = 200
     ma_type: Literal["sma", "ema", "wma"] = "sma"
     std_dev: float = 2.0
-    data_source: Literal["yfinance", "vnstock", "csv"] = "yfinance"
     zones: list[int] = DEFAULT_RARITY_ZONES
     quick_recovery_days: int = DEFAULT_QR_DAYS
     recovery_mode: Literal["price", "factor"] = "price"
@@ -159,13 +157,20 @@ class RarityAnalysisResponse(BaseModel):
     zone_stats: list[ZoneStatsSchema]
     entries: list[ZoneEntrySchema]
     time_series: list[TimeSeriesPoint]
+    market: Literal["US", "VN"]
+    expected_last_session: date
+    data_last_session: date
+    refreshed: bool
+    is_stale: bool
+    refresh_warning: str | None = None
+    price_source: str
+    price_basis: str
 
 
 # ── Predefined Multi-Symbol Rarity Tables ────────────────────────────────────
 
 class PredefinedRarityRequest(BaseModel):
-    symbols: list[str]
-    data_source: Literal["yfinance", "vnstock", "csv"] = "yfinance"
+    watchlist_id: int = Field(gt=0)
 
 
 class PredefinedRarityRow(BaseModel):
@@ -199,6 +204,15 @@ class PredefinedRarityTable(BaseModel):
 
 
 class PredefinedRarityResponse(BaseModel):
+    watchlist_id: int
+    watchlist_name: str
+    market: Literal["US", "VN"]
+    requested_symbols: int
+    available_symbols: int
+    stale_symbols: list[str]
+    missing_symbols: list[str]
+    expected_last_session: date
+    price_basis: str
     percentile_columns: list[str]
     tables: list[PredefinedRarityTable]
     errors: list[str] = Field(default_factory=list)

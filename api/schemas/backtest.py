@@ -108,12 +108,18 @@ class SweepResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class AnalyzeRequest(BaseModel):
-    symbol: str
+    market: Literal["US", "VN"]
+    ticker: str
     strategy: StrategyConfig
     initial_capital: float = 10_000.0
-    data_source: Literal["yfinance", "vnstock", "csv"] = "yfinance"
-    start: date | None = None   # defaults to 2000-01-01 in the route
-    end: date | None = None     # defaults to today in the route
+    start: date | None = None
+    end: date | None = None
+
+    @model_validator(mode="after")
+    def check_date_order(self) -> "AnalyzeRequest":
+        if self.start is not None and self.end is not None and self.start > self.end:
+            raise ValueError("start must not be after end")
+        return self
 
 
 class PerformanceSummaryResponse(BaseModel):
@@ -226,3 +232,11 @@ class SingleTickerAnalysisResponse(BaseModel):
     equity_curve_bah: dict[str, float]
     ticker_prices: dict[str, float]
     undercut_distribution: list[UndercutDistributionRowResponse] | None = None
+    market: Literal["US", "VN"]
+    expected_last_session: date
+    data_last_session: date
+    refreshed: bool
+    is_stale: bool
+    refresh_warning: str | None = None
+    price_source: str
+    price_basis: str

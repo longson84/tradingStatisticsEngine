@@ -1,42 +1,14 @@
 import { useState, useCallback } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisResults"
-import { smaStrategyAnalysisApi } from "@/lib/api"
-import type { MaType, DataSource } from "@/lib/api"
-
-const DATA_SOURCES: Array<{ label: string; value: DataSource }> = [
-  { label: "Yahoo Finance", value: "yfinance" },
-  { label: "VN Stock",      value: "vnstock" },
-]
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-      {children}
-    </span>
-  )
-}
-
-function FormSelect<T extends string>({
-  value, onChange, options,
-}: {
-  value: T
-  onChange: (v: T) => void
-  options: Array<{ label: string; value: T }>
-}) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value as T)}
-      className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-ring"
-    >
-      {options.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  )
-}
+import {
+  CompanyTickerSelector,
+  type CompanyMarket,
+} from "@/components/forms/CompanyTickerSelector"
+import { FormLabel as Label } from "@/components/forms/FormSelect"
+import { companiesApi, smaStrategyAnalysisApi } from "@/lib/api"
+import type { MaType } from "@/lib/api"
 
 function NumberInput({
   value, onChange, min = 0, step = 1,
@@ -58,11 +30,9 @@ function NumberInput({
   )
 }
 
-type FrozenParams = Parameters<typeof smaStrategyAnalysisApi>[0]
-
 export function SmaStrategyPage() {
-  const [symbol, setSymbol]               = useState("BTC-USD")
-  const [dataSource, setDataSource]       = useState<DataSource>("yfinance")
+  const [market, setMarket]               = useState<CompanyMarket>("US_ALL")
+  const [symbol, setSymbol]               = useState("MSFT")
   const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)
@@ -70,46 +40,56 @@ export function SmaStrategyPage() {
   const [initialCapital, setInitialCapital] = useState(10_000)
   const [fromDate, setFromDate]           = useState("")
 
-  const [frozenParams, setFrozenParams] = useState<FrozenParams | null>(null)
+  const [resultSellLag, setResultSellLag] = useState(sellLag)
 
-  const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["sma-strategy-analysis", frozenParams],
-    queryFn: () => smaStrategyAnalysisApi(frozenParams!),
-    enabled: frozenParams != null,
-    retry: false,
+  const companies = useQuery({
+    queryKey: ["companies", market],
+    queryFn: () => companiesApi({ universe: market }),
+  })
+  const {
+    mutate: runAnalysis,
+    data,
+    isPending: isFetching,
+    error,
+  } = useMutation({
+    mutationFn: smaStrategyAnalysisApi,
   })
 
   const handleRun = useCallback(() => {
-    setFrozenParams({
-      symbol,
+    const valid = companies.data?.companies.some(
+      item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
+    )
+    if (!valid) return
+    setResultSellLag(sellLag)
+    runAnalysis({
+      market: market === "US_ALL" ? "US" : "VN",
+      ticker: symbol.toUpperCase().trim(),
       ma_type: maType,
       ma_length: maLength,
       buy_lag: buyLag,
       sell_lag: sellLag,
       initial_capital: initialCapital,
-      data_source: dataSource,
       start: fromDate.trim() || undefined,
     })
-    refetch()
-  }, [symbol, maLength, buyLag, sellLag, initialCapital, dataSource, fromDate, refetch])
+  }, [companies.data, market, symbol, maLength, buyLag, sellLag, initialCapital, fromDate, runAnalysis])
+
+  const selectedCompany = companies.data?.companies.some(
+    item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
+  ) ?? false
 
   const controls = (
     <div className="space-y-4">
-      <div>
-        <Label>Data Source</Label>
-        <FormSelect value={dataSource} onChange={setDataSource} options={DATA_SOURCES} />
-      </div>
-
-      <div>
-        <Label>Ticker</Label>
-        <input
-          type="text"
-          value={symbol}
-          onChange={e => setSymbol(e.target.value.toUpperCase())}
-          placeholder="e.g. MSFT"
-          className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground uppercase placeholder:normal-case placeholder:text-muted-foreground focus:outline-none focus:border-ring"
-        />
-      </div>
+      <CompanyTickerSelector
+        market={market}
+        ticker={symbol}
+        companies={companies.data?.companies ?? []}
+        total={companies.data?.total}
+        isPending={companies.isPending}
+        id="sma-strategy-symbols"
+        onMarketChange={setMarket}
+        onTickerChange={setSymbol}
+        onSubmit={handleRun}
+      />
 
       <div className="border-t border-border pt-4">
         <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
@@ -154,7 +134,7 @@ export function SmaStrategyPage() {
 
       <button
         onClick={handleRun}
-        disabled={isFetching || !symbol.trim()}
+        disabled={isFetching || !selectedCompany}
         className="w-full py-2 rounded bg-destructive hover:bg-destructive/90 disabled:opacity-40 disabled:cursor-not-allowed text-destructive-foreground text-sm font-semibold transition-colors"
       >
         {isFetching ? "Running…" : "Run Analysis"}
@@ -194,7 +174,16 @@ export function SmaStrategyPage() {
         )}
 
         {data && !isFetching && (
-          <StrategyAnalysisResults data={data} sellLag={frozenParams?.sell_lag ?? sellLag} />
+          <>
+            {(data.refreshed || data.is_stale || data.refresh_warning) && (
+              <div className={`mb-4 rounded-md border px-4 py-3 text-xs ${data.is_stale ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-muted/30 text-muted-foreground"}`}>
+                Data through {data.data_last_session}; expected {data.expected_last_session}.
+                {data.refreshed ? " PostgreSQL was refreshed for this ticker." : ""}
+                {data.refresh_warning ? ` ${data.refresh_warning}` : ""}
+              </div>
+            )}
+            <StrategyAnalysisResults data={data} sellLag={resultSellLag} />
+          </>
         )}
       </main>
     </div>

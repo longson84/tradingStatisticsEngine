@@ -7,8 +7,10 @@ import pandas as pd
 from api.repositories.price_bar_repository import (
     PriceBarCoverageRecord,
     PriceBarWriteRecord,
+    SymbolPriceCoverageRecord,
+    PriceRefreshStateRecord,
 )
-from api.services.price_refresh_service import PriceRefreshService
+from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
 
 
 class FakePriceRefreshRepository:
@@ -26,16 +28,38 @@ class FakePriceRefreshRepository:
             ),
         )
         self.writes: tuple[PriceBarWriteRecord, ...] = ()
+        self.refresh_states: tuple[PriceRefreshStateRecord, ...] = ()
+        self.state_writes = ()
 
     def get_universe_market(self, universe: str) -> str | None:
         return {"US500": "US", "VN100": "VN"}.get(universe)
 
-    def list_coverage(self, universe: str, price_basis: str):
-        return self.coverage
+    def list_symbol_coverages(self, market, tickers, price_basis):
+        assert market in {"US", "VN"}
+        return tuple(
+            SymbolPriceCoverageRecord(
+                ticker=row.ticker,
+                market=market,
+                first_date=row.first_date,
+                last_date=row.last_date,
+                row_count=1,
+                source="test",
+                fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
+            )
+            for row in self.coverage
+            if row.ticker in tickers
+        )
 
     def upsert_bars(self, records):
         self.writes = tuple(records)
         return len(self.writes)
+
+    def list_refresh_states(self, market, tickers, price_basis):
+        return tuple(row for row in self.refresh_states if row.ticker in tickers)
+
+    def upsert_refresh_states(self, records):
+        self.state_writes = tuple(records)
+        return len(self.state_writes)
 
 
 def test_incremental_plan_uses_database_coverage_and_overlap():
@@ -73,6 +97,36 @@ def test_full_plan_rebuilds_existing_but_skips_prior_universe_overlap():
     assert plan.reused_symbols == ("OVERLAP",)
 
 
+def test_incremental_plan_reuses_symbol_checked_without_new_bar():
+    repository = FakePriceRefreshRepository()
+    repository.refresh_states = (
+        PriceRefreshStateRecord(
+            ticker="STALE",
+            market="VN",
+            price_basis="provider_unspecified",
+            attempted_through=date(2026, 8, 3),
+            returned_through=date(2026, 7, 24),
+            outcome="checked_no_new_bar",
+            primary_source="vnstock-kbs",
+            selected_source="vnstock-vci",
+            detail=None,
+            attempted_at=datetime(2026, 8, 3, tzinfo=UTC),
+        ),
+    )
+    service = PriceRefreshService(repository)
+
+    plan = service.plan(
+        "VN100",
+        ["STALE"],
+        full_start=date(2021, 1, 1),
+        end=date(2026, 8, 3),
+        mode="incremental",
+    )
+
+    assert plan.requested_starts == {}
+    assert plan.reused_symbols == ("STALE",)
+
+
 def test_store_frames_normalizes_vn_units_and_rejects_invalid_rows():
     repository = FakePriceRefreshRepository()
     service = PriceRefreshService(repository)
@@ -101,3 +155,27 @@ def test_store_frames_normalizes_vn_units_and_rejects_invalid_rows():
     assert repository.writes[0].currency == "VND"
     assert repository.writes[0].price_scale == 1_000
     assert repository.writes[0].price_basis == "provider_unspecified"
+
+
+def test_record_attempts_persists_attempted_and_returned_dates_separately():
+    repository = FakePriceRefreshRepository()
+    service = PriceRefreshService(repository)
+
+    stored = service.record_attempts(
+        "VN100",
+        [PriceRefreshAttempt(
+            ticker="STALE",
+            attempted_through=date(2026, 8, 3),
+            returned_through=date(2026, 7, 31),
+            outcome="checked_no_new_bar",
+            primary_source="vnstock-kbs",
+            selected_source="vnstock-vci",
+            attempted_at=datetime(2026, 8, 3, tzinfo=UTC),
+            detail="both providers checked",
+        )],
+    )
+
+    assert stored == 1
+    assert repository.state_writes[0].attempted_through == date(2026, 8, 3)
+    assert repository.state_writes[0].returned_through == date(2026, 7, 31)
+    assert repository.state_writes[0].outcome == "checked_no_new_bar"

@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     JSON,
@@ -37,6 +38,7 @@ class Instrument(Base):
     __table_args__ = (
         CheckConstraint("market IN ('US', 'VN')", name="ck_instruments_market"),
         UniqueConstraint("market", "ticker", name="uq_instruments_market_ticker"),
+        UniqueConstraint("id", "market", name="uq_instruments_id_market"),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
@@ -67,11 +69,19 @@ class Instrument(Base):
     price_bar_coverages: Mapped[list[PriceBarCoverage]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
+    price_refresh_states: Mapped[list[PriceRefreshState]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
     fundamental_reports: Mapped[list[FundamentalReport]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
     provider_valuation_observations: Mapped[list[ProviderValuationObservation]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
+    )
+    watchlist_memberships: Mapped[list[WatchlistMembership]] = relationship(
+        back_populates="instrument",
+        cascade="all, delete-orphan",
+        foreign_keys="WatchlistMembership.instrument_id",
     )
 
 
@@ -206,6 +216,115 @@ class PriceBarCoverage(Base):
 
     instrument: Mapped[Instrument] = relationship(
         back_populates="price_bar_coverages"
+    )
+
+
+class PriceRefreshState(Base):
+    """Latest provider-check outcome, separate from the latest traded bar."""
+
+    __tablename__ = "price_refresh_states"
+    __table_args__ = (
+        UniqueConstraint(
+            "instrument_id", "price_basis", name="uq_price_refresh_state_basis"
+        ),
+        CheckConstraint(
+            "outcome IN ('current', 'checked_no_new_bar', 'failed')",
+            name="ck_price_refresh_states_outcome",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    price_basis: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempted_through: Mapped[date] = mapped_column(Date, nullable=False)
+    returned_through: Mapped[date | None] = mapped_column(Date)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    primary_source: Mapped[str] = mapped_column(String(100), nullable=False)
+    selected_source: Mapped[str | None] = mapped_column(String(100))
+    detail: Mapped[str | None] = mapped_column(String(1000))
+    attempted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    instrument: Mapped[Instrument] = relationship(
+        back_populates="price_refresh_states"
+    )
+
+
+class Watchlist(Base):
+    """One user-managed, single-market collection of companies."""
+
+    __tablename__ = "watchlists"
+    __table_args__ = (
+        CheckConstraint("market IN ('US', 'VN')", name="ck_watchlists_market"),
+        UniqueConstraint("market", "name_key", name="uq_watchlists_market_name_key"),
+        UniqueConstraint("id", "market", name="uq_watchlists_id_market"),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    market: Mapped[str] = mapped_column(String(2), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    memberships: Mapped[list[WatchlistMembership]] = relationship(
+        back_populates="watchlist",
+        cascade="all, delete-orphan",
+        foreign_keys="WatchlistMembership.watchlist_id",
+    )
+
+
+class WatchlistMembership(Base):
+    """Ordered membership of a canonical instrument in a watchlist."""
+
+    __tablename__ = "watchlist_memberships"
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_watchlist_memberships_position"),
+        UniqueConstraint(
+            "watchlist_id", "instrument_id", name="uq_watchlist_membership"
+        ),
+        ForeignKeyConstraint(
+            ("watchlist_id", "market"),
+            ("watchlists.id", "watchlists.market"),
+            name="fk_watchlist_memberships_watchlist_market",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ("instrument_id", "market"),
+            ("instruments.id", "instruments.market"),
+            name="fk_watchlist_memberships_instrument_market",
+            ondelete="CASCADE",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    watchlist_id: Mapped[int] = mapped_column(_ID_TYPE, nullable=False, index=True)
+    instrument_id: Mapped[int] = mapped_column(_ID_TYPE, nullable=False, index=True)
+    market: Mapped[str] = mapped_column(String(2), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    watchlist: Mapped[Watchlist] = relationship(
+        back_populates="memberships", foreign_keys=[watchlist_id]
+    )
+    instrument: Mapped[Instrument] = relationship(
+        back_populates="watchlist_memberships", foreign_keys=[instrument_id]
     )
 
 

@@ -16,7 +16,10 @@ US_LIST_FILES = {
 }
 VN_LIST_FILES = {
     "VN30": "vn30.json",
+    "VNMID": "vnmid.json",
     "VN100": "vn100.json",
+    "VNSML": "vnsml.json",
+    "VNALL": "vnall.json",
 }
 LIST_FILES = {**US_LIST_FILES, **VN_LIST_FILES}
 

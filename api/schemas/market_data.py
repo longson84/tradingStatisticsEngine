@@ -6,7 +6,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-MarketUniverse = Literal["US500", "US2000", "US100", "VN100", "VN30"]
+MarketUniverse = Literal[
+    "US500", "US2000", "US100",
+    "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+]
 
 
 class MarketDataJobResponse(BaseModel):
@@ -27,9 +30,18 @@ class MarketDataCacheStatus(BaseModel):
     universe: MarketUniverse
     exists: bool
     fetched_at: str | None = None
+    recent_activity_at: str | None = None
     first_date: str | None = None
     last_date: str | None = None
+    expected_session: str | None = None
+    coverage_through: str | None = None
     symbol_count: int | None = None
+    universe_symbol_count: int = 0
+    current_symbol_count: int = 0
+    stale_symbol_count: int = 0
+    missing_symbol_count: int = 0
+    checked_no_new_bar_count: int = 0
+    failed_refresh_symbol_count: int = 0
     row_count: int | None = None
     source: str | None = None
     price_basis: str | None = None
@@ -37,6 +49,8 @@ class MarketDataCacheStatus(BaseModel):
     latest_job: MarketDataJobResponse | None = None
     fundamentals_exists: bool = False
     fundamentals_fetched_at: str | None = None
+    fundamentals_recent_activity_at: str | None = None
+    fundamentals_oldest_fetched_at: str | None = None
     fundamentals_symbol_count: int = 0
     fundamentals_snapshot_count: int = 0
     latest_fundamentals_job: MarketDataJobResponse | None = None
@@ -72,7 +86,7 @@ class SymbolPricePointResponse(BaseModel):
 
 class SymbolPriceHistoryResponse(BaseModel):
     symbol: str
-    universe: Literal["US500", "US2000", "US100", "VN100", "VN30"]
+    universe: MarketUniverse
     source: str
     price_basis: str
     fetched_at: str

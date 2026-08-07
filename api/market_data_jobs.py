@@ -11,12 +11,18 @@ from typing import Literal
 from uuid import uuid4
 
 from api.market_data_config import PROJECT_ROOT, SUPPORTED_UNIVERSES
+from api.price_refresh_coordination import (
+    acquire_price_refresh,
+    release_price_refresh,
+)
 
 
 JobMode = Literal["incremental", "full"]
 JobDataset = Literal["prices", "fundamentals"]
 JobStatus = Literal["queued", "running", "completed", "failed"]
-_PROGRESS = re.compile(r"(?:US100|US2000|US500|VN30|VN100):\s+(\d+)/(\d+)")
+_PROGRESS = re.compile(
+    r"(?:US100|US2000|US500|VNALL|VN100|VN30|VNMID|VNSML):\s+(\d+)/(\d+)"
+)
 
 
 @dataclass
@@ -92,22 +98,34 @@ def start_refresh_job(
         raise ValueError(f"Unsupported refresh dataset: {dataset!r}")
 
     key = _job_key(normalized, dataset)
-    with _lock:
-        if key in _active_by_market:
-            raise RuntimeError(
-                f"A {dataset} refresh for {normalized} is already running"
-            )
-        job = MarketDataJob(
-            id=uuid4().hex,
-            market=normalized,
-            mode=mode,
-            dataset=dataset,
-        )
-        _jobs[job.id] = job
-        _active_by_market[key] = job.id
-        _latest_by_market[key] = job.id
-
-    Thread(target=_run_job, args=(job.id,), daemon=True).start()
+    job = MarketDataJob(
+        id=uuid4().hex,
+        market=normalized,
+        mode=mode,
+        dataset=dataset,
+    )
+    price_market = "VN" if normalized.startswith("VN") else "US"
+    if dataset == "prices":
+        acquire_price_refresh(price_market, job.id, normalized)
+    try:
+        with _lock:
+            if key in _active_by_market:
+                raise RuntimeError(
+                    f"A {dataset} refresh for {normalized} is already running"
+                )
+            _jobs[job.id] = job
+            _active_by_market[key] = job.id
+            _latest_by_market[key] = job.id
+        Thread(target=_run_job, args=(job.id,), daemon=True).start()
+    except Exception:
+        with _lock:
+            _jobs.pop(job.id, None)
+            _active_by_market.pop(key, None)
+            if _latest_by_market.get(key) == job.id:
+                _latest_by_market.pop(key, None)
+        if dataset == "prices":
+            release_price_refresh(price_market, job.id)
+        raise
     return job
 
 
@@ -185,9 +203,17 @@ def _run_job(job_id: str) -> None:
             current_job = _jobs[job_id]
             current_job.status = "completed"
             current_job.finished_at = _now()
-            current_job.message = "Market data updated successfully"
+            result_line = next(
+                (line for line in reversed(lines) if ": result " in line),
+                None,
+            )
+            current_job.message = result_line or "Market data updated successfully"
             if current_job.total:
                 current_job.current = current_job.total
     finally:
         with _lock:
             _active_by_market.pop(_job_key(market, dataset), None)
+        if dataset == "prices":
+            release_price_refresh(
+                "VN" if market.startswith("VN") else "US", job_id
+            )

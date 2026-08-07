@@ -1,13 +1,13 @@
 {
   "id": "VN100",
   "name": "VN100 Index",
-  "description": "Saved snapshot of VN100 constituents from VNStock KBS, enriched with company names, exchange, and KBS industry classification.",
-  "as_of": "2026-07-26",
-  "fetched_at": "2026-07-26T10:09:50+00:00",
+  "description": "Current VN100 constituents from VNStock KBS; this snapshot is the exact union of VN30 and VNMidCap.",
+  "as_of": "2026-08-05",
+  "fetched_at": "2026-08-05T03:04:28+00:00",
   "sources": [
     {
-      "name": "VNStock 3.5.0 — KBS Listing API",
-      "url": "https://vnstocks.com/docs/du-lieu-tong-hop/co-phieu"
+      "name": "VNStock 4.0.5 — KBS Listing API",
+      "url": "https://vnstocks.com/docs/vnstock/tra-cuu-thong-tin-tham-chieu-reference"
     }
   ],
   "symbols": [
@@ -265,17 +265,6 @@
       "data_source": "vnstock"
     },
     {
-      "symbol": "DXS",
-      "yfinance_symbol": "DXS",
-      "name": "Dat Xanh Real Estate Services Joint Stock Company",
-      "sector": "Real Estate",
-      "industry": "Bất động sản",
-      "exchange": "HOSE",
-      "local_name": "CTCP Dịch vụ Bất động sản Đất Xanh",
-      "industry_code": 3,
-      "data_source": "vnstock"
-    },
-    {
       "symbol": "EIB",
       "yfinance_symbol": "EIB",
       "name": "Vietnam Export Import Commercial Joint Stock Bank",
@@ -419,17 +408,6 @@
       "data_source": "vnstock"
     },
     {
-      "symbol": "HDC",
-      "yfinance_symbol": "HDC",
-      "name": "Ba Ria - Vung Tau House Development Joint Stock Company",
-      "sector": "Real Estate",
-      "industry": "Bất động sản",
-      "exchange": "HOSE",
-      "local_name": "CTCP Phát triển Nhà Bà Rịa - Vũng Tàu",
-      "industry_code": 3,
-      "data_source": "vnstock"
-    },
-    {
       "symbol": "HDG",
       "yfinance_symbol": "HDG",
       "name": "Ha Do Group Joint Stock Company",
@@ -482,17 +460,6 @@
       "exchange": "HOSE",
       "local_name": "CTCP Xi Măng Vicem Hà Tiên",
       "industry_code": 21,
-      "data_source": "vnstock"
-    },
-    {
-      "symbol": "IMP",
-      "yfinance_symbol": "IMP",
-      "name": "Imexpharm Corporation",
-      "sector": "Health Care",
-      "industry": "Chăm sóc sức khỏe",
-      "exchange": "HOSE",
-      "local_name": "CTCP Dược phẩm Imexpharm",
-      "industry_code": 8,
       "data_source": "vnstock"
     },
     {
@@ -559,6 +526,17 @@
       "exchange": "HOSE",
       "local_name": "Ngân hàng TMCP Quân đội",
       "industry_code": 11,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "MCH",
+      "yfinance_symbol": "MCH",
+      "name": "Masan Consumer Corporation",
+      "sector": "Food & Beverage",
+      "industry": "Thực phẩm - Đồ uống",
+      "exchange": "HOSE",
+      "local_name": "CTCP Hàng tiêu dùng Masan",
+      "industry_code": 19,
       "data_source": "vnstock"
     },
     {
@@ -641,11 +619,11 @@
     {
       "symbol": "NVL",
       "yfinance_symbol": "NVL",
-      "name": "No Va Land Investment Group Corporation ",
+      "name": "No Va Land Investment Group Corporation",
       "sector": "Real Estate",
       "industry": "Bất động sản",
       "exchange": "HOSE",
-      "local_name": "CTCP Tập đoàn Đầu tư Địa ốc No Va ",
+      "local_name": "CTCP Tập đoàn Đầu tư Địa ốc No Va",
       "industry_code": 3,
       "data_source": "vnstock"
     },
@@ -793,17 +771,6 @@
       "data_source": "vnstock"
     },
     {
-      "symbol": "SCS",
-      "yfinance_symbol": "SCS",
-      "name": "Sai Gon Cargo Service Corporation",
-      "sector": "Transportation & Warehousing",
-      "industry": "Vận tải - kho bãi",
-      "exchange": "HOSE",
-      "local_name": "CTCP Dịch vụ Hàng hóa Sài Gòn",
-      "industry_code": 23,
-      "data_source": "vnstock"
-    },
-    {
       "symbol": "SHB",
       "yfinance_symbol": "SHB",
       "name": "Saigon Hanoi Commercial Joint Stock Bank",
@@ -870,13 +837,13 @@
       "data_source": "vnstock"
     },
     {
-      "symbol": "SZC",
-      "yfinance_symbol": "SZC",
-      "name": "Sonadezi Chau Duc Shareholding Company",
+      "symbol": "TAL",
+      "yfinance_symbol": "TAL",
+      "name": "Taseco Land Investment Joint Stock Company",
       "sector": "Real Estate",
       "industry": "Bất động sản",
       "exchange": "HOSE",
-      "local_name": "CTCP Sonadezi Châu Đức",
+      "local_name": "CTCP Đầu tư Bất động sản Taseco",
       "industry_code": 3,
       "data_source": "vnstock"
     },
@@ -900,6 +867,17 @@
       "exchange": "HOSE",
       "local_name": "CTCP Đầu tư Dịch vụ Tài chính Hoàng Huy",
       "industry_code": 3,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "TCX",
+      "yfinance_symbol": "TCX",
+      "name": "Techcom Securities Joint Stock Company",
+      "sector": "Securities",
+      "industry": "Chứng khoán",
+      "exchange": "HOSE",
+      "local_name": "CTCP Chứng khoán Kỹ Thương",
+      "industry_code": 5,
       "data_source": "vnstock"
     },
     {
@@ -943,6 +921,17 @@
       "industry": "Chứng khoán",
       "exchange": "HOSE",
       "local_name": "CTCP Chứng khoán Vietcap",
+      "industry_code": 5,
+      "data_source": "vnstock"
+    },
+    {
+      "symbol": "VCK",
+      "yfinance_symbol": "VCK",
+      "name": "VPS Securities Joint Stock Company",
+      "sector": "Securities",
+      "industry": "Chứng khoán",
+      "exchange": "HOSE",
+      "local_name": "CTCP Chứng khoán VPS",
       "industry_code": 5,
       "data_source": "vnstock"
     },
@@ -1079,6 +1068,17 @@
       "data_source": "vnstock"
     },
     {
+      "symbol": "VPX",
+      "yfinance_symbol": "VPX",
+      "name": "VPBank Securities Joint Stock Company",
+      "sector": "Securities",
+      "industry": "Chứng khoán",
+      "exchange": "HOSE",
+      "local_name": "CTCP Chứng khoán VPBank",
+      "industry_code": 5,
+      "data_source": "vnstock"
+    },
+    {
       "symbol": "VRE",
       "yfinance_symbol": "VRE",
       "name": "Vincom Retail Joint Stock Company",
@@ -1111,6 +1111,5 @@
       "industry_code": 23,
       "data_source": "vnstock"
     }
-  ],
-  "symbol_count": 100
+  ]
 }

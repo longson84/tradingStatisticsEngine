@@ -5,8 +5,11 @@ const MARKET_COLORS: Record<MarketHealthMarket["universe"], string> = {
   US500: "#16a34a",
   US2000: "#7c3aed",
   US100: "#2563eb",
+  VNALL: "#0f766e",
   VN100: "#dc2626",
   VN30: "#ea580c",
+  VNMID: "#d97706",
+  VNSML: "#db2777",
 }
 
 

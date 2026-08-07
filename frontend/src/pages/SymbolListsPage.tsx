@@ -20,10 +20,12 @@ const ALL_SOURCES = "ALL"
 const UNKNOWN_SECTOR = "Unknown"
 const FEATURED_LIST_IDS: CompanyUniverseId[] = ["US_ALL", "VN_ALL"]
 const SOURCE_ORDER = [
-  "US100", "US500", "US2000", "US30", "VN30", "VN100",
+  "US100", "US500", "US2000", "US30",
+  "VNALL", "VN100", "VN30", "VNMID", "VNSML",
 ]
 const HEALTH_UNIVERSES: MarketHealthMarket["universe"][] = [
-  "US500", "US2000", "US100", "VN100", "VN30",
+  "US500", "US2000", "US100",
+  "VNALL", "VN100", "VN30", "VNMID", "VNSML",
 ]
 
 interface HealthDrilldown {
@@ -348,6 +350,9 @@ function listBadgeLabel(list: string): string {
   if (list === "US500") return "S&P 500"
   if (list === "US2000") return "Russell 2000"
   if (list === "US30") return "Dow Jones"
+  if (list === "VNMID") return "VNMidCap"
+  if (list === "VNSML") return "VNSmallCap"
+  if (list === "VNALL") return "VNAllshare"
   return list
 }
 

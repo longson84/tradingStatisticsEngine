@@ -9,34 +9,27 @@ import {
   marketHealthRunApi,
   type MarketHealthMarket,
   type MarketHealthDistributionBucket,
-  type MarketHealthWeights,
 } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 
-const DEFAULT_WEIGHTS: MarketHealthWeights = {
-  within_10: 0.35,
-  within_20: 0.30,
-  within_30: 0.20,
-  not_below_40: 0.15,
-}
-
 type Market = MarketHealthMarket["universe"]
-const MARKET_OPTIONS: Market[] = ["US500", "US2000", "US100", "VN100", "VN30"]
+const MARKET_OPTIONS: Market[] = [
+  "US500", "US2000", "US100",
+  "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+]
 
 
 export function MarketHealthPage() {
-  const [weights, setWeights] = useState(DEFAULT_WEIGHTS)
   const [selectedMarkets, setSelectedMarkets] = useState<Market[]>(MARKET_OPTIONS)
   const [drilldown, setDrilldown] = useState<{
     market: MarketHealthMarket
     bucket: MarketHealthDistributionBucket
   } | null>(null)
   const run = useMutation({
-    mutationFn: () => marketHealthRunApi(weights),
+    mutationFn: () => marketHealthRunApi(selectedMarkets),
   })
-  const weightTotal = Object.values(weights).reduce((sum, value) => sum + value, 0)
   const visibleMarkets = run.data?.markets.filter(
     market => selectedMarkets.includes(market.universe)
   ) ?? []
@@ -54,40 +47,38 @@ export function MarketHealthPage() {
       <Sidebar className="w-72">
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Health coefficients
+            Median distance
           </h2>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Coefficients are normalized by their total when you run.
+            Median stock distance from its trailing 200-session closing high.
           </p>
         </div>
-
-        <CoefficientInput
-          label="Within 10%"
-          value={weights.within_10}
-          onChange={value => setWeights(current => ({ ...current, within_10: value }))}
-        />
-        <CoefficientInput
-          label="Within 20%"
-          value={weights.within_20}
-          onChange={value => setWeights(current => ({ ...current, within_20: value }))}
-        />
-        <CoefficientInput
-          label="Within 30%"
-          value={weights.within_30}
-          onChange={value => setWeights(current => ({ ...current, within_30: value }))}
-        />
-        <CoefficientInput
-          label="Not below 40%"
-          value={weights.not_below_40}
-          onChange={value => setWeights(current => ({ ...current, not_below_40: value }))}
-        />
-
-        <div className="text-[11px] text-muted-foreground">
-          Coefficient total: {weightTotal.toFixed(2)}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Markets to calculate
+          </h2>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {MARKET_OPTIONS.map(market => (
+              <button
+                key={market}
+                type="button"
+                onClick={() => toggleMarket(market)}
+                aria-pressed={selectedMarkets.includes(market)}
+                className={cn(
+                  "rounded border px-2 py-1 text-[11px] font-medium transition-colors",
+                  selectedMarkets.includes(market)
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {market}
+              </button>
+            ))}
+          </div>
         </div>
         <button
           onClick={() => run.mutate()}
-          disabled={run.isPending || weightTotal <= 0}
+          disabled={run.isPending}
           className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Play size={14} />
@@ -102,7 +93,7 @@ export function MarketHealthPage() {
             <h1 className="text-2xl font-bold tracking-tight">Market Health</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Equal-weight breadth based on each stock&apos;s distance from its trailing 200-session high.
+            Median stock distance from the trailing 200-session high, with current drawdown distributions.
           </p>
         </div>
 
@@ -110,8 +101,8 @@ export function MarketHealthPage() {
           <div className="rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
             <h2 className="text-sm font-semibold">Ready to calculate from saved history</h2>
             <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
-              Adjust the coefficients and click Run. The indicator reads saved local histories for
-              the five US and Vietnam universes; it does not query Yahoo Finance or VNStock.
+              Select markets and click Run. The indicator reads saved local histories and does not
+              query Yahoo Finance or VNStock.
             </p>
           </div>
         )}
@@ -134,7 +125,7 @@ export function MarketHealthPage() {
               <div>
                 <h2 className="text-sm font-semibold">Displayed markets</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Choose any combination of the five markets. Calculations remain unchanged.
+                  Change the selection and click Run to calculate only those markets.
                 </p>
               </div>
               <div className="flex flex-wrap rounded-md border border-border bg-card p-1">
@@ -164,25 +155,26 @@ export function MarketHealthPage() {
                 <MarketSummary key={market.universe} market={market} />
               ))}
             </div>
-            <div className={cn(
-              "grid gap-4",
-              visibleMarkets.length === 2 && "grid-cols-2",
-              visibleMarkets.length === 3 && "grid-cols-3",
-              visibleMarkets.length === 4 && "grid-cols-4",
-              visibleMarkets.length === 5 && "grid-cols-5",
-            )}>
-              {visibleMarkets.map(market => (
-                <MarketDistanceDistributionChart
-                  key={market.universe}
-                  market={market}
-                  onBucketClick={bucket => setDrilldown({ market, bucket })}
-                />
-              ))}
+            <div className="overflow-x-auto pb-2">
+              <div
+                className="grid gap-4"
+                style={{
+                  gridTemplateColumns: `repeat(${visibleMarkets.length}, minmax(300px, 1fr))`,
+                  minWidth: `${visibleMarkets.length * 300}px`,
+                }}
+              >
+                {visibleMarkets.map(market => (
+                  <MarketDistanceDistributionChart
+                    key={market.universe}
+                    market={market}
+                    onBucketClick={bucket => setDrilldown({ market, bucket })}
+                  />
+                ))}
+              </div>
             </div>
             <MarketHealthChart markets={visibleMarkets} />
-            <MarketHealthChart markets={visibleMarkets} metric="median_distance" />
             <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground">
-              US500, US2000, and US100 use yfinance auto-adjusted prices. VN100 and VN30 use VCI
+              US500, US2000, and US100 use yfinance auto-adjusted prices. All VN universes use VCI
               provider prices; VNStock does not document or expose a corporate-action adjustment
               setting, so individual distance values should be interpreted with that limitation.
               Historical breadth uses today&apos;s saved index membership and should not be treated as
@@ -203,31 +195,6 @@ export function MarketHealthPage() {
 }
 
 
-function CoefficientInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (value: number) => void
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium">{label}</span>
-      <input
-        type="number"
-        min="0"
-        step="0.05"
-        value={value}
-        onChange={event => onChange(Math.max(0, Number(event.target.value) || 0))}
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm tabular-nums focus:border-ring focus:outline-none"
-      />
-    </label>
-  )
-}
-
-
 function MarketSummary({ market }: { market: MarketHealthMarket }) {
   const current = market.current
   return (
@@ -235,34 +202,26 @@ function MarketSummary({ market }: { market: MarketHealthMarket }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold">{market.universe}</h2>
-          <p className="mt-1 text-xs capitalize text-muted-foreground">
-            {market.regime.replaceAll("_", " ")}
+          <p className="mt-1 text-xs text-muted-foreground">
+            Distance from trailing 200-session high
           </p>
         </div>
         <div className="text-right">
           <div className="text-3xl font-bold tabular-nums">
-            {current.health_score.toFixed(1)}
+            {current.median_distance.toFixed(1)}%
           </div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Health
+            Median distance
           </div>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Within 10%" value={`${current.within_10.toFixed(1)}%`} />
-        <Metric label="Within 20%" value={`${current.within_20.toFixed(1)}%`} />
-        <Metric label="Within 30%" value={`${current.within_30.toFixed(1)}%`} />
-        <Metric label="Below 40%" value={`${current.stress_40.toFixed(1)}%`} />
-        <Metric label="Median distance" value={`${current.median_distance.toFixed(1)}%`} />
-        <Metric
-          label="20-session change"
-          value={current.change_20 == null ? "n/a" : current.change_20.toFixed(1)}
-        />
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Metric
           label="Coverage"
           value={`${fmtInt(current.eligible_count)}/${fmtInt(market.universe_size)}`}
         />
+        <Metric label="Coverage rate" value={`${current.coverage_pct.toFixed(1)}%`} />
         <Metric label="Latest session" value={current.date} />
       </div>
 

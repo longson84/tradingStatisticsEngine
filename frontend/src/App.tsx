@@ -11,6 +11,7 @@ import { SymbolListsPage } from "@/pages/SymbolListsPage"
 import { MarketHealthPage } from "@/pages/MarketHealthPage"
 import { MarketDataPage } from "@/pages/MarketDataPage"
 import { PriceHistoryPage } from "@/pages/PriceHistoryPage"
+import { WatchlistsPage } from "@/pages/WatchlistsPage"
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/company/growth" element={<GrowthDashboardPage />} />
           <Route path="/company/lists" element={<SymbolListsPage />} />
           <Route path="/company/price-history" element={<PriceHistoryPage />} />
+          <Route path="/company/watchlists" element={<WatchlistsPage />} />
           <Route path="/market/health" element={<MarketHealthPage />} />
           <Route path="/market-data" element={<MarketDataPage />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />

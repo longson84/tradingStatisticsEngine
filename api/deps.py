@@ -22,10 +22,16 @@ from api.repositories.sqlalchemy_fundamental_repository import (
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
 )
+from api.repositories.sqlalchemy_watchlist_repository import (
+    SqlAlchemyWatchlistRepository,
+)
 from api.services.company_service import CompanyService
 from api.services.fundamental_service import FundamentalService
 from api.services.price_history_service import PriceHistoryService
 from api.services.price_storage_service import PriceStorageService
+from api.services.company_price_service import CompanyPriceService
+from api.services.market_health_data_service import MarketHealthDataService
+from api.services.watchlist_service import WatchlistService
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
 from trading_engine.factors.moving_average import MovingAverageRatio
@@ -75,10 +81,36 @@ def get_price_history_service(
     return PriceHistoryService(SqlAlchemyPriceBarRepository(session))
 
 
+def get_market_health_data_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> MarketHealthDataService:
+    return MarketHealthDataService(SqlAlchemyPriceBarRepository(session))
+
+
 def get_price_storage_service(
     session: Annotated[Session, Depends(get_db_transaction_session)],
 ) -> PriceStorageService:
     return PriceStorageService(SqlAlchemyPriceBarRepository(session))
+
+
+def get_company_price_service(
+    session: Annotated[Session, Depends(get_db_transaction_session)],
+) -> CompanyPriceService:
+    from trading_engine.data.vnstock_loader import VNStockLoader
+
+    return CompanyPriceService(
+        SqlAlchemyPriceBarRepository(session),
+        {
+            "US": YFinanceLoader(),
+            "VN": VNStockLoader(source="KBS"),
+        },
+    )
+
+
+def get_watchlist_service(
+    session: Annotated[Session, Depends(get_db_transaction_session)],
+) -> WatchlistService:
+    return WatchlistService(SqlAlchemyWatchlistRepository(session))
 
 
 def get_loader(source: str) -> DataLoader:

@@ -1,10 +1,14 @@
 import { useState, useCallback } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
 import { RarityResults } from "@/components/rarity/RarityResults"
-import { rarityAnalysisApi } from "@/lib/api"
-import type { FactorType, MaType, DataSource, RarityRecoveryMode } from "@/lib/api"
+import {
+  CompanyTickerSelector,
+  type CompanyMarket,
+} from "@/components/forms/CompanyTickerSelector"
+import { companiesApi, rarityAnalysisApi } from "@/lib/api"
+import type { FactorType, MaType, RarityRecoveryMode } from "@/lib/api"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -19,13 +23,6 @@ const FACTOR_OPTIONS: FactorOption[] = [
   { label: "Moving Average",     value: "moving_average" },
   { label: "Bollinger Bands",    value: "bollinger" },
   { label: "Donchian Channel",   value: "donchian" },
-  { label: "AHR999",             value: "ahr999" },
-]
-
-const DATA_SOURCES: Array<{ label: string; value: DataSource }> = [
-  { label: "Yahoo Finance", value: "yfinance" },
-  { label: "VN Stock",      value: "vnstock" },
-  { label: "CSV",           value: "csv" },
 ]
 
 const MA_TYPES: Array<{ label: string; value: MaType }> = [
@@ -76,8 +73,8 @@ function NumberInput({
 
 export function FactorsPage() {
   // Form state
+  const [market, setMarket]         = useState<CompanyMarket>("US_ALL")
   const [symbol, setSymbol]         = useState("MSFT")
-  const [dataSource, setDataSource] = useState<DataSource>("yfinance")
   const [factorType, setFactorType] = useState<FactorType>("distance_from_peak")
   const [period, setPeriod]         = useState(200)
   const [maType, setMaType]         = useState<MaType>("sma")
@@ -86,50 +83,54 @@ export function FactorsPage() {
   const [qrDays, setQrDays]         = useState(5)
   const [activeTab, setActiveTab]   = useState<AnalysisType>("rarity")
 
-  // Frozen params — only updated when user clicks Analyse
-  const [frozenParams, setFrozenParams] = useState<Parameters<typeof rarityAnalysisApi>[0] | null>(null)
+  const companies = useQuery({
+    queryKey: ["companies", market],
+    queryFn: () => companiesApi({ universe: market }),
+  })
 
-  const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["rarity", frozenParams],
-    queryFn: () => rarityAnalysisApi(frozenParams!),
-    enabled: frozenParams != null,
-    retry: false,
+  const {
+    mutate: runAnalysis,
+    data,
+    error,
+    isPending: isFetching,
+  } = useMutation({
+    mutationFn: rarityAnalysisApi,
   })
 
   const handleAnalyse = useCallback(() => {
-    setFrozenParams({
-      symbol,
+    const valid = companies.data?.companies.some(
+      item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
+    )
+    if (!valid) return
+    runAnalysis({
+      market: market === "US_ALL" ? "US" : "VN",
+      ticker: symbol.toUpperCase().trim(),
       factor_type: factorType,
       period,
       ma_type: maType,
       std_dev: stdDev,
       quick_recovery_days: qrDays,
       recovery_mode: recoveryMode,
-      data_source: dataSource,
     })
-    // If params are unchanged, force refetch
-    refetch()
-  }, [symbol, factorType, period, maType, stdDev, recoveryMode, qrDays, dataSource, refetch])
+  }, [companies.data, market, symbol, factorType, period, maType, stdDev, recoveryMode, qrDays, runAnalysis])
+
+  const selectedCompany = companies.data?.companies.some(
+    item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
+  ) ?? false
 
   const controls = (
     <div className="space-y-4">
-      {/* Data Source */}
-      <div>
-        <Label>Data Source</Label>
-        <FormSelect value={dataSource} onChange={setDataSource} options={DATA_SOURCES} />
-      </div>
-
-      {/* Ticker */}
-      <div>
-        <Label>Ticker</Label>
-        <input
-          type="text"
-          value={symbol}
-          onChange={e => setSymbol(e.target.value.toUpperCase())}
-          placeholder="e.g. MSFT"
-          className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground uppercase placeholder:normal-case placeholder:text-muted-foreground focus:outline-none focus:border-ring"
-        />
-      </div>
+      <CompanyTickerSelector
+        market={market}
+        ticker={symbol}
+        companies={companies.data?.companies ?? []}
+        total={companies.data?.total}
+        isPending={companies.isPending}
+        id="factor-rarity-symbols"
+        onMarketChange={setMarket}
+        onTickerChange={setSymbol}
+        onSubmit={handleAnalyse}
+      />
 
       {/* Factor */}
       <div>
@@ -137,13 +138,10 @@ export function FactorsPage() {
         <FormSelect value={factorType} onChange={setFactorType} options={FACTOR_OPTIONS} />
       </div>
 
-      {/* Period — all factors except AHR999 (which is parameter-free) */}
-      {factorType !== "ahr999" && (
-        <div>
-          <Label>Period</Label>
-          <NumberInput value={period} onChange={setPeriod} min={2} />
-        </div>
-      )}
+      <div>
+        <Label>Period</Label>
+        <NumberInput value={period} onChange={setPeriod} min={2} />
+      </div>
 
       {/* MA Type — MA-based factors only */}
       {(factorType === "moving_average" || factorType === "distance_from_ma") && (
@@ -189,7 +187,7 @@ export function FactorsPage() {
       {/* Analyse button */}
       <button
         onClick={handleAnalyse}
-        disabled={isFetching || !symbol.trim()}
+        disabled={isFetching || !selectedCompany}
         className="w-full py-2.5 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground text-sm font-semibold transition-colors tracking-wide"
       >
         {isFetching ? "Analysing…" : "Analyse"}
@@ -249,7 +247,16 @@ export function FactorsPage() {
 
           {/* Results */}
           {data && !isFetching && activeTab === "rarity" && (
-            <RarityResults data={data} factorType={factorType} />
+            <>
+              {(data.refreshed || data.is_stale || data.refresh_warning) && (
+                <div className={`mb-4 rounded-md border px-4 py-3 text-xs ${data.is_stale ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-muted/30 text-muted-foreground"}`}>
+                  Data through {data.data_last_session}; expected {data.expected_last_session}.
+                  {data.refreshed ? " PostgreSQL was refreshed for this ticker." : ""}
+                  {data.refresh_warning ? ` ${data.refresh_warning}` : ""}
+                </div>
+              )}
+              <RarityResults data={data} factorType={factorType} />
+            </>
           )}
         </div>
       </main>

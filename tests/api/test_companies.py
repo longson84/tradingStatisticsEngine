@@ -55,7 +55,7 @@ def test_company_route_contract_has_only_canonical_company_fields():
         "sector": "Information Technology",
         "industry": "Công nghệ và thông tin",
         "exchange": "HOSE",
-        "lists": ["VN100", "VN30"],
+        "lists": ["VN100", "VN30", "VNALL"],
     }
 
 
@@ -68,10 +68,10 @@ def test_company_universe_route_includes_database_and_combined_views():
 
     assert [row.id for row in response.universes] == [
         "US_ALL", "US100", "US2000", "US500", "US30",
-        "VN_ALL", "VN30", "VN100",
+        "VN_ALL", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
     ]
     assert response.universes[0].company_count == 2472
-    assert response.universes[5].company_count == 100
+    assert response.universes[5].company_count == 315
 
 
 def test_openapi_company_contract_is_generated_from_canonical_schema():

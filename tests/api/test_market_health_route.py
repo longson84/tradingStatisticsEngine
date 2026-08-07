@@ -1,12 +1,16 @@
 """Tests for cached market-health API serialization."""
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 
 from api.routes import market_health
 from api.schemas.market_health import MarketHealthRunRequest
+from api.services.market_health_data_service import (
+    MarketHealthHistory,
+    MarketHealthHistoryMetadata,
+)
 from api.services.price_history_service import (
     PriceHistoryMetadata,
     UniversePriceHistory,
@@ -52,6 +56,7 @@ def _stored_market(universe: str) -> UniversePriceHistory:
 class StubPriceHistoryService:
     def __init__(self):
         self.calls: list[str] = []
+        self.ranges: list[tuple[date | None, date | None]] = []
 
     def get_latest_date(self, universe: str) -> date:
         return date(2024, 11, 1)
@@ -60,34 +65,58 @@ class StubPriceHistoryService:
         self.calls.append(universe)
         return _stored_market(universe)
 
+    def get_close_history(self, universe: str, **kwargs) -> MarketHealthHistory:
+        self.calls.append(universe)
+        self.ranges.append((kwargs.get("start"), kwargs.get("end")))
+        stored = _stored_market(universe)
+        closes = pd.concat(
+            {symbol: frame.data["close"] for symbol, frame in stored.prices.items()},
+            axis=1,
+        )
+        return MarketHealthHistory(
+            universe=universe,
+            closes=closes,
+            metadata=MarketHealthHistoryMetadata(
+                fetched_at=stored.metadata.fetched_at,
+                first_date=stored.metadata.first_date,
+                last_date=stored.metadata.last_date,
+                symbol_count=stored.metadata.symbol_count,
+                row_count=stored.metadata.row_count,
+                sources=stored.metadata.sources,
+                price_basis=stored.metadata.price_basis,
+            ),
+        )
 
-def test_run_market_health_uses_database_service_and_custom_weights():
+
+def test_run_market_health_uses_database_service_and_returns_median_distance():
     service = StubPriceHistoryService()
     result = market_health.run_market_health(
-        MarketHealthRunRequest(
-            weights={
-                "within_10": 1.0,
-                "within_20": 0.0,
-                "within_30": 0.0,
-                "not_below_40": 0.0,
-            }
-        ),
+        MarketHealthRunRequest(),
         service,
     )
 
-    assert service.calls == ["US500", "US2000", "US100", "VN100", "VN30"]
+    assert service.calls == [
+        "US500", "US2000", "US100",
+        "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+    ]
     assert [market.universe for market in result.markets] == [
         "US500",
         "US2000",
         "US100",
+        "VNALL",
         "VN100",
         "VN30",
+        "VNMID",
+        "VNSML",
     ]
-    assert result.markets[0].current.health_score == 100.0
-    assert result.markets[0].regime == "strong_stable"
+    assert result.markets[0].current.median_distance == 0.0
     assert result.markets[0].cache.source == "us500-test"
     assert result.markets[0].distribution[0].label == "0 to -10%"
     assert result.markets[0].distribution[0].count == 1
+    assert service.ranges[0] == (
+        date(2014, 11, 1) - timedelta(days=400),
+        date(2024, 11, 1),
+    )
 
 
 def test_distribution_drilldown_returns_database_bucket_members():
@@ -104,3 +133,18 @@ def test_distribution_drilldown_returns_database_bucket_members():
     assert result.window == 200
     assert [stock.symbol for stock in result.stocks] == ["A"]
     assert result.stocks[0].distance == 0.0
+
+
+def test_run_market_health_calculates_only_selected_universes():
+    service = StubPriceHistoryService()
+
+    result = market_health.run_market_health(
+        MarketHealthRunRequest(universes=["US2000", "VN100"]),
+        service,
+    )
+
+    assert service.calls == ["US2000", "VN100"]
+    assert [market.universe for market in result.markets] == ["US2000", "VN100"]
+    assert set(result.markets[0].series[0].model_fields_set) == {
+        "date", "median_distance"
+    }

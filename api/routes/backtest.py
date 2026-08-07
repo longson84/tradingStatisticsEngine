@@ -2,14 +2,25 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 
 from trading_engine import run_portfolio
 from trading_engine.performance.strategy_analysis import run_single_ticker_analysis
+from trading_engine.types import PriceFrame
 
-from api.deps import build_portfolio, build_strategy, fetch_prices
+from api.deps import (
+    build_portfolio,
+    build_strategy,
+    fetch_prices,
+    get_company_price_service,
+)
+from api.services.company_price_service import (
+    CompanyPriceService,
+    CompanyPriceUnavailableError,
+    UnknownCompanyError,
+)
 from api.schemas.backtest import (
     AnalyzeRequest,
     BacktestRequest,
@@ -80,13 +91,39 @@ def run_backtest(req: BacktestRequest) -> PortfolioResultResponse:
 
 
 @router.post("/analyze", response_model=SingleTickerAnalysisResponse)
-def analyze_single_ticker(req: AnalyzeRequest) -> SingleTickerAnalysisResponse:
+def analyze_single_ticker(
+    req: AnalyzeRequest,
+    price_service: Annotated[
+        CompanyPriceService, Depends(get_company_price_service)
+    ],
+) -> SingleTickerAnalysisResponse:
     """Full analytics for a single-ticker strategy: performance, trades, heatmaps, health."""
-    start = req.start or date(2000, 1, 1)
-    end = req.end or date.today()
-    symbol = req.symbol.upper().strip()
+    symbol = req.ticker.upper().strip()
+    try:
+        stored = price_service.get_current_history(req.market, symbol)
+    except UnknownCompanyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CompanyPriceUnavailableError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    prices = fetch_prices([symbol], start, end, req.data_source)
+    frame = stored.prices.data
+    if req.start is not None:
+        frame = frame.loc[frame.index.date >= req.start]
+    if req.end is not None:
+        frame = frame.loc[frame.index.date <= req.end]
+    if frame.empty:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No stored price history for {symbol} in the requested date range",
+        )
+    prices = {
+        symbol: PriceFrame(
+            symbol=symbol,
+            data=frame.copy(),
+            source=stored.prices.source,
+        )
+    }
+
     strategy = build_strategy(req.strategy)
     strategy_label = f"{req.strategy.type.replace('_', ' ').title()} — {symbol}"
 
@@ -98,4 +135,14 @@ def analyze_single_ticker(req: AnalyzeRequest) -> SingleTickerAnalysisResponse:
         strategy_label=strategy_label,
     )
 
-    return SingleTickerAnalysisResponse(**asdict(analysis))
+    return SingleTickerAnalysisResponse(
+        **asdict(analysis),
+        market=stored.market,
+        expected_last_session=stored.expected_last_session,
+        data_last_session=stored.data_last_session,
+        refreshed=stored.refreshed,
+        is_stale=stored.is_stale,
+        refresh_warning=stored.refresh_warning,
+        price_source=stored.price_source,
+        price_basis=stored.price_basis,
+    )

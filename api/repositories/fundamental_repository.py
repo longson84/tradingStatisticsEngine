@@ -109,6 +109,7 @@ class FundamentalStatusRecord:
     fact_count: int
     valuation_count: int
     sources: tuple[str, ...]
+    oldest_fetched_at: datetime | None = None
 
 
 class FundamentalRepository(Protocol):

@@ -1,7 +1,11 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChartNoAxesCombined } from "lucide-react"
-import { FormLabel, FormSelect } from "@/components/forms/FormSelect"
+import { FormLabel } from "@/components/forms/FormSelect"
+import {
+  CompanyTickerSelector,
+  type CompanyMarket,
+} from "@/components/forms/CompanyTickerSelector"
 import { Sidebar } from "@/components/Sidebar"
 import {
   SymbolPriceHistoryChart,
@@ -12,21 +16,12 @@ import {
   companiesApi,
   symbolPriceHistoryApi,
   type CompanyResponse,
-  type CompanyUniverseId,
   type SymbolPriceHistoryResponse,
 } from "@/lib/api"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
 
 
 type CachedUniverse = SymbolPriceHistoryResponse["universe"]
-type CompanyMarket = Extract<CompanyUniverseId, "US_ALL" | "VN_ALL">
-
-const MARKET_OPTIONS: Array<{ label: string; value: CompanyMarket }> = [
-  { label: "US Companies", value: "US_ALL" },
-  { label: "VN Companies", value: "VN_ALL" },
-]
-
-
 export function PriceHistoryPage() {
   const [market, setMarket] = useState<CompanyMarket>("VN_ALL")
   const [ticker, setTicker] = useState("FPT")
@@ -79,48 +74,17 @@ export function PriceHistoryPage() {
 
   const controls = (
     <div className="space-y-4">
-      <div>
-        <FormLabel>Company list</FormLabel>
-        <FormSelect
-          value={market}
-          onChange={value => {
-            setMarket(value)
-            setTicker("")
-          }}
-          options={MARKET_OPTIONS}
-        />
-      </div>
-
-      <div>
-        <FormLabel>Ticker</FormLabel>
-        <input
-          list="price-history-symbols"
-          value={ticker}
-          onChange={event => setTicker(event.target.value.toUpperCase())}
-          onKeyDown={event => {
-            if (event.key === "Enter" && selectedCompany) {
-              viewHistory()
-            }
-          }}
-          placeholder={companies.isPending ? "Loading tickers…" : "Search ticker or company"}
-          className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none"
-          aria-label="Ticker"
-        />
-        <datalist id="price-history-symbols">
-          {companies.data?.companies.map(item => (
-            <option
-              key={`${item.market}-${item.ticker}`}
-              value={item.ticker}
-              label={`${item.ticker} · ${item.company_name}`}
-            />
-          ))}
-        </datalist>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          {companies.data
-            ? `${companies.data.total.toLocaleString()} tickers available`
-            : "Choose from the PostgreSQL company universe."}
-        </p>
-      </div>
+      <CompanyTickerSelector
+        market={market}
+        ticker={ticker}
+        companies={companies.data?.companies ?? []}
+        total={companies.data?.total}
+        isPending={companies.isPending}
+        id="price-history-symbols"
+        onMarketChange={setMarket}
+        onTickerChange={setTicker}
+        onSubmit={viewHistory}
+      />
 
       <div>
         <FormLabel>SMA lengths</FormLabel>
@@ -173,7 +137,7 @@ export function PriceHistoryPage() {
             <Badge variant="outline">{companyMarketLabel(selection.market)}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Maximum daily price history available in the selected local market cache.
+            Maximum daily price history available in PostgreSQL for the selected market.
           </p>
         </div>
 
@@ -245,11 +209,11 @@ export function PriceHistoryPage() {
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
               {history.data.trailing_pe_method
-                ? `Fundamentals: ${history.data.trailing_pe_method}. The cache is retained indefinitely and changes only through Market Data refresh. `
-                : "Fundamentals are not cached for this ticker. Refresh them from Market Data to display P/E and P/B. "}
+                ? `Fundamentals: ${history.data.trailing_pe_method}. Stored history is retained indefinitely and changes only through Market Data refresh. `
+                : "Fundamentals are not stored for this ticker. Refresh them from Market Data to display P/E and P/B. "}
               {isVietnam
-                ? "VCI does not expose an adjustment switch or adjusted-close column. The chart shows the provider closing series exactly as cached; its corporate-action adjustment methodology is unspecified."
-                : "Yahoo Finance history is cached with auto-adjustment enabled, so historical OHLC values reflect splits and distributions according to Yahoo Finance's adjustment data."}
+                ? "VCI does not expose an adjustment switch or adjusted-close column. The chart shows the stored provider closing series; its corporate-action adjustment methodology is unspecified."
+                : "Yahoo Finance history is stored with auto-adjustment enabled, so historical OHLC values reflect splits and distributions according to Yahoo Finance's adjustment data."}
             </p>
           </>
         )}
@@ -325,7 +289,10 @@ function providerRatioDetail(history: SymbolPriceHistoryResponse): string {
 
 function sourceLabel(source: string | undefined): string {
   if (source === "yfinance") return "Yahoo Finance"
+  if (source === "vnstock-kbs") return "KBS"
   if (source === "vnstock-vci") return "VCI"
+  if (source?.startsWith("database:")) return "Mixed provider history"
+  if (source === "mixed") return "Mixed provider history"
   return source ?? "Local cache"
 }
 
@@ -337,7 +304,11 @@ function companyMarketLabel(market: CompanyMarket): string {
 
 function historyUniverse(market: CompanyMarket, company: CompanyResponse): CachedUniverse {
   if (market === "VN_ALL") {
-    return company.lists.includes("VN30") ? "VN30" : "VN100"
+    if (company.lists.includes("VN30")) return "VN30"
+    if (company.lists.includes("VNMID")) return "VNMID"
+    if (company.lists.includes("VN100")) return "VN100"
+    if (company.lists.includes("VNSML")) return "VNSML"
+    return "VNALL"
   }
   if (company.lists.includes("US100")) return "US100"
   if (company.lists.includes("US500") || company.lists.includes("US30")) return "US500"

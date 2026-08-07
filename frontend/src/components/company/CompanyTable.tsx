@@ -91,6 +91,9 @@ function listBadgeLabel(list: string): string {
   if (list === "US500") return "S&P 500"
   if (list === "US2000") return "Russell 2000"
   if (list === "US30") return "Dow Jones"
+  if (list === "VNMID") return "VNMidCap"
+  if (list === "VNSML") return "VNSmallCap"
+  if (list === "VNALL") return "VNAllshare"
   return list
 }
 
@@ -102,5 +105,8 @@ function listBadgeTone(list: string): string {
   if (list === "US30") return "bg-amber-500/22 text-amber-900 dark:text-amber-200"
   if (list === "VN30") return "bg-red-500/18 text-red-800 dark:text-red-200"
   if (list === "VN100") return "bg-violet-500/18 text-violet-800 dark:text-violet-200"
+  if (list === "VNMID") return "bg-amber-500/18 text-amber-900 dark:text-amber-200"
+  if (list === "VNSML") return "bg-pink-500/18 text-pink-800 dark:text-pink-200"
+  if (list === "VNALL") return "bg-teal-500/18 text-teal-800 dark:text-teal-200"
   return "bg-muted text-muted-foreground"
 }

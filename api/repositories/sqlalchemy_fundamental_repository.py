@@ -184,6 +184,24 @@ class SqlAlchemyFundamentalRepository:
             .distinct()
             .order_by(FundamentalReport.source)
         ))
+        latest_fetch_by_instrument = (
+            select(
+                FundamentalReport.instrument_id,
+                func.max(FundamentalReport.fetched_at).label("latest_fetched_at"),
+            )
+            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
+            .join(
+                UniverseMembership,
+                UniverseMembership.instrument_id == Instrument.id,
+            )
+            .join(Universe, Universe.id == UniverseMembership.universe_id)
+            .where(*report_filters)
+            .group_by(FundamentalReport.instrument_id)
+            .subquery()
+        )
+        oldest_fetched_at = self._session.scalar(
+            select(func.min(latest_fetch_by_instrument.c.latest_fetched_at))
+        )
         return FundamentalStatusRecord(
             universe=universe,
             market=summary[0],
@@ -195,6 +213,7 @@ class SqlAlchemyFundamentalRepository:
             fact_count=fact_count,
             valuation_count=valuation_count,
             sources=sources,
+            oldest_fetched_at=oldest_fetched_at,
         )
 
     def get_latest_fetched_at(

@@ -77,7 +77,7 @@ fundamentals remain file-backed until their separate migrations are verified.
 - `instruments` stores market, canonical ticker, company name, sector,
   industry, exchange, active state, and source.
 - `universes` stores the named current snapshots such as US100, US500, US2000,
-  US30, VN30, and VN100.
+  US30, VN30, VNMID, VN100, VNSML, and VNALL.
 - `universe_memberships` implements the many-to-many relationship between
   instruments and universes.
 - `price_bars` stores canonical daily OHLCV observations once per instrument,
@@ -85,6 +85,9 @@ fundamentals remain file-backed until their separate migrations are verified.
 - `price_bar_coverages` stores one derived operational summary per instrument
   and price basis. It accelerates status and refresh planning; it is rebuilt
   from canonical bars and is never an analytical price source.
+- `price_refresh_states` stores the latest provider-check outcome per instrument
+  and price basis. `attempted_through` is independent from the latest observable
+  trade date, so checked no-new-bar sessions are not mislabeled as unattempted.
 
 The initial membership table represents current saved snapshots. It is not
 historical membership data. Effective-dated membership will require a later
@@ -291,17 +294,124 @@ stage initially did not change application reads.
 Context: after canonical price bars and service boundaries were verified, the
 two analytical read paths still depended on overlapping universe CSV files.
 Loading every historical database row for Market Health would also materialize
-far more data than its intended five-year display requires.
+far more data than its intended ten-year display requires.
 
 Decision: inject `PriceHistoryService` into the Price History and Market Health
 routes. Preserve the public source and price-basis labels. For Market Health,
-query five years plus a rolling-window warm-up, stream rows in ticker order, and
-return the five-year calculated series. The distribution drill-down queries only
+query ten years plus a rolling-window warm-up, stream rows in ticker order, and
+return the ten-year calculated series. The distribution drill-down queries only
 the requested date and its warm-up range.
 
 Consequences: these application reads no longer depend on the market-history
 CSV files, and UI/analytical code remains independent from persistence.
 Benchmark and fundamental files are separate migrations.
+
+### 2026-08-05 — Market Health close-only read path
+
+Context: the five-universe Market Health endpoint loaded 3.82 million full
+OHLCV rows into per-symbol dataclasses and `PriceFrame` objects even though the
+calculation uses only closing prices. A live all-market request took 76.6
+seconds and returned 2.9 MB; US2000 alone materialized 2.72 million rows.
+
+Decision: give Market Health a dedicated persistence-neutral data service and
+a SQLAlchemy repository projection that reads only instrument ID, session date,
+and close, ordered by instrument ID and date, then pivots directly to the
+date-by-symbol matrix consumed by the engine. Latest dates come from canonical
+coverage rather than scanning price bars. The Run request carries one or more
+selected universes, and the frontend exposes that selection before execution.
+Historical response points contain only date, health score, and median distance;
+the current point retains the full diagnostic fields. This was the initial
+close-only contract before simplifying the indicator below.
+
+Consequences: the identical live all-five request takes 11.9 seconds and returns
+583 KB, while US2000 alone takes 6.7 seconds and returns 113 KB. Health score and
+median-distance histories match the previous endpoint exactly for every market.
+This established the non-persistent Phase 1 optimization baseline.
+
+### 2026-08-05 — Median-only Market Health indicator
+
+Context: the configurable composite score duplicated information that was not
+currently needed. The useful market-level signal is the cross-sectional median
+of each eligible stock's percentage distance from its trailing 200-session
+closing high. The current 10-band stock distribution and drill-down remain
+useful diagnostics and must not be removed.
+
+Decision: make `median_distance` the only historical Market Health indicator.
+Remove composite coefficients, component breadth histories, composite score,
+regime classification, and the composite chart from the engine, HTTP contract,
+and frontend. Retain current coverage metadata and all 10 drawdown buckets.
+After a stock has begun trading, carry its last observable close across an
+exchange session with no trade; do not fill leading pre-listing dates. Apply
+the same panel convention to the chart and distribution drill-down so
+illiquid constituents do not fail coverage merely because they skipped a
+session.
+
+Consequences: the endpoint returns only date and median distance for historical
+points, reducing the all-five response from 583 KB to 377 KB. A warm live run
+on the current local dataset took 14.6 seconds; database and host load make this
+timing variable. Every median observation exactly matched the prior close-only
+implementation. A persisted derived series is unnecessary until this remaining
+calculation needs materially lower latency.
+
+### 2026-08-05 — VN size-segment and all-share universes
+
+Context: VN30 and VN100 did not expose the small-cap segment or a broad HOSE
+health view. VNStock 4.0.5 declares additional index groups, but live provider
+verification showed KBS returning complete constituents more reliably than VCI
+for these group listings.
+
+Decision: store VNMID, VNSML, and VNALL as system-managed, single-market
+universes alongside VN30 and VN100. KBS is the constituent source and primary
+OHLCV source; VCI is the fallback when KBS fails or does not reach the requested
+completed session. One synchronized snapshot must preserve the exact set
+identities `VN100 = VN30 union VNMID` and `VNALL = VN100 union VNSML`; the
+2026-08-05 snapshot contains 30, 70, 100, 215, and 315 members respectively.
+All five memberships point to shared canonical VN instruments and price bars.
+
+Market Data refreshes VNALL first and passes successful ticker identities to
+the four narrower views, so overlap never causes a second provider download in
+the same run. Fundamentals remain stored once per instrument and use the same
+reuse convention. Market Health calculates and drills down each membership
+independently from PostgreSQL, while Price History selects the narrowest saved
+VN membership containing the chosen company.
+
+Consequences: VNAllshare provides broad HOSE market health, and VNMidCap and
+VNSmallCap expose size-segment behavior without duplicating stored prices. The
+VNStock 4.0.5 community tier currently limits newly requested daily OHLCV to
+eight years, so the ten-year Market Health window uses all stored history but
+cannot manufacture the two unavailable years for newly added constituents.
+The snapshots still represent current membership rather than effective-dated
+historical membership, so historical charts retain survivorship bias.
+
+### 2026-08-07 — Provider-aware VN refresh completion
+
+Context: a VN refresh was reported as successful whenever every provider call
+returned a non-empty frame and the subprocess exited with code zero. Illiquid
+symbols could legitimately have no bar on the expected session, causing the UI
+to show the same tickers as stale and redownload them indefinitely. A recent
+fetch timestamp could not distinguish a provider check from actual bar coverage.
+
+Decision: VN daily history uses KBS first and VCI as fallback when KBS errors,
+returns no rows, or ends before the requested completed session. When both
+sources return data, the frame reaching the later session wins, ties prefer KBS,
+and overlapping normalized OHLCV values are compared in refresh diagnostics.
+Canonical rows retain their selected provider per bar; derived coverage reports
+`mixed` when a series contains more than one provider.
+
+Persist the latest per-symbol check in `price_refresh_states`, including the
+requested `attempted_through`, provider `returned_through`, outcome (`current`,
+`checked_no_new_bar`, or `failed`), selected provider, timestamp, and diagnostic
+detail. Incremental planning reuses a successful no-new-bar check for the same
+expected session. Market status keeps actual last-trade coverage separate and
+reports checked-without-new-bar and provider failures independently. A universe
+is operationally checked when every member either has a current bar or a
+successful no-new-bar check, with no refresh failures.
+
+Consequences: job completion describes successful checking rather than claiming
+every symbol traded. No-new-bar symbols do not loop within the same session,
+real failures remain retryable, and downstream analysis still uses canonical
+stored bars with explicit row-level provenance. Provider comparison is
+diagnostic; it does not manufacture or forward-fill a missing OHLCV bar.
 
 ### 2026-08-03 — Incremental PostgreSQL price refresh
 
@@ -315,14 +425,16 @@ request a seven-calendar-day overlap only for stale symbols, validate provider
 rows in the price-refresh service, and upsert with the canonical
 instrument/date/basis key. Network calls occur outside transactions; each
 universe write is one short transaction. An all-market full refresh processes
-US2000, US500, US100, then VN100 and VN30, carrying successful ticker identities
-forward to avoid repeated downloads. VNStock continues to use VCI and its
+US2000, US500, US100, then VNALL before its overlapping VN100, VN30, VNMID, and
+VNSML views, carrying successful ticker identities forward to avoid repeated
+downloads. VNStock continues to use VCI and its
 rate-safe checkpoint between provider calls; benchmark refresh remains a
 separate file-backed workflow.
 
-Because the application runs in Vietnam time, the latest expected US session is
-the previous completed weekday; the current local weekday may be used for VN.
-This prevents a daytime refresh in Vietnam from repeatedly treating the not-yet-
+Refresh planning uses the latest completed session for each market. In
+particular, a daytime VN refresh before the 15:15 close must target the previous
+session rather than redownloading every ticker in pursuit of an incomplete day.
+The same convention prevents a Vietnam-daytime refresh from treating a not-yet-
 opened US session as missing.
 
 Consequences: price refresh no longer reads or writes universe CSV history and
@@ -387,6 +499,118 @@ reported versus derived values, and reproducible calculation versions without
 adding daily valuation duplication. This stage adds persistence only; existing
 fundamental cache reads and refresh writes remain unchanged until importer and
 repository/service parity are separately verified.
+
+### 2026-08-04 — PostgreSQL-first single-company Factor Rarity
+
+Context: Factor Rarity previously accepted a free-form ticker and provider
+choice, then downloaded a complete history on every analysis. That bypassed the
+canonical company and price-bar models, repeated provider work, and allowed
+analysis of symbols absent from the application database.
+
+Decision: the company workflow accepts only a canonical `market` plus `ticker`
+identity from the active PostgreSQL instruments. Price retrieval is owned by a
+persistence-neutral company price service: it reads the canonical market basis
+from PostgreSQL, compares coverage with the latest completed market session,
+and refreshes only the selected stale ticker with a seven-day overlap before
+running the engine analysis. A provider failure preserves usable stored bars
+and is returned as explicit staleness metadata rather than silently replacing
+the stored series. US uses adjusted Yahoo bars; VN uses VCI provider bars with
+the existing unspecified-adjustment basis. The shared company/ticker selector
+is presentation-only and is reused by Price History and Factor Rarity.
+
+The HTTP contract returns market, expected and actual last sessions, refresh
+status, warning, source, and price basis. Frontend rarity types are generated
+from that OpenAPI contract. The company-only form does not expose AHR999 because
+that factor is not part of the US/VN company price model.
+
+Consequences: clicking Analyse normally performs a PostgreSQL read and no
+provider request. Missing or stale data causes at most one targeted refresh per
+ticker and expected session in the running API process; repeated analyses in
+that process reuse the stored result. Exchange-holiday awareness and durable
+cross-process refresh-attempt tracking remain future scheduling concerns.
+
+### 2026-08-04 — PostgreSQL-first single-company SMA Strategy
+
+Context: SMA Strategy still accepted a free-form symbol and provider choice and
+called the provider-backed generic loader on every run. This gave it different
+company identity, freshness, and persistence behavior from Factor Rarity and
+Price History.
+
+Decision: `/backtest/analyze` accepts canonical `market` plus `ticker`, rejects
+companies absent from PostgreSQL, and obtains its full history through the same
+`CompanyPriceService` used by Factor Rarity. The service performs a targeted
+refresh only when that selected ticker is stale. Optional analysis dates slice
+the returned in-memory `PriceFrame`; they do not create a second storage path or
+alter canonical bars. Strategy construction and all performance calculations
+remain in the engine. The response carries the same freshness, provider, and
+price-basis metadata as Factor Rarity.
+
+The SMA page reuses the shared US/VN company selector and executes analysis as
+an explicit mutation per Run click. Its response and nested performance types
+come from the generated OpenAPI contract.
+
+Consequences: repeated SMA runs use PostgreSQL instead of redownloading full
+history, while a stale symbol causes only one ticker refresh. The generic
+multi-symbol portfolio backtest remains provider-configurable; this decision
+applies specifically to the single-company analysis endpoint and SMA page.
+
+### 2026-08-04 — Single-market watchlists and stored Predefined Rarity
+
+Context: system universes and user-selected ticker groups are both instrument
+collections, but they have different ownership and lifecycle. Treating a
+watchlist as a universe would let user edits interfere with provider-managed
+constituents and market-data refresh planning. Predefined Rarity also accepted
+free-form symbols and downloaded them directly, bypassing canonical companies.
+
+Decision: keep `watchlists` and ordered `watchlist_memberships` separate from
+`universes` and `universe_memberships`. Every watchlist has one immutable `US`
+or `VN` market. The watchlist service normalizes names and tickers, enforces
+case-insensitive name uniqueness per market, resolves every member against an
+active instrument in that same market, and owns CRUD behavior through a
+persistence-neutral repository. SQLAlchemy construction and transaction
+ownership remain in `api/deps.py`. Composite database foreign keys include the
+market on both the watchlist and instrument references, so cross-market
+membership is rejected even if a write bypasses the service.
+
+Predefined Rarity now accepts only `watchlist_id`. It resolves canonical
+members, bulk-reads their market-specific price basis from PostgreSQL, and
+reports missing and stale symbols without making provider calls. An empty
+watchlist or one with no stored history is rejected explicitly. Watchlist CRUD
+and analysis response types are generated from OpenAPI, and the UI provides a
+dedicated Watchlists page plus a market-filtered selector on Predefined.
+
+Consequences: universes remain system/provider-managed populations used by
+Market Data and Market Health; watchlists remain user-managed analysis inputs.
+Both can later satisfy a shared read-only instrument-set interface without
+sharing persistence or mutation semantics. Bulk watchlist refresh is a separate
+explicit workflow and is not hidden inside Analyse. The explicit Update prices
+action lives on the watchlist detail page, while Market Data provides a central
+monitor for the latest watchlist refresh jobs. The background worker reads the
+watchlist and PostgreSQL coverage in a short transaction, downloads only missing
+or stale members outside any database transaction, then bulk-upserts successful
+histories in a separate transaction. VN requests remain sequential and paced at
+4.1 seconds; US requests use Yahoo Finance. Existing rows survive individual
+provider failures, and no universe memberships are created or changed.
+Universe refresh planning queries that same canonical coverage directly by
+market and ticker, rather than treating coverage as owned by a universe. Thus a
+completed watchlist refresh is reused by later incremental US500, US2000,
+US100, VNALL, VN100, VN30, VNMID, or VNSML refreshes whenever the ticker and
+price basis match.
+API-launched price jobs also hold a shared per-market lease: only one US price
+refresh and one VN price refresh may run concurrently, preventing overlapping
+universes and watchlists from making duplicate provider calls. Fundamentals use
+their independent job coordination because they have a different persistence
+and freshness lifecycle.
+
+Market Data status must not present the maximum ticker `fetched_at` or maximum
+session date as if it represented the whole universe. Price status therefore
+reports the expected completed session, the oldest latest-session date across
+covered members (`coverage_through`), the newest ticker session, and separate
+current, stale, missing, covered, and total-member counts. The maximum write
+timestamp is labelled recent activity. Fundamentals likewise distinguish recent
+activity from the oldest per-ticker latest fetch. Durable completed refresh runs
+exist for fundamentals; adding the equivalent price-refresh-run persistence is
+a separate schema change rather than deriving a false completion time.
 
 ### 2026-08-03 — Legacy fundamentals import
 

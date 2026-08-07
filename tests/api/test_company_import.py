@@ -21,7 +21,10 @@ def test_company_import_is_idempotent_and_preserves_many_to_many_membership():
         "US500": 503,
         "US30": 30,
         "VN30": 30,
+        "VNMID": 70,
         "VN100": 100,
+        "VNSML": 215,
+        "VNALL": 315,
     }
     with Session(engine) as session:
         apple = session.scalar(
@@ -51,10 +54,10 @@ def test_company_import_is_idempotent_and_preserves_many_to_many_membership():
             .join(UniverseMembership)
             .where(UniverseMembership.instrument_id == fpt.id)
         ))
-        assert fpt_lists == {"VN30", "VN100"}
+        assert fpt_lists == {"VN30", "VN100", "VNALL"}
 
         membership_count = session.scalar(select(func.count(UniverseMembership.id)))
-        assert membership_count == 2720
+        assert membership_count == 3320
 
 
 def test_instrument_model_has_no_note_column():

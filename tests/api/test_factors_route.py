@@ -1,11 +1,30 @@
 """Tests for api/routes/factors.py factory wiring."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pandas as pd
 import pytest
+from fastapi import HTTPException
 
-from api.routes.factors import _PREDEFINED_FACTORS, _build_factor, _normalise_symbols, _predefined_row
+from api.routes.factors import (
+    _PREDEFINED_FACTORS,
+    _build_factor,
+    _predefined_row,
+    predefined_rarity_endpoint,
+    rarity_analysis_endpoint,
+)
 from api.schemas.factor import PredefinedRarityRequest, RarityRequest
+from api.services.company_price_service import (
+    StoredCompanyPriceData,
+    CompanyPriceUnavailableError,
+    UnknownCompanyError,
+)
+from api.repositories.watchlist_repository import (
+    WatchlistMemberRecord,
+    WatchlistRecord,
+)
+from api.services.watchlist_service import UnknownWatchlistError
 from trading_engine.factors import (
     AHR999,
     BollingerBands,
@@ -36,41 +55,150 @@ class TestBuildFactor:
 
 
 class TestRarityRequestSchema:
-    """The request schema must accept the same factor types the factory builds.
+    """Company Factor Rarity accepts only canonical market-price factors."""
 
-    If the schema's Literal lacks 'ahr999', FastAPI rejects the request body
-    with a 422 (detail is a list of error objects) before _build_factor runs —
-    which surfaces in the UI as the unhelpful "[object Object]".
-    """
-
-    def test_accepts_ahr999(self):
-        req = RarityRequest(
-            symbol="BTC-USD",
-            date_range={"start": "2000-01-01", "end": "2024-01-01"},
-            factor_type="ahr999",
-        )
-        assert req.factor_type == "ahr999"
+    def test_rejects_crypto_only_ahr999_from_company_workflow(self):
+        with pytest.raises(ValueError):
+            RarityRequest(market="US", ticker="MSFT", factor_type="ahr999")
 
     def test_accepts_distance_from_ma(self):
         req = RarityRequest(
-            symbol="MSFT",
-            date_range={"start": "2000-01-01", "end": "2024-01-01"},
+            market="US",
+            ticker="MSFT",
             factor_type="distance_from_ma",
             period=200,
             ma_type="sma",
         )
         assert req.factor_type == "distance_from_ma"
+        assert req.market == "US"
+        assert req.ticker == "MSFT"
+
+
+class RejectingCompanyPriceService:
+    def __init__(self, error: Exception):
+        self.error = error
+
+    def get_current_history(self, market, ticker):
+        raise self.error
+
+
+class TestRarityEndpointPriceValidation:
+    def test_unknown_company_maps_to_not_found(self):
+        request = RarityRequest(
+            market="US", ticker="NOT-IN-DB", factor_type="distance_from_peak"
+        )
+
+        with pytest.raises(HTTPException) as raised:
+            rarity_analysis_endpoint(
+                request,
+                RejectingCompanyPriceService(
+                    UnknownCompanyError("Unknown company: US-NOT-IN-DB")
+                ),
+            )
+
+        assert raised.value.status_code == 404
+
+    def test_missing_stored_history_maps_to_unprocessable(self):
+        request = RarityRequest(
+            market="VN", ticker="FPT", factor_type="distance_from_peak"
+        )
+
+        with pytest.raises(HTTPException) as raised:
+            rarity_analysis_endpoint(
+                request,
+                RejectingCompanyPriceService(
+                    CompanyPriceUnavailableError("No stored price history")
+                ),
+            )
+
+        assert raised.value.status_code == 422
 
 
 class TestPredefinedRarity:
-    def test_request_accepts_symbols_only(self):
-        req = PredefinedRarityRequest(symbols=["ko", "MSFT"])
+    def test_request_accepts_watchlist_only(self):
+        req = PredefinedRarityRequest(watchlist_id=12)
 
-        assert req.symbols == ["ko", "MSFT"]
-        assert req.data_source == "yfinance"
+        assert req.watchlist_id == 12
 
-    def test_normalise_symbols_dedupes_and_uppercases(self):
-        assert _normalise_symbols([" ko ", "MSFT", "ko", "", " msft "]) == ["KO", "MSFT"]
+    def test_request_rejects_non_positive_watchlist_id(self):
+        with pytest.raises(ValueError):
+            PredefinedRarityRequest(watchlist_id=0)
+
+    def test_endpoint_reads_watchlist_prices_and_returns_storage_status(self):
+        dates = pd.date_range("2024-01-01", periods=260, freq="B")
+        close = pd.Series(range(100, 360), index=dates, dtype=float)
+        prices = PriceFrame(
+            symbol="MSFT",
+            data=pd.DataFrame({
+                "open": close,
+                "high": close,
+                "low": close,
+                "close": close,
+                "volume": 1_000_000.0,
+            }),
+            source="yfinance",
+        )
+        watchlist = WatchlistRecord(
+            id=7,
+            name="Leaders",
+            market="US",
+            description="",
+            created_at=datetime(2026, 8, 4, tzinfo=UTC),
+            updated_at=datetime(2026, 8, 4, tzinfo=UTC),
+            members=(WatchlistMemberRecord(
+                ticker="MSFT",
+                company_name="Microsoft",
+                market="US",
+                sector=None,
+                industry=None,
+                exchange=None,
+                position=0,
+            ),),
+        )
+
+        class Watchlists:
+            def get_watchlist(self, watchlist_id):
+                assert watchlist_id == 7
+                return watchlist
+
+        class Prices:
+            def get_stored_histories(self, market, tickers):
+                assert market == "US"
+                assert tickers == ["MSFT"]
+                return StoredCompanyPriceData(
+                    prices={"MSFT": prices},
+                    expected_last_session=dates[-1].date(),
+                    missing_tickers=(),
+                    stale_tickers=(),
+                    price_basis="adjusted",
+                )
+
+        response = predefined_rarity_endpoint(
+            PredefinedRarityRequest(watchlist_id=7),
+            Watchlists(),
+            Prices(),
+        )
+
+        assert response.watchlist_name == "Leaders"
+        assert response.market == "US"
+        assert response.requested_symbols == 1
+        assert response.available_symbols == 1
+        assert response.price_basis == "adjusted"
+        assert all(table.rows[0].symbol == "MSFT" for table in response.tables)
+
+    def test_endpoint_rejects_unknown_watchlist(self):
+        class MissingWatchlists:
+            def get_watchlist(self, watchlist_id):
+                raise UnknownWatchlistError(f"Unknown watchlist: {watchlist_id}")
+
+        with pytest.raises(HTTPException) as raised:
+            predefined_rarity_endpoint(
+                PredefinedRarityRequest(watchlist_id=99),
+                MissingWatchlists(),
+                object(),
+            )
+
+        assert raised.value.status_code == 404
 
     def test_predefined_factor_set_includes_ma_and_high_windows(self):
         assert [key for key, _, _ in _PREDEFINED_FACTORS] == [

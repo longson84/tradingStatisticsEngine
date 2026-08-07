@@ -16,7 +16,7 @@ class StubRepository:
     def get_universe_market(self, universe: str) -> str | None:
         return {"VN100": "VN", "US100": "US"}.get(universe)
 
-    def get_status(self, universe: str, price_basis: str):
+    def get_status(self, universe: str, price_basis: str, expected_session: date):
         return PriceBarStatusRecord(
             universe=universe,
             market="VN",
@@ -27,6 +27,12 @@ class StubRepository:
             row_count=1000,
             sources=("vnstock-vci",),
             price_basis=price_basis,
+            expected_session=expected_session,
+            coverage_through=date(2026, 8, 3),
+            universe_symbol_count=100,
+            current_symbol_count=100,
+            checked_no_new_bar_count=0,
+            failed_refresh_symbol_count=0,
         )
 
     def list_market_universes(self, market: str) -> tuple[str, ...]:
@@ -38,10 +44,13 @@ class StubRepository:
 
 
 def test_status_selects_market_price_basis():
-    status = PriceStorageService(StubRepository()).get_status("vn100")
+    status = PriceStorageService(StubRepository()).get_status(
+        "vn100", now=datetime(2026, 8, 4, 9, tzinfo=UTC)
+    )
 
     assert status is not None
     assert status.price_basis == "provider_unspecified"
+    assert status.expected_session == date(2026, 8, 4)
 
 
 def test_clear_is_market_scoped_for_overlapping_universes():
