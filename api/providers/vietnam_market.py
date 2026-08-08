@@ -63,15 +63,18 @@ class VietnamMarketProvider(Protocol):
 
 
 class VnstockDataProvider:
-    """Sponsored Unified UI adapter.
+    """Sponsored adapter with an explicit VCI OHLCV route.
 
-    Unified UI performs method-specific KBS/VCI routing internally. Until the
-    package exposes the selected upstream in its result, provenance records the
-    source honestly as ``unified`` rather than guessing KBS or VCI.
+    The Unified UI routes ``equity(...).ohlcv`` to KBS, whose available history
+    is shorter than the application's canonical VCI series. Use the sponsored
+    package's public Quote adapter explicitly so refreshes retain full-history
+    and adjusted-price continuity. Trading statistics remain on Unified UI,
+    where the package explicitly routes that method to VCI.
     """
 
     package = "vnstock_data"
     access_mode: AccessMode = "sponsored"
+    source = "VCI"
 
     def __init__(self) -> None:
         load_env_file()
@@ -85,8 +88,7 @@ class VnstockDataProvider:
         interval: str = "1D",
     ) -> VietnamProviderResult:
         normalized = _request(symbol, start, end)
-        equity = self._market().equity(normalized)
-        frame = equity.ohlcv(
+        frame = self._quote(normalized).history(
             start=start.isoformat(),
             end=end.isoformat(),
             interval=interval,
@@ -115,6 +117,15 @@ class VnstockDataProvider:
                 "vnstock_data could not be loaded or authenticated"
             ) from exc
 
+    def _quote(self, symbol: str):
+        try:
+            module = import_module(self.package)
+            return module.Quote(source=self.source, symbol=symbol, show_log=False)
+        except Exception as exc:
+            raise ProviderUnavailableError(
+                "vnstock_data VCI quote adapter could not be loaded or authenticated"
+            ) from exc
+
     def _result(
         self,
         frame: pd.DataFrame | None,
@@ -130,7 +141,7 @@ class VnstockDataProvider:
                 package=self.package,
                 package_version=_package_version(self.package),
                 access_mode=self.access_mode,
-                upstream_source="unified",
+                upstream_source=self.source,
                 method=method,
                 symbol=symbol,
                 requested_start=start,
@@ -140,7 +151,7 @@ class VnstockDataProvider:
 
 
 class CommunityVnstockProvider:
-    """Community OHLCV fallback used only when the sponsor package is absent."""
+    """Community OHLCV adapter available only through explicit fallback policy."""
 
     package = "vnstock"
     access_mode: AccessMode = "community"
@@ -208,6 +219,65 @@ def create_vietnam_market_provider(
             "vnstock_data is not installed; use the official sponsor installer"
         )
     return CommunityVnstockProvider(source=community_source)
+
+
+def provider_source_label(metadata: VietnamProviderMetadata) -> str:
+    """Build stable row provenance without claiming an unknown upstream."""
+    package = metadata.package.replace("_", "-").lower()
+    upstream = metadata.upstream_source.replace("_", "-").lower()
+    return f"{package}-{metadata.package_version}-{upstream}"
+
+
+def provider_runtime_label(provider: VietnamMarketProvider) -> str:
+    """Describe a configured provider before its first successful request."""
+    package = str(getattr(provider, "package", type(provider).__name__))
+    source = str(getattr(provider, "source", "unified"))
+    return provider_source_label(VietnamProviderMetadata(
+        package=package,
+        package_version=_package_version(package),
+        access_mode=getattr(provider, "access_mode", "community"),
+        upstream_source=source,
+        method="ohlcv",
+        symbol="*",
+        requested_start=date.min,
+        requested_end=date.min,
+    ))
+
+
+def normalize_ohlcv_result(result: VietnamProviderResult) -> pd.DataFrame:
+    """Normalize a provider OHLCV result for canonical price persistence."""
+    frame = result.frame.copy()
+    frame.columns = [str(column).lower() for column in frame.columns]
+    if "time" in frame.columns:
+        frame = frame.rename(columns={"time": "date"})
+    elif "date" not in frame.columns:
+        raise ProviderDataError(
+            f"ohlcv data for {result.metadata.symbol} is missing a date column"
+        )
+    required = {"date", "open", "high", "low", "close"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ProviderDataError(
+            f"ohlcv data for {result.metadata.symbol} is missing columns: "
+            f"{sorted(missing)}"
+        )
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
+    for column in ("open", "high", "low", "close", "volume"):
+        if column not in frame:
+            frame[column] = pd.NA
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame["symbol"] = result.metadata.symbol
+    frame["provider_source"] = provider_source_label(result.metadata)
+    return (
+        frame[[
+            "symbol", "date", "open", "high", "low", "close", "volume",
+            "provider_source",
+        ]]
+        .dropna(subset=["date", "open", "high", "low", "close"])
+        .sort_values("date")
+        .drop_duplicates("date", keep="last")
+        .reset_index(drop=True)
+    )
 
 
 def _request(symbol: str, start: date, end: date) -> str:

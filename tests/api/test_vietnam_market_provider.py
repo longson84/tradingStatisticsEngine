@@ -42,8 +42,18 @@ class _Market:
         return _SponsoredEquity()
 
 
+class _Quote:
+    def __init__(self, *, source: str, symbol: str, show_log: bool):
+        assert source == "VCI"
+        assert symbol == "FPT"
+        assert show_log is False
+
+    def history(self, **kwargs):
+        return _ohlcv()
+
+
 def test_sponsored_provider_returns_frames_with_dynamic_provenance(monkeypatch):
-    module = SimpleNamespace(Market=_Market)
+    module = SimpleNamespace(Market=_Market, Quote=_Quote)
     monkeypatch.setattr(vietnam_market, "import_module", lambda name: module)
     monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "3.2.7")
     provider = vietnam_market.VnstockDataProvider()
@@ -60,7 +70,15 @@ def test_sponsored_provider_returns_frames_with_dynamic_provenance(monkeypatch):
     assert ohlcv.metadata.package == "vnstock_data"
     assert ohlcv.metadata.package_version == "3.2.7"
     assert ohlcv.metadata.access_mode == "sponsored"
-    assert ohlcv.metadata.upstream_source == "unified"
+    assert ohlcv.metadata.upstream_source == "VCI"
+
+    normalized = vietnam_market.normalize_ohlcv_result(ohlcv)
+
+    assert normalized["symbol"].tolist() == ["FPT"]
+    assert normalized["date"].dt.date.tolist() == [date(2026, 8, 7)]
+    assert normalized["provider_source"].tolist() == [
+        "vnstock-data-3.2.7-vci"
+    ]
 
 
 def test_factory_does_not_silently_downgrade_when_sponsor_is_required(monkeypatch):

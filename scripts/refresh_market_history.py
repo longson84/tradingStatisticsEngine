@@ -28,6 +28,7 @@ from api.benchmark_history import (
     DEFAULT_BENCHMARK_DIR,
     save_benchmark_history,
 )
+from api.config import env_bool, env_float
 from api.db.session import create_db_engine
 from api.market_data_config import DEFAULT_REFRESH_CHECKPOINT_DIR, PROJECT_ROOT
 from api.market_sessions import latest_completed_session
@@ -36,6 +37,14 @@ from api.repositories.sqlalchemy_price_bar_repository import (
 )
 from api.services.price_refresh_service import PriceRefreshService
 from api.services.price_refresh_service import PriceRefreshAttempt
+from api.providers.vietnam_market import (
+    CommunityVnstockProvider,
+    VietnamMarketProvider,
+    create_vietnam_market_provider,
+    normalize_ohlcv_result,
+    provider_runtime_label,
+    provider_source_label,
+)
 
 
 SNAPSHOT_DIR = PROJECT_ROOT / "api" / "data" / "symbol_lists"
@@ -45,12 +54,7 @@ INCREMENTAL_OVERLAP_DAYS = 7
 US_DOWNLOAD_BATCH_SIZE = 100
 BENCHMARK_SYMBOLS = {"SPX": "^GSPC", "VN30": "VN30"}
 VN_REFRESH_ORDER = ("VNALL", "VN100", "VN30", "VNMID", "VNSML")
-VN_PRIMARY_SOURCE = "KBS"
-VN_FALLBACK_SOURCE = "VCI"
-VN_PROVIDER_LABELS = {
-    "KBS": "vnstock-kbs",
-    "VCI": "vnstock-vci",
-}
+DEFAULT_VN_REQUESTS_PER_MINUTE = 120.0
 
 
 @dataclass(frozen=True)
@@ -116,13 +120,13 @@ def _provider_comparison(
     right = fallback.copy()
     left["date"] = pd.to_datetime(left["date"]).dt.date
     right["date"] = pd.to_datetime(right["date"]).dt.date
-    overlap = left.merge(right, on="date", suffixes=("_kbs", "_vci"))
+    overlap = left.merge(right, on="date", suffixes=("_left", "_right"))
     if overlap.empty:
         return "no overlapping provider rows"
     mismatched = pd.Series(False, index=overlap.index)
     for column in columns:
-        left_column = pd.to_numeric(overlap[f"{column}_kbs"], errors="coerce")
-        right_column = pd.to_numeric(overlap[f"{column}_vci"], errors="coerce")
+        left_column = pd.to_numeric(overlap[f"{column}_left"], errors="coerce")
+        right_column = pd.to_numeric(overlap[f"{column}_right"], errors="coerce")
         mismatched |= ~left_column.fillna(-1).round(6).eq(
             right_column.fillna(-1).round(6)
         )
@@ -130,40 +134,37 @@ def _provider_comparison(
 
 
 def _fetch_vn_history(
-    quote_factory,
+    provider: VietnamMarketProvider,
     symbol: str,
     start: date,
     end: date,
     *,
+    community_fallbacks: tuple[CommunityVnstockProvider, ...] = (),
     fallback_delay: float,
 ) -> VNFetchResult:
     candidates: dict[str, pd.DataFrame] = {}
     errors: list[str] = []
 
-    def fetch(source: str) -> None:
+    def fetch(candidate_provider: VietnamMarketProvider) -> None:
+        provider_name = _provider_name(candidate_provider)
         try:
-            raw = quote_factory(symbol=symbol, source=source).history(
-                start=start.isoformat(),
-                end=end.isoformat(),
-                interval="1D",
-            )
-            if raw is None or raw.empty:
-                raise ValueError("empty history")
-            candidates[source] = _normalise_frame(
-                raw,
-                symbol,
-                provider_source=VN_PROVIDER_LABELS[source],
-            )
+            result = candidate_provider.ohlcv(symbol, start, end, interval="1D")
+            source = provider_source_label(result.metadata)
+            candidates[source] = normalize_ohlcv_result(result)
         except Exception as exc:
-            errors.append(f"{source}: {type(exc).__name__}: {exc}")
+            errors.append(f"{provider_name}: {type(exc).__name__}: {exc}")
 
-    fetch(VN_PRIMARY_SOURCE)
-    primary = candidates.get(VN_PRIMARY_SOURCE)
+    fetch(provider)
+    primary_source = next(iter(candidates), None)
+    primary = candidates.get(primary_source) if primary_source else None
     primary_is_current = primary is not None and _latest_frame_date(primary) >= end
     if not primary_is_current:
-        if fallback_delay > 0:
-            time.sleep(fallback_delay)
-        fetch(VN_FALLBACK_SOURCE)
+        for fallback in community_fallbacks:
+            if fallback_delay > 0:
+                time.sleep(fallback_delay)
+            fetch(fallback)
+            if any(_latest_frame_date(frame) >= end for frame in candidates.values()):
+                break
 
     if not candidates:
         return VNFetchResult(
@@ -177,28 +178,41 @@ def _fetch_vn_history(
 
     selected_source, selected_frame = max(
         candidates.items(),
-        key=lambda item: (
-            _latest_frame_date(item[1]),
-            item[0] == VN_PRIMARY_SOURCE,
-        ),
+        key=lambda item: _latest_frame_date(item[1]),
     )
     returned_through = _latest_frame_date(selected_frame)
     detail_parts = [
         f"{source} through {_latest_frame_date(frame).isoformat()}"
         for source, frame in candidates.items()
     ]
-    if primary is not None and VN_FALLBACK_SOURCE in candidates:
-        detail_parts.append(
-            _provider_comparison(primary, candidates[VN_FALLBACK_SOURCE])
-        )
+    if primary is not None and len(candidates) > 1:
+        for source, frame in candidates.items():
+            if source != primary_source:
+                detail_parts.append(
+                    f"{primary_source} vs {source}: "
+                    f"{_provider_comparison(primary, frame)}"
+                )
     detail_parts.extend(errors)
     return VNFetchResult(
         symbol=symbol,
         frame=selected_frame,
         returned_through=returned_through,
         outcome=("current" if returned_through >= end else "checked_no_new_bar"),
-        selected_source=VN_PROVIDER_LABELS[selected_source],
+        selected_source=selected_source,
         detail="; ".join(detail_parts)[:1000],
+    )
+
+
+def _provider_name(provider: VietnamMarketProvider) -> str:
+    return provider_runtime_label(provider)
+
+
+def _community_fallbacks(enabled: bool) -> tuple[CommunityVnstockProvider, ...]:
+    if not enabled:
+        return ()
+    return (
+        CommunityVnstockProvider(source="KBS"),
+        CommunityVnstockProvider(source="VCI"),
     )
 
 
@@ -466,9 +480,14 @@ def refresh_vn_market(
     mode: str,
     *,
     already_refreshed: set[str] | None = None,
+    provider: VietnamMarketProvider | None = None,
+    allow_community_fallback: bool = False,
 ) -> set[str]:
-    from vnstock import Quote
-
+    primary_provider = provider or create_vietnam_market_provider(
+        require_sponsored=True
+    )
+    fallbacks = _community_fallbacks(allow_community_fallback)
+    primary_name = _provider_name(primary_provider)
     symbols = _symbols(universe)
     with Session(engine) as session:
         plan = PriceRefreshService(
@@ -505,7 +524,9 @@ def refresh_vn_market(
             checkpoint_manifest.get("start") == full_start.isoformat()
             and checkpoint_manifest.get("end") == end.isoformat()
             and checkpoint_manifest.get("mode") == mode
-            and checkpoint_manifest.get("source") == "KBS->VCI"
+            and checkpoint_manifest.get("source") == primary_name
+            and checkpoint_manifest.get("community_fallback")
+            == allow_community_fallback
         ):
             checkpoint = pd.read_csv(checkpoint_path, parse_dates=["date"])
             checkpoint = checkpoint[
@@ -528,7 +549,8 @@ def refresh_vn_market(
             "start": full_start.isoformat(),
             "end": end.isoformat(),
             "mode": mode,
-            "source": "KBS->VCI",
+            "source": primary_name,
+            "community_fallback": allow_community_fallback,
         })
     )
 
@@ -537,10 +559,11 @@ def refresh_vn_market(
         if symbol in completed_symbols:
             continue
         result = _fetch_vn_history(
-            Quote,
+            primary_provider,
             symbol,
             start_by_symbol[symbol],
             end,
+            community_fallbacks=fallbacks,
             fallback_delay=delay,
         )
         results[symbol] = result
@@ -586,7 +609,7 @@ def refresh_vn_market(
             attempted_through=end,
             returned_through=result.returned_through,
             outcome=result.outcome,
-            primary_source=VN_PROVIDER_LABELS[VN_PRIMARY_SOURCE],
+            primary_source=primary_name,
             selected_source=result.selected_source,
             attempted_at=fetched_at,
             detail=result.detail,
@@ -623,7 +646,8 @@ def refresh_vn_market(
     print(
         f"{universe}: result current={current_count} "
         f"checked_no_new={no_new_count} failed={len(errors)} "
-        f"attempted_through={end.isoformat()} primary=KBS fallback=VCI",
+        f"attempted_through={end.isoformat()} primary={primary_name} "
+        f"community_fallback={allow_community_fallback}",
         flush=True,
     )
     if errors:
@@ -654,10 +678,39 @@ def main() -> None:
         choices=("incremental", "full"),
         default="full",
     )
-    parser.add_argument("--vn-delay", type=float, default=4.1)
+    parser.add_argument(
+        "--vn-delay",
+        type=float,
+        default=None,
+        help=(
+            "Seconds between sponsored VN requests. Defaults to the rate "
+            "derived from VNSTOCK_REQUESTS_PER_MINUTE."
+        ),
+    )
+    parser.add_argument(
+        "--allow-community-fallback",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Allow explicit KBS then VCI community fallback after sponsor failure.",
+    )
     parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
     engine = create_db_engine(args.database_url)
+    requests_per_minute = env_float(
+        "VNSTOCK_REQUESTS_PER_MINUTE", DEFAULT_VN_REQUESTS_PER_MINUTE
+    )
+    if requests_per_minute <= 0:
+        parser.error("VNSTOCK_REQUESTS_PER_MINUTE must be greater than zero")
+    vn_delay = (
+        args.vn_delay
+        if args.vn_delay is not None
+        else 60.0 / requests_per_minute
+    )
+    allow_community_fallback = (
+        args.allow_community_fallback
+        if args.allow_community_fallback is not None
+        else env_bool("VNSTOCK_ALLOW_COMMUNITY_FALLBACK", False)
+    )
 
     end = date.today()
     vn_end = latest_completed_session(datetime.now(timezone.utc), "VN")
@@ -697,9 +750,10 @@ def main() -> None:
                 universe,
                 vn_full_start,
                 vn_end,
-                args.vn_delay,
+                vn_delay,
                 args.mode,
                 already_refreshed=refreshed_vn,
+                allow_community_fallback=allow_community_fallback,
             )
         return
 
@@ -719,8 +773,9 @@ def main() -> None:
             args.market.upper(),
             vn_full_start,
             vn_end,
-            args.vn_delay,
+            vn_delay,
             args.mode,
+            allow_community_fallback=allow_community_fallback,
         )
 
 

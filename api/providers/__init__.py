@@ -10,7 +10,11 @@ from api.providers.vietnam_market import (
     VietnamProviderResult,
     VnstockDataProvider,
     create_vietnam_market_provider,
+    normalize_ohlcv_result,
+    provider_runtime_label,
+    provider_source_label,
 )
+from api.providers.vietnam_price_loader import VietnamPriceLoader
 
 __all__ = [
     "CommunityVnstockProvider",
@@ -22,4 +26,8 @@ __all__ = [
     "VietnamProviderResult",
     "VnstockDataProvider",
     "create_vietnam_market_provider",
+    "normalize_ohlcv_result",
+    "provider_runtime_label",
+    "provider_source_label",
+    "VietnamPriceLoader",
 ]

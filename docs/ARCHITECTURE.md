@@ -778,14 +778,17 @@ overwriting process variables, and isolate sponsored/community access behind
 typed adapters in `api.providers.vietnam_market`. Sponsored access is preferred
 when `vnstock_data` is installed. It must fail explicitly if installed but
 authentication fails; community fallback is allowed only when the package is
-absent and the caller did not require sponsored access. Unified UI results use
-`upstream_source='unified'` until the library exposes the selected upstream.
-Package versions are discovered at runtime. A read-only diagnostic validates
-FPT OHLCV and historical trading-statistics schemas without logging secrets or
-writing canonical market data.
+absent and the caller did not require sponsored access. Sponsored OHLCV uses
+the package's explicit VCI `Quote.history` route: Unified UI routes OHLCV to KBS,
+whose FPT canary exposed only about ten years and did not preserve canonical VCI
+price/volume history. Trading statistics continue through Unified UI, which
+explicitly routes that method to VCI. Package versions are discovered at
+runtime. A read-only diagnostic validates FPT OHLCV and historical
+trading-statistics schemas without logging secrets or writing canonical data.
 
-Consequences: the provider contract can be verified before price and
-fundamental refresh cutovers. Existing PostgreSQL rows, refresh behavior, and
-KBS-to-VCI selection remain unchanged in this slice. Later cutovers must retain
-price-basis, actual-source, fetch-time, and point-in-time semantics rather than
-blindly replacing imports.
+Consequences: VN price refreshes and application VN price reads use sponsored
+VCI through one typed loader, record the runtime package version and explicit
+VCI upstream in row provenance, and never silently downgrade. Community KBS/VCI
+fallback is opt-in. A strict FPT canary must prove coverage and value parity
+before the first sponsored write. Fundamental refresh remains a separate
+provider and persistence path.

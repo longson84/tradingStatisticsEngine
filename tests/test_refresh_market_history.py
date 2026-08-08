@@ -6,6 +6,10 @@ import sys
 
 import pandas as pd
 
+from api.providers.vietnam_market import (
+    VietnamProviderMetadata,
+    VietnamProviderResult,
+)
 from scripts import refresh_market_history
 
 
@@ -32,20 +36,41 @@ def _provider_rows(dates: list[str], closes: list[float]) -> pd.DataFrame:
     })
 
 
-class FakeQuote:
-    responses: dict[tuple[str, str], pd.DataFrame | Exception] = {}
-    calls: list[tuple[str, str]] = []
-
-    def __init__(self, symbol: str, source: str):
-        self.symbol = symbol
+class FakeProvider:
+    def __init__(
+        self,
+        package: str,
+        source: str,
+        responses: dict[str, pd.DataFrame | Exception],
+        calls: list[tuple[str, str]],
+    ):
+        self.package = package
         self.source = source
+        self.access_mode = "sponsored" if package == "vnstock_data" else "community"
+        self.responses = responses
+        self.calls = calls
 
-    def history(self, **kwargs):
-        self.calls.append((self.symbol, self.source))
-        response = self.responses[(self.symbol, self.source)]
+    def ohlcv(self, symbol, start, end, *, interval="1D"):
+        self.calls.append((symbol, self.source))
+        response = self.responses[symbol]
         if isinstance(response, Exception):
             raise response
-        return response.copy()
+        return VietnamProviderResult(
+            frame=response.copy(),
+            metadata=VietnamProviderMetadata(
+                package=self.package,
+                package_version="3.2.7" if self.package == "vnstock_data" else "4.0.5",
+                access_mode=self.access_mode,
+                upstream_source=self.source,
+                method="ohlcv",
+                symbol=symbol,
+                requested_start=start,
+                requested_end=end,
+            ),
+        )
+
+    def trade_history(self, symbol, start, end):
+        raise AssertionError("not used")
 
 
 def test_us2000_snapshot_contains_official_listed_equity_holdings():
@@ -118,59 +143,80 @@ def test_full_download_plan_can_trust_cache_rebuilt_earlier_in_same_run():
     assert plan == {date(1900, 1, 1): ["NEW"]}
 
 
-def test_vn_fetch_uses_current_kbs_without_fallback():
-    FakeQuote.calls = []
-    FakeQuote.responses = {
-        ("FPT", "KBS"): _provider_rows(["2026-08-07"], [100.0]),
-    }
+def test_vn_fetch_uses_current_sponsor_without_fallback():
+    calls: list[tuple[str, str]] = []
+    sponsor = FakeProvider(
+        "vnstock_data",
+        "VCI",
+        {"FPT": _provider_rows(["2026-08-07"], [100.0])},
+        calls,
+    )
 
     result = refresh_market_history._fetch_vn_history(
-        FakeQuote,
+        sponsor,
         "FPT",
         date(2026, 8, 1),
         date(2026, 8, 7),
         fallback_delay=0,
     )
 
-    assert FakeQuote.calls == [("FPT", "KBS")]
+    assert calls == [("FPT", "VCI")]
     assert result.outcome == "current"
-    assert result.selected_source == "vnstock-kbs"
+    assert result.selected_source == "vnstock-data-3.2.7-vci"
     assert result.returned_through == date(2026, 8, 7)
 
 
-def test_vn_fetch_falls_back_when_kbs_is_behind_and_selects_newer_vci():
-    FakeQuote.calls = []
-    FakeQuote.responses = {
-        ("FPT", "KBS"): _provider_rows(["2026-08-06"], [99.0]),
-        ("FPT", "VCI"): _provider_rows(["2026-08-07"], [100.0]),
-    }
+def test_vn_fetch_uses_explicit_community_fallback_when_sponsor_is_behind():
+    calls: list[tuple[str, str]] = []
+    sponsor = FakeProvider(
+        "vnstock_data",
+        "VCI",
+        {"FPT": _provider_rows(["2026-08-06"], [99.0])},
+        calls,
+    )
+    community = FakeProvider(
+        "vnstock",
+        "KBS",
+        {"FPT": _provider_rows(["2026-08-07"], [100.0])},
+        calls,
+    )
 
     result = refresh_market_history._fetch_vn_history(
-        FakeQuote,
+        sponsor,
         "FPT",
         date(2026, 8, 1),
         date(2026, 8, 7),
+        community_fallbacks=(community,),
         fallback_delay=0,
     )
 
-    assert FakeQuote.calls == [("FPT", "KBS"), ("FPT", "VCI")]
+    assert calls == [("FPT", "VCI"), ("FPT", "KBS")]
     assert result.outcome == "current"
-    assert result.selected_source == "vnstock-vci"
+    assert result.selected_source == "vnstock-4.0.5-kbs"
     assert result.returned_through == date(2026, 8, 7)
 
 
-def test_vn_fetch_records_checked_no_new_bar_when_both_sources_are_behind():
-    FakeQuote.calls = []
-    FakeQuote.responses = {
-        ("HTV", "KBS"): _provider_rows(["2026-08-03"], [15.25]),
-        ("HTV", "VCI"): _provider_rows(["2026-08-03"], [15.25]),
-    }
+def test_vn_fetch_records_checked_no_new_bar_when_all_sources_are_behind():
+    calls: list[tuple[str, str]] = []
+    sponsor = FakeProvider(
+        "vnstock_data",
+        "VCI",
+        {"HTV": _provider_rows(["2026-08-03"], [15.25])},
+        calls,
+    )
+    community = FakeProvider(
+        "vnstock",
+        "VCI",
+        {"HTV": _provider_rows(["2026-08-03"], [15.25])},
+        calls,
+    )
 
     result = refresh_market_history._fetch_vn_history(
-        FakeQuote,
+        sponsor,
         "HTV",
         date(2026, 8, 1),
         date(2026, 8, 7),
+        community_fallbacks=(community,),
         fallback_delay=0,
     )
 
@@ -179,25 +225,28 @@ def test_vn_fetch_records_checked_no_new_bar_when_both_sources_are_behind():
     assert "provider overlap=1 mismatched=0" in result.detail
 
 
-def test_vn_fetch_records_failure_when_both_sources_fail():
-    FakeQuote.calls = []
-    FakeQuote.responses = {
-        ("BAD", "KBS"): RuntimeError("kbs unavailable"),
-        ("BAD", "VCI"): RuntimeError("vci unavailable"),
-    }
+def test_vn_fetch_records_failure_when_sponsor_and_fallback_fail():
+    calls: list[tuple[str, str]] = []
+    sponsor = FakeProvider(
+        "vnstock_data", "VCI", {"BAD": RuntimeError("sponsor unavailable")}, calls
+    )
+    community = FakeProvider(
+        "vnstock", "VCI", {"BAD": RuntimeError("vci unavailable")}, calls
+    )
 
     result = refresh_market_history._fetch_vn_history(
-        FakeQuote,
+        sponsor,
         "BAD",
         date(2026, 8, 1),
         date(2026, 8, 7),
+        community_fallbacks=(community,),
         fallback_delay=0,
     )
 
     assert result.outcome == "failed"
     assert result.selected_source is None
-    assert "KBS: RuntimeError" in result.detail
-    assert "VCI: RuntimeError" in result.detail
+    assert "vnstock-data-3.2.7-vci: RuntimeError" in result.detail
+    assert "vnstock-4.0.5-vci: RuntimeError" in result.detail
 
 
 def test_all_refresh_runs_overlap_sources_in_reuse_order(monkeypatch):

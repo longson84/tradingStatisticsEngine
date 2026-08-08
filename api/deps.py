@@ -32,6 +32,7 @@ from api.services.price_storage_service import PriceStorageService
 from api.services.company_price_service import CompanyPriceService
 from api.services.market_health_data_service import MarketHealthDataService
 from api.services.watchlist_service import WatchlistService
+from api.providers.vietnam_price_loader import VietnamPriceLoader
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
 from trading_engine.factors.moving_average import MovingAverageRatio
@@ -96,13 +97,11 @@ def get_price_storage_service(
 def get_company_price_service(
     session: Annotated[Session, Depends(get_db_transaction_session)],
 ) -> CompanyPriceService:
-    from trading_engine.data.vnstock_loader import VNStockLoader
-
     return CompanyPriceService(
         SqlAlchemyPriceBarRepository(session),
         {
             "US": YFinanceLoader(),
-            "VN": VNStockLoader(source="KBS"),
+            "VN": VietnamPriceLoader(),
         },
     )
 
@@ -118,8 +117,7 @@ def get_loader(source: str) -> DataLoader:
     if source == "yfinance":
         return YFinanceLoader()
     if source == "vnstock":
-        from trading_engine.data.vnstock_loader import VNStockLoader
-        return VNStockLoader()
+        return VietnamPriceLoader()
     raise HTTPException(status_code=400, detail=f"Unsupported data source: {source!r}")
 
 

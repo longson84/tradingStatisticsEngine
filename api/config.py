@@ -43,3 +43,25 @@ def env_value(name: str, default: str | None = None) -> str | None:
     """Return one application setting after loading the project-local env file."""
     load_env_file()
     return os.environ.get(name, default)
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = env_value(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
+def env_float(name: str, default: float) -> float:
+    value = env_value(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        raise ValueError(f"{name} must be a number") from None
