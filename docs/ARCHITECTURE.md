@@ -765,3 +765,27 @@ Consequences: PostgreSQL is the sole fundamental persistence system. Normal
 reads and refreshes cannot recreate the deleted CSV directory. Historical data
 is retained in normalized reports, facts, and sparse valuation observations;
 provider refreshes remain the recovery path for future data acquisition.
+
+### 2026-08-08 — Sponsored VN provider boundary
+
+Context: the application acquired sponsored Vnstock access, but canonical VN
+refreshes still import the public `vnstock` package directly. Merely storing the
+API key does not activate sponsored methods, and hard-coding package versions or
+assuming Unified UI selected KBS versus VCI would create false provenance.
+
+Decision: load project-local environment values through `api.config` without
+overwriting process variables, and isolate sponsored/community access behind
+typed adapters in `api.providers.vietnam_market`. Sponsored access is preferred
+when `vnstock_data` is installed. It must fail explicitly if installed but
+authentication fails; community fallback is allowed only when the package is
+absent and the caller did not require sponsored access. Unified UI results use
+`upstream_source='unified'` until the library exposes the selected upstream.
+Package versions are discovered at runtime. A read-only diagnostic validates
+FPT OHLCV and historical trading-statistics schemas without logging secrets or
+writing canonical market data.
+
+Consequences: the provider contract can be verified before price and
+fundamental refresh cutovers. Existing PostgreSQL rows, refresh behavior, and
+KBS-to-VCI selection remain unchanged in this slice. Later cutovers must retain
+price-basis, actual-source, fetch-time, and point-in-time semantics rather than
+blindly replacing imports.

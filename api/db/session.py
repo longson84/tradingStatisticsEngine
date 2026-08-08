@@ -8,6 +8,8 @@ import os
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
+from api.config import load_env_file
+
 
 DEFAULT_DATABASE_URL = (
     "postgresql+psycopg://trading:trading@localhost:5434/trading_statistics"
@@ -16,6 +18,7 @@ DEFAULT_DATABASE_URL = (
 
 def database_url() -> str:
     """Return the configured PostgreSQL URL with a local-development default."""
+    load_env_file()
     return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 
