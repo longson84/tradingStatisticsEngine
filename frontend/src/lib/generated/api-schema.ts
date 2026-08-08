@@ -592,8 +592,12 @@ export interface components {
             company_name: string;
             /** Exchange */
             exchange?: string | null;
+            /** First Session */
+            first_session: string | null;
             /** Industry */
             industry?: string | null;
+            /** Last Session */
+            last_session: string | null;
             /** Lists */
             lists: string[];
             /**
@@ -603,6 +607,8 @@ export interface components {
             market: "US" | "VN";
             /** Sector */
             sector?: string | null;
+            /** Stored Sessions */
+            stored_sessions: number;
             /** Ticker */
             ticker: string;
         };

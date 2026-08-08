@@ -1,8 +1,12 @@
+import { useMemo, useState } from "react"
+import { ArrowUpDown } from "lucide-react"
 import type { CompanyResponse, MarketHealthStockDistance } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
 export type CompanyRow = CompanyResponse
+type CoverageSortKey = "first_session" | "last_session" | "stored_sessions"
+type SortDirection = "asc" | "desc"
 
 
 export function CompanyTable({
@@ -13,9 +17,37 @@ export function CompanyTable({
   healthBySymbol?: Map<string, MarketHealthStockDistance>
 }) {
   const showHealth = healthBySymbol != null
+  const [coverageSort, setCoverageSort] = useState<{
+    key: CoverageSortKey
+    direction: SortDirection
+  } | null>(null)
+  const displayRows = useMemo(() => {
+    if (!coverageSort) return rows
+    return [...rows].sort((left, right) => {
+      const leftValue = left[coverageSort.key]
+      const rightValue = right[coverageSort.key]
+      if (leftValue == null && rightValue == null) {
+        return left.ticker.localeCompare(right.ticker)
+      }
+      if (leftValue == null) return 1
+      if (rightValue == null) return -1
+      const comparison = typeof leftValue === "number"
+        ? leftValue - Number(rightValue)
+        : String(leftValue).localeCompare(String(rightValue))
+      return coverageSort.direction === "asc" ? comparison : -comparison
+    })
+  }, [coverageSort, rows])
+
+  function toggleCoverageSort(key: CoverageSortKey) {
+    setCoverageSort(current => ({
+      key,
+      direction: current?.key === key && current.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <table className="w-full min-w-[980px] text-sm">
+      <table className="w-full min-w-[1240px] text-sm">
         <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 text-left font-medium">Ticker</th>
@@ -23,6 +55,24 @@ export function CompanyTable({
             <th className="px-3 py-2 text-left font-medium">Sector</th>
             <th className="px-3 py-2 text-left font-medium">Industry</th>
             <th className="px-3 py-2 text-left font-medium">Exchange</th>
+            <SortableCoverageHeader
+              label="First session"
+              active={coverageSort?.key === "first_session"}
+              direction={coverageSort?.key === "first_session" ? coverageSort.direction : null}
+              onClick={() => toggleCoverageSort("first_session")}
+            />
+            <SortableCoverageHeader
+              label="Last session"
+              active={coverageSort?.key === "last_session"}
+              direction={coverageSort?.key === "last_session" ? coverageSort.direction : null}
+              onClick={() => toggleCoverageSort("last_session")}
+            />
+            <SortableCoverageHeader
+              label="Sessions"
+              active={coverageSort?.key === "stored_sessions"}
+              direction={coverageSort?.key === "stored_sessions" ? coverageSort.direction : null}
+              onClick={() => toggleCoverageSort("stored_sessions")}
+            />
             {showHealth && <th className="px-3 py-2 text-right font-medium">Price</th>}
             {showHealth && <th className="px-3 py-2 text-right font-medium">200D High</th>}
             {showHealth && <th className="px-3 py-2 text-right font-medium">Distance</th>}
@@ -30,7 +80,7 @@ export function CompanyTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {rows.map(row => {
+          {displayRows.map(row => {
             const health = healthBySymbol?.get(row.ticker)
             return (
               <tr key={`${row.market}-${row.ticker}`} className="hover:bg-muted/30">
@@ -39,6 +89,15 @@ export function CompanyTable({
                 <td className="px-3 py-2 text-muted-foreground">{row.sector ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.industry ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.exchange ?? "n/a"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {row.first_session ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {row.last_session ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {row.stored_sessions.toLocaleString()}
+                </td>
                 {showHealth && (
                   <td className="px-3 py-2 text-right tabular-nums">
                     {health ? health.current_price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "n/a"}
@@ -72,9 +131,9 @@ export function CompanyTable({
               </tr>
             )
           })}
-          {rows.length === 0 && (
+          {displayRows.length === 0 && (
             <tr>
-              <td colSpan={showHealth ? 9 : 6} className="px-3 py-10 text-center text-muted-foreground">
+              <td colSpan={showHealth ? 12 : 9} className="px-3 py-10 text-center text-muted-foreground">
                 No companies match the current filters.
               </td>
             </tr>
@@ -82,6 +141,35 @@ export function CompanyTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+
+function SortableCoverageHeader({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  direction: SortDirection | null
+  onClick: () => void
+}) {
+  return (
+    <th
+      className="px-3 py-2 text-right font-medium"
+      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        className="ml-auto inline-flex items-center gap-1 hover:text-foreground"
+      >
+        {label}
+        <ArrowUpDown size={12} aria-hidden="true" />
+      </button>
+    </th>
   )
 }
 

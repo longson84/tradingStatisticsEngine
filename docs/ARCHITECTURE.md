@@ -790,5 +790,62 @@ Consequences: VN price refreshes and application VN price reads use sponsored
 VCI through one typed loader, record the runtime package version and explicit
 VCI upstream in row provenance, and never silently downgrade. Community KBS/VCI
 fallback is opt-in. A strict FPT canary must prove coverage and value parity
-before the first sponsored write. Fundamental refresh remains a separate
-provider and persistence path.
+before the first sponsored write. Saved-watchlist refreshes use that same
+loader and provenance so they cannot overwrite sponsored rows with newer public
+KBS fetches. The VN30 relative-strength benchmark also uses sponsored VCI; a
+legacy cache is replaced only after every stored overlapping bar passes strict
+date and OHLCV parity. Sponsored VN requests default to 30 per minute after the
+full VNALL rollout demonstrated that faster pacing amplified upstream timeout
+clusters. Fundamental refresh remains a separate provider and persistence path.
+
+### 2026-08-08 — Sponsored VN fundamental cutover
+
+Context: VN fundamental refresh still imported community `vnstock` directly
+and called a private VCI report method. The sponsored package's unified
+`Finance` wrapper cannot currently support the application's point-in-time
+contract: it coerces raw publication dates to `NaN`, while its formatted ratio
+method removes the fiscal quarter and therefore cannot represent a missing
+quarter faithfully.
+
+Decision: VN fundamentals use a typed sponsored adapter around the explicit
+`vnstock_data` VCI financial implementation. Income statements are obtained
+through its public raw method, preserving `publicDate`. Ratio acquisition uses
+the narrow raw-report hook because that is the only sponsored route retaining
+the exact `year`, `quarter`, and `ratioType` fields. Normalization remains in
+`api/fundamental_provider.py` and continues to make each report effective on
+the day after `publicDate`, preventing same-day and historical look-ahead.
+
+Fundamental persistence uses stable source identity `vci`; package name and
+runtime version belong in methodology and `fundamental_refresh_runs`, not in a
+report uniqueness key. Migration 0010 relabels existing VN VCI reports and
+valuations and moves their fact calculation identity to `legacy-vci`. This
+allows sponsored refreshes to update the same report, fact, and valuation rows
+instead of duplicating the full history whenever the client package changes.
+
+Consequences: normal VN fundamental refresh requires authenticated sponsored
+access and never silently falls back to the community client. Provider-version
+upgrades preserve database identity while remaining auditable. The explicit
+raw ratio hook is a contained compatibility boundary covered by adapter and
+point-in-time normalization tests; it can be removed when the sponsored public
+ratio result retains exact fiscal-quarter keys.
+
+### 2026-08-08 — Notebook and legacy VNStock loader retirement
+
+Context: the API and all production VN price workflows already use the
+sponsored application adapter `api.providers.VietnamPriceLoader`. The separate
+engine `VNStockLoader` still imported public `vnstock`, implemented a different
+KBS-to-VCI fallback policy, and had no consumers beyond its own tests and the
+now-unneeded exploratory notebooks.
+
+Decision: remove the notebook directory and retire the unused engine
+`VNStockLoader` rather than rename or duplicate the sponsored adapter. The
+`trading_engine` remains provider-neutral through its `DataLoader` protocol and
+`PriceFrame`; VN provider selection and authentication stay in the application
+adapter boundary. The external API request token `vnstock` remains a backwards-
+compatible logical selector and resolves to sponsored `VietnamPriceLoader`.
+
+Consequences: no engine or production path imports public `vnstock` directly.
+There is one canonical VN application loader with explicit sponsored VCI
+provenance and end-exclusive engine date semantics. Public-package access is
+limited to the deliberately explicit community recovery adapter and is not an
+automatic production fallback.

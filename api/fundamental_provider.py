@@ -1,9 +1,16 @@
 """Provider adapters producing normalized point-in-time fundamental frames."""
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 import pandas as pd
+
+from api.providers.vietnam_fundamentals import (
+    VnstockDataFundamentalProvider,
+    fundamental_methodology,
+    fundamental_source_label,
+)
 
 FundamentalMarket = Literal["US", "VN"]
 IDENTITY_COLUMNS = ["effective_date", "period_end", "period"]
@@ -37,13 +44,15 @@ FUNDAMENTAL_COLUMNS = IDENTITY_COLUMNS + VALUE_COLUMNS
 
 
 def fetch_provider_fundamentals(
-    symbol: str, market: FundamentalMarket
+    symbol: str,
+    market: FundamentalMarket,
+    *,
+    vn_provider: VnstockDataFundamentalProvider | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
     """Fetch normalized snapshots without reading or writing local files."""
     normalized = symbol.upper().strip()
     if market == "VN":
-        frame, method = _fetch_vn_fundamentals(normalized)
-        return frame, "vnstock-vci-4.0.5", method
+        return _fetch_vn_fundamentals(normalized, provider=vn_provider)
     frame, method = _fetch_us_fundamentals(normalized)
     return frame, "yfinance", method
 
@@ -205,39 +214,43 @@ def _series_value(series: pd.Series, period: Any) -> float | None:
     return float(series.loc[period])
 
 
-def _fetch_vn_fundamentals(symbol: str) -> tuple[pd.DataFrame, str]:
-    from vnstock import Finance
+def _fetch_vn_fundamentals(
+    symbol: str,
+    *,
+    provider: VnstockDataFundamentalProvider | None = None,
+) -> tuple[pd.DataFrame, str, str]:
+    result = (provider or VnstockDataFundamentalProvider()).fetch(symbol)
+    frame = _normalize_vn_fundamental_reports(result.ratios, result.income)
+    return (
+        frame,
+        fundamental_source_label(result.metadata),
+        fundamental_methodology(result.metadata),
+    )
 
-    finance = Finance(
-        source="VCI", symbol=symbol, period="quarter", get_all=True, show_log=False
-    )
-    provider = finance.provider
-    ratios = provider._get_report(
-        report_type="ratio", period="quarter", mode="raw", limit=100
-    )
-    income = provider._get_report(
-        report_type="income_statement", period="quarter", mode="raw", limit=100
-    )
-    required = {"year", "quarter", "ratioType", "pe", "pb", "marketCap", "numberOfSharesMktCap"}
+
+def _normalize_vn_fundamental_reports(
+    ratios: pd.DataFrame,
+    income: pd.DataFrame,
+) -> pd.DataFrame:
+    ratios = _canonicalize_columns(ratios)
+    income = _canonicalize_columns(income)
+    required = {"pe", "pb", "marketcap", "numberofsharesmktcap"}
     if ratios.empty or not required.issubset(ratios.columns):
-        return empty_fundamentals(), "VCI quarterly RATIO_TTM aligned to publicDate"
-    ratios = ratios[ratios["ratioType"] == "RATIO_TTM"].copy()
-    ratios["year"] = pd.to_numeric(ratios["year"], errors="coerce").astype("Int64")
-    ratios["quarter"] = pd.to_numeric(ratios["quarter"], errors="coerce").astype("Int64")
+        return empty_fundamentals()
+
+    publications = _vn_publications(income)
+    ratios = _vn_quarterly_ratios(ratios, publications)
+    if ratios.empty or publications.empty:
+        return empty_fundamentals()
     publication_column = next(
-        (column for column in ("publicDate", "updateDate", "createDate") if column in income.columns),
+        (column for column in ("publicdate", "updatedate", "createdate") if column in income.columns),
         None,
     )
     if publication_column is None:
-        return empty_fundamentals(), "VCI quarterly RATIO_TTM aligned to publicDate"
-    publications = income[["yearReport", "lengthReport", publication_column]].rename(
-        columns={"yearReport": "year", "lengthReport": "quarter", publication_column: "published_at"}
-    )
-    for key in ("year", "quarter"):
-        publications[key] = pd.to_numeric(publications[key], errors="coerce").astype("Int64")
+        return empty_fundamentals()
     rows = ratios.merge(publications, on=["year", "quarter"], how="left")
-    shares = _numeric_column(rows, "numberOfSharesMktCap")
-    market_cap = _numeric_column(rows, "marketCap")
+    shares = _numeric_column(rows, "numberofsharesmktcap")
+    market_cap = _numeric_column(rows, "marketcap")
     reported_pe = _numeric_column(rows, "pe")
     reported_pb = _numeric_column(rows, "pb")
     reported_ps = _numeric_column(rows, "ps")
@@ -263,24 +276,97 @@ def _fetch_vn_fundamentals(symbol: str) -> tuple[pd.DataFrame, str]:
     mappings = {
         "roe": "roe",
         "roa": "roa",
-        "debt_to_equity": "debtPerEquity",
-        "gross_margin": "grossMargin",
-        "operating_margin": "ebitMargin",
-        "net_margin": "afterTaxProfitMargin",
-        "current_ratio": "currentRatio",
-        "quick_ratio": "quickRatio",
-        "dividend_yield": "dividendYield",
+        "debt_to_equity": "debtperequity",
+        "gross_margin": "grossmargin",
+        "operating_margin": "ebitmargin",
+        "net_margin": "aftertaxprofitmargin",
+        "current_ratio": "currentratio",
+        "quick_ratio": "quickratio",
+        "dividend_yield": "dividendyield",
         "reported_pe": "pe",
         "reported_pb": "pb",
         "reported_ps": "ps",
-        "reported_ev_ebitda": "evToEbitda",
+        "reported_ev_ebitda": "evtoebitda",
     }
     for target, source in mappings.items():
         rows[target] = _numeric_column(rows, source)
-    return (
-        normalize_fundamentals(rows),
-        "VCI quarterly RATIO_TTM aligned to day after financial-report publicDate",
+    return normalize_fundamentals(rows)
+
+
+def _canonicalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    result = frame.copy()
+    result.columns = [
+        re.sub(r"[^a-z0-9]", "", str(column).lower())
+        for column in result.columns
+    ]
+    return result
+
+
+def _vn_publications(income: pd.DataFrame) -> pd.DataFrame:
+    year_column = "yearreport" if "yearreport" in income else "year"
+    quarter_column = "lengthreport" if "lengthreport" in income else "quarter"
+    publication_column = next(
+        (column for column in ("publicdate", "updatedate", "createdate") if column in income),
+        None,
     )
+    if publication_column is None or year_column not in income or quarter_column not in income:
+        return pd.DataFrame(columns=["year", "quarter", "published_at"])
+    result = income[[year_column, quarter_column, publication_column]].rename(
+        columns={
+            year_column: "year",
+            quarter_column: "quarter",
+            publication_column: "published_at",
+        }
+    )
+    for key in ("year", "quarter"):
+        result[key] = pd.to_numeric(result[key], errors="coerce").astype("Int64")
+    return (
+        result.dropna(subset=["year", "quarter", "published_at"])
+        .sort_values(["year", "quarter"])
+        .drop_duplicates(["year", "quarter"], keep="last")
+        .reset_index(drop=True)
+    )
+
+
+def _vn_quarterly_ratios(
+    ratios: pd.DataFrame,
+    publications: pd.DataFrame,
+) -> pd.DataFrame:
+    result = ratios.copy()
+    if "ratiotype" in result and result["ratiotype"].notna().any():
+        result = result[
+            result["ratiotype"].astype(str).str.upper() == "RATIO_TTM"
+        ].copy()
+    elif "ratioyearid" in result:
+        result = result[result["ratioyearid"].isna()].copy()
+
+    year_column = "year" if "year" in result else "yearreport"
+    if year_column not in result:
+        return result.iloc[0:0]
+    result["year"] = pd.to_numeric(result[year_column], errors="coerce").astype("Int64")
+    if "quarter" in result:
+        result["quarter"] = pd.to_numeric(
+            result["quarter"], errors="coerce"
+        ).astype("Int64")
+        return result.dropna(subset=["year", "quarter"])
+
+    # Sponsored VCI omits the quarter field from its public ratio result while
+    # retaining rows in chronological order. Align each year's ratio rows to
+    # the latest N published quarters for that same year. This handles partial
+    # first years without inventing an unavailable quarter.
+    parts: list[pd.DataFrame] = []
+    for year, group in result.dropna(subset=["year"]).groupby("year", sort=True):
+        available = publications.loc[
+            publications["year"] == year, "quarter"
+        ].dropna().sort_values()
+        if len(group) > len(available):
+            continue
+        aligned = group.copy()
+        aligned["quarter"] = available.iloc[-len(group):].to_numpy()
+        parts.append(aligned)
+    if not parts:
+        return result.iloc[0:0]
+    return pd.concat(parts, ignore_index=True)
 
 
 def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:

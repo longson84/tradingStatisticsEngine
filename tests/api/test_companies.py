@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from datetime import UTC, date, datetime
+
+from sqlalchemy import create_engine, select
 
 from api.db.company_import import import_company_universes
-from api.db.models import Base
+from api.db.models import Base, Instrument, PriceBarCoverage
 from api.main import app
 from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
 from api.routes.companies import list_companies, list_company_universes
@@ -34,6 +36,21 @@ def test_company_service_returns_one_company_with_all_memberships():
 def test_company_route_contract_has_only_canonical_company_fields():
     service, session = _service()
     try:
+        instrument = session.scalar(select(Instrument).where(
+            Instrument.market == "VN",
+            Instrument.ticker == "FPT",
+        ))
+        assert instrument is not None
+        session.add(PriceBarCoverage(
+            instrument_id=instrument.id,
+            price_basis="provider_unspecified",
+            first_date=date(2006, 12, 13),
+            last_date=date(2026, 8, 7),
+            row_count=4_897,
+            source="vnstock-data-3.2.7-vci",
+            fetched_at=datetime(2026, 8, 8, tzinfo=UTC),
+        ))
+        session.flush()
         response = list_companies(
             service,
             universe="VN100",
@@ -56,6 +73,9 @@ def test_company_route_contract_has_only_canonical_company_fields():
         "industry": "Công nghệ và thông tin",
         "exchange": "HOSE",
         "lists": ["VN100", "VN30", "VNALL"],
+        "first_session": date(2006, 12, 13),
+        "last_session": date(2026, 8, 7),
+        "stored_sessions": 4_897,
     }
 
 
@@ -81,5 +101,6 @@ def test_openapi_company_contract_is_generated_from_canonical_schema():
     assert not any(path.startswith("/symbol-lists") for path in schema["paths"])
     properties = schema["components"]["schemas"]["CompanyResponse"]["properties"]
     assert set(properties) == {
-        "ticker", "company_name", "market", "sector", "industry", "exchange", "lists"
+        "ticker", "company_name", "market", "sector", "industry", "exchange",
+        "lists", "first_session", "last_session", "stored_sessions",
     }

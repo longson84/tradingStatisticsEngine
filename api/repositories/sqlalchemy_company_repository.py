@@ -1,10 +1,15 @@
 """SQLAlchemy implementation of the company repository."""
 from __future__ import annotations
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Instrument, Universe, UniverseMembership
+from api.db.models import (
+    Instrument,
+    PriceBarCoverage,
+    Universe,
+    UniverseMembership,
+)
 from api.repositories.company_repository import (
     CompanyQuery,
     CompanyRecord,
@@ -66,8 +71,15 @@ class SqlAlchemyCompanyRepository:
             )
             or 0
         )
-        instruments = self._session.scalars(
-            select(Instrument)
+        rows = self._session.execute(
+            select(Instrument, PriceBarCoverage)
+            .outerjoin(
+                PriceBarCoverage,
+                and_(
+                    PriceBarCoverage.instrument_id == Instrument.id,
+                    PriceBarCoverage.price_basis == query.price_basis,
+                ),
+            )
             .where(*filters)
             .options(
                 selectinload(Instrument.memberships).selectinload(
@@ -90,6 +102,9 @@ class SqlAlchemyCompanyRepository:
                     membership.universe.code
                     for membership in instrument.memberships
                 )),
+                first_session=(coverage.first_date if coverage else None),
+                last_session=(coverage.last_date if coverage else None),
+                stored_sessions=(int(coverage.row_count) if coverage else 0),
             )
-            for instrument in instruments
+            for instrument, coverage in rows
         ), total

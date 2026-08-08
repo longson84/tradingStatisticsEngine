@@ -89,6 +89,9 @@ def list_companies(
                 industry=row.industry,
                 exchange=row.exchange,
                 lists=list(row.lists),
+                first_session=row.first_session,
+                last_session=row.last_session,
+                stored_sessions=row.stored_sessions,
             )
             for row in result.companies
         ],

@@ -18,6 +18,8 @@ from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
 from api.services.fundamental_write_service import FundamentalWriteService
+from api.services.price_history_service import DEFAULT_PRICE_BASIS
+from api.providers.vietnam_fundamentals import VnstockDataFundamentalProvider
 
 
 REUSE_WINDOW = timedelta(hours=12)
@@ -55,6 +57,7 @@ def refresh_universe(
         company_repository = SqlAlchemyCompanyRepository(session)
         companies, _ = company_repository.list_companies(CompanyQuery(
             market=market,
+            price_basis=DEFAULT_PRICE_BASIS[market],
             universe=universe,
             limit=5_000,
         ))
@@ -76,8 +79,11 @@ def refresh_universe(
         ]
     reused = len(symbols) - len(to_fetch)
     run_id = job_id or uuid4().hex
-    source = "vnstock-vci-4.0.5" if market == "VN" else "yfinance"
-    provider_version = "4.0.5" if market == "VN" else None
+    vn_provider = VnstockDataFundamentalProvider() if market == "VN" else None
+    source = "vci" if vn_provider is not None else "yfinance"
+    provider_version = (
+        vn_provider.package_version if vn_provider is not None else None
+    )
     with Session(engine) as session, session.begin():
         SqlAlchemyFundamentalRepository(session).create_refresh_run(
             job_id=run_id,
@@ -97,7 +103,7 @@ def refresh_universe(
     for index, symbol in enumerate(to_fetch, start=1):
         try:
             frame, source, methodology = fetch_provider_fundamentals(
-                symbol, market
+                symbol, market, vn_provider=vn_provider
             )
             with Session(engine) as session, session.begin():
                 FundamentalWriteService(

@@ -374,6 +374,18 @@
             ],
             "title": "Exchange"
           },
+          "first_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Session"
+          },
           "industry": {
             "anyOf": [
               {
@@ -384,6 +396,18 @@
               }
             ],
             "title": "Industry"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
           },
           "lists": {
             "items": {
@@ -411,6 +435,10 @@
             ],
             "title": "Sector"
           },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          },
           "ticker": {
             "title": "Ticker",
             "type": "string"
@@ -420,7 +448,10 @@
           "ticker",
           "company_name",
           "market",
-          "lists"
+          "lists",
+          "first_session",
+          "last_session",
+          "stored_sessions"
         ],
         "title": "CompanyResponse",
         "type": "object"

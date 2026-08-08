@@ -1,7 +1,7 @@
 """Public company API contracts generated into frontend TypeScript types."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -22,6 +22,9 @@ class CompanyResponse(BaseModel):
     industry: str | None = None
     exchange: str | None = None
     lists: list[str]
+    first_session: date | None
+    last_session: date | None
+    stored_sessions: int
 
 
 class CompanyUniverseResponse(BaseModel):

@@ -1,7 +1,7 @@
 """System-wide constants for the trading engine.
 
 These are the defaults used across all analyses. API consumers can override
-them per-request; notebooks can override them per-cell.
+them per request; exploratory scripts can override them locally.
 """
 
 # Percentile zones for Rarity Analysis.

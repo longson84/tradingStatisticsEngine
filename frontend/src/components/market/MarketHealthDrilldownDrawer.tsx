@@ -57,6 +57,9 @@ export function MarketHealthDrilldownDrawer({
             industry: null,
             exchange: null,
             lists: [market.universe],
+            first_session: null,
+            last_session: null,
+            stored_sessions: 0,
           }
       if (!needle) return [row]
       const searchable = [row.ticker, row.company_name, row.sector, row.industry]

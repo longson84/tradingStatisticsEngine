@@ -14,7 +14,6 @@ Trading Statistics Engine is now a library-first full-stack app:
 - `api/`: FastAPI adapter over the engine.
 - `frontend/`: React 19 + TypeScript + Vite UI.
 - `tests/`: pytest coverage for the engine and API.
-- `notebooks/`: exploratory notebooks that should consume the engine, not own core logic.
 
 Use `uv` for Python dependencies and `pnpm` for JavaScript dependencies. Do not introduce npm, yarn, pipenv, Poetry, or ad hoc virtualenv workflows.
 
@@ -25,7 +24,7 @@ durable conventions. Update it in the same change whenever a system boundary,
 canonical data model, point-in-time/provenance rule, persistence workflow, or
 versioned analytical formula changes.
 
-Keep `trading_engine` independent from application frameworks. It must work from notebooks, scripts, tests, and FastAPI without importing FastAPI, React/frontend code, Streamlit, or UI/runtime-specific dependencies.
+Keep `trading_engine` independent from application frameworks. It must work from scripts, tests, and FastAPI without importing FastAPI, React/frontend code, Streamlit, or UI/runtime-specific dependencies.
 
 The engine follows this domain flow:
 

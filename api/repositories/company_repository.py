@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 
@@ -15,6 +15,9 @@ class CompanyRecord:
     industry: str | None
     exchange: str | None
     lists: tuple[str, ...]
+    first_session: date | None
+    last_session: date | None
+    stored_sessions: int
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,7 @@ class UniverseRecord:
 @dataclass(frozen=True)
 class CompanyQuery:
     market: str
+    price_basis: str
     universe: str | None = None
     search: str | None = None
     sector: str | None = None

@@ -54,7 +54,7 @@ INCREMENTAL_OVERLAP_DAYS = 7
 US_DOWNLOAD_BATCH_SIZE = 100
 BENCHMARK_SYMBOLS = {"SPX": "^GSPC", "VN30": "VN30"}
 VN_REFRESH_ORDER = ("VNALL", "VN100", "VN30", "VNMID", "VNSML")
-DEFAULT_VN_REQUESTS_PER_MINUTE = 120.0
+DEFAULT_VN_REQUESTS_PER_MINUTE = 30.0
 
 
 @dataclass(frozen=True)
@@ -225,6 +225,48 @@ def _existing_benchmark(benchmark: str) -> pd.DataFrame:
     return frame
 
 
+def _existing_benchmark_manifest(benchmark: str) -> dict[str, object]:
+    path = DEFAULT_BENCHMARK_DIR / f"{benchmark.lower()}.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _assert_benchmark_parity(
+    existing: pd.DataFrame,
+    sponsored: pd.DataFrame,
+) -> None:
+    """Block cache replacement when sponsored history changes stored bars."""
+    if existing.empty:
+        return
+    left = existing.copy()
+    right = sponsored.copy()
+    left["date"] = pd.to_datetime(left["date"]).dt.date
+    right["date"] = pd.to_datetime(right["date"]).dt.date
+    missing_dates = set(left["date"]) - set(right["date"])
+    overlap = left.merge(right, on="date", suffixes=("_stored", "_sponsored"))
+    mismatched = pd.Series(False, index=overlap.index)
+    for column in ("open", "high", "low", "close", "volume"):
+        if column not in left or column not in right:
+            continue
+        stored = pd.to_numeric(overlap[f"{column}_stored"], errors="coerce")
+        candidate = pd.to_numeric(
+            overlap[f"{column}_sponsored"], errors="coerce"
+        )
+        mismatched |= ~stored.fillna(-1).round(6).eq(
+            candidate.fillna(-1).round(6)
+        )
+    if missing_dates or mismatched.any():
+        raise RuntimeError(
+            "Sponsored VN30 benchmark comparison failed: "
+            f"missing_dates={len(missing_dates)} "
+            f"mismatched_rows={int(mismatched.sum())}"
+        )
+
+
 def _latest_expected_session(end: date) -> date:
     expected = end
     while expected.weekday() >= 5:
@@ -336,10 +378,13 @@ def refresh_benchmark(
     full_start: date,
     end: date,
     mode: str,
+    *,
+    vn_provider: VietnamMarketProvider | None = None,
 ) -> None:
     """Refresh one shared index cache used by the relative-strength overlay."""
     provider_symbol = BENCHMARK_SYMBOLS[benchmark]
     existing = _existing_benchmark(benchmark)
+    existing_manifest = _existing_benchmark_manifest(benchmark)
     plan = _market_download_plan(
         existing,
         [provider_symbol],
@@ -349,6 +394,15 @@ def refresh_benchmark(
         market="US" if benchmark == "SPX" else "VN",
     )
     frames: list[pd.DataFrame] = []
+    sponsored_provider: VietnamMarketProvider | None = None
+    sponsored_source: str | None = None
+    if benchmark == "VN30":
+        sponsored_provider = vn_provider or create_vietnam_market_provider(
+            require_sponsored=True
+        )
+        sponsored_source = _provider_name(sponsored_provider)
+        if not existing.empty and existing_manifest.get("source") != sponsored_source:
+            plan = {full_start: [provider_symbol]}
     if plan:
         start = next(iter(plan))
         if benchmark == "SPX":
@@ -360,20 +414,22 @@ def refresh_benchmark(
             source = "yfinance"
             price_basis = "auto-adjusted OHLC"
         else:
-            from vnstock import Quote
-
-            raw = Quote(symbol=provider_symbol, source="VCI").history(
-                start=start.isoformat(),
-                end=end.isoformat(),
+            assert sponsored_provider is not None
+            result = sponsored_provider.ohlcv(
+                provider_symbol,
+                start,
+                end,
                 interval="1D",
             )
-            if raw is None or raw.empty:
-                raise RuntimeError("VN30 benchmark refresh returned empty history")
-            frames = [_normalise_frame(raw, provider_symbol)]
-            source = "vnstock-vci"
+            normalized = normalize_ohlcv_result(result).drop(
+                columns=["provider_source"]
+            )
+            _assert_benchmark_parity(existing, normalized)
+            frames = [normalized]
+            source = provider_source_label(result.metadata)
             price_basis = "provider OHLC (adjustment unspecified)"
     else:
-        source = "yfinance" if benchmark == "SPX" else "vnstock-vci"
+        source = "yfinance" if benchmark == "SPX" else str(sponsored_source)
         price_basis = (
             "auto-adjusted OHLC"
             if benchmark == "SPX"

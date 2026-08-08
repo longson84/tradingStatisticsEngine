@@ -49,7 +49,7 @@ class PriceFrame:
     """
     symbol: str
     data: pd.DataFrame
-    source: str  # "yfinance" | "vnstock" | "csv"
+    source: str  # Provider provenance such as "yfinance" or "vnstock-data-..."
 
     def __post_init__(self) -> None:
         required = {"open", "high", "low", "close"}

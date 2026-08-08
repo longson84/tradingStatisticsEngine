@@ -10,6 +10,7 @@ from api.repositories.company_repository import (
     CompanyRepository,
     UniverseRecord,
 )
+from api.services.price_history_service import DEFAULT_PRICE_BASIS
 
 
 ALL_UNIVERSES = {"US_ALL": "US", "VN_ALL": "VN"}
@@ -81,6 +82,7 @@ class CompanyService:
 
         companies, total = self._repository.list_companies(CompanyQuery(
             market=market,
+            price_basis=DEFAULT_PRICE_BASIS[market],
             universe=stored_universe,
             search=search,
             sector=sector,
@@ -109,7 +111,11 @@ class CompanyService:
         universes: tuple[UniverseRecord, ...],
     ) -> UniverseRecord:
         market_universes = tuple(row for row in universes if row.market == market)
-        _, count = self._repository.list_companies(CompanyQuery(market=market, limit=1))
+        _, count = self._repository.list_companies(CompanyQuery(
+            market=market,
+            price_basis=DEFAULT_PRICE_BASIS[market],
+            limit=1,
+        ))
         fetched = [row.fetched_at for row in market_universes if row.fetched_at]
         as_of_values = [row.as_of for row in market_universes if row.as_of]
         return UniverseRecord(

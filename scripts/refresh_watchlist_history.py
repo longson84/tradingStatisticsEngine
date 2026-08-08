@@ -7,8 +7,14 @@ import time
 
 from sqlalchemy.orm import Session
 
+from api.config import env_float
 from api.db.session import create_db_engine
 from api.market_sessions import latest_completed_session
+from api.providers.vietnam_market import (
+    create_vietnam_market_provider,
+    provider_runtime_label,
+)
+from api.providers.vietnam_price_loader import VietnamPriceLoader
 from api.repositories.sqlalchemy_price_bar_repository import SqlAlchemyPriceBarRepository
 from api.repositories.sqlalchemy_watchlist_repository import SqlAlchemyWatchlistRepository
 from api.services.company_price_service import (
@@ -19,11 +25,26 @@ from api.services.price_history_service import DEFAULT_PRICE_BASIS
 from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
 from api.services.watchlist_service import WatchlistService
 from trading_engine.data.yfinance_loader import YFinanceLoader
-from trading_engine.data.vnstock_loader import VNStockLoader
-from trading_engine.types import DataLoadError, PriceFrame
+from trading_engine.types import DataLoadError, DataLoader, PriceFrame
 
 
-VN_REQUEST_INTERVAL_SECONDS = 4.1
+DEFAULT_VN_REQUESTS_PER_MINUTE = 30.0
+
+
+def _loader_config(market: str) -> tuple[DataLoader, str, float]:
+    if market == "US":
+        return YFinanceLoader(), "yfinance", 0.0
+    provider = create_vietnam_market_provider(require_sponsored=True)
+    requests_per_minute = env_float(
+        "VNSTOCK_REQUESTS_PER_MINUTE", DEFAULT_VN_REQUESTS_PER_MINUTE
+    )
+    if requests_per_minute <= 0:
+        raise ValueError("VNSTOCK_REQUESTS_PER_MINUTE must be greater than zero")
+    return (
+        VietnamPriceLoader(provider),
+        provider_runtime_label(provider),
+        60.0 / requests_per_minute,
+    )
 
 
 def refresh_watchlist(watchlist_id: int) -> None:
@@ -83,11 +104,7 @@ def refresh_watchlist(watchlist_id: int) -> None:
         print(f"WATCHLIST {watchlist_id}: 0/0 already current", flush=True)
         return
 
-    loader = (
-        YFinanceLoader()
-        if watchlist.market == "US"
-        else VNStockLoader(source="KBS")
-    )
+    loader, primary_source, request_interval = _loader_config(watchlist.market)
     downloaded: dict[str, PriceFrame] = {}
     errors: dict[str, str] = {}
     for position, (ticker, start) in enumerate(requested.items(), start=1):
@@ -101,8 +118,8 @@ def refresh_watchlist(watchlist_id: int) -> None:
             f"WATCHLIST {watchlist_id}: {position}/{total} errors={len(errors)}",
             flush=True,
         )
-        if watchlist.market == "VN" and position < total:
-            time.sleep(VN_REQUEST_INTERVAL_SECONDS)
+        if request_interval > 0 and position < total:
+            time.sleep(request_interval)
 
     with Session(engine) as session:
         with session.begin():
@@ -131,9 +148,7 @@ def refresh_watchlist(watchlist_id: int) -> None:
                         if ticker in downloaded
                         else "failed"
                     ),
-                    primary_source=(
-                        "vnstock-kbs" if watchlist.market == "VN" else "yfinance"
-                    ),
+                    primary_source=primary_source,
                     selected_source=(
                         downloaded[ticker].source if ticker in downloaded else None
                     ),
