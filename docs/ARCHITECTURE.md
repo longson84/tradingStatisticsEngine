@@ -353,6 +353,34 @@ timing variable. Every median observation exactly matched the prior close-only
 implementation. A persisted derived series is unnecessary until this remaining
 calculation needs materially lower latency.
 
+### 2026-08-08 — Historical context for Market Health
+
+Context: a current cross-sectional median distance is difficult to interpret
+without knowing where that same universe normally trades. Raw levels are not
+directly comparable across universes, and crash observations make a time-series
+mean less representative of a typical session.
+
+Decision: summarize each universe against its own displayed daily
+`median_distance` series, using up to ten years of available observations.
+Report the time-series median, 25th and 75th
+percentiles, observation count, and the empirical midrank percentile of the
+latest reading. The percentile is the share strictly below the latest value
+plus half the share tied with it. Because a less-negative distance is healthier,
+higher ranks are stronger. Classify ranks as exceptionally weak below 10,
+weak from 10 to below 25, normal from 25 to below 75, strong from 75 to below
+90, and exceptionally strong from 90 through 100. Calculate this context in
+the engine and serialize it through the API; the frontend only presents it.
+
+Consequences: Market Health cards show current position relative to a robust
+typical value and normal range without assuming a normal distribution. The
+classification is descriptive, universe-specific, and not a trading signal.
+Render each universe in a separate historical chart. Alongside the daily
+cross-sectional `median_distance`, plot trailing 10-year, 5-year, and 1-year
+calendar-window medians through each date. Window boundaries are inclusive,
+available pre-display history is loaded so early visible points have genuine
+trailing context, and no running baseline uses future observations. The latest
+10-year value aligns with the historical median on the market card.
+
 ### 2026-08-05 — VN size-segment and all-share universes
 
 Context: VN30 and VN100 did not expose the small-cap segment or a broad HOSE

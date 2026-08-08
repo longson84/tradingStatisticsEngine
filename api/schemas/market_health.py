@@ -36,6 +36,9 @@ class MarketHealthPointResponse(BaseModel):
 class MarketHealthSeriesPointResponse(BaseModel):
     date: date
     median_distance: float
+    running_median_10y: float
+    running_median_5y: float
+    running_median_1y: float
 
 
 class MarketHistoryCacheResponse(BaseModel):
@@ -56,11 +59,23 @@ class MarketHealthDistributionBucketResponse(BaseModel):
     cumulative_percentage: float
 
 
+class MarketHealthHistoricalContextResponse(BaseModel):
+    observation_count: int
+    median_distance: float
+    q25_distance: float
+    q75_distance: float
+    current_percentile: float
+    regime: Literal[
+        "Exceptionally strong", "Strong", "Normal", "Weak", "Exceptionally weak"
+    ]
+
+
 class MarketHealthUniverseResponse(BaseModel):
     universe: MarketHealthUniverse
     universe_size: int
     cache: MarketHistoryCacheResponse
     current: MarketHealthPointResponse
+    historical_context: MarketHealthHistoricalContextResponse
     series: list[MarketHealthSeriesPointResponse]
     distribution: list[MarketHealthDistributionBucketResponse]
 

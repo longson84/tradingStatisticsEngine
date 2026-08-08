@@ -8,6 +8,8 @@ from trading_engine.factor_analysis.market_health import (
     compute_market_distance_snapshot,
     compute_market_health,
     compute_market_health_from_closes,
+    compute_market_health_running_medians,
+    summarize_market_health_history,
 )
 from trading_engine.types import PriceFrame
 
@@ -203,3 +205,62 @@ def test_market_health_does_not_look_ahead():
     )
     assert before.series["median_distance"].iloc[-1] == pytest.approx(0.0)
     assert after.series["median_distance"].iloc[-1] == pytest.approx(-80.0)
+
+
+@pytest.mark.parametrize(
+    ("current", "expected_percentile", "expected_regime"),
+    [
+        (-1, 99.5, "Exceptionally strong"),
+        (-15, 85.5, "Strong"),
+        (-50, 50.5, "Normal"),
+        (-80, 20.5, "Weak"),
+        (-95, 5.5, "Exceptionally weak"),
+    ],
+)
+def test_market_health_history_reports_empirical_percentile_and_regime(
+    current: int,
+    expected_percentile: float,
+    expected_regime: str,
+):
+    history = pd.Series(
+        [float(value) for value in range(-100, 0) if value != current]
+        + [float(current)]
+    )
+
+    context = summarize_market_health_history(history)
+
+    assert context.observation_count == 100
+    assert context.current_percentile == pytest.approx(expected_percentile)
+    assert context.regime == expected_regime
+
+
+def test_market_health_history_reports_robust_center_and_normal_range():
+    context = summarize_market_health_history(
+        pd.Series([-50.0, -30.0, -20.0, -10.0, 0.0])
+    )
+
+    assert context.median_distance == pytest.approx(-20.0)
+    assert context.q25_distance == pytest.approx(-30.0)
+    assert context.q75_distance == pytest.approx(-10.0)
+    assert context.current_percentile == pytest.approx(90.0)
+
+
+def test_running_market_health_medians_use_trailing_calendar_windows_without_look_ahead():
+    dates = pd.to_datetime(["2010-01-01", "2015-01-01", "2019-01-01", "2020-01-01"])
+    values = pd.Series([-30.0, -10.0, -20.0, 0.0], index=dates)
+
+    running = compute_market_health_running_medians(values)
+
+    assert running["running_median_10y"].tolist() == pytest.approx(
+        [-30.0, -20.0, -20.0, -15.0]
+    )
+    assert running["running_median_5y"].tolist() == pytest.approx(
+        [-30.0, -20.0, -15.0, -10.0]
+    )
+    assert running["running_median_1y"].tolist() == pytest.approx(
+        [-30.0, -10.0, -20.0, -10.0]
+    )
+    changed_future = values.copy()
+    changed_future.iloc[-1] = -90.0
+    changed = compute_market_health_running_medians(changed_future)
+    pd.testing.assert_frame_equal(changed.iloc[:-1], running.iloc[:-1])

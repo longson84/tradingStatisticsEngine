@@ -2757,6 +2757,51 @@
         "title": "MarketHealthDistributionResponse",
         "type": "object"
       },
+      "MarketHealthHistoricalContextResponse": {
+        "properties": {
+          "current_percentile": {
+            "title": "Current Percentile",
+            "type": "number"
+          },
+          "median_distance": {
+            "title": "Median Distance",
+            "type": "number"
+          },
+          "observation_count": {
+            "title": "Observation Count",
+            "type": "integer"
+          },
+          "q25_distance": {
+            "title": "Q25 Distance",
+            "type": "number"
+          },
+          "q75_distance": {
+            "title": "Q75 Distance",
+            "type": "number"
+          },
+          "regime": {
+            "enum": [
+              "Exceptionally strong",
+              "Strong",
+              "Normal",
+              "Weak",
+              "Exceptionally weak"
+            ],
+            "title": "Regime",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_count",
+          "median_distance",
+          "q25_distance",
+          "q75_distance",
+          "current_percentile",
+          "regime"
+        ],
+        "title": "MarketHealthHistoricalContextResponse",
+        "type": "object"
+      },
       "MarketHealthPointResponse": {
         "properties": {
           "coverage_pct": {
@@ -2861,11 +2906,26 @@
           "median_distance": {
             "title": "Median Distance",
             "type": "number"
+          },
+          "running_median_10y": {
+            "title": "Running Median 10Y",
+            "type": "number"
+          },
+          "running_median_1y": {
+            "title": "Running Median 1Y",
+            "type": "number"
+          },
+          "running_median_5y": {
+            "title": "Running Median 5Y",
+            "type": "number"
           }
         },
         "required": [
           "date",
-          "median_distance"
+          "median_distance",
+          "running_median_10y",
+          "running_median_5y",
+          "running_median_1y"
         ],
         "title": "MarketHealthSeriesPointResponse",
         "type": "object"
@@ -2919,6 +2979,9 @@
             "title": "Distribution",
             "type": "array"
           },
+          "historical_context": {
+            "$ref": "#/components/schemas/MarketHealthHistoricalContextResponse"
+          },
           "series": {
             "items": {
               "$ref": "#/components/schemas/MarketHealthSeriesPointResponse"
@@ -2950,6 +3013,7 @@
           "universe_size",
           "cache",
           "current",
+          "historical_context",
           "series",
           "distribution"
         ],

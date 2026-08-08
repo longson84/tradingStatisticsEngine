@@ -5,10 +5,12 @@ from datetime import date
 from math import ceil
 
 import pandas as pd
+from pandas.api.indexers import VariableOffsetWindowIndexer
 
 from trading_engine.types import (
     InsufficientDataError,
     MarketHealthDistributionBucket,
+    MarketHealthHistoricalContext,
     MarketHealthResult,
     MarketHealthStockDistance,
     PriceFrame,
@@ -27,6 +29,63 @@ _DISTRIBUTION_BANDS = (
     ("-80 to -90%", -90.0, -80.0),
     ("-90 to -100%", None, -90.0),
 )
+
+
+def summarize_market_health_history(
+    median_distances: pd.Series,
+) -> MarketHealthHistoricalContext:
+    """Place the latest median-distance reading in its empirical history."""
+    values = median_distances.dropna().astype(float)
+    if values.empty:
+        raise InsufficientDataError(
+            "Historical Market Health context requires at least one observation"
+        )
+
+    current = float(values.iloc[-1])
+    below = int((values < current).sum())
+    equal = int((values == current).sum())
+    current_percentile = (below + equal / 2.0) / len(values) * 100.0
+    if current_percentile >= 90.0:
+        regime = "Exceptionally strong"
+    elif current_percentile >= 75.0:
+        regime = "Strong"
+    elif current_percentile >= 25.0:
+        regime = "Normal"
+    elif current_percentile >= 10.0:
+        regime = "Weak"
+    else:
+        regime = "Exceptionally weak"
+
+    return MarketHealthHistoricalContext(
+        observation_count=len(values),
+        median_distance=float(values.median()),
+        q25_distance=float(values.quantile(0.25)),
+        q75_distance=float(values.quantile(0.75)),
+        current_percentile=current_percentile,
+        regime=regime,
+    )
+
+
+def compute_market_health_running_medians(
+    median_distances: pd.Series,
+) -> pd.DataFrame:
+    """Return trailing 10Y, 5Y, and 1Y medians without look-ahead."""
+    values = median_distances.astype(float)
+    if not isinstance(values.index, pd.DatetimeIndex):
+        raise ValueError("Running Market Health medians require a DatetimeIndex")
+
+    medians: dict[str, pd.Series] = {}
+    for years in (10, 5, 1):
+        window = VariableOffsetWindowIndexer(
+            index=values.index,
+            offset=pd.DateOffset(years=years),
+        )
+        medians[f"running_median_{years}y"] = values.rolling(
+            window=window,
+            min_periods=1,
+            closed="both",
+        ).median()
+    return pd.DataFrame(medians, index=values.index)
 
 
 def _current_distribution(

@@ -5,6 +5,7 @@ import { MarketHealthChart } from "@/components/market/MarketHealthChart"
 import { MarketDistanceDistributionChart } from "@/components/market/MarketDistanceDistributionChart"
 import { MarketHealthDrilldownDrawer } from "@/components/market/MarketHealthDrilldownDrawer"
 import { Sidebar } from "@/components/Sidebar"
+import { Badge } from "@/components/ui/badge"
 import {
   marketHealthRunApi,
   type MarketHealthMarket,
@@ -172,7 +173,11 @@ export function MarketHealthPage() {
                 ))}
               </div>
             </div>
-            <MarketHealthChart markets={visibleMarkets} />
+            <div className="grid gap-4 xl:grid-cols-2">
+              {visibleMarkets.map(market => (
+                <MarketHealthChart key={market.universe} market={market} />
+              ))}
+            </div>
             <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground">
               US500, US2000, and US100 use yfinance auto-adjusted prices. All VN universes use VCI
               provider prices; VNStock does not document or expose a corporate-action adjustment
@@ -197,11 +202,18 @@ export function MarketHealthPage() {
 
 function MarketSummary({ market }: { market: MarketHealthMarket }) {
   const current = market.current
+  const context = market.historical_context
+  const differenceFromMedian = current.median_distance - context.median_distance
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold">{market.universe}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold">{market.universe}</h2>
+            <Badge variant="outline" className={regimeClassName(context.regime)}>
+              {context.regime}
+            </Badge>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Distance from trailing 200-session high
           </p>
@@ -217,6 +229,16 @@ function MarketSummary({ market }: { market: MarketHealthMarket }) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Metric label="Historical median (up to 10Y)" value={`${context.median_distance.toFixed(1)}%`} />
+        <Metric
+          label="Versus historical median"
+          value={`${differenceFromMedian >= 0 ? "+" : ""}${differenceFromMedian.toFixed(1)} pp`}
+        />
+        <Metric label="Historical percentile (up to 10Y)" value={`${context.current_percentile.toFixed(0)}th`} />
+        <Metric
+          label="Normal range (25th–75th)"
+          value={`${context.q25_distance.toFixed(1)}% to ${context.q75_distance.toFixed(1)}%`}
+        />
         <Metric
           label="Coverage"
           value={`${fmtInt(current.eligible_count)}/${fmtInt(market.universe_size)}`}
@@ -225,12 +247,38 @@ function MarketSummary({ market }: { market: MarketHealthMarket }) {
         <Metric label="Latest session" value={current.date} />
       </div>
 
+      <div className="mt-4">
+        <div className="relative h-2 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500">
+          <span
+            className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground shadow"
+            style={{ left: `${Math.min(100, Math.max(0, context.current_percentile))}%` }}
+          />
+        </div>
+        <div className="mt-1 flex justify-between text-[9px] uppercase tracking-wide text-muted-foreground">
+          <span>Historically weak</span>
+          <span>Typical</span>
+          <span>Historically strong</span>
+        </div>
+      </div>
+
       <div className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">
         Cached through {market.cache.last_date} · {market.cache.source} · fetched{" "}
-        {new Date(market.cache.fetched_at).toLocaleString()}
+        {new Date(market.cache.fetched_at).toLocaleString()} · context based on{" "}
+        {fmtInt(context.observation_count)} sessions
       </div>
     </section>
   )
+}
+
+
+function regimeClassName(regime: MarketHealthMarket["historical_context"]["regime"]): string {
+  if (regime === "Exceptionally strong" || regime === "Strong") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+  }
+  if (regime === "Exceptionally weak" || regime === "Weak") {
+    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+  }
+  return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
 }
 
 

@@ -1256,6 +1256,24 @@ export interface components {
             /** Window */
             window: number;
         };
+        /** MarketHealthHistoricalContextResponse */
+        MarketHealthHistoricalContextResponse: {
+            /** Current Percentile */
+            current_percentile: number;
+            /** Median Distance */
+            median_distance: number;
+            /** Observation Count */
+            observation_count: number;
+            /** Q25 Distance */
+            q25_distance: number;
+            /** Q75 Distance */
+            q75_distance: number;
+            /**
+             * Regime
+             * @enum {string}
+             */
+            regime: "Exceptionally strong" | "Strong" | "Normal" | "Weak" | "Exceptionally weak";
+        };
         /** MarketHealthPointResponse */
         MarketHealthPointResponse: {
             /** Coverage Pct */
@@ -1303,6 +1321,12 @@ export interface components {
             date: string;
             /** Median Distance */
             median_distance: number;
+            /** Running Median 10Y */
+            running_median_10y: number;
+            /** Running Median 1Y */
+            running_median_1y: number;
+            /** Running Median 5Y */
+            running_median_5y: number;
         };
         /** MarketHealthStockDistanceResponse */
         MarketHealthStockDistanceResponse: {
@@ -1326,6 +1350,7 @@ export interface components {
             current: components["schemas"]["MarketHealthPointResponse"];
             /** Distribution */
             distribution: components["schemas"]["MarketHealthDistributionBucketResponse"][];
+            historical_context: components["schemas"]["MarketHealthHistoricalContextResponse"];
             /** Series */
             series: components["schemas"]["MarketHealthSeriesPointResponse"][];
             /**

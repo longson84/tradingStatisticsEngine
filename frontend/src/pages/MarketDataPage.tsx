@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, CheckCircle2, Database, RefreshCw, Trash2 } from "lucide-react"
 import { Sidebar } from "@/components/Sidebar"
@@ -5,19 +6,58 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   marketDataClearApi,
+  marketDataJobApi,
   marketDataRefreshApi,
   marketDataStatusApi,
   watchlistRefreshJobsApi,
   type MarketDataCacheStatus,
+  type MarketDataJob,
   type WatchlistRefreshJob,
 } from "@/lib/api"
 
 
 type Market = MarketDataCacheStatus["universe"]
+type MarketRefreshScope = "full" | "us" | "vn"
+type MarketRefreshDataset = "prices" | "fundamentals"
+
+const MARKET_REFRESH_PLANS: Record<MarketRefreshScope, Market[]> = {
+  full: ["US2000", "US500", "US100", "VNALL"],
+  us: ["US2000", "US500", "US100"],
+  vn: ["VNALL"],
+}
+
+const MARKET_REFRESH_LABELS: Record<MarketRefreshScope, string> = {
+  full: "Full market",
+  us: "US market",
+  vn: "VN market",
+}
+
+const MARKET_DATASET_LABELS: Record<MarketRefreshDataset, string> = {
+  prices: "Prices",
+  fundamentals: "Fundamentals",
+}
+
+interface MarketRefreshProgress {
+  scope: MarketRefreshScope
+  dataset: MarketRefreshDataset
+  market: Market
+  step: number
+  steps: number
+  current: number
+  total: number
+  message: string
+  completed: boolean
+}
+
+interface MarketDataActivity {
+  market: Market
+  timestamp: string
+}
 
 
 export function MarketDataPage() {
   const queryClient = useQueryClient()
+  const [marketRefreshProgress, setMarketRefreshProgress] = useState<MarketRefreshProgress | null>(null)
   const status = useQuery({
     queryKey: ["market-data-status"],
     queryFn: marketDataStatusApi,
@@ -47,6 +87,60 @@ export function MarketDataPage() {
     }) => marketDataRefreshApi(market, mode, dataset),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["market-data-status"] }),
   })
+  const marketRefresh = useMutation({
+    mutationFn: async ({ scope, dataset }: {
+      scope: MarketRefreshScope
+      dataset: MarketRefreshDataset
+    }) => {
+      const plan = MARKET_REFRESH_PLANS[scope]
+      for (const [index, market] of plan.entries()) {
+        setMarketRefreshProgress({
+          scope,
+          dataset,
+          market,
+          step: index + 1,
+          steps: plan.length,
+          current: 0,
+          total: 0,
+          message: `Starting ${market}`,
+          completed: false,
+        })
+        const startedJob = await marketDataRefreshApi(market, "incremental", dataset)
+        const completedJob = await waitForMarketDataJob(startedJob.id, job => {
+          setMarketRefreshProgress({
+            scope,
+            dataset,
+            market,
+            step: index + 1,
+            steps: plan.length,
+            current: job.current,
+            total: job.total,
+            message: job.message,
+            completed: false,
+          })
+        })
+        if (completedJob.status === "failed") {
+          throw new Error(
+            `${market} ${dataset} update failed: ${completedJob.error ?? completedJob.message}`
+          )
+        }
+        await queryClient.invalidateQueries({ queryKey: ["market-data-status"] })
+      }
+      const finalMarket = plan[plan.length - 1]
+      setMarketRefreshProgress({
+        scope,
+        dataset,
+        market: finalMarket,
+        step: plan.length,
+        steps: plan.length,
+        current: 1,
+        total: 1,
+        message: `${MARKET_REFRESH_LABELS[scope]} ${dataset} update completed`,
+        completed: true,
+      })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["market-data-status"] }),
+  })
   const clear = useMutation({
     mutationFn: marketDataClearApi,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["market-data-status"] }),
@@ -63,6 +157,21 @@ export function MarketDataPage() {
     if (confirmed) clear.mutate(market)
   }
 
+  const anyMarketJobRunning = status.data?.markets.some(market => (
+    market.latest_job?.status === "queued"
+      || market.latest_job?.status === "running"
+      || market.latest_fundamentals_job?.status === "queued"
+      || market.latest_fundamentals_job?.status === "running"
+  )) ?? false
+  const marketRefreshDisabled = marketRefresh.isPending || refresh.isPending || anyMarketJobRunning
+  const latestPriceJob = latestMarketDataJob(status.data?.markets, "prices")
+  const latestFundamentalsJob = latestMarketDataJob(status.data?.markets, "fundamentals")
+  const latestPriceActivity = latestMarketDataActivity(status.data?.markets, "prices")
+  const latestFundamentalsActivity = latestMarketDataActivity(
+    status.data?.markets,
+    "fundamentals"
+  )
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
@@ -76,6 +185,62 @@ export function MarketDataPage() {
             Maintain local price history and point-in-time company fundamentals.
           </p>
         </div>
+
+        <section className="mb-5 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <RefreshCw size={18} className="text-primary" />
+                <h2 className="text-lg font-semibold">Update markets</h2>
+              </div>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                Run prices and fundamentals separately. US updates run sequentially in coverage
+                order: US2000 → US500 → US100. VN updates run VNALL once because it covers the
+                smaller VN universes.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {(["prices", "fundamentals"] as const).map(dataset => (
+                <div key={dataset} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <span className="w-24 text-xs font-semibold">{MARKET_DATASET_LABELS[dataset]}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {(["full", "us", "vn"] as const).map(scope => {
+                      const active = marketRefresh.isPending
+                        && marketRefresh.variables?.scope === scope
+                        && marketRefresh.variables.dataset === dataset
+                      return (
+                        <Button
+                          key={scope}
+                          variant={dataset === "prices" && scope === "full" ? "default" : "outline"}
+                          disabled={marketRefreshDisabled}
+                          onClick={() => marketRefresh.mutate({ scope, dataset })}
+                        >
+                          <RefreshCw className={active ? "animate-spin" : ""} />
+                          {MARKET_REFRESH_LABELS[scope]}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <LastRunSummary
+              label="Last price run"
+              job={latestPriceJob}
+              activity={latestPriceActivity}
+            />
+            <LastRunSummary
+              label="Last fundamentals run"
+              job={latestFundamentalsJob}
+              activity={latestFundamentalsActivity}
+            />
+          </div>
+          {marketRefreshProgress && (
+            <MarketRefreshProgressView progress={marketRefreshProgress} />
+          )}
+        </section>
 
         <div className="mb-5 rounded-lg border border-border bg-card px-4 py-3 text-xs leading-relaxed text-muted-foreground">
           Price History and Market Health read canonical PostgreSQL price bars. Update downloads
@@ -91,6 +256,7 @@ export function MarketDataPage() {
           </div>
         )}
         {status.error && <ErrorMessage message={status.error.message} />}
+        {marketRefresh.error && <ErrorMessage message={marketRefresh.error.message} />}
         {refresh.error && <ErrorMessage message={refresh.error.message} />}
         {clear.error && <ErrorMessage message={clear.error.message} />}
 
@@ -99,7 +265,7 @@ export function MarketDataPage() {
             <MarketCacheCard
               key={market.universe}
               market={market}
-              mutating={refresh.isPending || clear.isPending}
+              mutating={marketRefresh.isPending || refresh.isPending || clear.isPending}
               onRefresh={(mode, dataset) => refresh.mutate({
                 market: market.universe,
                 mode,
@@ -147,6 +313,121 @@ export function MarketDataPage() {
       </main>
     </div>
   )
+}
+
+
+function MarketRefreshProgressView({ progress }: { progress: MarketRefreshProgress }) {
+  const currentStepProgress = progress.total > 0
+    ? Math.min(1, progress.current / progress.total)
+    : 0
+  const totalProgress = progress.completed
+    ? 100
+    : ((progress.step - 1 + currentStepProgress) / progress.steps) * 100
+
+  return (
+    <div className="mt-4 rounded-lg border border-primary/20 bg-background/70 p-3">
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <span className="font-medium">
+          {MARKET_DATASET_LABELS[progress.dataset]} · {MARKET_REFRESH_LABELS[progress.scope]} · {progress.completed
+            ? "Complete"
+            : `Step ${progress.step}/${progress.steps}: ${progress.market}`}
+        </span>
+        <span className="tabular-nums text-muted-foreground">{Math.round(totalProgress)}%</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full bg-primary transition-[width] duration-300"
+          style={{ width: `${totalProgress}%` }}
+        />
+      </div>
+      <p className="mt-2 truncate text-[11px] text-muted-foreground" title={progress.message}>
+        {progress.message}
+      </p>
+    </div>
+  )
+}
+
+
+function LastRunSummary({
+  label,
+  job,
+  activity,
+}: {
+  label: string
+  job: MarketDataJob | null
+  activity: MarketDataActivity | null
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background/60 px-3 py-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium">{label}</span>
+        {job && (
+          <Badge variant={job.status === "failed" ? "destructive" : "secondary"}>
+            {job.status}
+          </Badge>
+        )}
+        {!job && activity && <Badge variant="outline">database activity</Badge>}
+      </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {job
+          ? `${job.market} · ${formatDateTime(job.finished_at ?? job.started_at)}`
+          : activity
+            ? `${activity.market} · ${formatDateTime(activity.timestamp)} · job history unavailable after API restart`
+            : "No run or stored activity found."}
+      </p>
+    </div>
+  )
+}
+
+
+function latestMarketDataJob(
+  markets: MarketDataCacheStatus[] | undefined,
+  dataset: MarketRefreshDataset
+): MarketDataJob | null {
+  const jobs = markets
+    ?.map(market => dataset === "prices" ? market.latest_job : market.latest_fundamentals_job)
+    .filter((job): job is MarketDataJob => job != null) ?? []
+  return jobs.reduce<MarketDataJob | null>((latest, job) => {
+    if (!latest) return job
+    const jobTime = Date.parse(job.finished_at ?? job.started_at ?? "") || 0
+    const latestTime = Date.parse(latest.finished_at ?? latest.started_at ?? "") || 0
+    return jobTime > latestTime ? job : latest
+  }, null)
+}
+
+
+function latestMarketDataActivity(
+  markets: MarketDataCacheStatus[] | undefined,
+  dataset: MarketRefreshDataset
+): MarketDataActivity | null {
+  return markets?.reduce<MarketDataActivity | null>((latest, market) => {
+    const timestamp = dataset === "prices"
+      ? market.recent_activity_at
+      : market.fundamentals_recent_activity_at
+    if (!timestamp) return latest
+    if (!latest || Date.parse(timestamp) > Date.parse(latest.timestamp)) {
+      return { market: market.universe, timestamp }
+    }
+    return latest
+  }, null) ?? null
+}
+
+
+async function waitForMarketDataJob(
+  jobId: string,
+  onProgress: (job: Awaited<ReturnType<typeof marketDataJobApi>>) => void
+) {
+  while (true) {
+    await delay(1_500)
+    const job = await marketDataJobApi(jobId)
+    onProgress(job)
+    if (job.status === "completed" || job.status === "failed") return job
+  }
+}
+
+
+function delay(milliseconds: number) {
+  return new Promise(resolve => window.setTimeout(resolve, milliseconds))
 }
 
 

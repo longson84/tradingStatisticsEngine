@@ -11,7 +11,7 @@ import type { MarketHealthMarket } from "@/lib/api"
 
 
 interface Props {
-  markets: MarketHealthMarket[]
+  market: MarketHealthMarket
 }
 
 const MARKET_COLORS: Record<MarketHealthMarket["universe"], string> = {
@@ -26,16 +26,16 @@ const MARKET_COLORS: Record<MarketHealthMarket["universe"], string> = {
 }
 
 
-export function MarketHealthChart({ markets }: Props) {
+export function MarketHealthChart({ market }: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!ref.current || markets.length === 0) return
+    if (!ref.current || market.series.length === 0) return
 
     const isDark = document.documentElement.classList.contains("dark")
     const chart = createChart(ref.current, {
       width: ref.current.clientWidth,
-      height: 440,
+      height: 320,
       layout: {
         background: {
           type: ColorType.Solid,
@@ -57,45 +57,56 @@ export function MarketHealthChart({ markets }: Props) {
       },
     })
 
-    for (const market of markets) {
-      const series = chart.addSeries(LineSeries, {
-        title: market.universe,
-        color: MARKET_COLORS[market.universe],
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: true,
-      })
-      const data: LineData<Time>[] = market.series.map(point => ({
-        time: point.date as Time,
-        value: point.median_distance,
-      }))
-      series.setData(data)
-    }
+    const healthSeries = chart.addSeries(LineSeries, {
+      color: MARKET_COLORS[market.universe],
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    })
+    const healthData: LineData<Time>[] = market.series.map(point => ({
+      time: point.date as Time,
+      value: point.median_distance,
+    }))
+    healthSeries.setData(healthData)
 
-    const allPoints = markets.flatMap(market => market.series)
-    if (allPoints.length > 0) {
-      const first = allPoints.reduce(
-        (earliest, point) => point.date < earliest ? point.date : earliest,
-        allPoints[0].date,
-      )
-      const last = allPoints.reduce(
-        (latest, point) => point.date > latest ? point.date : latest,
-        allPoints[0].date,
-      )
-      const thresholds = [-40, -30, -20, -10]
-      for (const threshold of thresholds) {
-        chart.addSeries(LineSeries, {
-          color: "rgba(107,114,128,0.35)",
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        }).setData([
-          { time: first as Time, value: threshold },
-          { time: last as Time, value: threshold },
-        ])
-      }
-    }
+    const runningMedian10YSeries = chart.addSeries(LineSeries, {
+      color: isDark ? "#d4d4d8" : "#52525b",
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    })
+    const runningMedian10YData: LineData<Time>[] = market.series.map(point => ({
+      time: point.date as Time,
+      value: point.running_median_10y,
+    }))
+    runningMedian10YSeries.setData(runningMedian10YData)
+
+    const runningMedian5YSeries = chart.addSeries(LineSeries, {
+      color: "#06b6d4",
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    })
+    const runningMedian5YData: LineData<Time>[] = market.series.map(point => ({
+      time: point.date as Time,
+      value: point.running_median_5y,
+    }))
+    runningMedian5YSeries.setData(runningMedian5YData)
+
+    const runningMedian1YSeries = chart.addSeries(LineSeries, {
+      color: "#f59e0b",
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    })
+    const runningMedian1YData: LineData<Time>[] = market.series.map(point => ({
+      time: point.date as Time,
+      value: point.running_median_1y,
+    }))
+    runningMedian1YSeries.setData(runningMedian1YData)
 
     chart.timeScale().fitContent()
     const observer = new ResizeObserver(entries => {
@@ -108,23 +119,31 @@ export function MarketHealthChart({ markets }: Props) {
       observer.disconnect()
       chart.remove()
     }
-  }, [markets])
+  }, [market])
 
   return (
     <section className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="flex flex-wrap items-center gap-5 border-b border-border px-4 py-3 text-xs">
-        <span className="font-semibold">
-          Median distance from 200-session high
+        <span className="font-semibold">{market.universe}</span>
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span
+            className="h-0.5 w-5"
+            style={{ backgroundColor: MARKET_COLORS[market.universe] }}
+          />
+          Median distance
         </span>
-        {markets.map(market => (
-          <span key={market.universe} className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: MARKET_COLORS[market.universe] }}
-            />
-            {market.universe}
-          </span>
-        ))}
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="w-5 border-t-2 border-dashed border-foreground/70" />
+          Running median 10Y
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="w-5 border-t-2 border-dashed border-cyan-500" />
+          Running median 5Y
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="w-5 border-t-2 border-dashed border-amber-500" />
+          Running median 1Y
+        </span>
       </div>
       <div ref={ref} />
     </section>

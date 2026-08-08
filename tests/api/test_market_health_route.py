@@ -110,11 +110,15 @@ def test_run_market_health_uses_database_service_and_returns_median_distance():
         "VNSML",
     ]
     assert result.markets[0].current.median_distance == 0.0
+    assert result.markets[0].historical_context.median_distance == 0.0
+    assert result.markets[0].historical_context.current_percentile == 50.0
+    assert result.markets[0].historical_context.regime == "Normal"
+    assert result.markets[0].historical_context.observation_count == 21
     assert result.markets[0].cache.source == "us500-test"
     assert result.markets[0].distribution[0].label == "0 to -10%"
     assert result.markets[0].distribution[0].count == 1
     assert service.ranges[0] == (
-        date(2014, 11, 1) - timedelta(days=400),
+        date(2004, 11, 1) - timedelta(days=400),
         date(2024, 11, 1),
     )
 
@@ -146,5 +150,12 @@ def test_run_market_health_calculates_only_selected_universes():
     assert service.calls == ["US2000", "VN100"]
     assert [market.universe for market in result.markets] == ["US2000", "VN100"]
     assert set(result.markets[0].series[0].model_fields_set) == {
-        "date", "median_distance"
+        "date",
+        "median_distance",
+        "running_median_10y",
+        "running_median_5y",
+        "running_median_1y",
     }
+    assert result.markets[0].series[-1].running_median_10y == 0.0
+    assert result.markets[0].series[-1].running_median_5y == 0.0
+    assert result.markets[0].series[-1].running_median_1y == 0.0

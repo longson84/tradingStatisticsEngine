@@ -12,6 +12,7 @@ from api.schemas.market_health import (
     MarketHealthPointResponse,
     MarketHealthDistributionBucketResponse,
     MarketHealthDistributionResponse,
+    MarketHealthHistoricalContextResponse,
     MarketHealthRunRequest,
     MarketHealthRunResponse,
     MarketHealthSeriesPointResponse,
@@ -22,6 +23,8 @@ from api.schemas.market_health import (
 from trading_engine.factor_analysis.market_health import (
     compute_market_distance_snapshot,
     compute_market_health_from_closes,
+    compute_market_health_running_medians,
+    summarize_market_health_history,
 )
 from trading_engine.types import InsufficientDataError
 from api.services.price_history_service import (
@@ -38,6 +41,7 @@ _UNIVERSES = (
     "VNALL", "VN100", "VN30", "VNMID", "VNSML",
 )
 _DISPLAY_YEARS = 10
+_MAX_RUNNING_MEDIAN_YEARS = 10
 
 
 def _point(timestamp, row) -> MarketHealthPointResponse:
@@ -53,6 +57,9 @@ def _series_point(timestamp, row) -> MarketHealthSeriesPointResponse:
     return MarketHealthSeriesPointResponse(
         date=timestamp.date(),
         median_distance=float(row["median_distance"]),
+        running_median_10y=float(row["running_median_10y"]),
+        running_median_5y=float(row["running_median_5y"]),
+        running_median_1y=float(row["running_median_1y"]),
     )
 
 
@@ -122,7 +129,10 @@ def run_market_health(
         try:
             latest_date = market_health_data_service.get_latest_date(universe)
             display_start = _subtract_years(latest_date, _DISPLAY_YEARS)
-            load_start = display_start - timedelta(days=req.window * 2)
+            running_start = _subtract_years(
+                display_start, _MAX_RUNNING_MEDIAN_YEARS
+            )
+            load_start = running_start - timedelta(days=req.window * 2)
             stored = market_health_data_service.get_close_history(
                 universe, start=load_start, end=latest_date
             )
@@ -132,11 +142,19 @@ def run_market_health(
                 window=req.window,
                 minimum_coverage=req.minimum_coverage,
             )
-            displayed_series = result.series.loc[pd.Timestamp(display_start):]
+            series_with_medians = result.series.join(
+                compute_market_health_running_medians(
+                    result.series["median_distance"]
+                )
+            )
+            displayed_series = series_with_medians.loc[pd.Timestamp(display_start):]
             if displayed_series.empty:
                 raise InsufficientDataError(
                     f"No market-health observations on or after {display_start}"
                 )
+            historical_context = summarize_market_health_history(
+                displayed_series["median_distance"]
+            )
         except (
             PriceHistoryNotFoundError,
             UnknownPriceUniverseError,
@@ -163,6 +181,9 @@ def run_market_health(
                     price_basis=_display_price_basis(stored.metadata.price_basis),
                 ),
                 current=current,
+                historical_context=MarketHealthHistoricalContextResponse(
+                    **historical_context.__dict__
+                ),
                 series=points,
                 distribution=[
                     MarketHealthDistributionBucketResponse(

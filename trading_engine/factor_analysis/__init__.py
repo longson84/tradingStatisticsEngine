@@ -13,6 +13,8 @@ from trading_engine.factor_analysis.regime import detect_regime
 from trading_engine.factor_analysis.market_health import (
     compute_market_health,
     compute_market_health_from_closes,
+    compute_market_health_running_medians,
+    summarize_market_health_history,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "detect_regime",
     "compute_market_health",
     "compute_market_health_from_closes",
+    "compute_market_health_running_medians",
+    "summarize_market_health_history",
 ]

@@ -109,6 +109,9 @@ export interface MarketHealthPoint {
 export interface MarketHealthSeriesPoint {
   date: string
   median_distance: number
+  running_median_10y: number
+  running_median_5y: number
+  running_median_1y: number
 }
 
 export interface MarketHealthCache {
@@ -146,11 +149,21 @@ export interface MarketHealthDistributionResponse {
   stocks: MarketHealthStockDistance[]
 }
 
+export interface MarketHealthHistoricalContext {
+  observation_count: number
+  median_distance: number
+  q25_distance: number
+  q75_distance: number
+  current_percentile: number
+  regime: "Exceptionally strong" | "Strong" | "Normal" | "Weak" | "Exceptionally weak"
+}
+
 export interface MarketHealthMarket {
   universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML"
   universe_size: number
   cache: MarketHealthCache
   current: MarketHealthPoint
+  historical_context: MarketHealthHistoricalContext
   series: MarketHealthSeriesPoint[]
   distribution: MarketHealthDistributionBucket[]
 }
@@ -626,6 +639,10 @@ export function marketDataRefreshApi(
   dataset: "prices" | "fundamentals" = "prices"
 ): Promise<MarketDataJob> {
   return post(`/market-data/${market}/refresh?mode=${mode}&dataset=${dataset}`, {})
+}
+
+export function marketDataJobApi(jobId: string): Promise<MarketDataJob> {
+  return get(`/market-data/jobs/${encodeURIComponent(jobId)}`)
 }
 
 export function marketDataClearApi(

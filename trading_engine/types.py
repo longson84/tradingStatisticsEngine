@@ -226,6 +226,18 @@ class MarketHealthStockDistance:
     distance: float
 
 
+@dataclass(frozen=True)
+class MarketHealthHistoricalContext:
+    """Current Market Health relative to its own historical observations."""
+
+    observation_count: int
+    median_distance: float
+    q25_distance: float
+    q75_distance: float
+    current_percentile: float
+    regime: str
+
+
 @dataclass
 class MarketHealthResult:
     """Daily cross-sectional median distance-from-high series."""
