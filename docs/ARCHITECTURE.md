@@ -849,3 +849,52 @@ There is one canonical VN application loader with explicit sponsored VCI
 provenance and end-exclusive engine date semantics. Public-package access is
 limited to the deliberately explicit community recovery adapter and is not an
 automatic production fallback.
+
+### 2026-08-08 — Reproducible private sponsor installation
+
+Context: `vnstock_data` is distributed through Vnstock's authenticated member
+installer rather than the public package index. Its installed distribution
+therefore points to a temporary local bundle and cannot be represented safely
+in `pyproject.toml` or `uv.lock`. An exact `uv sync` would remove that package
+and its private companion dependencies without an application code change.
+
+Decision: the project setup first runs `uv sync --all-groups --inexact`, then
+invokes `scripts.setup_vnstock_data`, which downloads the official CLI installer
+over HTTPS, supplies the ignored `VNSTOCK_API_KEY`, targets the project `.venv`,
+and verifies `vnstock_data >= 3.2.7`. Routine `uv run` commands use `--no-sync`;
+dependency changes must go through `pnpm setup`. The public `vnstock` package is
+no longer a direct project dependency. It may still be installed transitively
+by the sponsor bundle or deliberately used by the explicit community recovery
+adapter.
+
+Consequences: a new machine has one documented setup command, secrets and
+temporary sponsor paths stay out of Git, and later development commands cannot
+silently prune sponsored access. Sponsor updates remain controlled by the
+official installer and are recorded dynamically in data provenance rather than
+pretended to be reproducible through a stale public lock entry.
+
+The root commands also set `UV_CACHE_DIR=.cache/uv`. This ignored project-local
+cache keeps setup and validation independent from home-directory permissions
+without making dependency artifacts part of source control.
+
+### 2026-08-08 — Final VN provider compatibility and recovery policy
+
+Context: the provider migration left two identities that serve different
+purposes. API clients and saved universe metadata already use the logical token
+`vnstock`, while stored price rows carry concrete acquisition provenance such
+as `vnstock-data-3.2.7-vci`. Removing the logical token would be an unnecessary
+contract break; displaying concrete provenance verbatim would make the UI hard
+to interpret.
+
+Decision: retain `vnstock` as the backwards-compatible API selector, resolving
+it only to the sponsored `VietnamPriceLoader`. Present concrete stored sources
+through a shared UI formatter, including the upstream provider and sponsored
+package version where available. Normal VN price and fundamental workflows
+require sponsored access. Community KBS then VCI fetching remains available
+only through the explicit recovery switch in the market-history refresh script;
+it is never an automatic application fallback.
+
+Consequences: external request contracts remain stable, operators can identify
+the actual upstream and client version on stored price history, and a sponsor
+failure is visible instead of silently changing the data source. Recovery use
+is deliberate and its community provenance remains stored on the affected rows.

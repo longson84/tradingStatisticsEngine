@@ -79,7 +79,8 @@ Install dependencies:
 
 ```bash
 pnpm install
-uv sync
+UV_CACHE_DIR=.cache/uv uv sync --all-groups --inexact
+.venv/bin/python -m scripts.setup_vnstock_data --force
 ```
 
 Run both services:
@@ -98,7 +99,7 @@ pnpm dev:frontend
 Validate changes:
 
 ```bash
-uv run pytest
+UV_CACHE_DIR=.cache/uv uv run --no-sync pytest
 pnpm lint
 pnpm type-check
 pnpm build

@@ -11,7 +11,7 @@ import {
   type MarketHealthMarket,
   type MarketHealthDistributionBucket,
 } from "@/lib/api"
-import { fmtInt } from "@/lib/format"
+import { fmtInt, fmtProviderSource } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 
@@ -103,7 +103,7 @@ export function MarketHealthPage() {
             <h2 className="text-sm font-semibold">Ready to calculate from saved history</h2>
             <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
               Select markets and click Run. The indicator reads saved local histories and does not
-              query Yahoo Finance or VNStock.
+              query any external market-data provider.
             </p>
           </div>
         )}
@@ -179,9 +179,10 @@ export function MarketHealthPage() {
               ))}
             </div>
             <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground">
-              US500, US2000, and US100 use yfinance auto-adjusted prices. All VN universes use VCI
-              provider prices; VNStock does not document or expose a corporate-action adjustment
-              setting, so individual distance values should be interpreted with that limitation.
+              US500, US2000, and US100 use Yahoo Finance auto-adjusted prices. All VN universes use
+              sponsored VCI prices through vnstock_data. VCI does not document or expose a
+              corporate-action adjustment setting, so individual distance values should be
+              interpreted with that limitation.
               Historical breadth uses today&apos;s saved index membership and should not be treated as
               a survivorship-bias-free backtest.
             </div>
@@ -262,7 +263,7 @@ function MarketSummary({ market }: { market: MarketHealthMarket }) {
       </div>
 
       <div className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">
-        Cached through {market.cache.last_date} · {market.cache.source} · fetched{" "}
+        Cached through {market.cache.last_date} · {fmtProviderSource(market.cache.source)} · fetched{" "}
         {new Date(market.cache.fetched_at).toLocaleString()} · context based on{" "}
         {fmtInt(context.observation_count)} sessions
       </div>

@@ -52,3 +52,22 @@ export function fmtInt(n: number): string {
 export function fmtOrdinal(n: number): string {
   return n.toFixed(2) + "th"
 }
+
+/** Human-readable acquisition provenance stored alongside market data. */
+export function fmtProviderSource(source: string | null | undefined): string {
+  if (!source) return "Local cache"
+  if (source === "yfinance") return "Yahoo Finance"
+  if (source === "vci" || source === "vnstock-vci") return "VCI"
+  if (source === "kbs" || source === "vnstock-kbs") return "KBS"
+  if (source === "mixed" || source.startsWith("database:")) {
+    return "Mixed provider history"
+  }
+
+  const sponsored = source.match(/^vnstock-data-(.+)-(vci|kbs)$/i)
+  if (sponsored) {
+    const [, version, upstream] = sponsored
+    return `${upstream.toUpperCase()} · vnstock_data ${version}`
+  }
+
+  return source
+}

@@ -512,7 +512,7 @@ function MarketCacheCard({
           <p className="mt-1 text-xs text-muted-foreground">
             {market.universe.startsWith("US")
               ? "Yahoo Finance · adjusted prices"
-              : "VNStock KBS → VCI fallback · adjustment unspecified"}
+              : "Sponsored VCI via vnstock_data · adjustment unspecified"}
           </p>
         </div>
         {fullyCurrent

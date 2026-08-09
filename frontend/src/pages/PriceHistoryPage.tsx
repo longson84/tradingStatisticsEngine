@@ -18,6 +18,7 @@ import {
   type CompanyResponse,
   type SymbolPriceHistoryResponse,
 } from "@/lib/api"
+import { fmtProviderSource } from "@/lib/format"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
 
 
@@ -133,7 +134,7 @@ export function PriceHistoryPage() {
             <h1 className="text-2xl font-bold tracking-tight">
               {history.data?.symbol ?? selection.ticker} Price History
             </h1>
-            <Badge variant="secondary">{sourceLabel(history.data?.source)}</Badge>
+            <Badge variant="secondary">{fmtProviderSource(history.data?.source)}</Badge>
             <Badge variant="outline">{companyMarketLabel(selection.market)}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -284,16 +285,6 @@ function providerRatioDetail(history: SymbolPriceHistoryResponse): string {
   return [history.provider_ratio_period, history.provider_ratio_effective_date]
     .filter(Boolean)
     .join(" · ")
-}
-
-
-function sourceLabel(source: string | undefined): string {
-  if (source === "yfinance") return "Yahoo Finance"
-  if (source === "vnstock-kbs") return "KBS"
-  if (source === "vnstock-vci") return "VCI"
-  if (source?.startsWith("database:")) return "Mixed provider history"
-  if (source === "mixed") return "Mixed provider history"
-  return source ?? "Local cache"
 }
 
 
