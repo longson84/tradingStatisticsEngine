@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -31,23 +32,20 @@ class Base(DeclarativeBase):
 _ID_TYPE = BigInteger().with_variant(Integer, "sqlite")
 
 
-class Instrument(Base):
-    """One tradable security shown as a company in the current UI."""
+class Company(Base):
+    """Canonical issuer identity shared by one or more tradable instruments."""
 
-    __tablename__ = "instruments"
+    __tablename__ = "companies"
     __table_args__ = (
-        CheckConstraint("market IN ('US', 'VN')", name="ck_instruments_market"),
-        UniqueConstraint("market", "ticker", name="uq_instruments_market_ticker"),
-        UniqueConstraint("id", "market", name="uq_instruments_id_market"),
+        CheckConstraint("country_code IN ('US', 'VN')", name="ck_companies_country"),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
-    market: Mapped[str] = mapped_column(String(2), nullable=False)
-    ticker: Mapped[str] = mapped_column(String(32), nullable=False)
-    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    legal_name: Mapped[str | None] = mapped_column(String(255))
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
     sector: Mapped[str | None] = mapped_column(String(255))
     industry: Mapped[str | None] = mapped_column(String(255))
-    exchange: Mapped[str | None] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -60,6 +58,248 @@ class Instrument(Base):
         onupdate=func.now(),
     )
 
+    identifiers: Mapped[list[CompanyIdentifier]] = relationship(
+        back_populates="company", cascade="all, delete-orphan"
+    )
+    instruments: Mapped[list[Instrument]] = relationship(back_populates="company")
+    asset_issuers: Mapped[list[AssetIssuer]] = relationship(
+        back_populates="company", cascade="all, delete-orphan"
+    )
+
+
+class CompanyIdentifier(Base):
+    """Stable external identifier used to reconcile issuer records."""
+
+    __tablename__ = "company_identifiers"
+    __table_args__ = (
+        UniqueConstraint("namespace", "value", name="uq_company_identifier"),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    namespace: Mapped[str] = mapped_column(String(64), nullable=False)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    company: Mapped[Company] = relationship(back_populates="identifiers")
+
+
+class Asset(Base):
+    """Canonical economic asset independent from any trading venue."""
+
+    __tablename__ = "assets"
+    __table_args__ = (
+        CheckConstraint(
+            "asset_type IN ('equity', 'crypto', 'fiat', 'stablecoin')",
+            name="ck_assets_type",
+        ),
+        Index(
+            "uq_assets_network_contract",
+            "network",
+            "contract_address",
+            unique=True,
+            postgresql_where=text("contract_address IS NOT NULL"),
+            sqlite_where=text("contract_address IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    canonical_code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    network: Mapped[str | None] = mapped_column(String(64))
+    contract_address: Mapped[str | None] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    issuers: Mapped[list[AssetIssuer]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+    base_instruments: Mapped[list[Instrument]] = relationship(
+        back_populates="base_asset", foreign_keys="Instrument.base_asset_id"
+    )
+    quote_instruments: Mapped[list[Instrument]] = relationship(
+        back_populates="quote_asset", foreign_keys="Instrument.quote_asset_id"
+    )
+    settlement_instruments: Mapped[list[Instrument]] = relationship(
+        back_populates="settlement_asset",
+        foreign_keys="Instrument.settlement_asset_id",
+    )
+
+
+class AssetIssuer(Base):
+    """Effective-dated relationship between an asset and an issuing entity."""
+
+    __tablename__ = "asset_issuers"
+    __table_args__ = (
+        CheckConstraint(
+            "valid_to IS NULL OR valid_from IS NULL OR valid_to >= valid_from",
+            name="ck_asset_issuers_validity",
+        ),
+        UniqueConstraint(
+            "asset_id", "company_id", "role", "valid_from",
+            name="uq_asset_issuers_identity",
+        ),
+        Index(
+            "uq_asset_issuers_current",
+            "asset_id",
+            "company_id",
+            "role",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL"),
+            sqlite_where=text("valid_to IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="issuer")
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    asset: Mapped[Asset] = relationship(back_populates="issuers")
+    company: Mapped[Company] = relationship(back_populates="asset_issuers")
+
+
+class Venue(Base):
+    """An economic trading venue, distinct from the source supplying data."""
+
+    __tablename__ = "venues"
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    venue_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    country_code: Mapped[str | None] = mapped_column(String(2))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    instruments: Mapped[list[Instrument]] = relationship(back_populates="venue")
+
+
+class Instrument(Base):
+    """One venue-specific tradable product over one or more assets."""
+
+    __tablename__ = "instruments"
+    __table_args__ = (
+        CheckConstraint(
+            "market IN ('US', 'VN', 'CRYPTO')", name="ck_instruments_market"
+        ),
+        CheckConstraint(
+            "instrument_type != 'spot' OR "
+            "(company_id IS NULL AND venue_id IS NOT NULL "
+            "AND base_asset_id IS NOT NULL AND quote_asset_id IS NOT NULL)",
+            name="ck_instruments_spot_identity",
+        ),
+        UniqueConstraint("id", "market", name="uq_instruments_id_market"),
+        Index(
+            "uq_instruments_market_ticker_without_venue",
+            "market",
+            "ticker",
+            unique=True,
+            postgresql_where=text("venue_id IS NULL"),
+            sqlite_where=text("venue_id IS NULL"),
+        ),
+        Index(
+            "uq_instruments_venue_ticker",
+            "venue_id",
+            "ticker",
+            unique=True,
+            postgresql_where=text("venue_id IS NOT NULL"),
+            sqlite_where=text("venue_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("companies.id", ondelete="RESTRICT"), index=True
+    )
+    venue_id: Mapped[int | None] = mapped_column(
+        ForeignKey("venues.id", ondelete="RESTRICT"), index=True
+    )
+    base_asset_id: Mapped[int | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"), index=True
+    )
+    quote_asset_id: Mapped[int | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"), index=True
+    )
+    settlement_asset_id: Mapped[int | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"), index=True
+    )
+    market: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Compatibility/current-identity column. Full aliases and history live in
+    # instrument_symbols; existing price and API callers can continue using it.
+    ticker: Mapped[str] = mapped_column(String(64), nullable=False)
+    instrument_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="common_stock"
+    )
+    share_class: Mapped[str | None] = mapped_column(String(64))
+    exchange: Mapped[str | None] = mapped_column(String(32))
+    currency: Mapped[str] = mapped_column(String(16), nullable=False)
+    base_precision: Mapped[int | None] = mapped_column(Integer)
+    quote_precision: Mapped[int | None] = mapped_column(Integer)
+    price_tick_size: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    quantity_step_size: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    minimum_quantity: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    minimum_notional: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    company: Mapped[Company | None] = relationship(back_populates="instruments")
+    venue: Mapped[Venue | None] = relationship(back_populates="instruments")
+    base_asset: Mapped[Asset | None] = relationship(
+        back_populates="base_instruments", foreign_keys=[base_asset_id]
+    )
+    quote_asset: Mapped[Asset | None] = relationship(
+        back_populates="quote_instruments", foreign_keys=[quote_asset_id]
+    )
+    settlement_asset: Mapped[Asset | None] = relationship(
+        back_populates="settlement_instruments", foreign_keys=[settlement_asset_id]
+    )
+    symbols: Mapped[list[InstrumentSymbol]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
     memberships: Mapped[list[UniverseMembership]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
@@ -85,18 +325,76 @@ class Instrument(Base):
     )
 
 
+class InstrumentSymbol(Base):
+    """A canonical, source-specific, or historical symbol for an instrument."""
+
+    __tablename__ = "instrument_symbols"
+    __table_args__ = (
+        CheckConstraint(
+            "market IN ('US', 'VN', 'CRYPTO')",
+            name="ck_instrument_symbols_market",
+        ),
+        CheckConstraint(
+            "valid_to IS NULL OR valid_from IS NULL OR valid_to >= valid_from",
+            name="ck_instrument_symbols_validity",
+        ),
+        Index(
+            "uq_instrument_symbols_current_identity",
+            "namespace",
+            "market",
+            "symbol",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL"),
+            sqlite_where=text("valid_to IS NULL"),
+        ),
+        Index(
+            "uq_instrument_symbols_current_primary",
+            "instrument_id",
+            "namespace",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL AND is_primary"),
+            sqlite_where=text("valid_to IS NULL AND is_primary"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    namespace: Mapped[str] = mapped_column(String(64), nullable=False)
+    market: Mapped[str] = mapped_column(String(16), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(64), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    instrument: Mapped[Instrument] = relationship(back_populates="symbols")
+
+
 class Universe(Base):
     """A named current constituent universe such as US500 or VN30."""
 
     __tablename__ = "universes"
     __table_args__ = (
-        CheckConstraint("market IN ('US', 'VN')", name="ck_universes_market"),
+        CheckConstraint(
+            "market IN ('US', 'VN', 'CRYPTO')", name="ck_universes_market"
+        ),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    market: Mapped[str] = mapped_column(String(2), nullable=False)
+    market: Mapped[str] = mapped_column(String(16), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
     as_of: Mapped[str | None] = mapped_column(String(64))
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -171,7 +469,7 @@ class PriceBar(Base):
     low: Mapped[float] = mapped_column(Float, nullable=False)
     close: Mapped[float] = mapped_column(Float, nullable=False)
     volume: Mapped[float | None] = mapped_column(Float)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    currency: Mapped[str] = mapped_column(String(16), nullable=False)
     price_scale: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     price_basis: Mapped[str] = mapped_column(String(32), nullable=False)
     source: Mapped[str] = mapped_column(String(100), nullable=False)

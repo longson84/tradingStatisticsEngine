@@ -87,6 +87,16 @@ export type CompanyResponse = components["schemas"]["CompanyResponse"]
 export type CompanyListResponse = components["schemas"]["CompanyListResponse"]
 export type CompanyUniversesResponse = components["schemas"]["CompanyUniversesResponse"]
 export type CompanyUniverseId = CompanyListResponse["id"]
+export type CompanyCatalogItem = components["schemas"]["CompanyCatalogItemResponse"]
+export type CompanyCatalogResponse = components["schemas"]["CompanyCatalogResponse"]
+export type CompanyCatalogQuery = NonNullable<
+  operations["listCompanyCatalog"]["parameters"]["query"]
+>
+export type CryptoMarketInstrument = components["schemas"]["CryptoMarketInstrumentResponse"]
+export type CryptoMarketListResponse = components["schemas"]["CryptoMarketListResponse"]
+export type CryptoMarketQuery = NonNullable<
+  operations["listCryptoMarkets"]["parameters"]["query"]
+>
 export type CompanyListQuery = NonNullable<
   operations["listCompanies"]["parameters"]["query"]
 >
@@ -550,6 +560,17 @@ export function companyUniversesApi(): Promise<CompanyUniversesResponse> {
   return get("/companies/universes")
 }
 
+export function companyCatalogApi(
+  params: CompanyCatalogQuery = {},
+): Promise<CompanyCatalogResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) query.set(key, String(value))
+  }
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/companies/catalog${suffix}`)
+}
+
 export function companiesApi(
   params: CompanyListQuery = {},
 ): Promise<CompanyListResponse> {
@@ -559,6 +580,17 @@ export function companiesApi(
   }
   const suffix = query.size > 0 ? `?${query}` : ""
   return get(`/companies${suffix}`)
+}
+
+export function cryptoMarketsApi(
+  params: CryptoMarketQuery = {},
+): Promise<CryptoMarketListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) query.set(key, String(value))
+  }
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/crypto/markets${suffix}`)
 }
 
 export function watchlistsApi(market?: "US" | "VN"): Promise<WatchlistListResponse> {

@@ -17,6 +17,7 @@ from api.db.models import (
     PriceRefreshState,
     Universe,
     UniverseMembership,
+    Venue,
 )
 from api.repositories.price_bar_repository import (
     PriceBarCoverageRecord,
@@ -360,25 +361,65 @@ class SqlAlchemyPriceBarRepository:
         values = tuple(records)
         if not values:
             return 0
-        instrument_keys = {(record.market, record.ticker) for record in values}
-        markets = {market for market, _ in instrument_keys}
-        tickers = {ticker for _, ticker in instrument_keys}
-        instrument_ids = {
-            (market, ticker): instrument_id
+        instrument_keys = {
+            (record.market, record.ticker, record.venue_code) for record in values
+        }
+        markets = {market for market, _, _ in instrument_keys}
+        tickers = {ticker for _, ticker, _ in instrument_keys}
+        instrument_ids: dict[tuple[str, str, str | None], int] = {}
+        unscoped = {key for key in instrument_keys if key[2] is None}
+        if unscoped:
+            matches: dict[tuple[str, str], list[int]] = {}
             for market, ticker, instrument_id in self._session.execute(
                 select(Instrument.market, Instrument.ticker, Instrument.id).where(
                     Instrument.market.in_(markets),
                     Instrument.ticker.in_(tickers),
                 )
+            ):
+                matches.setdefault((market, ticker), []).append(instrument_id)
+            ambiguous = sorted(
+                key for key, ids in matches.items()
+                if len(ids) > 1 and (key[0], key[1], None) in unscoped
             )
-        }
+            if ambiguous:
+                raise ValueError(
+                    "Price bars require a venue for ambiguous instruments: "
+                    f"{ambiguous}"
+                )
+            instrument_ids.update({
+                (market, ticker, None): ids[0]
+                for (market, ticker), ids in matches.items()
+                if len(ids) == 1
+            })
+        scoped = {key for key in instrument_keys if key[2] is not None}
+        if scoped:
+            venue_codes = {venue for _, _, venue in scoped if venue is not None}
+            instrument_ids.update({
+                (market, ticker, venue_code): instrument_id
+                for market, ticker, venue_code, instrument_id in self._session.execute(
+                    select(
+                        Instrument.market,
+                        Instrument.ticker,
+                        Venue.code,
+                        Instrument.id,
+                    )
+                    .join(Venue, Venue.id == Instrument.venue_id)
+                    .where(
+                        Instrument.market.in_(markets),
+                        Instrument.ticker.in_(tickers),
+                        Venue.code.in_(venue_codes),
+                    )
+                )
+            })
         missing = sorted(instrument_keys - set(instrument_ids))
         if missing:
             raise ValueError(f"Price bars reference unknown instruments: {missing}")
 
         rows = [
             {
-                "instrument_id": instrument_ids[(record.market, record.ticker)],
+                "instrument_id": instrument_ids[
+                    (record.market, record.ticker, record.venue_code)
+                ],
                 "trading_date": record.trading_date,
                 "open": record.open,
                 "high": record.high,

@@ -6,9 +6,16 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Instrument, Universe, UniverseMembership
+from api.db.models import (
+    Company,
+    CompanyIdentifier,
+    Instrument,
+    InstrumentSymbol,
+    Universe,
+    UniverseMembership,
+)
 from api.db.session import session_scope
 from api.symbol_list_data import LIST_FILES, load_static_payload
 
@@ -40,7 +47,7 @@ def import_company_universes(engine: Engine) -> CompanyImportResult:
 
     with session_scope(engine) as session:
         universe_rows = _upsert_universes(session, payloads)
-        instrument_rows = _upsert_instruments(session, instruments)
+        instrument_rows = _upsert_companies_and_instruments(session, instruments)
         session.flush()
         _sync_memberships(
             session,
@@ -115,12 +122,21 @@ def _merge_instruments(
                 "sector": row.get("sector"),
                 "industry": row.get("industry"),
                 "exchange": row.get("exchange"),
+                "raw_symbol": str(row["symbol"]).upper().strip(),
+                "yfinance_symbol": _optional_text(row.get("yfinance_symbol")),
+                "sec_cik": _optional_text(row.get("cik")),
                 "source_lists": [],
             })
             current["source_lists"].append(list_id)
             for field in ("company_name", "sector", "industry", "exchange"):
                 if not current.get(field) and row.get(field if field != "company_name" else "name"):
                     current[field] = row[field if field != "company_name" else "name"]
+            if not current.get("sec_cik") and row.get("cik") is not None:
+                current["sec_cik"] = str(row["cik"])
+            if not current.get("raw_symbol"):
+                current["raw_symbol"] = str(row["symbol"]).upper().strip()
+            if not current.get("yfinance_symbol") and row.get("yfinance_symbol"):
+                current["yfinance_symbol"] = str(row["yfinance_symbol"]).upper().strip()
         memberships[list_id] = members
     return instruments, memberships
 
@@ -150,7 +166,7 @@ def _upsert_universes(
     return existing
 
 
-def _upsert_instruments(
+def _upsert_companies_and_instruments(
     session: Session,
     values: dict[tuple[str, str], dict[str, Any]],
 ) -> dict[tuple[str, str], Instrument]:
@@ -158,27 +174,124 @@ def _upsert_instruments(
     existing = {
         (row.market, row.ticker): row
         for row in session.scalars(
-            select(Instrument).where(Instrument.market.in_(markets))
+            select(Instrument)
+            .where(Instrument.market.in_(markets))
+            .options(
+                selectinload(Instrument.company),
+                selectinload(Instrument.symbols),
+            )
         )
     }
+    companies_by_identifier = {
+        (identifier.namespace, identifier.value): identifier.company
+        for identifier in session.scalars(
+            select(CompanyIdentifier).options(selectinload(CompanyIdentifier.company))
+        )
+    }
+    batch_companies: dict[tuple[str, ...], Company] = {}
     for key, value in values.items():
         row = existing.get(key)
+        cik = _optional_text(value.get("sec_cik"))
+        company_key = ("sec_cik", cik) if cik else ("instrument", *key)
+        company = (
+            companies_by_identifier.get(("sec_cik", cik)) if cik else None
+        )
+        if company is None:
+            company = batch_companies.get(company_key)
+        if company is None and row is not None:
+            company = row.company
+        if company is None:
+            company = Company(
+                display_name=str(value["company_name"]),
+                legal_name=str(value["company_name"]),
+                country_code=value["market"],
+                source=IMPORT_SOURCE,
+            )
+            session.add(company)
+        batch_companies[company_key] = company
+        company.display_name = _prefer_company_name(
+            company.display_name, str(value["company_name"])
+        )
+        company.legal_name = company.legal_name or str(value["company_name"])
+        company.country_code = value["market"]
+        company.sector = _optional_text(value.get("sector")) or company.sector
+        company.industry = _optional_text(value.get("industry")) or company.industry
+        company.is_active = True
+        company.source = IMPORT_SOURCE
+
+        if cik and ("sec_cik", cik) not in companies_by_identifier:
+            identifier = CompanyIdentifier(
+                company=company,
+                namespace="sec_cik",
+                value=cik,
+                source=IMPORT_SOURCE,
+            )
+            session.add(identifier)
+            companies_by_identifier[("sec_cik", cik)] = company
+
         if row is None:
             row = Instrument(
+                company=company,
                 market=value["market"],
                 ticker=value["ticker"],
-                company_name=value["company_name"],
+                currency="VND" if value["market"] == "VN" else "USD",
                 source=IMPORT_SOURCE,
             )
             session.add(row)
             existing[key] = row
-        row.company_name = str(value["company_name"])
-        row.sector = _optional_text(value.get("sector"))
-        row.industry = _optional_text(value.get("industry"))
+        row.company = company
         row.exchange = _optional_text(value.get("exchange"))
+        row.currency = "VND" if value["market"] == "VN" else "USD"
         row.is_active = True
         row.source = IMPORT_SOURCE
+        _upsert_symbols(session, row, value)
     return existing
+
+
+def _upsert_symbols(
+    session: Session,
+    instrument: Instrument,
+    value: dict[str, Any],
+) -> None:
+    desired = {
+        ("canonical", str(value["ticker"]).upper().strip()),
+        ("listing", str(value["raw_symbol"]).upper().strip()),
+    }
+    yfinance_symbol = _optional_text(value.get("yfinance_symbol"))
+    if yfinance_symbol:
+        desired.add(("yfinance", yfinance_symbol.upper()))
+    existing = {
+        (symbol.namespace, symbol.symbol): symbol
+        for symbol in instrument.symbols
+        if symbol.valid_to is None
+    }
+    for namespace, symbol_value in desired:
+        symbol = existing.get((namespace, symbol_value))
+        if symbol is None:
+            symbol = InstrumentSymbol(
+                instrument=instrument,
+                namespace=namespace,
+                market=value["market"],
+                symbol=symbol_value,
+                is_primary=True,
+                source=IMPORT_SOURCE,
+            )
+            session.add(symbol)
+        else:
+            symbol.market = value["market"]
+            symbol.is_primary = True
+            symbol.source = IMPORT_SOURCE
+
+
+def _prefer_company_name(current: str, candidate: str) -> str:
+    """Prefer a neutral issuer name over an instrument share-class label."""
+    current_has_class = "(Class " in current
+    candidate_has_class = "(Class " in candidate
+    if current_has_class and not candidate_has_class:
+        return candidate
+    if not current_has_class and candidate_has_class:
+        return current
+    return candidate or current
 
 
 def _sync_memberships(

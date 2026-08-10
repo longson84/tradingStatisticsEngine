@@ -58,6 +58,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/companies/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Company Catalog */
+        get: operations["listCompanyCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/companies/universes": {
         parameters: {
             query?: never;
@@ -67,6 +84,23 @@ export interface paths {
         };
         /** List Company Universes */
         get: operations["listCompanyUniverses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crypto/markets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Crypto Markets */
+        get: operations["listCryptoMarkets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -557,6 +591,89 @@ export interface components {
              */
             weight: number;
         };
+        /** CompanyCatalogFacetsResponse */
+        CompanyCatalogFacetsResponse: {
+            /** Countries */
+            countries: components["schemas"]["FacetCountResponse"][];
+            /** Sectors */
+            sectors: components["schemas"]["FacetCountResponse"][];
+        };
+        /** CompanyCatalogItemResponse */
+        CompanyCatalogItemResponse: {
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "VN";
+            /** Display Name */
+            display_name: string;
+            /** Id */
+            id: number;
+            /** Identifiers */
+            identifiers: components["schemas"]["CompanyIdentifierResponse"][];
+            /** Industry */
+            industry?: string | null;
+            /** Instruments */
+            instruments: components["schemas"]["CompanyInstrumentResponse"][];
+            /** Is Active */
+            is_active: boolean;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Sector */
+            sector?: string | null;
+        };
+        /** CompanyCatalogResponse */
+        CompanyCatalogResponse: {
+            /** Companies */
+            companies: components["schemas"]["CompanyCatalogItemResponse"][];
+            facets: components["schemas"]["CompanyCatalogFacetsResponse"];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** CompanyIdentifierResponse */
+        CompanyIdentifierResponse: {
+            /** Namespace */
+            namespace: string;
+            /** Value */
+            value: string;
+        };
+        /** CompanyInstrumentResponse */
+        CompanyInstrumentResponse: {
+            /** Currency */
+            currency: string;
+            /** Exchange */
+            exchange?: string | null;
+            /** Id */
+            id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "VN";
+            /** Share Class */
+            share_class?: string | null;
+            /** Ticker */
+            ticker: string;
+            /** Universes */
+            universes: string[];
+        };
+        /** CompanyListFacetsResponse */
+        CompanyListFacetsResponse: {
+            /** All Count */
+            all_count: number;
+            /** Sectors */
+            sectors: components["schemas"]["FacetCountResponse"][];
+            /** Universes */
+            universes: components["schemas"]["FacetCountResponse"][];
+        };
         /** CompanyListResponse */
         CompanyListResponse: {
             /** As Of */
@@ -565,6 +682,7 @@ export interface components {
             companies: components["schemas"]["CompanyResponse"][];
             /** Description */
             description: string;
+            facets: components["schemas"]["CompanyListFacetsResponse"];
             /** Fetched At */
             fetched_at?: string | null;
             /**
@@ -692,6 +810,96 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** CryptoMarketFacetCountResponse */
+        CryptoMarketFacetCountResponse: {
+            /** Count */
+            count: number;
+            /** Value */
+            value: string;
+        };
+        /** CryptoMarketFacetsResponse */
+        CryptoMarketFacetsResponse: {
+            /** Active Count */
+            active_count: number;
+            /** Inactive Count */
+            inactive_count: number;
+            /** Quote Assets */
+            quote_assets: components["schemas"]["CryptoMarketFacetCountResponse"][];
+            /** Venues */
+            venues: components["schemas"]["CryptoVenueFacetResponse"][];
+        };
+        /** CryptoMarketInstrumentResponse */
+        CryptoMarketInstrumentResponse: {
+            /** Base Asset */
+            base_asset: string;
+            /** First Session */
+            first_session?: string | null;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Session */
+            last_session?: string | null;
+            /** Minimum Notional */
+            minimum_notional?: string | null;
+            /** Minimum Quantity */
+            minimum_quantity?: string | null;
+            /** Price Source */
+            price_source?: string | null;
+            /** Price Tick Size */
+            price_tick_size?: string | null;
+            /** Quantity Step Size */
+            quantity_step_size?: string | null;
+            /** Quote Asset */
+            quote_asset: string;
+            /** Stored Sessions */
+            stored_sessions: number;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code: string;
+            /** Venue Name */
+            venue_name: string;
+        };
+        /** CryptoMarketListResponse */
+        CryptoMarketListResponse: {
+            facets: components["schemas"]["CryptoMarketFacetsResponse"];
+            /** Instruments */
+            instruments: components["schemas"]["CryptoMarketInstrumentResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            summary: components["schemas"]["CryptoMarketSummaryResponse"];
+            /** Total */
+            total: number;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
+        /** CryptoMarketSummaryResponse */
+        CryptoMarketSummaryResponse: {
+            /** Active Count */
+            active_count: number;
+            /** Catalog Fetched At */
+            catalog_fetched_at?: string | null;
+            /** Inactive Count */
+            inactive_count: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** With History Count */
+            with_history_count: number;
+        };
+        /** CryptoVenueFacetResponse */
+        CryptoVenueFacetResponse: {
+            /** Code */
+            code: string;
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+        };
         /** CurrentPositionResponse */
         CurrentPositionResponse: {
             /** Entry Date */
@@ -728,6 +936,13 @@ export interface components {
             percentile: number;
             /** Value Pct */
             value_pct: number;
+        };
+        /** FacetCountResponse */
+        FacetCountResponse: {
+            /** Count */
+            count: number;
+            /** Value */
+            value: string;
         };
         /** FactorAnalysisResponse */
         FactorAnalysisResponse: {
@@ -2698,6 +2913,41 @@ export interface operations {
             };
         };
     };
+    listCompanyCatalog: {
+        parameters: {
+            query?: {
+                country?: ("US" | "VN") | null;
+                search?: string | null;
+                sector?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyCatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listCompanyUniverses: {
         parameters: {
             query?: never;
@@ -2714,6 +2964,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyUniversesResponse"];
+                };
+            };
+        };
+    };
+    listCryptoMarkets: {
+        parameters: {
+            query?: {
+                venue_code?: string | null;
+                search?: string | null;
+                quote_asset?: string | null;
+                status?: "active" | "inactive" | "all";
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoMarketListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

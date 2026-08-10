@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 import pytest
 
-from api.db.models import Base, Instrument
+from api.db.models import Base, Company, Instrument
 from api.main import app
 from api.routes.watchlists import refresh_watchlist_prices
 from api.repositories.sqlalchemy_watchlist_repository import (
@@ -25,15 +25,18 @@ def _service() -> tuple[WatchlistService, Session]:
     session = Session(engine)
     session.add_all([
         Instrument(
-            market="US", ticker="MSFT", company_name="Microsoft",
+            company=Company(display_name="Microsoft", country_code="US", source="test"),
+            market="US", ticker="MSFT", currency="USD",
             source="test", is_active=True,
         ),
         Instrument(
-            market="US", ticker="AAPL", company_name="Apple",
+            company=Company(display_name="Apple", country_code="US", source="test"),
+            market="US", ticker="AAPL", currency="USD",
             source="test", is_active=True,
         ),
         Instrument(
-            market="VN", ticker="FPT", company_name="FPT Corporation",
+            company=Company(display_name="FPT Corporation", country_code="VN", source="test"),
+            market="VN", ticker="FPT", currency="VND",
             source="test", is_active=True,
         ),
     ])

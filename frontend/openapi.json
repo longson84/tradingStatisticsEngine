@@ -266,6 +266,265 @@
         "title": "BuyAndHoldConfig",
         "type": "object"
       },
+      "CompanyCatalogFacetsResponse": {
+        "properties": {
+          "countries": {
+            "items": {
+              "$ref": "#/components/schemas/FacetCountResponse"
+            },
+            "title": "Countries",
+            "type": "array"
+          },
+          "sectors": {
+            "items": {
+              "$ref": "#/components/schemas/FacetCountResponse"
+            },
+            "title": "Sectors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "countries",
+          "sectors"
+        ],
+        "title": "CompanyCatalogFacetsResponse",
+        "type": "object"
+      },
+      "CompanyCatalogItemResponse": {
+        "properties": {
+          "country_code": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Country Code",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "identifiers": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyIdentifierResponse"
+            },
+            "title": "Identifiers",
+            "type": "array"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyInstrumentResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Name"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "country_code",
+          "is_active",
+          "identifiers",
+          "instruments"
+        ],
+        "title": "CompanyCatalogItemResponse",
+        "type": "object"
+      },
+      "CompanyCatalogResponse": {
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyCatalogItemResponse"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/CompanyCatalogFacetsResponse"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "companies",
+          "facets"
+        ],
+        "title": "CompanyCatalogResponse",
+        "type": "object"
+      },
+      "CompanyIdentifierResponse": {
+        "properties": {
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "namespace",
+          "value"
+        ],
+        "title": "CompanyIdentifierResponse",
+        "type": "object"
+      },
+      "CompanyInstrumentResponse": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "market": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
+          "share_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Class"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "universes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Universes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "market",
+          "instrument_type",
+          "currency",
+          "is_active",
+          "universes"
+        ],
+        "title": "CompanyInstrumentResponse",
+        "type": "object"
+      },
+      "CompanyListFacetsResponse": {
+        "properties": {
+          "all_count": {
+            "title": "All Count",
+            "type": "integer"
+          },
+          "sectors": {
+            "items": {
+              "$ref": "#/components/schemas/FacetCountResponse"
+            },
+            "title": "Sectors",
+            "type": "array"
+          },
+          "universes": {
+            "items": {
+              "$ref": "#/components/schemas/FacetCountResponse"
+            },
+            "title": "Universes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "all_count",
+          "sectors",
+          "universes"
+        ],
+        "title": "CompanyListFacetsResponse",
+        "type": "object"
+      },
       "CompanyListResponse": {
         "properties": {
           "as_of": {
@@ -289,6 +548,9 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/CompanyListFacetsResponse"
           },
           "fetched_at": {
             "anyOf": [
@@ -352,7 +614,8 @@
           "total",
           "offset",
           "limit",
-          "companies"
+          "companies",
+          "facets"
         ],
         "title": "CompanyListResponse",
         "type": "object"
@@ -652,6 +915,309 @@
         "title": "CrossSectionalResponse",
         "type": "object"
       },
+      "CryptoMarketFacetCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "CryptoMarketFacetCountResponse",
+        "type": "object"
+      },
+      "CryptoMarketFacetsResponse": {
+        "properties": {
+          "active_count": {
+            "title": "Active Count",
+            "type": "integer"
+          },
+          "inactive_count": {
+            "title": "Inactive Count",
+            "type": "integer"
+          },
+          "quote_assets": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoMarketFacetCountResponse"
+            },
+            "title": "Quote Assets",
+            "type": "array"
+          },
+          "venues": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoVenueFacetResponse"
+            },
+            "title": "Venues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "venues",
+          "quote_assets",
+          "active_count",
+          "inactive_count"
+        ],
+        "title": "CryptoMarketFacetsResponse",
+        "type": "object"
+      },
+      "CryptoMarketInstrumentResponse": {
+        "properties": {
+          "base_asset": {
+            "title": "Base Asset",
+            "type": "string"
+          },
+          "first_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Session"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "minimum_notional": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Notional"
+          },
+          "minimum_quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Quantity"
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "price_tick_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Tick Size"
+          },
+          "quantity_step_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity Step Size"
+          },
+          "quote_asset": {
+            "title": "Quote Asset",
+            "type": "string"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "title": "Venue Code",
+            "type": "string"
+          },
+          "venue_name": {
+            "title": "Venue Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "venue_code",
+          "venue_name",
+          "symbol",
+          "base_asset",
+          "quote_asset",
+          "is_active",
+          "stored_sessions"
+        ],
+        "title": "CryptoMarketInstrumentResponse",
+        "type": "object"
+      },
+      "CryptoMarketListResponse": {
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/CryptoMarketFacetsResponse"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoMarketInstrumentResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CryptoMarketSummaryResponse"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "instruments",
+          "facets",
+          "summary"
+        ],
+        "title": "CryptoMarketListResponse",
+        "type": "object"
+      },
+      "CryptoMarketSummaryResponse": {
+        "properties": {
+          "active_count": {
+            "title": "Active Count",
+            "type": "integer"
+          },
+          "catalog_fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Fetched At"
+          },
+          "inactive_count": {
+            "title": "Inactive Count",
+            "type": "integer"
+          },
+          "instrument_count": {
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "with_history_count": {
+            "title": "With History Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instrument_count",
+          "active_count",
+          "inactive_count",
+          "with_history_count"
+        ],
+        "title": "CryptoMarketSummaryResponse",
+        "type": "object"
+      },
+      "CryptoVenueFacetResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "count"
+        ],
+        "title": "CryptoVenueFacetResponse",
+        "type": "object"
+      },
       "CurrentPositionResponse": {
         "properties": {
           "entry_date": {
@@ -752,6 +1318,24 @@
           "cumulative_count"
         ],
         "title": "DistributionRowResponse",
+        "type": "object"
+      },
+      "FacetCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "FacetCountResponse",
         "type": "object"
       },
       "FactorAnalysisResponse": {
@@ -6582,6 +7166,116 @@
         ]
       }
     },
+    "/companies/catalog": {
+      "get": {
+        "operationId": "listCompanyCatalog",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "US",
+                    "VN"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sector",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sector"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Company Catalog",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
     "/companies/universes": {
       "get": {
         "operationId": "listCompanyUniverses",
@@ -6600,6 +7294,128 @@
         "summary": "List Company Universes",
         "tags": [
           "companies"
+        ]
+      }
+    },
+    "/crypto/markets": {
+      "get": {
+        "operationId": "listCryptoMarkets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "venue_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Venue Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quote_asset",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quote Asset"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "inactive",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoMarketListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Crypto Markets",
+        "tags": [
+          "crypto"
         ]
       }
     },

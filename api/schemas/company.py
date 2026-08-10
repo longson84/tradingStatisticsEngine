@@ -41,6 +41,17 @@ class CompanyUniversesResponse(BaseModel):
     universes: list[CompanyUniverseResponse]
 
 
+class FacetCountResponse(BaseModel):
+    value: str
+    count: int
+
+
+class CompanyListFacetsResponse(BaseModel):
+    all_count: int
+    sectors: list[FacetCountResponse]
+    universes: list[FacetCountResponse]
+
+
 class CompanyListResponse(BaseModel):
     id: CompanyUniverseId
     name: str
@@ -52,3 +63,46 @@ class CompanyListResponse(BaseModel):
     offset: int
     limit: int
     companies: list[CompanyResponse]
+    facets: CompanyListFacetsResponse
+
+
+class CompanyIdentifierResponse(BaseModel):
+    namespace: str
+    value: str
+
+
+class CompanyInstrumentResponse(BaseModel):
+    id: int
+    ticker: str
+    market: MarketCode
+    instrument_type: str
+    share_class: str | None = None
+    exchange: str | None = None
+    currency: str
+    is_active: bool
+    universes: list[str]
+
+
+class CompanyCatalogItemResponse(BaseModel):
+    id: int
+    display_name: str
+    legal_name: str | None = None
+    country_code: MarketCode
+    sector: str | None = None
+    industry: str | None = None
+    is_active: bool
+    identifiers: list[CompanyIdentifierResponse]
+    instruments: list[CompanyInstrumentResponse]
+
+
+class CompanyCatalogFacetsResponse(BaseModel):
+    countries: list[FacetCountResponse]
+    sectors: list[FacetCountResponse]
+
+
+class CompanyCatalogResponse(BaseModel):
+    total: int
+    offset: int
+    limit: int
+    companies: list[CompanyCatalogItemResponse]
+    facets: CompanyCatalogFacetsResponse

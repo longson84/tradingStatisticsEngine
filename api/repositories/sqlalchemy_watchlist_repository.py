@@ -47,7 +47,7 @@ class SqlAlchemyWatchlistRepository:
             .options(
                 selectinload(Watchlist.memberships).selectinload(
                     WatchlistMembership.instrument
-                )
+                ).selectinload(Instrument.company)
             )
         )
         if watchlist is None:
@@ -66,10 +66,10 @@ class SqlAlchemyWatchlistRepository:
             members=tuple(
                 WatchlistMemberRecord(
                     ticker=row.instrument.ticker,
-                    company_name=row.instrument.company_name,
+                    company_name=row.instrument.company.display_name,
                     market=row.instrument.market,
-                    sector=row.instrument.sector,
-                    industry=row.instrument.industry,
+                    sector=row.instrument.company.sector,
+                    industry=row.instrument.company.industry,
                     exchange=row.instrument.exchange,
                     position=row.position,
                 )

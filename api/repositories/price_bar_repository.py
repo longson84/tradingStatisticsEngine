@@ -87,6 +87,7 @@ class PriceBarWriteRecord:
     price_basis: str
     source: str
     fetched_at: datetime
+    venue_code: str | None = None
 
 
 @dataclass(frozen=True)

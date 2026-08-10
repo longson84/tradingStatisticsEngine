@@ -16,8 +16,14 @@ from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
 from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
+from api.repositories.sqlalchemy_company_catalog_repository import (
+    SqlAlchemyCompanyCatalogRepository,
+)
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
+)
+from api.repositories.sqlalchemy_crypto_market_repository import (
+    SqlAlchemyCryptoMarketRepository,
 )
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
@@ -26,6 +32,9 @@ from api.repositories.sqlalchemy_watchlist_repository import (
     SqlAlchemyWatchlistRepository,
 )
 from api.services.company_service import CompanyService
+from api.services.binance_spot_service import BinanceSpotService
+from api.services.crypto_instrument_service import CryptoInstrumentService
+from api.services.company_catalog_service import CompanyCatalogService
 from api.services.fundamental_service import FundamentalService
 from api.services.price_history_service import PriceHistoryService
 from api.services.price_storage_service import PriceStorageService
@@ -68,6 +77,24 @@ def get_company_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> CompanyService:
     return CompanyService(SqlAlchemyCompanyRepository(session))
+
+
+def get_company_catalog_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> CompanyCatalogService:
+    return CompanyCatalogService(SqlAlchemyCompanyCatalogRepository(session))
+
+
+def get_binance_spot_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> BinanceSpotService:
+    return BinanceSpotService(SqlAlchemyCryptoMarketRepository(session))
+
+
+def get_crypto_instrument_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> CryptoInstrumentService:
+    return CryptoInstrumentService(SqlAlchemyCryptoMarketRepository(session))
 
 
 def get_fundamental_service(

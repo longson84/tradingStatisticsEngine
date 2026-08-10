@@ -22,6 +22,7 @@
     "check:api-types": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.check_api_types",
     "check:vnstock": ".venv/bin/python -m scripts.setup_vnstock_data --check",
     "setup:vnstock": ".venv/bin/python -m scripts.setup_vnstock_data",
+    "sync:binance": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_binance_spot",
     "test": "UV_CACHE_DIR=.cache/uv uv run --no-sync pytest",
     "test:watch": "UV_CACHE_DIR=.cache/uv uv run --no-sync pytest -w",
     "start": "pnpm run dev",

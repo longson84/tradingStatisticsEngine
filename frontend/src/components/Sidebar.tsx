@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { Activity, BarChart2, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, Gauge, HardDriveDownload, ChartNoAxesCombined, ListPlus } from "lucide-react"
+import { Activity, BarChart2, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, Gauge, HardDriveDownload, ChartNoAxesCombined, ListPlus, ListTree } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -24,11 +24,24 @@ const sections = [
   {
     label: "Company Analysis",
     links: [
-      { to: "/company/lists", label: "Companies", icon: Building2 },
+      { to: "/companies", label: "Companies", icon: Building2 },
+      { to: "/instruments", label: "Instruments", icon: ListTree },
       { to: "/company/watchlists", label: "Watchlists", icon: ListPlus },
       { to: "/company/price-history", label: "Price History", icon: ChartNoAxesCombined },
       { to: "/fundamentals", label: "Fundamentals", icon: Database },
       { to: "/company/growth", label: "Growth Dashboard", icon: Activity },
+    ],
+  },
+  {
+    label: "Crypto",
+    links: [
+      { to: "/crypto", label: "Crypto Instruments", icon: Bitcoin },
+    ],
+  },
+  {
+    label: "Build",
+    links: [
+      { to: "/build/data-model", label: "Data Model", icon: Blocks },
     ],
   },
   {

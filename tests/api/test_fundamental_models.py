@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import (
     Base,
+    Company,
     FundamentalFact,
     FundamentalRefreshRun,
     FundamentalReport,
@@ -21,9 +22,12 @@ from api.db.models import (
 
 def _seed_identity(session: Session) -> tuple[Instrument, Universe]:
     instrument = Instrument(
+        company=Company(
+            display_name="FPT Corporation", country_code="VN", source="test"
+        ),
         market="VN",
         ticker="FPT",
-        company_name="FPT Corporation",
+        currency="VND",
         source="test",
     )
     universe = Universe(

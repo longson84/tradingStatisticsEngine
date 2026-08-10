@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import (
     Base,
+    Company,
     FundamentalFact,
     FundamentalRefreshRun,
     FundamentalReport,
@@ -26,9 +27,12 @@ FETCHED_AT = datetime(2026, 8, 3, tzinfo=UTC)
 
 def _seed(session: Session) -> FundamentalReport:
     instrument = Instrument(
+        company=Company(
+            display_name="FPT Corporation", country_code="VN", source="test"
+        ),
         market="VN",
         ticker="FPT",
-        company_name="FPT Corporation",
+        currency="VND",
         source="test",
     )
     universe = Universe(

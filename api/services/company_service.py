@@ -7,6 +7,7 @@ from datetime import datetime
 from api.repositories.company_repository import (
     CompanyQuery,
     CompanyRecord,
+    CompanyListFacets,
     CompanyRepository,
     UniverseRecord,
 )
@@ -36,6 +37,7 @@ class CompanyList:
     offset: int
     limit: int
     companies: tuple[CompanyRecord, ...]
+    facets: CompanyListFacets
 
 
 class CompanyService:
@@ -80,7 +82,7 @@ class CompanyService:
             market = universe.market
             stored_universe = universe_id
 
-        companies, total = self._repository.list_companies(CompanyQuery(
+        companies, total, facets = self._repository.list_companies(CompanyQuery(
             market=market,
             price_basis=DEFAULT_PRICE_BASIS[market],
             universe=stored_universe,
@@ -102,6 +104,7 @@ class CompanyService:
             offset=offset,
             limit=limit,
             companies=companies,
+            facets=facets,
         )
 
     def _combined_universe(
@@ -111,10 +114,9 @@ class CompanyService:
         universes: tuple[UniverseRecord, ...],
     ) -> UniverseRecord:
         market_universes = tuple(row for row in universes if row.market == market)
-        _, count = self._repository.list_companies(CompanyQuery(
+        count = self._repository.count_companies(CompanyQuery(
             market=market,
             price_basis=DEFAULT_PRICE_BASIS[market],
-            limit=1,
         ))
         fetched = [row.fetched_at for row in market_universes if row.fetched_at]
         as_of_values = [row.as_of for row in market_universes if row.as_of]

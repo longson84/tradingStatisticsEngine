@@ -2,7 +2,8 @@ import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
 import { useSearchParams } from "react-router"
-import { CompanyTable, type CompanyRow } from "@/components/company/CompanyTable"
+import { InstrumentTable } from "@/components/instrument/InstrumentTable"
+import { Pagination } from "@/components/ui/Pagination"
 import { Sidebar } from "@/components/Sidebar"
 import {
   companiesApi,
@@ -14,10 +15,11 @@ import {
 } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 const ALL_SECTORS = "ALL"
 const ALL_SOURCES = "ALL"
-const UNKNOWN_SECTOR = "Unknown"
+const PAGE_SIZE = 50
 const FEATURED_LIST_IDS: CompanyUniverseId[] = ["US_ALL", "VN_ALL"]
 const SOURCE_ORDER = [
   "US100", "US500", "US2000", "US30",
@@ -36,7 +38,7 @@ interface HealthDrilldown {
   max_distance: number | null
 }
 
-export function SymbolListsPage() {
+export function InstrumentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchKey = searchParams.toString()
   const drilldown = useMemo(
@@ -48,16 +50,35 @@ export function SymbolListsPage() {
   const [activeSource, setActiveSource] = useState(ALL_SOURCES)
   const [activeSector, setActiveSector] = useState(ALL_SECTORS)
   const [query, setQuery] = useState("")
+  const [offset, setOffset] = useState(0)
+  const debouncedQuery = useDebouncedValue(query.trim(), 300)
+  const requestedUniverse = (
+    activeSource === ALL_SOURCES ? activeListId : activeSource
+  ) as CompanyUniverseId
 
   const { data: availableLists } = useQuery({
-    queryKey: ["company-symbol-lists"],
+    queryKey: ["instrument-universes"],
     queryFn: companyUniversesApi,
     retry: false,
   })
 
   const { data: list, isFetching, error } = useQuery({
-    queryKey: ["company-symbol-list", activeListId],
-    queryFn: () => companiesApi({ universe: activeListId }),
+    queryKey: [
+      "instrument-list",
+      requestedUniverse,
+      activeSector,
+      debouncedQuery,
+      drilldown,
+      offset,
+    ],
+    queryFn: () => companiesApi({
+      universe: requestedUniverse,
+      sector: activeSector === ALL_SECTORS ? undefined : activeSector,
+      search: debouncedQuery || undefined,
+      offset: drilldown ? 0 : offset,
+      limit: drilldown ? 5000 : PAGE_SIZE,
+    }),
+    placeholderData: previous => previous,
     retry: false,
   })
 
@@ -76,44 +97,37 @@ export function SymbolListsPage() {
 
   const sectorOptions = useMemo(() => {
     if (!data) return []
-    const drilldownRows = drilldown
-      ? data.companies.filter(row => healthBySymbol.has(row.ticker))
-      : data.companies
-    const sourceRows = filterRowsBySource(drilldownRows, activeSource)
-    return buildSectorOptions(sourceRows)
-  }, [activeSource, data, drilldown, healthBySymbol])
+    return [
+      {
+        sector: ALL_SECTORS,
+        count: data.facets.sectors.reduce((sum, facet) => sum + facet.count, 0),
+      },
+      ...data.facets.sectors.map(facet => ({
+        sector: facet.value,
+        count: facet.count,
+      })),
+    ]
+  }, [data])
 
   const sourceOptions = useMemo(() => {
     if (!data) return []
-    return buildSourceOptions(data.companies)
+    return [
+      { id: ALL_SOURCES, label: "All", count: data.facets.all_count },
+      ...data.facets.universes
+        .map(facet => ({
+          id: facet.value,
+          label: listBadgeLabel(facet.value),
+          count: facet.count,
+        }))
+        .sort((a, b) => sourceOrder(a.id) - sourceOrder(b.id) || a.id.localeCompare(b.id)),
+    ]
   }, [data])
 
   const filteredRows = useMemo(() => {
     if (!data) return []
-    const needle = query.trim().toLowerCase()
-
     const rows = data.companies.filter(row => {
       if (drilldown && !healthBySymbol.has(row.ticker)) return false
-      if (activeSource !== ALL_SOURCES && !row.lists.includes(activeSource)) {
-        return false
-      }
-
-      if (activeSector !== ALL_SECTORS && (row.sector ?? UNKNOWN_SECTOR) !== activeSector) {
-        return false
-      }
-
-      if (!needle) return true
-
-      const haystack = [
-        row.ticker,
-        row.company_name,
-        row.sector,
-        row.industry,
-        row.exchange,
-        row.lists.join(" "),
-      ].filter(Boolean).join(" ").toLowerCase()
-
-      return haystack.includes(needle)
+      return true
     })
     if (!drilldown) return rows
     return rows.sort((a, b) => (
@@ -121,7 +135,7 @@ export function SymbolListsPage() {
     ) - (
       healthBySymbol.get(a.ticker)?.distance ?? -Infinity
     ))
-  }, [activeSector, activeSource, data, drilldown, healthBySymbol, query])
+  }, [data, drilldown, healthBySymbol])
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -130,14 +144,14 @@ export function SymbolListsPage() {
         <div className="flex flex-col gap-4 pb-4 border-b border-border">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Instruments</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Saved company-list snapshots for US and Vietnam market analysis.
+                Tradable US and Vietnam securities in the saved market universes.
               </p>
             </div>
             {data && (
               <div className="text-xs text-muted-foreground text-right">
-                <div>{fmtInt(drilldown ? healthBySymbol.size : data.total)} companies</div>
+                <div>{fmtInt(drilldown ? healthBySymbol.size : data.total)} instruments</div>
                 <div>{data.as_of ? `As of ${data.as_of}` : "Static list"}</div>
               </div>
             )}
@@ -156,6 +170,7 @@ export function SymbolListsPage() {
                     setActiveSource(ALL_SOURCES)
                     setActiveSector(ALL_SECTORS)
                     setQuery("")
+                    setOffset(0)
                   }}
                 >
                   {savedListLabel(listId)}{summary ? ` (${fmtInt(summary.company_count)})` : ""}
@@ -173,6 +188,7 @@ export function SymbolListsPage() {
                   onClick={() => {
                     setActiveSource(option.id)
                     setActiveSector(ALL_SECTORS)
+                    setOffset(0)
                   }}
                 >
                   {option.label} ({fmtInt(option.count)})
@@ -187,7 +203,10 @@ export function SymbolListsPage() {
                 <FilterButton
                   key={option.sector}
                   active={activeSector === option.sector}
-                  onClick={() => setActiveSector(option.sector)}
+                  onClick={() => {
+                    setActiveSector(option.sector)
+                    setOffset(0)
+                  }}
                 >
                   {option.sector === ALL_SECTORS ? "All Sectors" : option.sector} ({fmtInt(option.count)})
                 </FilterButton>
@@ -209,6 +228,7 @@ export function SymbolListsPage() {
                 onClick={() => {
                   setSearchParams({})
                   setSelectedListId("US_ALL")
+                  setOffset(0)
                 }}
                 className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
               >
@@ -218,9 +238,13 @@ export function SymbolListsPage() {
           )}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">{data?.name ?? "Company List"}</h2>
+              <h2 className="text-sm font-semibold">
+                {data ? instrumentListName(data.id) : "Instrument List"}
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {data?.description ?? "Choose a list to view its companies."}
+                {data
+                  ? instrumentListDescription(data.id)
+                  : "Choose a market universe to view its instruments."}
               </p>
             </div>
 
@@ -228,7 +252,10 @@ export function SymbolListsPage() {
               <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={e => {
+                  setQuery(e.target.value)
+                  setOffset(0)
+                }}
                 placeholder="Search ticker, name, sector..."
                 className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground focus:outline-none focus:border-ring"
               />
@@ -250,9 +277,17 @@ export function SymbolListsPage() {
           )}
 
           {data && !isFetching && !health.isFetching && (
-            <CompanyTable
+            <InstrumentTable
               rows={filteredRows}
               healthBySymbol={drilldown ? healthBySymbol : undefined}
+            />
+          )}
+          {data && !drilldown && !isFetching && (
+            <Pagination
+              total={data.total}
+              offset={data.offset}
+              limit={data.limit}
+              onOffsetChange={setOffset}
             />
           )}
         </div>
@@ -298,50 +333,33 @@ function FilterButton({
   )
 }
 
-function filterRowsBySource(rows: CompanyRow[], source: string) {
-  if (source === ALL_SOURCES) return rows
-  return rows.filter(row => row.lists.includes(source))
-}
-
-function buildSourceOptions(rows: CompanyRow[]) {
-  const sources = Array.from(new Set(rows.flatMap(row => row.lists))).sort(
-    (a, b) => sourceOrder(a) - sourceOrder(b) || a.localeCompare(b)
-  )
-  return [
-    { id: ALL_SOURCES, label: "All", count: rows.length },
-    ...sources.map(source => ({
-      id: source,
-      label: listBadgeLabel(source),
-      count: rows.filter(row => row.lists.includes(source)).length,
-    })),
-  ]
-}
-
 function sourceOrder(source: string): number {
   const index = SOURCE_ORDER.indexOf(source)
   return index === -1 ? SOURCE_ORDER.length : index
 }
 
-function buildSectorOptions(rows: CompanyRow[]) {
-  const counts = new Map<string, number>()
-
-  for (const row of rows) {
-    const sector = row.sector ?? UNKNOWN_SECTOR
-    counts.set(sector, (counts.get(sector) ?? 0) + 1)
-  }
-
-  return [
-    { sector: ALL_SECTORS, count: rows.length },
-    ...Array.from(counts.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([sector, count]) => ({ sector, count })),
-  ]
+function savedListLabel(listId: CompanyUniverseId): string {
+  if (listId === "US_ALL") return "US Instruments"
+  if (listId === "VN_ALL") return "VN Instruments"
+  return listId
 }
 
-function savedListLabel(listId: CompanyUniverseId): string {
-  if (listId === "US_ALL") return "US Companies"
-  if (listId === "VN_ALL") return "VN Companies"
-  return listId
+
+function instrumentListName(listId: CompanyUniverseId): string {
+  if (listId === "US_ALL") return "US Instruments"
+  if (listId === "VN_ALL") return "VN Instruments"
+  return `${listBadgeLabel(listId)} Instruments`
+}
+
+
+function instrumentListDescription(listId: CompanyUniverseId): string {
+  if (listId === "US_ALL") {
+    return "All saved US instruments merged without duplicate canonical tickers."
+  }
+  if (listId === "VN_ALL") {
+    return "All saved Vietnam instruments merged without duplicate canonical tickers."
+  }
+  return `Current instruments in the ${listBadgeLabel(listId)} universe.`
 }
 
 

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { ExternalLink, Search, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { CompanyTable, type CompanyRow } from "@/components/company/CompanyTable"
+import { InstrumentTable, type InstrumentRow } from "@/components/instrument/InstrumentTable"
 import {
   companiesApi,
   marketHealthDistributionApi,
@@ -32,23 +32,23 @@ export function MarketHealthDrilldownDrawer({
     queryFn: () => marketHealthDistributionApi(params),
     retry: false,
   })
-  const companies = useQuery({
-    queryKey: ["market-health-company-list", market.universe],
+  const instruments = useQuery({
+    queryKey: ["market-health-instrument-list", market.universe],
     queryFn: () => companiesApi({ universe: market.universe }),
     retry: false,
   })
-  const companyBySymbol = useMemo(() => new Map(
-    companies.data?.companies.map(company => [company.ticker, company]) ?? []
-  ), [companies.data])
+  const instrumentBySymbol = useMemo(() => new Map(
+    instruments.data?.companies.map(instrument => [instrument.ticker, instrument]) ?? []
+  ), [instruments.data])
   const healthBySymbol = useMemo(() => new Map(
     distribution.data?.stocks.map(stock => [stock.symbol, stock]) ?? []
   ), [distribution.data])
-  const rows = useMemo<CompanyRow[]>(() => {
+  const rows = useMemo<InstrumentRow[]>(() => {
     const needle = query.trim().toLowerCase()
     return (distribution.data?.stocks ?? []).flatMap(stock => {
-      const company = companyBySymbol.get(stock.symbol)
-      const row: CompanyRow = company
-        ? company
+      const instrument = instrumentBySymbol.get(stock.symbol)
+      const row: InstrumentRow = instrument
+        ? instrument
         : {
             ticker: stock.symbol,
             company_name: stock.symbol,
@@ -68,8 +68,8 @@ export function MarketHealthDrilldownDrawer({
         .toLowerCase()
       return searchable.includes(needle) ? [row] : []
     })
-  }, [companyBySymbol, distribution.data?.stocks, market.universe, query])
-  const companiesUrl = buildCompaniesUrl(params)
+  }, [instrumentBySymbol, distribution.data?.stocks, market.universe, query])
+  const instrumentsUrl = buildInstrumentsUrl(params)
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -120,28 +120,28 @@ export function MarketHealthDrilldownDrawer({
             />
           </label>
           <a
-            href={companiesUrl}
+            href={instrumentsUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
           >
-            Open in Companies <ExternalLink size={13} />
+            Open in Instruments <ExternalLink size={13} />
           </a>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          {(distribution.isFetching || companies.isFetching) && (
+          {(distribution.isFetching || instruments.isFetching) && (
             <div className="h-1 overflow-hidden rounded-full bg-muted">
               <div className="h-full w-1/3 animate-pulse bg-primary" />
             </div>
           )}
-          {(distribution.error || companies.error) && (
+          {(distribution.error || instruments.error) && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {(distribution.error ?? companies.error)?.message}
+              {(distribution.error ?? instruments.error)?.message}
             </div>
           )}
-          {distribution.data && companies.data && (
-            <CompanyTable rows={rows} healthBySymbol={healthBySymbol} />
+          {distribution.data && instruments.data && (
+            <InstrumentTable rows={rows} healthBySymbol={healthBySymbol} />
           )}
         </div>
       </section>
@@ -150,7 +150,7 @@ export function MarketHealthDrilldownDrawer({
 }
 
 
-function buildCompaniesUrl(params: {
+function buildInstrumentsUrl(params: {
   universe: MarketHealthMarket["universe"]
   date: string
   window: number
@@ -164,5 +164,5 @@ function buildCompaniesUrl(params: {
   })
   if (params.min_distance != null) query.set("min_distance", String(params.min_distance))
   if (params.max_distance != null) query.set("max_distance", String(params.max_distance))
-  return `/company/lists?${query}`
+  return `/instruments?${query}`
 }

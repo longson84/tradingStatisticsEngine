@@ -1,0 +1,130 @@
+"""SQLAlchemy company catalog projection."""
+from __future__ import annotations
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, selectinload
+
+from api.db.models import Company, Instrument, UniverseMembership
+from api.repositories.company_catalog_repository import (
+    CompanyCatalogQuery,
+    CompanyCatalogRecord,
+    CompanyCatalogFacetCount,
+    CompanyCatalogFacets,
+    CompanyIdentifierRecord,
+    CompanyInstrumentRecord,
+)
+
+
+class SqlAlchemyCompanyCatalogRepository:
+    def __init__(self, session: Session):
+        self._session = session
+
+    def list_companies(
+        self,
+        query: CompanyCatalogQuery,
+    ) -> tuple[tuple[CompanyCatalogRecord, ...], int, CompanyCatalogFacets]:
+        base_filters = [Company.instruments.any()]
+        search_filter = None
+        if query.search:
+            pattern = f"%{query.search.strip()}%"
+            search_filter = or_(
+                Company.display_name.ilike(pattern),
+                Company.legal_name.ilike(pattern),
+                Company.instruments.any(Instrument.ticker.ilike(pattern)),
+            )
+            base_filters.append(search_filter)
+        filters = list(base_filters)
+        if query.country:
+            filters.append(Company.country_code == query.country)
+        if query.sector:
+            filters.append(
+                or_(Company.sector.is_(None), Company.sector == "Unknown")
+                if query.sector == "Unknown"
+                else Company.sector == query.sector
+            )
+
+        total = int(
+            self._session.scalar(select(func.count(Company.id)).where(*filters)) or 0
+        )
+        companies = self._session.scalars(
+            select(Company)
+            .where(*filters)
+            .options(
+                selectinload(Company.identifiers),
+                selectinload(Company.instruments)
+                .selectinload(Instrument.memberships)
+                .selectinload(UniverseMembership.universe),
+            )
+            .order_by(Company.display_name, Company.id)
+            .offset(query.offset)
+            .limit(query.limit)
+        ).all()
+        country_rows = self._session.execute(
+            select(Company.country_code, func.count(Company.id))
+            .where(*base_filters)
+            .group_by(Company.country_code)
+            .order_by(Company.country_code)
+        )
+        sector_filters = list(base_filters)
+        if query.country:
+            sector_filters.append(Company.country_code == query.country)
+        sector_value = func.coalesce(Company.sector, "Unknown")
+        sector_rows = self._session.execute(
+            select(sector_value, func.count(Company.id))
+            .where(*sector_filters)
+            .group_by(sector_value)
+            .order_by(sector_value)
+        )
+        facets = CompanyCatalogFacets(
+            countries=tuple(
+                CompanyCatalogFacetCount(value=value, count=int(count))
+                for value, count in country_rows
+            ),
+            sectors=tuple(
+                CompanyCatalogFacetCount(value=value, count=int(count))
+                for value, count in sector_rows
+            ),
+        )
+        return tuple(self._record(company) for company in companies), total, facets
+
+    @staticmethod
+    def _record(company: Company) -> CompanyCatalogRecord:
+        return CompanyCatalogRecord(
+            id=company.id,
+            display_name=company.display_name,
+            legal_name=company.legal_name,
+            country_code=company.country_code,
+            sector=company.sector,
+            industry=company.industry,
+            is_active=company.is_active,
+            identifiers=tuple(
+                CompanyIdentifierRecord(
+                    namespace=identifier.namespace,
+                    value=identifier.value,
+                )
+                for identifier in sorted(
+                    company.identifiers,
+                    key=lambda row: (row.namespace, row.value),
+                )
+            ),
+            instruments=tuple(
+                CompanyInstrumentRecord(
+                    id=instrument.id,
+                    ticker=instrument.ticker,
+                    market=instrument.market,
+                    instrument_type=instrument.instrument_type,
+                    share_class=instrument.share_class,
+                    exchange=instrument.exchange,
+                    currency=instrument.currency,
+                    is_active=instrument.is_active,
+                    universes=tuple(sorted(
+                        membership.universe.code
+                        for membership in instrument.memberships
+                    )),
+                )
+                for instrument in sorted(
+                    company.instruments,
+                    key=lambda row: (row.market, row.ticker),
+                )
+            ),
+        )

@@ -4,16 +4,16 @@ import type { CompanyResponse, MarketHealthStockDistance } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
-export type CompanyRow = CompanyResponse
+export type InstrumentRow = CompanyResponse
 type CoverageSortKey = "first_session" | "last_session" | "stored_sessions"
 type SortDirection = "asc" | "desc"
 
 
-export function CompanyTable({
+export function InstrumentTable({
   rows,
   healthBySymbol,
 }: {
-  rows: CompanyRow[]
+  rows: InstrumentRow[]
   healthBySymbol?: Map<string, MarketHealthStockDistance>
 }) {
   const showHealth = healthBySymbol != null
@@ -51,7 +51,7 @@ export function CompanyTable({
         <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 text-left font-medium">Ticker</th>
-            <th className="px-3 py-2 text-left font-medium">Company</th>
+            <th className="px-3 py-2 text-left font-medium">Issuer</th>
             <th className="px-3 py-2 text-left font-medium">Sector</th>
             <th className="px-3 py-2 text-left font-medium">Industry</th>
             <th className="px-3 py-2 text-left font-medium">Exchange</th>
@@ -76,7 +76,7 @@ export function CompanyTable({
             {showHealth && <th className="px-3 py-2 text-right font-medium">Price</th>}
             {showHealth && <th className="px-3 py-2 text-right font-medium">200D High</th>}
             {showHealth && <th className="px-3 py-2 text-right font-medium">Distance</th>}
-            <th className="px-3 py-2 text-left font-medium">List</th>
+            <th className="px-3 py-2 text-left font-medium">Universe</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -134,7 +134,7 @@ export function CompanyTable({
           {displayRows.length === 0 && (
             <tr>
               <td colSpan={showHealth ? 12 : 9} className="px-3 py-10 text-center text-muted-foreground">
-                No companies match the current filters.
+                No instruments match the current filters.
               </td>
             </tr>
           )}

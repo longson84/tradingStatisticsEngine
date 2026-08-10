@@ -44,10 +44,25 @@ class CompanyQuery:
     limit: int = 5000
 
 
+@dataclass(frozen=True)
+class FacetCount:
+    value: str
+    count: int
+
+
+@dataclass(frozen=True)
+class CompanyListFacets:
+    all_count: int
+    sectors: tuple[FacetCount, ...]
+    universes: tuple[FacetCount, ...]
+
+
 class CompanyRepository(Protocol):
     def list_universes(self) -> tuple[UniverseRecord, ...]: ...
+
+    def count_companies(self, query: CompanyQuery) -> int: ...
 
     def list_companies(
         self,
         query: CompanyQuery,
-    ) -> tuple[tuple[CompanyRecord, ...], int]: ...
+    ) -> tuple[tuple[CompanyRecord, ...], int, CompanyListFacets]: ...

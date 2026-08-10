@@ -8,8 +8,16 @@ from api.db.company_import import import_company_universes
 from api.db.models import Base, Instrument, PriceBarCoverage
 from api.main import app
 from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
-from api.routes.companies import list_companies, list_company_universes
+from api.repositories.sqlalchemy_company_catalog_repository import (
+    SqlAlchemyCompanyCatalogRepository,
+)
+from api.routes.companies import (
+    list_companies,
+    list_company_catalog,
+    list_company_universes,
+)
 from api.services.company_service import CompanyService
+from api.services.company_catalog_service import CompanyCatalogService
 from sqlalchemy.orm import Session
 
 
@@ -19,6 +27,14 @@ def _service() -> tuple[CompanyService, Session]:
     import_company_universes(engine)
     session = Session(engine)
     return CompanyService(SqlAlchemyCompanyRepository(session)), session
+
+
+def _catalog_service() -> tuple[CompanyCatalogService, Session]:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    import_company_universes(engine)
+    session = Session(engine)
+    return CompanyCatalogService(SqlAlchemyCompanyCatalogRepository(session)), session
 
 
 def test_company_service_returns_one_company_with_all_memberships():
@@ -104,3 +120,103 @@ def test_openapi_company_contract_is_generated_from_canonical_schema():
         "ticker", "company_name", "market", "sector", "industry", "exchange",
         "lists", "first_session", "last_session", "stored_sessions",
     }
+
+
+def test_company_catalog_groups_multiple_instruments_under_one_issuer():
+    service, session = _catalog_service()
+    try:
+        response = list_company_catalog(
+            service,
+            country="US",
+            search="Alphabet",
+            sector=None,
+            offset=0,
+            limit=5000,
+        )
+    finally:
+        session.close()
+
+    assert response.total == 1
+    alphabet = response.companies[0]
+    assert alphabet.display_name == "Alphabet Inc."
+    assert {instrument.ticker for instrument in alphabet.instruments} == {
+        "GOOG", "GOOGL",
+    }
+    assert alphabet.identifiers[0].model_dump() == {
+        "namespace": "sec_cik",
+        "value": "1652044",
+    }
+    assert all(company.instruments for company in response.companies)
+
+
+def test_company_catalog_openapi_contract_is_company_centric():
+    schema = app.openapi()
+
+    operation = schema["paths"]["/companies/catalog"]["get"]
+    assert operation["operationId"] == "listCompanyCatalog"
+    properties = schema["components"]["schemas"]["CompanyCatalogItemResponse"][
+        "properties"
+    ]
+    assert set(properties) == {
+        "id", "display_name", "legal_name", "country_code", "sector",
+        "industry", "is_active", "identifiers", "instruments",
+    }
+
+
+def test_company_catalog_paginates_and_returns_server_side_facets():
+    service, session = _catalog_service()
+    try:
+        first = list_company_catalog(
+            service,
+            country=None,
+            search=None,
+            sector=None,
+            offset=0,
+            limit=50,
+        )
+        second = list_company_catalog(
+            service,
+            country=None,
+            search=None,
+            sector=None,
+            offset=50,
+            limit=50,
+        )
+    finally:
+        session.close()
+
+    assert first.total > 2700
+    assert len(first.companies) == 50
+    assert len(second.companies) == 50
+    assert {company.id for company in first.companies}.isdisjoint(
+        company.id for company in second.companies
+    )
+    countries = {facet.value: facet.count for facet in first.facets.countries}
+    assert countries["US"] > 2000
+    assert countries["VN"] > 300
+    assert sum(countries.values()) == first.total
+
+
+def test_instrument_list_paginates_and_returns_universe_and_sector_facets():
+    service, session = _service()
+    try:
+        response = list_companies(
+            service,
+            universe="US_ALL",
+            search=None,
+            sector=None,
+            industry=None,
+            exchange=None,
+            offset=0,
+            limit=50,
+        )
+    finally:
+        session.close()
+
+    assert response.total == 2472
+    assert len(response.companies) == 50
+    assert response.facets.all_count == 2472
+    universes = {facet.value: facet.count for facet in response.facets.universes}
+    assert universes["US500"] == 503
+    assert universes["US2000"] == 1954
+    assert sum(facet.count for facet in response.facets.sectors) == 2472

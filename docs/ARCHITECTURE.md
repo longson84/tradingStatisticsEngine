@@ -52,6 +52,12 @@ log; revise the main sections when the current architecture itself changes.
    labelled as such until effective-dated membership history is available.
 10. Refreshes must validate staged data and commit atomically so readers never
     observe a partially updated dataset.
+11. Keep economic venue identity separate from observation provenance. A
+    Binance order book remains a Binance venue market even when a different
+    source later supplies its historical observations.
+12. Preserve the actual quote asset. A BTC/USDT close is denominated in USDT
+    and must not be labelled USD unless an explicit conversion methodology is
+    applied.
 
 ## Persistence
 
@@ -72,16 +78,40 @@ PostgreSQL, and price refreshes incrementally upsert the same table. Price
 status and maintenance operations also use PostgreSQL. Benchmarks and
 fundamentals remain file-backed until their separate migrations are verified.
 
-### Initial company schema
+### Canonical company, asset, venue, and instrument schema
 
-- `instruments` stores market, canonical ticker, company name, sector,
-  industry, exchange, active state, and source.
+- `companies` stores issuer identity and company-level metadata such as display
+  name, legal name, sector, and industry. A company can issue multiple
+  instruments.
+- `company_identifiers` stores stable reconciliation keys such as SEC CIK. Its
+  `namespace` and `source` are plain strings; there is intentionally no
+  provider catalog foreign key.
+- `assets` stores venue-independent economic identity. Equity share classes,
+  native crypto assets, fiat currencies, and stablecoins are distinct asset
+  types. An asset may exist without an issuing company.
+- `asset_issuers` stores the optional effective-dated relationship from an
+  asset to a company. Decentralized assets such as BTC have no synthetic issuer
+  row.
+- `venues` stores the economic location of trading, such as Binance Spot or
+  NASDAQ. A venue is not a data-provider registry and remains part of market
+  identity even if its API becomes unavailable.
+- `instruments` stores venue-specific tradable-product identity: optional
+  company, venue, base asset, quote asset, settlement asset, market class,
+  current canonical ticker, product type, trading increments, active state,
+  and source. Existing equity instruments retain their issuer relationship;
+  crypto spot instruments have no company and require venue, base, and quote
+  assets.
+- `instrument_symbols` stores canonical, source-specific, and historical
+  ticker mappings with optional validity dates. `instruments.ticker` remains
+  the denormalized current canonical symbol used by existing price and API
+  consumers and must be updated with its current canonical mapping.
 - `universes` stores the named current snapshots such as US100, US500, US2000,
   US30, VN30, VNMID, VN100, VNSML, and VNALL.
 - `universe_memberships` implements the many-to-many relationship between
   instruments and universes.
 - `price_bars` stores canonical daily OHLCV observations once per instrument,
-  session, and price basis.
+  session, and price basis. A venue-specific crypto bar is canonical for that
+  instrument, not a cross-venue composite price for its base asset.
 - `price_bar_coverages` stores one derived operational summary per instrument
   and price basis. It accelerates status and refresh planning; it is rebuilt
   from canonical bars and is never an analytical price source.
@@ -105,7 +135,9 @@ explicit migration and a source capable of providing reliable membership dates.
   atomically but must not create a duplicate provider copy for the same key.
 - `currency` identifies the monetary currency and `price_scale` converts the
   stored quote into one currency unit. For example, a VN quote stored in
-  thousands of VND uses `currency = VND` and `price_scale = 1000`.
+  thousands of VND uses `currency = VND` and `price_scale = 1000`. Crypto quote
+  assets such as USDT and USDC are stored by their own codes and are not
+  silently normalized to USD.
 - Provider OHLCV observations use PostgreSQL double precision because upstream
   market data already arrives as floating point and analytical workloads favor
   compact numeric arrays. Exact decimal types remain appropriate for accounting
@@ -119,6 +151,36 @@ explicit migration and a source capable of providing reliable membership dates.
 - Provider rows with non-positive or non-finite prices, inverted high/low, or
   negative/non-finite volume are reported and omitted. The canonical table's
   constraints preserve the same minimum quality boundary for future writers.
+
+### Binance Spot ingestion
+
+- Binance public market-data access is unauthenticated; the application does
+  not request or store trading API keys.
+- `/api/v3/exchangeInfo` is normalized in memory before a short atomic catalog
+  transaction upserts assets, the `BINANCE_SPOT` venue, spot instruments,
+  exchange symbol mappings, scalar trading rules, and the current
+  `BINANCE_SPOT` instrument universe.
+- Missing instruments are retained and marked inactive. A provider outage,
+  empty response, duplicate symbol, or malformed identity aborts the catalog
+  update rather than replacing the last known-good universe.
+- Historical daily bars use checksum-verified monthly files from Binance
+  Public Data. REST `/api/v3/klines` fills uncovered archive months and the
+  incremental tail. Network downloads occur outside database transactions;
+  each validated instrument history is committed separately.
+- Binance daily bars use `price_basis = venue_unadjusted`, preserve their
+  archive or REST source per observation, and are keyed to the Binance venue
+  instrument. They must not be presented as global asset-level reference
+  prices.
+- The safe operational default synchronizes only the catalog. History loading
+  requires an explicit symbol or quote-asset selector and enforces a maximum
+  selection size unless the operator deliberately raises it.
+- `GET /crypto/markets` is the read projection for the Crypto Instruments UI. It
+  pages venue instruments in PostgreSQL, applies search, venue, quote-asset,
+  and active-state filters server-side, and returns trading rules plus derived
+  price coverage. Venue is an explicit row and filter dimension so Binance Spot
+  and a future OKX Spot listing over the same assets remain separate
+  instruments. The UI labels rows as spot instruments rather than companies or
+  global crypto assets.
 
 ## Database conventions
 
@@ -898,3 +960,126 @@ Consequences: external request contracts remain stable, operators can identify
 the actual upstream and client version on stored price history, and a sponsor
 failure is visible instead of silently changing the data source. Recovery use
 is deliberate and its community provenance remains stored on the affected rows.
+
+### 2026-08-09 — Live company-universe provider boundary
+
+Context: PostgreSQL is already the canonical application read source for
+companies and current universe membership, but its initial membership import
+and the price-refresh symbol selector still depend on checked-in JSON and CSV
+snapshots. Those files duplicate relational state and require manual refreshes.
+
+Decision: introduce immutable, normalized universe snapshots and an
+application-level provider protocol under `api/providers`. Source adapters
+fetch Nasdaq-100, the listed-equity IWM holdings proxy, the S&P 500, the Dow 30,
+and the three disjoint Vietnam size segments without writing provider payloads
+to disk. VNStock KBS supplies VN30, VNMidCap, and VNSmallCap membership;
+`VN100` and `VNALL` are derived in memory to preserve the established set
+relationships. Provider-specific symbols are normalized at this boundary,
+including US class-share notation used by the price loader. The public VNStock
+listing adapter is an explicit universe-metadata input and does not change the
+sponsored-only policy for normal VN prices or fundamentals.
+
+Consequences: later synchronization work can validate one persistence-neutral
+contract before acquiring database locks. Network and parser failures are
+explicit, empty or duplicate normalized membership is rejected, and no new
+company-list JSON or CSV is created. The existing static importer and
+price-refresh file reader remain temporarily until the transactional writer and
+consumer cutover are implemented and verified.
+
+### 2026-08-09 — Canonical issuer, instrument, and symbol identity
+
+Context: the initial `instruments` table mixed issuer metadata with listing
+identity. That made two share classes look like two companies, made ticker
+renames overwrite identity, and provided no durable place for symbols that
+differ between an exchange and a data source.
+
+Decision: add `companies`, `company_identifiers`, and `instrument_symbols`.
+Move company name, sector, and industry out of `instruments`; every instrument
+now belongs to exactly one company. Retain the current canonical ticker on the
+instrument for compatibility and efficient established queries, while symbol
+aliases and validity periods live in `instrument_symbols`. Stable issuer IDs
+such as SEC CIK reconcile multiple instruments to one company. Source identity
+is stored as an open string namespace/provenance value rather than normalized
+through a provider table, because adapters and commercial access paths can
+change without changing canonical financial identity.
+
+Consequences: GOOG and GOOGL can be distinct tradable instruments of one
+Alphabet company, while BRK.B and BRK-B can map to the same instrument in
+different namespaces. Existing company-list API contracts remain unchanged but
+now join issuer metadata. The migration performs a conservative one-company-
+per-instrument legacy backfill; later trusted identifiers may reconcile those
+rows without guessing from names alone.
+
+### 2026-08-09 — Separate company catalog and instrument universe views
+
+Context: the former Companies page rendered one row per market ticker, mixing
+issuer language with instrument price coverage and universe membership. After
+issuer identity became relational, the same company could correctly own more
+than one instrument, so that presentation was no longer semantically valid.
+
+Decision: `/instruments` is the canonical frontend view for tradable securities,
+price coverage, exchange, and universe membership. `/companies` is a separate
+issuer catalog backed by `GET /companies/catalog`; it returns one company row
+with nested identifiers and instruments. The established `GET /companies`
+instrument contract remains temporarily available to avoid a simultaneous
+cross-application API rename. The legacy frontend `/company/lists` URL redirects
+to `/instruments` and preserves its query string.
+
+Consequences: company counts and instrument counts are no longer conflated in
+the UI. Alphabet can appear once in the company catalog with GOOG and GOOGL,
+while both securities remain independent rows in the Instruments page. A later
+API cleanup may rename the legacy instrument endpoint after all consumers have
+moved without changing either canonical database identity.
+
+### 2026-08-09 — Server-paginated company and instrument catalogs
+
+Context: both catalog pages initially loaded and rendered every matching row.
+At roughly three thousand issuers and instruments this was functional, but it
+transferred nested identity and membership data unnecessarily and created a
+large browser DOM for every visit.
+
+Decision: Companies and Instruments request 50 rows per page with server-side
+offset pagination, debounced search, and server-side filters. Each response
+includes total matching rows and aggregate facet counts computed independently
+from the page slice, so country, sector, and universe controls remain accurate.
+Offset pagination is preferred at this scale; cursor pagination is deferred
+until catalog size or write frequency makes stable deep offsets a demonstrated
+problem. Market Health drill-down retains its full computed-bucket join because
+its membership is produced by the analytical result rather than a catalog
+filter.
+
+Consequences: normal page payload and rendered-row count are bounded at 50,
+filter changes reset to the first page, and search waits 300 milliseconds before
+querying. PostgreSQL remains authoritative for filtering and counts; the UI no
+longer derives catalog facets from an incomplete client-side page.
+
+### 2026-08-09 — Venue-neutral assets and Binance Spot ingestion
+
+Context: the issuer/instrument schema required every instrument to belong to a
+US or Vietnam company and limited quote currencies to three characters. That
+could not represent decentralized crypto assets, stablecoin quotes, multiple
+venue order books, or spot and derivative products without inventing companies
+or treating exchange symbols as permanent asset identity.
+
+Decision: add canonical `assets`, optional effective-dated `asset_issuers`, and
+economic `venues`. Generalize instruments so company identity is optional and
+spot products require a venue, base asset, and quote asset. Preserve the actual
+quote asset and store venue-specific trading increments. Seed legacy equity
+assets, issuer links, fiat quote assets, and known exchange venues
+deterministically in migration `0012`. Introduce an unauthenticated Binance
+Spot adapter, an atomic `BINANCE_SPOT` catalog synchronizer, checksum-verified
+monthly archive loading, and REST gap/incremental retrieval. Do not add a
+provider foreign key or persist raw provider JSON.
+
+Consequences: BTC exists without a company, Binance BTC/USDT is a distinct spot
+instrument denominated in USDT, and future venues can list their own instruments
+without symbol collisions. Existing US/VN company and instrument APIs retain
+their contracts. Binance supplies venue market data and an active-instrument
+universe; it does not become the canonical source for global market-cap ranks,
+cross-venue reference prices, token contracts, or crypto fundamentals.
+
+The first frontend projection is a 50-row server-paginated Binance Spot market
+catalog at `/crypto`. It exposes base/quote identity, active state, scalar
+trading rules, venue identity, and stored daily-history coverage; it does not
+imply that Binance is the canonical issuer or the only possible venue for an
+asset.

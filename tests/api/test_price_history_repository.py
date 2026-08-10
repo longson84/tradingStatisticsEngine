@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import (
     Base,
+    Company,
     Instrument,
     PriceBar,
     PriceBarCoverage,
@@ -26,10 +27,12 @@ from api.repositories.sqlalchemy_price_bar_repository import (
 
 def _seed(session: Session) -> None:
     fpt = Instrument(
-        market="VN", ticker="FPT", company_name="FPT", source="test"
+        company=Company(display_name="FPT", country_code="VN", source="test"),
+        market="VN", ticker="FPT", currency="VND", source="test"
     )
     acb = Instrument(
-        market="VN", ticker="ACB", company_name="ACB", source="test"
+        company=Company(display_name="ACB", country_code="VN", source="test"),
+        market="VN", ticker="ACB", currency="VND", source="test"
     )
     universe = Universe(
         code="VN100", name="VN100", market="VN", description="", source="test"
@@ -162,9 +165,10 @@ def test_repository_lists_canonical_coverages_for_explicit_market_tickers():
     with Session(engine) as session:
         _seed(session)
         watchlist_only = Instrument(
+            company=Company(display_name="PNJ", country_code="VN", source="test"),
             market="VN",
             ticker="PNJ",
-            company_name="PNJ",
+            currency="VND",
             source="test",
         )
         session.add(watchlist_only)
@@ -292,7 +296,8 @@ def test_repository_status_distinguishes_current_stale_and_missing_symbols():
         _seed(session)
         universe = session.scalar(select(Universe).where(Universe.code == "VN100"))
         missing = Instrument(
-            market="VN", ticker="MISSING", company_name="Missing", source="test"
+            company=Company(display_name="Missing", country_code="VN", source="test"),
+            market="VN", ticker="MISSING", currency="VND", source="test"
         )
         session.add(missing)
         session.flush()

@@ -7,16 +7,21 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from api.db.models import Base, Instrument, PriceBar
+from api.db.models import Base, Company, Instrument, PriceBar
 
 
 def _instrument() -> Instrument:
     return Instrument(
+        company=Company(
+            display_name="FPT Corporation",
+            country_code="VN",
+            sector="Information Technology",
+            industry="Công nghệ và thông tin",
+            source="company_import",
+        ),
         market="VN",
         ticker="FPT",
-        company_name="FPT Corporation",
-        sector="Information Technology",
-        industry="Công nghệ và thông tin",
+        currency="VND",
         exchange="HOSE",
         source="company_import",
     )

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import (
     Base,
+    Company,
     FundamentalFact,
     FundamentalReport,
     Instrument,
@@ -39,9 +40,10 @@ def _frame(period: str, effective_date: str, eps: float) -> pd.DataFrame:
 
 def _seed_instrument(session: Session) -> None:
     session.add(Instrument(
+        company=Company(display_name="Apple", country_code="US", source="test"),
         market="US",
         ticker="AAPL",
-        company_name="Apple",
+        currency="USD",
         source="test",
     ))
     session.commit()
