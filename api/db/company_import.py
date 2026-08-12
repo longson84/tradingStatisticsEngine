@@ -15,9 +15,16 @@ from api.db.models import (
     InstrumentSymbol,
     Universe,
     UniverseMembership,
+    Venue,
 )
 from api.db.session import session_scope
+from api.equity_venues import (
+    EQUITY_VENUES,
+    EQUITY_VENUE_SOURCE,
+    canonical_equity_venue_code,
+)
 from api.symbol_list_data import LIST_FILES, load_static_payload
+from api.venue_calendars import venue_calendar
 
 
 IMPORT_SOURCE = "static-symbol-list"
@@ -47,7 +54,12 @@ def import_company_universes(engine: Engine) -> CompanyImportResult:
 
     with session_scope(engine) as session:
         universe_rows = _upsert_universes(session, payloads)
-        instrument_rows = _upsert_companies_and_instruments(session, instruments)
+        venue_rows = _upsert_equity_venues(session)
+        instrument_rows = _upsert_companies_and_instruments(
+            session,
+            instruments,
+            venue_rows,
+        )
         session.flush()
         _sync_memberships(
             session,
@@ -73,11 +85,12 @@ def verify_company_universes(
     with Session(engine) as session:
         instruments = int(session.scalar(select(func.count(Instrument.id))) or 0)
         markets = {
-            market: int(count)
-            for market, count in session.execute(
-                select(Instrument.market, func.count(Instrument.id)).group_by(
-                    Instrument.market
-                )
+            country: int(count)
+            for country, count in session.execute(
+                select(Venue.country_code, func.count(Instrument.id))
+                .join(Instrument, Instrument.venue_id == Venue.id)
+                .where(Instrument.instrument_type == "common_stock")
+                .group_by(Venue.country_code)
             )
         }
         universe_counts = {
@@ -154,11 +167,10 @@ def _upsert_universes(
     for list_id, payload in payloads.items():
         row = existing.get(list_id)
         if row is None:
-            row = Universe(code=list_id, market=_market_for(list_id), source=IMPORT_SOURCE)
+            row = Universe(code=list_id, source=IMPORT_SOURCE)
             session.add(row)
             existing[list_id] = row
         row.name = str(payload["name"])
-        row.market = _market_for(list_id)
         row.description = str(payload.get("description") or "")
         row.as_of = str(payload["as_of"]) if payload.get("as_of") else None
         row.fetched_at = _parse_timestamp(payload.get("fetched_at"))
@@ -169,16 +181,26 @@ def _upsert_universes(
 def _upsert_companies_and_instruments(
     session: Session,
     values: dict[tuple[str, str], dict[str, Any]],
+    venues: dict[str, Venue],
 ) -> dict[tuple[str, str], Instrument]:
-    markets = {market for market, _ in values}
     existing = {
-        (row.market, row.ticker): row
+        (
+            row.venue.country_code if row.venue is not None
+            else row.company.country_code,
+            row.ticker,
+        ): row
         for row in session.scalars(
             select(Instrument)
-            .where(Instrument.market.in_(markets))
+            .join(Instrument.company)
+            .outerjoin(Instrument.venue)
+            .where(
+                Company.country_code.in_({market for market, _ in values}),
+                Instrument.instrument_type == "common_stock",
+            )
             .options(
                 selectinload(Instrument.company),
                 selectinload(Instrument.symbols),
+                selectinload(Instrument.venue),
             )
         )
     }
@@ -232,20 +254,55 @@ def _upsert_companies_and_instruments(
         if row is None:
             row = Instrument(
                 company=company,
-                market=value["market"],
                 ticker=value["ticker"],
+                instrument_type="common_stock",
                 currency="VND" if value["market"] == "VN" else "USD",
                 source=IMPORT_SOURCE,
             )
             session.add(row)
             existing[key] = row
         row.company = company
-        row.exchange = _optional_text(value.get("exchange"))
+        imported_exchange = _optional_text(value.get("exchange"))
+        if imported_exchange is not None:
+            venue_code = canonical_equity_venue_code(
+                value["market"],
+                imported_exchange,
+            )
+            if venue_code is None:
+                raise ValueError(
+                    "Unsupported equity exchange from static company import: "
+                    f"market={value['market']} exchange={imported_exchange}"
+                )
+            row.venue = venues[venue_code]
         row.currency = "VND" if value["market"] == "VN" else "USD"
         row.is_active = True
         row.source = IMPORT_SOURCE
         _upsert_symbols(session, row, value)
     return existing
+
+
+def _upsert_equity_venues(session: Session) -> dict[str, Venue]:
+    codes = {row.code for row in EQUITY_VENUES}
+    venues = {
+        row.code: row
+        for row in session.scalars(select(Venue).where(Venue.code.in_(codes)))
+    }
+    for definition in EQUITY_VENUES:
+        schedule = venue_calendar(definition.code)
+        venue = venues.get(definition.code)
+        if venue is None:
+            venue = Venue(code=definition.code)
+            session.add(venue)
+            venues[definition.code] = venue
+        venue.name = definition.name
+        venue.venue_type = definition.venue_type
+        venue.country_code = definition.country_code
+        venue.timezone_name = schedule.timezone_name
+        venue.trading_calendar_code = schedule.trading_calendar_code
+        venue.session_cutoff_time = schedule.session_cutoff_time
+        venue.is_active = True
+        venue.source = EQUITY_VENUE_SOURCE
+    return venues
 
 
 def _upsert_symbols(
@@ -271,14 +328,12 @@ def _upsert_symbols(
             symbol = InstrumentSymbol(
                 instrument=instrument,
                 namespace=namespace,
-                market=value["market"],
                 symbol=symbol_value,
                 is_primary=True,
                 source=IMPORT_SOURCE,
             )
             session.add(symbol)
         else:
-            symbol.market = value["market"]
             symbol.is_primary = True
             symbol.source = IMPORT_SOURCE
 

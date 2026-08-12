@@ -15,11 +15,12 @@ from api.routes.factors import (
     rarity_analysis_endpoint,
 )
 from api.schemas.factor import PredefinedRarityRequest, RarityRequest
-from api.services.company_price_service import (
-    StoredCompanyPriceData,
-    CompanyPriceUnavailableError,
-    UnknownCompanyError,
+from api.services.instrument_analysis_service import (
+    InstrumentPriceUnavailableError,
+    StoredInstrumentPriceSet,
+    UnknownInstrumentError,
 )
+from api.repositories.instrument_analysis_repository import AnalysisInstrumentRecord
 from api.repositories.watchlist_repository import (
     WatchlistMemberRecord,
     WatchlistRecord,
@@ -55,44 +56,46 @@ class TestBuildFactor:
 
 
 class TestRarityRequestSchema:
-    """Company Factor Rarity accepts only canonical market-price factors."""
+    """Factor Rarity identifies one canonical instrument."""
 
-    def test_rejects_crypto_only_ahr999_from_company_workflow(self):
+    def test_rejects_ahr999_from_general_rarity_workflow(self):
         with pytest.raises(ValueError):
-            RarityRequest(market="US", ticker="MSFT", factor_type="ahr999")
+            RarityRequest(instrument_id=1, factor_type="ahr999")
 
     def test_accepts_distance_from_ma(self):
         req = RarityRequest(
-            market="US",
-            ticker="MSFT",
+            instrument_id=42,
             factor_type="distance_from_ma",
             period=200,
             ma_type="sma",
         )
         assert req.factor_type == "distance_from_ma"
-        assert req.market == "US"
-        assert req.ticker == "MSFT"
+        assert req.instrument_id == 42
+
+    def test_rejects_non_positive_instrument_id(self):
+        with pytest.raises(ValueError):
+            RarityRequest(instrument_id=0, factor_type="distance_from_peak")
 
 
-class RejectingCompanyPriceService:
+class RejectingInstrumentPriceService:
     def __init__(self, error: Exception):
         self.error = error
 
-    def get_current_history(self, market, ticker):
+    def get_current_history(self, instrument_id):
         raise self.error
 
 
 class TestRarityEndpointPriceValidation:
-    def test_unknown_company_maps_to_not_found(self):
+    def test_unknown_instrument_maps_to_not_found(self):
         request = RarityRequest(
-            market="US", ticker="NOT-IN-DB", factor_type="distance_from_peak"
+            instrument_id=999, factor_type="distance_from_peak"
         )
 
         with pytest.raises(HTTPException) as raised:
             rarity_analysis_endpoint(
                 request,
-                RejectingCompanyPriceService(
-                    UnknownCompanyError("Unknown company: US-NOT-IN-DB")
+                RejectingInstrumentPriceService(
+                    UnknownInstrumentError("Unknown instrument: 999")
                 ),
             )
 
@@ -100,14 +103,14 @@ class TestRarityEndpointPriceValidation:
 
     def test_missing_stored_history_maps_to_unprocessable(self):
         request = RarityRequest(
-            market="VN", ticker="FPT", factor_type="distance_from_peak"
+            instrument_id=17, factor_type="distance_from_peak"
         )
 
         with pytest.raises(HTTPException) as raised:
             rarity_analysis_endpoint(
                 request,
-                RejectingCompanyPriceService(
-                    CompanyPriceUnavailableError("No stored price history")
+                RejectingInstrumentPriceService(
+                    InstrumentPriceUnavailableError("No stored price history")
                 ),
             )
 
@@ -141,17 +144,22 @@ class TestPredefinedRarity:
         watchlist = WatchlistRecord(
             id=7,
             name="Leaders",
-            market="US",
             description="",
             created_at=datetime(2026, 8, 4, tzinfo=UTC),
             updated_at=datetime(2026, 8, 4, tzinfo=UTC),
             members=(WatchlistMemberRecord(
-                ticker="MSFT",
+                instrument_id=42,
+                symbol="MSFT",
+                instrument_type="common_stock",
+                company_id=11,
                 company_name="Microsoft",
-                market="US",
                 sector=None,
                 industry=None,
-                exchange=None,
+                venue_code=None,
+                venue_name=None,
+                base_asset=None,
+                quote_asset=None,
+                currency="USD",
                 position=0,
             ),),
         )
@@ -162,15 +170,33 @@ class TestPredefinedRarity:
                 return watchlist
 
         class Prices:
-            def get_stored_histories(self, market, tickers):
-                assert market == "US"
-                assert tickers == ["MSFT"]
-                return StoredCompanyPriceData(
-                    prices={"MSFT": prices},
-                    expected_last_session=dates[-1].date(),
-                    missing_tickers=(),
-                    stale_tickers=(),
+            def get_stored_histories(self, instrument_ids):
+                assert instrument_ids == [42]
+                instrument = AnalysisInstrumentRecord(
+                    id=42,
+                    symbol="MSFT",
+                    instrument_type="common_stock",
+                    company_id=11,
+                    company_name="Microsoft",
+                    venue_code=None,
+                    venue_name=None,
+                    base_asset=None,
+                    quote_asset=None,
+                    currency="USD",
                     price_basis="adjusted",
+                    price_source="yfinance",
+                    first_date=dates[0].date(),
+                    last_date=dates[-1].date(),
+                    stored_sessions=len(dates),
+                )
+                return StoredInstrumentPriceSet(
+                    instruments={42: instrument},
+                    prices={42: prices},
+                    expected_last_sessions={42: dates[-1].date()},
+                    data_last_sessions={42: dates[-1].date()},
+                    price_sources={42: "yfinance"},
+                    missing_instrument_ids=(),
+                    stale_instrument_ids=(),
                 )
 
         response = predefined_rarity_endpoint(
@@ -180,10 +206,11 @@ class TestPredefinedRarity:
         )
 
         assert response.watchlist_name == "Leaders"
-        assert response.market == "US"
-        assert response.requested_symbols == 1
-        assert response.available_symbols == 1
-        assert response.price_basis == "adjusted"
+        assert response.requested_instruments == 1
+        assert response.available_instruments == 1
+        assert response.instruments[0].instrument_id == 42
+        assert response.instruments[0].price_basis == "adjusted"
+        assert all(table.rows[0].instrument_id == 42 for table in response.tables)
         assert all(table.rows[0].symbol == "MSFT" for table in response.tables)
 
     def test_endpoint_rejects_unknown_watchlist(self):
@@ -254,8 +281,9 @@ class TestPredefinedRarity:
             source="synthetic",
         )
 
-        row = _predefined_row("TEST", DistanceFromPeak(window=200), prices)
+        row = _predefined_row(99, "TEST", DistanceFromPeak(window=200), prices)
 
+        assert row.instrument_id == 99
         assert row.symbol == "TEST"
         assert row.observations == 61
         assert row.reference_price == pytest.approx(359.0)

@@ -1,20 +1,19 @@
 """Refresh canonical US and Vietnam OHLCV history in PostgreSQL.
 
 Usage:
-    uv run python -m scripts.refresh_market_history --market all
-    uv run python -m scripts.refresh_market_history --market us500
-    uv run python -m scripts.refresh_market_history --market us2000
-    uv run python -m scripts.refresh_market_history --market us100
-    uv run python -m scripts.refresh_market_history --market vnall
-    uv run python -m scripts.refresh_market_history --market vn30
-    uv run python -m scripts.refresh_market_history --market vnmid
-    uv run python -m scripts.refresh_market_history --market vnsml
-    uv run python -m scripts.refresh_market_history --market vn100
+    uv run python -m scripts.refresh_market_history --universe all
+    uv run python -m scripts.refresh_market_history --universe us500
+    uv run python -m scripts.refresh_market_history --universe us2000
+    uv run python -m scripts.refresh_market_history --universe us100
+    uv run python -m scripts.refresh_market_history --universe vnall
+    uv run python -m scripts.refresh_market_history --universe vn30
+    uv run python -m scripts.refresh_market_history --universe vnmid
+    uv run python -m scripts.refresh_market_history --universe vnsml
+    uv run python -m scripts.refresh_market_history --universe vn100
 """
 from __future__ import annotations
 
 import argparse
-import csv
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -30,13 +29,23 @@ from api.benchmark_history import (
 )
 from api.config import env_bool, env_float
 from api.db.session import create_db_engine
-from api.market_data_config import DEFAULT_REFRESH_CHECKPOINT_DIR, PROJECT_ROOT
-from api.market_sessions import latest_completed_session
+from api.market_data_config import DEFAULT_REFRESH_CHECKPOINT_DIR
+from api.repositories.sqlalchemy_data_operation_repository import (
+    SqlAlchemyDataOperationRepository,
+)
+from api.repositories.sqlalchemy_instrument_routing_repository import (
+    SqlAlchemyInstrumentRoutingRepository,
+)
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
 )
-from api.services.price_refresh_service import PriceRefreshService
-from api.services.price_refresh_service import PriceRefreshAttempt
+from api.services.price_refresh_service import (
+    PriceRefreshAttempt,
+    PriceRefreshService,
+    PriceRefreshTarget,
+)
+from api.instrument_data_routing import resolve_instrument_data_route
+from api.market_sessions import latest_completed_venue_session
 from api.providers.vietnam_market import (
     CommunityVnstockProvider,
     VietnamMarketProvider,
@@ -47,7 +56,6 @@ from api.providers.vietnam_market import (
 )
 
 
-SNAPSHOT_DIR = PROJECT_ROOT / "api" / "data" / "symbol_lists"
 US_MAX_HISTORY_START = date(1900, 1, 1)
 VN_MAX_HISTORY_START = date(2000, 1, 1)
 INCREMENTAL_OVERLAP_DAYS = 7
@@ -67,15 +75,64 @@ class VNFetchResult:
     detail: str
 
 
-def _symbols(universe: str) -> list[str]:
-    snapshot = json.loads((SNAPSHOT_DIR / f"{universe.lower()}.json").read_text())
-    key = "yfinance_symbol" if universe.startswith("US") else "symbol"
-    if symbols_file := snapshot.get("symbols_file"):
-        with (SNAPSHOT_DIR / str(symbols_file)).open(newline="") as handle:
-            rows = list(csv.DictReader(handle))
+def _scope_instruments(engine: Engine, universe: str):
+    """Resolve active universe members from the canonical PostgreSQL catalog."""
+    with Session(engine) as session:
+        scope = SqlAlchemyDataOperationRepository(session).get_scope(
+            "universe", universe
+        )
+    if scope is None:
+        raise RuntimeError(f"Unknown PostgreSQL universe: {universe}")
+    if not scope.instruments:
+        raise RuntimeError(
+            f"PostgreSQL universe {scope.scope_id} has no active members"
+        )
+    return scope.instruments
+
+
+def _refresh_targets(engine: Engine, instruments):
+    instrument_ids = tuple(row.id for row in instruments)
+    with Session(engine) as session:
+        metadata = SqlAlchemyInstrumentRoutingRepository(
+            session
+        ).get_instrument_routes_metadata(instrument_ids)
+    routes = {
+        row.instrument_id: resolve_instrument_data_route(row) for row in metadata
+    }
+    if len(routes) != len(instrument_ids):
+        missing = sorted(set(instrument_ids) - set(routes))
+        raise RuntimeError(f"Missing instrument routing metadata: {missing}")
+    return [
+        PriceRefreshTarget(
+            instrument_id=row.id,
+            canonical_symbol=row.symbol,
+            provider_symbol=routes[row.id].provider_symbol,
+            price_adapter=routes[row.id].price_adapter,
+            price_basis=routes[row.id].price_basis,
+            currency=routes[row.id].currency,
+            price_scale=routes[row.id].price_scale,
+        )
+        for row in instruments
+    ], routes
+
+
+def _symbols(
+    universe: str | Engine,
+    engine: Engine | str | None = None,
+) -> list[str]:
+    """Compatibility projection used by diagnostics and snapshot tests."""
+    if isinstance(universe, str):
+        universe_code = universe
+        resolved_engine = engine if isinstance(engine, Engine) else create_db_engine()
     else:
-        rows = snapshot["symbols"]
-    return [str(row[key]) for row in rows]
+        if not isinstance(engine, str):
+            raise TypeError("Universe code is required")
+        resolved_engine = universe
+        universe_code = engine
+    return [
+        instrument.symbol
+        for instrument in _scope_instruments(resolved_engine, universe_code)
+    ]
 
 
 def _normalise_frame(
@@ -282,10 +339,10 @@ def _market_download_plan(
     mode: str,
     *,
     assume_existing_complete: bool = False,
-    market: str = "VN",
+    end_is_exclusive: bool = False,
 ) -> dict[date, list[str]]:
     """Group stale symbols by the first date that still needs downloading."""
-    expected_date = end - timedelta(days=1) if market == "US" else end
+    expected_date = end - timedelta(days=1) if end_is_exclusive else end
     expected_latest = _latest_expected_session(expected_date)
     grouped: dict[date, list[str]] = {}
     rows_by_symbol = (
@@ -391,7 +448,7 @@ def refresh_benchmark(
         full_start,
         end,
         mode,
-        market="US" if benchmark == "SPX" else "VN",
+        end_is_exclusive=benchmark == "SPX",
     )
     frames: list[pd.DataFrame] = []
     sponsored_provider: VietnamMarketProvider | None = None
@@ -459,22 +516,38 @@ def refresh_us_market(
     end: date,
     mode: str,
     *,
-    already_refreshed: set[str] | None = None,
-) -> set[str]:
-    symbols = _symbols(universe)
+    already_refreshed: set[int] | None = None,
+) -> set[int]:
+    instruments = _scope_instruments(engine, universe)
+    targets, routes = _refresh_targets(engine, instruments)
+    if {target.price_adapter for target in targets} != {"yfinance"}:
+        raise RuntimeError(f"{universe} is not a yfinance equity universe")
+    end = min(
+        end,
+        latest_completed_venue_session(
+            datetime.now(timezone.utc), next(iter(routes.values())).schedule
+        ),
+    )
+    targets_by_id = {target.instrument_id: target for target in targets}
+    targets_by_provider_symbol = {
+        target.provider_symbol: target for target in targets
+    }
+    symbols = [target.provider_symbol for target in targets]
     with Session(engine) as session:
         service = PriceRefreshService(SqlAlchemyPriceBarRepository(session))
         plan = service.plan(
             universe,
-            symbols,
+            targets,
             full_start=full_start,
             end=end,
             mode=mode,
             already_refreshed=already_refreshed,
         )
     grouped_plan: dict[date, list[str]] = {}
-    for symbol, start in plan.requested_starts.items():
-        grouped_plan.setdefault(start, []).append(symbol)
+    for instrument_id, start in plan.requested_starts.items():
+        grouped_plan.setdefault(start, []).append(
+            targets_by_id[instrument_id].provider_symbol
+        )
     download_total = len(plan.requested_starts)
     reused = len(symbols) - download_total
     print(
@@ -515,6 +588,7 @@ def refresh_us_market(
             ).store_frames(
                 universe,
                 frames,
+                targets_by_provider_symbol=targets_by_provider_symbol,
                 source="yfinance",
                 fetched_at=fetched_at,
             )
@@ -524,7 +598,10 @@ def refresh_us_market(
         flush=True,
     )
     failed_symbols = {str(error["symbol"]) for error in errors}
-    return set(symbols) - failed_symbols
+    return {
+        targets_by_provider_symbol[symbol].instrument_id
+        for symbol in set(symbols) - failed_symbols
+    }
 
 
 def refresh_vn_market(
@@ -535,28 +612,45 @@ def refresh_vn_market(
     delay: float,
     mode: str,
     *,
-    already_refreshed: set[str] | None = None,
+    already_refreshed: set[int] | None = None,
     provider: VietnamMarketProvider | None = None,
     allow_community_fallback: bool = False,
-) -> set[str]:
+) -> set[int]:
     primary_provider = provider or create_vietnam_market_provider(
         require_sponsored=True
     )
     fallbacks = _community_fallbacks(allow_community_fallback)
     primary_name = _provider_name(primary_provider)
-    symbols = _symbols(universe)
+    instruments = _scope_instruments(engine, universe)
+    targets, routes = _refresh_targets(engine, instruments)
+    if {target.price_adapter for target in targets} != {"vnstock_data"}:
+        raise RuntimeError(f"{universe} is not a vnstock_data equity universe")
+    end = min(
+        end,
+        latest_completed_venue_session(
+            datetime.now(timezone.utc), next(iter(routes.values())).schedule
+        ),
+    )
+    targets_by_id = {target.instrument_id: target for target in targets}
+    targets_by_provider_symbol = {
+        target.provider_symbol: target for target in targets
+    }
+    symbols = [target.provider_symbol for target in targets]
     with Session(engine) as session:
         plan = PriceRefreshService(
             SqlAlchemyPriceBarRepository(session)
         ).plan(
             universe,
-            symbols,
+            targets,
             full_start=full_start,
             end=end,
             mode=mode,
             already_refreshed=already_refreshed,
         )
-    start_by_symbol = plan.requested_starts
+    start_by_symbol = {
+        targets_by_id[instrument_id].provider_symbol: start
+        for instrument_id, start in plan.requested_starts.items()
+    }
     requested_symbols = [symbol for symbol in symbols if symbol in start_by_symbol]
     download_total = len(requested_symbols)
     reused = len(symbols) - download_total
@@ -661,7 +755,8 @@ def refresh_vn_market(
     for symbol in requested_symbols:
         result = results[symbol]
         attempts.append(PriceRefreshAttempt(
-            ticker=symbol,
+            instrument_id=targets_by_provider_symbol[symbol].instrument_id,
+            price_basis=targets_by_provider_symbol[symbol].price_basis,
             attempted_through=end,
             returned_through=result.returned_through,
             outcome=result.outcome,
@@ -682,12 +777,13 @@ def refresh_vn_market(
                     stored = service.store_frames(
                         universe,
                         [source_rows.drop(columns=["provider_source"])],
+                        targets_by_provider_symbol=targets_by_provider_symbol,
                         source=str(source),
                         fetched_at=fetched_at,
                     )
                     stored_rows += stored.stored_rows
                     rejected_rows += stored.rejected_rows
-            service.record_attempts(universe, attempts)
+            service.record_attempts(attempts)
     checkpoint_path.unlink(missing_ok=True)
     checkpoint_manifest_path.unlink(missing_ok=True)
     current_count = sum(result.outcome == "current" for result in results.values())
@@ -710,13 +806,13 @@ def refresh_vn_market(
         raise RuntimeError(
             f"{universe} refresh failed for {len(errors)} symbols: {errors}"
         )
-    return set(symbols)
+    return {target.instrument_id for target in targets}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--market",
+        "--universe",
         choices=(
             "all", "us500", "us2000", "us100",
             "vnall", "vn100", "vn30", "vnmid", "vnsml",
@@ -768,71 +864,56 @@ def main() -> None:
         else env_bool("VNSTOCK_ALLOW_COMMUNITY_FALLBACK", False)
     )
 
-    end = date.today()
-    vn_end = latest_completed_session(datetime.now(timezone.utc), "VN")
-    if args.calendar_days is None:
-        us_full_start = US_MAX_HISTORY_START
-        vn_full_start = VN_MAX_HISTORY_START
-    else:
-        us_full_start = end - timedelta(days=args.calendar_days)
-        vn_full_start = vn_end - timedelta(days=args.calendar_days)
-
-    if args.market == "all":
-        refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refreshed_us = refresh_us_market(
-            engine, "US2000", us_full_start, end, args.mode
+    order = (
+        "US2000", "US500", "US100", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
+    )
+    universes = order if args.universe == "all" else (args.universe.upper(),)
+    refreshed_by_adapter: dict[str, set[int]] = {}
+    benchmarked_adapters: set[str] = set()
+    for universe in universes:
+        instruments = _scope_instruments(engine, universe)
+        targets, routes = _refresh_targets(engine, instruments)
+        adapters = {target.price_adapter for target in targets}
+        if len(adapters) != 1:
+            raise RuntimeError(f"{universe} does not use one price adapter")
+        adapter = next(iter(adapters))
+        route = next(iter(routes.values()))
+        end = latest_completed_venue_session(datetime.now(timezone.utc), route.schedule)
+        full_start = (
+            route.full_history_start
+            if args.calendar_days is None
+            else end - timedelta(days=args.calendar_days)
         )
-        refreshed_us |= refresh_us_market(
-            engine,
-            "US500",
-            us_full_start,
-            end,
-            args.mode,
-            already_refreshed=refreshed_us,
-        )
-        refreshed_us |= refresh_us_market(
-            engine,
-            "US100",
-            us_full_start,
-            end,
-            args.mode,
-            already_refreshed=refreshed_us,
-        )
-        refresh_benchmark("VN30", vn_full_start, vn_end, args.mode)
-        refreshed_vn: set[str] = set()
-        for universe in VN_REFRESH_ORDER:
-            refreshed_vn |= refresh_vn_market(
+        already_refreshed = refreshed_by_adapter.setdefault(adapter, set())
+        if adapter == "yfinance":
+            if adapter not in benchmarked_adapters:
+                refresh_benchmark("SPX", full_start, end, args.mode)
+            already_refreshed |= refresh_us_market(
                 engine,
                 universe,
-                vn_full_start,
-                vn_end,
+                full_start,
+                end,
+                args.mode,
+                already_refreshed=already_refreshed,
+            )
+        elif adapter == "vnstock_data":
+            if adapter not in benchmarked_adapters:
+                refresh_benchmark("VN30", full_start, end, args.mode)
+            already_refreshed |= refresh_vn_market(
+                engine,
+                universe,
+                full_start,
+                end,
                 vn_delay,
                 args.mode,
-                already_refreshed=refreshed_vn,
+                already_refreshed=already_refreshed,
                 allow_community_fallback=allow_community_fallback,
             )
-        return
-
-    if args.market == "us2000":
-        refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market(engine, "US2000", us_full_start, end, args.mode)
-    elif args.market == "us500":
-        refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market(engine, "US500", us_full_start, end, args.mode)
-    elif args.market == "us100":
-        refresh_benchmark("SPX", us_full_start, end, args.mode)
-        refresh_us_market(engine, "US100", us_full_start, end, args.mode)
-    elif args.market in {"vnall", "vn100", "vn30", "vnmid", "vnsml"}:
-        refresh_benchmark("VN30", vn_full_start, vn_end, args.mode)
-        refresh_vn_market(
-            engine,
-            args.market.upper(),
-            vn_full_start,
-            vn_end,
-            vn_delay,
-            args.mode,
-            allow_community_fallback=allow_community_fallback,
-        )
+        else:
+            raise RuntimeError(
+                f"Bulk equity refresh does not support adapter {adapter}"
+            )
+        benchmarked_adapters.add(adapter)
 
 
 if __name__ == "__main__":

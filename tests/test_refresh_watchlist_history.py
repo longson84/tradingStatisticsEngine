@@ -27,7 +27,7 @@ def test_vn_watchlist_loader_uses_sponsored_provider_and_configured_pacing(
         lambda name, default: 30.0,
     )
 
-    loader, source, delay = refresh_watchlist_history._loader_config("VN")
+    loader, source, delay = refresh_watchlist_history._loader_config("vnstock_data")
 
     assert isinstance(loader, VietnamPriceLoader)
     assert loader._provider is provider
@@ -36,7 +36,7 @@ def test_vn_watchlist_loader_uses_sponsored_provider_and_configured_pacing(
 
 
 def test_us_watchlist_loader_remains_yfinance():
-    loader, source, delay = refresh_watchlist_history._loader_config("US")
+    loader, source, delay = refresh_watchlist_history._loader_config("yfinance")
 
     assert isinstance(loader, YFinanceLoader)
     assert source == "yfinance"
@@ -56,4 +56,4 @@ def test_vn_watchlist_loader_rejects_invalid_request_rate(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="must be greater than zero"):
-        refresh_watchlist_history._loader_config("VN")
+        refresh_watchlist_history._loader_config("vnstock_data")

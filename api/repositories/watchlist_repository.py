@@ -8,12 +8,18 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class WatchlistMemberRecord:
-    ticker: str
-    company_name: str
-    market: str
+    instrument_id: int
+    symbol: str
+    instrument_type: str
+    company_id: int | None
+    company_name: str | None
     sector: str | None
     industry: str | None
-    exchange: str | None
+    venue_code: str | None
+    venue_name: str | None
+    base_asset: str | None
+    quote_asset: str | None
+    currency: str
     position: int
 
 
@@ -21,41 +27,67 @@ class WatchlistMemberRecord:
 class WatchlistRecord:
     id: int
     name: str
-    market: str
     description: str
     created_at: datetime
     updated_at: datetime
     members: tuple[WatchlistMemberRecord, ...]
+
+    @property
+    def instrument_types(self) -> tuple[str, ...]:
+        return tuple(sorted({member.instrument_type for member in self.members}))
+
+    @property
+    def equity_count(self) -> int:
+        return sum(member.company_id is not None for member in self.members)
+
+    @property
+    def crypto_spot_count(self) -> int:
+        return sum(member.instrument_type == "spot" for member in self.members)
+
+    @property
+    def reference_rate_count(self) -> int:
+        return sum(member.instrument_type == "reference_rate" for member in self.members)
+
+    @property
+    def equity_refresh_adapter(self) -> str | None:
+        if not self.members or self.equity_count != len(self.members):
+            return None
+        venues = {member.venue_code for member in self.members}
+        if venues <= {"NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX"}:
+            return "yfinance"
+        if venues <= {"HOSE", "HNX", "UPCOM"}:
+            return "vnstock_data"
+        return None
 
 
 @dataclass(frozen=True)
 class WatchlistSummaryRecord:
     id: int
     name: str
-    market: str
     description: str
     member_count: int
+    instrument_types: tuple[str, ...]
+    equity_count: int
+    crypto_spot_count: int
+    reference_rate_count: int
+    price_refresh_supported: bool
     created_at: datetime
     updated_at: datetime
 
 
 class WatchlistRepository(Protocol):
-    def list_watchlists(
-        self, market: str | None = None
-    ) -> tuple[WatchlistSummaryRecord, ...]: ...
+    def list_watchlists(self) -> tuple[WatchlistSummaryRecord, ...]: ...
 
     def get_watchlist(self, watchlist_id: int) -> WatchlistRecord | None: ...
 
-    def name_exists(
-        self, market: str, name_key: str, exclude_id: int | None = None
-    ) -> bool: ...
+    def name_exists(self, name_key: str, exclude_id: int | None = None) -> bool: ...
 
-    def resolve_instrument_ids(
-        self, market: str, tickers: tuple[str, ...]
-    ) -> dict[str, int]: ...
+    def resolve_active_instrument_ids(
+        self, instrument_ids: tuple[int, ...]
+    ) -> set[int]: ...
 
     def create_watchlist(
-        self, *, name: str, name_key: str, market: str, description: str
+        self, *, name: str, name_key: str, description: str
     ) -> int: ...
 
     def update_watchlist(
@@ -63,7 +95,7 @@ class WatchlistRepository(Protocol):
     ) -> bool: ...
 
     def replace_members(
-        self, watchlist_id: int, market: str, instrument_ids: tuple[int, ...]
+        self, watchlist_id: int, instrument_ids: tuple[int, ...]
     ) -> None: ...
 
     def delete_watchlist(self, watchlist_id: int) -> bool: ...

@@ -3,10 +3,14 @@ from __future__ import annotations
 
 from datetime import date
 import sys
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
+from api.db.models import Base, Company, Instrument, Universe, UniverseMembership
 from api.providers.vietnam_market import (
     VietnamProviderMetadata,
     VietnamProviderResult,
@@ -74,26 +78,25 @@ class FakeProvider:
         raise AssertionError("not used")
 
 
-def test_us2000_snapshot_contains_official_listed_equity_holdings():
-    symbols = refresh_market_history._symbols("US2000")
+def test_symbols_resolve_only_active_canonical_database_members():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session, session.begin():
+        issuer = Company(display_name="Issuer", country_code="US", source="test")
+        active = Instrument(
+            company=issuer, ticker="ACTIVE", currency="USD", source="test"
+        )
+        inactive = Instrument(
+            company=issuer, ticker="INACTIVE", currency="USD", source="test",
+            is_active=False,
+        )
+        universe = Universe(code="TEST", name="Test", source="test")
+        session.add_all((
+            UniverseMembership(universe=universe, instrument=active, source="test"),
+            UniverseMembership(universe=universe, instrument=inactive, source="test"),
+        ))
 
-    assert len(symbols) == 1954
-    assert "MOG-A" in symbols
-    assert "CRD-A" in symbols
-
-
-def test_vnall_snapshot_is_exact_union_of_vn_size_segments():
-    vn30 = set(refresh_market_history._symbols("VN30"))
-    vnmid = set(refresh_market_history._symbols("VNMID"))
-    vnsml = set(refresh_market_history._symbols("VNSML"))
-
-    assert len(vn30) == 30
-    assert len(vnmid) == 70
-    assert len(vnsml) == 215
-    assert not vn30 & vnmid
-    assert not (vn30 | vnmid) & vnsml
-    assert set(refresh_market_history._symbols("VN100")) == vn30 | vnmid
-    assert set(refresh_market_history._symbols("VNALL")) == vn30 | vnmid | vnsml
+    assert refresh_market_history._symbols("TEST", engine) == ["ACTIVE"]
 
 
 def test_us_download_plan_skips_current_symbols_and_only_fetches_stale_delta():
@@ -319,8 +322,31 @@ def test_all_refresh_runs_overlap_sources_in_reuse_order(monkeypatch):
     )
     monkeypatch.setattr(
         refresh_market_history,
-        "latest_completed_session",
-        lambda now, market: completed_vn_session,
+        "latest_completed_venue_session",
+        lambda now, schedule: completed_vn_session,
+    )
+    monkeypatch.setattr(
+        refresh_market_history,
+        "_scope_instruments",
+        lambda received_engine, universe: universe,
+    )
+    monkeypatch.setattr(
+        refresh_market_history,
+        "_refresh_targets",
+        lambda received_engine, universe: (
+            [SimpleNamespace(
+                price_adapter=(
+                    "vnstock_data" if universe.startswith("VN") else "yfinance"
+                )
+            )],
+            {1: SimpleNamespace(
+                price_adapter=(
+                    "vnstock_data" if universe.startswith("VN") else "yfinance"
+                ),
+                schedule=object(),
+                full_history_start=date(2000, 1, 1),
+            )},
+        ),
     )
     monkeypatch.setattr(
         refresh_market_history,
@@ -366,14 +392,14 @@ def test_all_refresh_runs_overlap_sources_in_reuse_order(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["refresh_market_history", "--market", "all", "--mode", "incremental"],
+        ["refresh_market_history", "--universe", "all", "--mode", "incremental"],
     )
 
     refresh_market_history.main()
 
     assert calls == [
         ("benchmark", "SPX", "incremental"),
-        ("US2000", "incremental", None),
+        ("US2000", "incremental", set()),
         ("US500", "incremental", {"RUT_ONLY", "OVERLAP"}),
         (
             "US100",

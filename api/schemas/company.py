@@ -15,12 +15,13 @@ CompanyUniverseId = Literal[
 
 
 class CompanyResponse(BaseModel):
+    instrument_id: int
     ticker: str
     company_name: str
-    market: MarketCode
+    country_code: MarketCode
     sector: str | None = None
     industry: str | None = None
-    exchange: str | None = None
+    venue_code: str | None = None
     lists: list[str]
     first_session: date | None
     last_session: date | None
@@ -30,7 +31,7 @@ class CompanyResponse(BaseModel):
 class CompanyUniverseResponse(BaseModel):
     id: CompanyUniverseId
     name: str
-    market: MarketCode
+    country_code: MarketCode
     description: str
     company_count: int
     as_of: str | None = None
@@ -55,7 +56,7 @@ class CompanyListFacetsResponse(BaseModel):
 class CompanyListResponse(BaseModel):
     id: CompanyUniverseId
     name: str
-    market: MarketCode
+    country_code: MarketCode
     description: str
     as_of: str | None = None
     fetched_at: datetime | None = None
@@ -74,10 +75,9 @@ class CompanyIdentifierResponse(BaseModel):
 class CompanyInstrumentResponse(BaseModel):
     id: int
     ticker: str
-    market: MarketCode
     instrument_type: str
     share_class: str | None = None
-    exchange: str | None = None
+    venue_code: str | None = None
     currency: str
     is_active: bool
     universes: list[str]

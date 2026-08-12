@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { Activity, BarChart2, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, Gauge, HardDriveDownload, ChartNoAxesCombined, ListPlus, ListTree } from "lucide-react"
+import { Activity, BarChart2, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -10,8 +10,21 @@ const sections = [
     links: [
       { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2, end: true },
       { to: "/factor-rarity/predefined", label: "Predefined", icon: BarChart2 },
-      { to: "/market/health", label: "Market Health", icon: Gauge },
-      { to: "/market-data", label: "Market Data", icon: HardDriveDownload },
+    ],
+  },
+  {
+    label: "Data",
+    links: [
+      { to: "/data-operations", label: "Data Operations", icon: HardDriveDownload },
+      { to: "/reference-rates", label: "Reference Rates", icon: Scale },
+      { to: "/venues", label: "Venues", icon: Landmark },
+    ],
+  },
+  {
+    label: "Collections",
+    links: [
+      { to: "/collections/universes", label: "Universes", icon: ListTree },
+      { to: "/collections/watchlists", label: "Watchlists", icon: ListChecks },
     ],
   },
   {
@@ -26,7 +39,6 @@ const sections = [
     links: [
       { to: "/companies", label: "Companies", icon: Building2 },
       { to: "/instruments", label: "Instruments", icon: ListTree },
-      { to: "/company/watchlists", label: "Watchlists", icon: ListPlus },
       { to: "/company/price-history", label: "Price History", icon: ChartNoAxesCombined },
       { to: "/fundamentals", label: "Fundamentals", icon: Database },
       { to: "/company/growth", label: "Growth Dashboard", icon: Activity },

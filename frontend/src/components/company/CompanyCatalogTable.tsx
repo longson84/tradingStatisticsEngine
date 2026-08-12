@@ -20,7 +20,7 @@ export function CompanyCatalogTable({ companies }: { companies: CompanyCatalogIt
         </thead>
         <tbody className="divide-y divide-border">
           {companies.map(company => {
-            const exchanges = unique(company.instruments.map(row => row.exchange))
+            const exchanges = unique(company.instruments.map(row => row.venue_code))
             const universes = unique(company.instruments.flatMap(row => row.universes))
             return (
               <tr key={company.id} className="align-top hover:bg-muted/30">

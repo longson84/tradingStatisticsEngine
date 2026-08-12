@@ -14,6 +14,7 @@ from api.db.models import (
     InstrumentSymbol,
     Universe,
     UniverseMembership,
+    Venue,
 )
 
 
@@ -38,14 +39,12 @@ def test_company_import_is_idempotent_and_preserves_many_to_many_membership():
     }
     with Session(engine) as session:
         apple = session.scalar(
-            select(Instrument).where(
-                Instrument.market == "US", Instrument.ticker == "AAPL"
-            )
+            select(Instrument).where(Instrument.ticker == "AAPL")
         )
         assert apple is not None
         assert apple.company.sector == "Information Technology"
         assert apple.company.industry == "Technology Hardware, Storage & Peripherals"
-        assert apple.exchange == "NASDAQ"
+        assert apple.venue is not None and apple.venue.code == "NASDAQ"
         apple_lists = set(session.scalars(
             select(Universe.code)
             .join(UniverseMembership)
@@ -54,11 +53,10 @@ def test_company_import_is_idempotent_and_preserves_many_to_many_membership():
         assert apple_lists == {"US100", "US500", "US30"}
 
         fpt = session.scalar(
-            select(Instrument).where(
-                Instrument.market == "VN", Instrument.ticker == "FPT"
-            )
+            select(Instrument).where(Instrument.ticker == "FPT")
         )
         assert fpt is not None
+        assert fpt.venue is not None and fpt.venue.code == "HOSE"
         fpt_lists = set(session.scalars(
             select(Universe.code)
             .join(UniverseMembership)
@@ -68,6 +66,9 @@ def test_company_import_is_idempotent_and_preserves_many_to_many_membership():
 
         membership_count = session.scalar(select(func.count(UniverseMembership.id)))
         assert membership_count == 3320
+        assert session.scalar(
+            select(func.count(Venue.id)).where(Venue.code.like("LEGACY:%"))
+        ) == 0
 
 
 def test_instrument_model_has_no_note_column():
@@ -93,7 +94,7 @@ def test_import_reconciles_share_classes_and_stores_symbol_namespaces():
         ) == "1652044"
 
         berkshire = session.scalar(
-            select(Instrument).where(Instrument.market == "US", Instrument.ticker == "BRK-B")
+            select(Instrument).where(Instrument.ticker == "BRK-B")
         )
         assert berkshire is not None
         symbols = set(session.execute(
@@ -110,6 +111,35 @@ def test_import_reconciles_share_classes_and_stores_symbol_namespaces():
         )
 
 
+def test_import_does_not_erase_an_enriched_venue_when_snapshot_has_no_exchange():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    import_company_universes(engine)
+
+    with Session(engine) as session, session.begin():
+        instrument = session.scalar(
+            select(Instrument)
+            .where(
+                Company.country_code == "US",
+                Instrument.venue_id.is_(None),
+            )
+            .join(Instrument.company)
+            .order_by(Instrument.id)
+        )
+        nyse = session.scalar(select(Venue).where(Venue.code == "NYSE"))
+        assert instrument is not None and nyse is not None
+        instrument_id = instrument.id
+        instrument.venue = nyse
+
+    import_company_universes(engine)
+
+    with Session(engine) as session:
+        instrument = session.get(Instrument, instrument_id)
+        assert instrument is not None
+        assert instrument.venue is not None
+        assert instrument.venue.code == "NYSE"
+
+
 def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -120,7 +150,6 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
                 country_code="US",
                 source="sec",
             ),
-            market="US",
             ticker="CNR",
             currency="USD",
             source="exchange",
@@ -128,7 +157,6 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
         instrument.symbols.extend([
             InstrumentSymbol(
                 namespace="listing",
-                market="US",
                 symbol="CEIX",
                 valid_to=date(2025, 1, 14),
                 is_primary=True,
@@ -136,7 +164,6 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
             ),
             InstrumentSymbol(
                 namespace="listing",
-                market="US",
                 symbol="CNR",
                 valid_from=date(2025, 1, 15),
                 is_primary=True,

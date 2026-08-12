@@ -1,9 +1,9 @@
-"""CRUD endpoints for user-managed single-market watchlists."""
+"""CRUD endpoints for user-managed instrument watchlists."""
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.deps import get_watchlist_service
 from api.schemas.watchlist import (
@@ -25,7 +25,7 @@ from api.watchlist_refresh_jobs import (
 )
 from api.services.watchlist_service import (
     DuplicateWatchlistError,
-    InvalidWatchlistCompanyError,
+    InvalidWatchlistInstrumentError,
     UnknownWatchlistError,
     WatchlistService,
 )
@@ -37,12 +37,11 @@ router = APIRouter(prefix="/watchlists", tags=["watchlists"])
 @router.get("", response_model=WatchlistListResponse, operation_id="listWatchlists")
 def list_watchlists(
     service: Annotated[WatchlistService, Depends(get_watchlist_service)],
-    market: Literal["US", "VN"] | None = Query(default=None),
 ) -> WatchlistListResponse:
     return WatchlistListResponse(
         watchlists=[
             WatchlistSummaryResponse(**row.__dict__)
-            for row in service.list_watchlists(market)
+            for row in service.list_watchlists()
         ]
     )
 
@@ -98,13 +97,12 @@ def create_watchlist(
     try:
         return _response(service.create_watchlist(
             name=request.name,
-            market=request.market,
             description=request.description,
-            tickers=request.tickers,
+            instrument_ids=request.instrument_ids,
         ))
     except DuplicateWatchlistError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except InvalidWatchlistCompanyError as exc:
+    except InvalidWatchlistInstrumentError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
@@ -123,13 +121,13 @@ def update_watchlist(
             watchlist_id,
             name=request.name,
             description=request.description,
-            tickers=request.tickers,
+            instrument_ids=request.instrument_ids,
         ))
     except UnknownWatchlistError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DuplicateWatchlistError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except InvalidWatchlistCompanyError as exc:
+    except InvalidWatchlistInstrumentError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
@@ -145,7 +143,17 @@ def refresh_watchlist_prices(
 ) -> WatchlistRefreshJobResponse:
     try:
         watchlist = service.get_watchlist(watchlist_id)
-        job = start_refresh_job(watchlist.id, watchlist.name, watchlist.market)
+        if watchlist.equity_refresh_adapter is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Automatic watchlist refresh currently requires a non-empty "
+                    "watchlist containing only US equities or only VN equities"
+                ),
+            )
+        job = start_refresh_job(
+            watchlist.id, watchlist.name, watchlist.equity_refresh_adapter
+        )
     except UnknownWatchlistError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -178,9 +186,13 @@ def _response(row) -> WatchlistResponse:
     return WatchlistResponse(
         id=row.id,
         name=row.name,
-        market=row.market,
         description=row.description,
         member_count=len(row.members),
+        instrument_types=list(row.instrument_types),
+        equity_count=row.equity_count,
+        crypto_spot_count=row.crypto_spot_count,
+        reference_rate_count=row.reference_rate_count,
+        price_refresh_supported=row.equity_refresh_adapter is not None,
         created_at=row.created_at,
         updated_at=row.updated_at,
         members=[WatchlistMemberResponse(**member.__dict__) for member in row.members],

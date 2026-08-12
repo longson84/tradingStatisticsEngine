@@ -2,13 +2,11 @@ import { useState, useCallback } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisResults"
-import {
-  CompanyTickerSelector,
-  type CompanyMarket,
-} from "@/components/forms/CompanyTickerSelector"
+import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { FormLabel as Label } from "@/components/forms/FormSelect"
-import { companiesApi, smaStrategyAnalysisApi } from "@/lib/api"
-import type { MaType } from "@/lib/api"
+import { instrumentsApi, smaStrategyAnalysisApi } from "@/lib/api"
+import type { AnalysisInstrument, InstrumentScope, MaType } from "@/lib/api"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 function NumberInput({
   value, onChange, min = 0, step = 1,
@@ -31,8 +29,9 @@ function NumberInput({
 }
 
 export function SmaStrategyPage() {
-  const [market, setMarket]               = useState<CompanyMarket>("US_ALL")
-  const [symbol, setSymbol]               = useState("MSFT")
+  const [scope, setScope]                 = useState<InstrumentScope>("equity")
+  const [search, setSearch]               = useState("")
+  const [instrument, setInstrument]       = useState<AnalysisInstrument | null>(null)
   const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)
@@ -42,9 +41,11 @@ export function SmaStrategyPage() {
 
   const [resultSellLag, setResultSellLag] = useState(sellLag)
 
-  const companies = useQuery({
-    queryKey: ["companies", market],
-    queryFn: () => companiesApi({ universe: market }),
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
+  const instruments = useQuery({
+    queryKey: ["sma-instruments", scope, debouncedSearch],
+    queryFn: () => instrumentsApi({ scope, search: debouncedSearch, limit: 20 }),
+    enabled: debouncedSearch.length >= 3,
   })
   const {
     mutate: runAnalysis,
@@ -56,14 +57,10 @@ export function SmaStrategyPage() {
   })
 
   const handleRun = useCallback(() => {
-    const valid = companies.data?.companies.some(
-      item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
-    )
-    if (!valid) return
+    if (!instrument) return
     setResultSellLag(sellLag)
     runAnalysis({
-      market: market === "US_ALL" ? "US" : "VN",
-      ticker: symbol.toUpperCase().trim(),
+      instrument_id: instrument.id,
       ma_type: maType,
       ma_length: maLength,
       buy_lag: buyLag,
@@ -71,23 +68,27 @@ export function SmaStrategyPage() {
       initial_capital: initialCapital,
       start: fromDate.trim() || undefined,
     })
-  }, [companies.data, market, symbol, maLength, buyLag, sellLag, initialCapital, fromDate, runAnalysis])
-
-  const selectedCompany = companies.data?.companies.some(
-    item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
-  ) ?? false
+  }, [instrument, maLength, buyLag, sellLag, initialCapital, fromDate, runAnalysis])
 
   const controls = (
     <div className="space-y-4">
-      <CompanyTickerSelector
-        market={market}
-        ticker={symbol}
-        companies={companies.data?.companies ?? []}
-        total={companies.data?.total}
-        isPending={companies.isPending}
-        id="sma-strategy-symbols"
-        onMarketChange={setMarket}
-        onTickerChange={setSymbol}
+      <AnalysisInstrumentSelector
+        scope={scope}
+        search={search}
+        instruments={instruments.data?.instruments ?? []}
+        selectedInstrument={instrument}
+        total={instruments.data?.total}
+        isPending={instruments.isFetching}
+        onScopeChange={value => {
+          setScope(value)
+          setSearch("")
+          setInstrument(null)
+        }}
+        onSearchChange={value => {
+          setSearch(value)
+          setInstrument(null)
+        }}
+        onInstrumentChange={setInstrument}
         onSubmit={handleRun}
       />
 
@@ -134,7 +135,7 @@ export function SmaStrategyPage() {
 
       <button
         onClick={handleRun}
-        disabled={isFetching || !selectedCompany}
+        disabled={isFetching || !instrument}
         className="w-full py-2 rounded bg-destructive hover:bg-destructive/90 disabled:opacity-40 disabled:cursor-not-allowed text-destructive-foreground text-sm font-semibold transition-colors"
       >
         {isFetching ? "Running…" : "Run Analysis"}

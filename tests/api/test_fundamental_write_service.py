@@ -38,22 +38,23 @@ def _frame(period: str, effective_date: str, eps: float) -> pd.DataFrame:
     })
 
 
-def _seed_instrument(session: Session) -> None:
-    session.add(Instrument(
+def _seed_instrument(session: Session) -> int:
+    instrument = Instrument(
         company=Company(display_name="Apple", country_code="US", source="test"),
-        market="US",
         ticker="AAPL",
         currency="USD",
         source="test",
-    ))
+    )
+    session.add(instrument)
     session.commit()
+    return instrument.id
 
 
 def test_writer_upserts_existing_snapshot_and_preserves_older_history():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        _seed_instrument(session)
+        instrument_id = _seed_instrument(session)
 
     first_fetch = datetime(2026, 8, 1, tzinfo=UTC)
     second_fetch = datetime(2026, 8, 3, tzinfo=UTC)
@@ -62,8 +63,7 @@ def test_writer_upserts_existing_snapshot_and_preserves_older_history():
             SqlAlchemyFundamentalRepository(session)
         )
         result = service.store_provider_frame(
-            market="US",
-            ticker="AAPL",
+            instrument_id=instrument_id,
             source="yfinance",
             methodology="test method",
             fetched_at=first_fetch,
@@ -78,8 +78,7 @@ def test_writer_upserts_existing_snapshot_and_preserves_older_history():
             SqlAlchemyFundamentalRepository(session)
         )
         service.store_provider_frame(
-            market="US",
-            ticker="AAPL",
+            instrument_id=instrument_id,
             source="yfinance",
             methodology="test method",
             fetched_at=second_fetch,
@@ -91,7 +90,7 @@ def test_writer_upserts_existing_snapshot_and_preserves_older_history():
 
     with Session(engine) as session:
         repository = SqlAlchemyFundamentalRepository(session)
-        latest = repository.get_latest_fetched_at("US", "AAPL")
+        latest = repository.get_latest_fetched_at(instrument_id)
         assert latest is not None
         assert latest.replace(tzinfo=UTC) == second_fetch
         assert session.scalar(select(func.count(FundamentalReport.id))) == 2
@@ -114,15 +113,14 @@ def test_writer_rejects_empty_provider_result():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        _seed_instrument(session)
+        instrument_id = _seed_instrument(session)
         service = FundamentalWriteService(
             SqlAlchemyFundamentalRepository(session)
         )
 
         with pytest.raises(FundamentalWriteError, match="No fundamentals"):
             service.store_provider_frame(
-                market="US",
-                ticker="AAPL",
+                instrument_id=instrument_id,
                 source="yfinance",
                 methodology="test method",
                 fetched_at=datetime(2026, 8, 3, tzinfo=UTC),

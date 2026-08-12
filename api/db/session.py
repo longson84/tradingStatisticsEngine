@@ -12,7 +12,7 @@ from api.config import load_env_file
 
 
 DEFAULT_DATABASE_URL = (
-    "postgresql+psycopg://trading:trading@localhost:5434/trading_statistics"
+    "postgresql+psycopg://trading:trading@127.0.0.1:5436/trading_statistics"
 )
 
 

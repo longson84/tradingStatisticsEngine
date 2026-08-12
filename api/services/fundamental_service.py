@@ -88,7 +88,7 @@ class FundamentalHistoryMetadata:
 
 @dataclass(frozen=True)
 class FundamentalHistory:
-    market: str
+    instrument_id: int
     ticker: str
     snapshots: pd.DataFrame
     metadata: FundamentalHistoryMetadata
@@ -98,23 +98,14 @@ class FundamentalService:
     def __init__(self, repository: FundamentalRepository):
         self._repository = repository
 
-    def get_symbol_history(self, market: str, ticker: str) -> FundamentalHistory:
-        normalized_market = market.upper().strip()
-        normalized_ticker = ticker.upper().strip()
-        if normalized_market not in {"US", "VN"} or not normalized_ticker:
-            raise FundamentalsNotFoundError("A valid market and ticker are required")
-        if not self._repository.instrument_exists(
-            normalized_market, normalized_ticker
-        ):
-            raise FundamentalsNotFoundError(
-                f"Unknown instrument: {normalized_market}-{normalized_ticker}"
-            )
-        reports = self._repository.list_reports(
-            normalized_market, normalized_ticker
-        )
+    def get_instrument_history(self, instrument_id: int) -> FundamentalHistory:
+        instrument = self._repository.get_instrument(instrument_id)
+        if instrument is None:
+            raise FundamentalsNotFoundError(f"Unknown instrument: {instrument_id}")
+        reports = self._repository.list_reports(instrument_id)
         if not reports:
             raise FundamentalsNotFoundError(
-                f"No stored fundamentals for {normalized_market}-{normalized_ticker}"
+                f"No stored fundamentals for instrument {instrument_id}"
             )
         rows: dict[date, dict[str, object]] = {}
         report_dates: dict[int, date] = {}
@@ -132,9 +123,7 @@ class FundamentalService:
             column = _FACT_COLUMNS.get(fact.metric_code)
             if column:
                 rows[report_dates[fact.report_id]][column] = float(fact.value)
-        valuations = self._repository.list_valuations(
-            normalized_market, normalized_ticker
-        )
+        valuations = self._repository.list_valuations(instrument_id)
         for valuation in valuations:
             column = _VALUATION_COLUMNS.get(valuation.metric_code)
             if not column:
@@ -161,8 +150,8 @@ class FundamentalService:
             column for column in VALUE_COLUMNS if snapshots[column].notna().any()
         )
         return FundamentalHistory(
-            market=normalized_market,
-            ticker=normalized_ticker,
+            instrument_id=instrument_id,
+            ticker=instrument.ticker,
             snapshots=snapshots,
             metadata=FundamentalHistoryMetadata(
                 sources=tuple(sorted(sources)),

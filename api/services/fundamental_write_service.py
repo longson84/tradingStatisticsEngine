@@ -33,22 +33,20 @@ class FundamentalWriteService:
     def store_provider_frame(
         self,
         *,
-        market: str,
-        ticker: str,
+        instrument_id: int,
         source: str,
         methodology: str,
         fetched_at: datetime,
         frame: pd.DataFrame,
     ) -> FundamentalWriteResult:
-        normalized_market = market.upper().strip()
-        normalized_ticker = ticker.upper().strip()
-        if normalized_market not in {"US", "VN"} or not normalized_ticker:
-            raise FundamentalWriteError("A valid market and ticker are required")
+        instrument = self._repository.get_instrument(instrument_id)
+        if instrument is None:
+            raise FundamentalWriteError(f"Unknown instrument: {instrument_id}")
         if frame.empty:
             raise FundamentalWriteError(
-                f"No fundamentals returned for {normalized_market}-{normalized_ticker}"
+                f"No fundamentals returned for instrument {instrument_id} ({instrument.ticker})"
             )
-        currency = "VND" if normalized_market == "VN" else "USD"
+        currency = instrument.currency
         reports: list[FundamentalReportWriteRecord] = []
         for _, row in frame.sort_values("effective_date").iterrows():
             effective = _required_date(row.get("effective_date"), "effective_date")
@@ -98,8 +96,8 @@ class FundamentalWriteService:
                 valuations=valuations,
             ))
         return self._repository.upsert_fundamentals(FundamentalWriteBatch(
-            market=normalized_market,
-            ticker=normalized_ticker,
+            instrument_id=instrument_id,
+            reporting_currency=currency,
             source=source,
             methodology=methodology,
             fetched_at=fetched_at,

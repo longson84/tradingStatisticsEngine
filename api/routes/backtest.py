@@ -14,12 +14,12 @@ from api.deps import (
     build_portfolio,
     build_strategy,
     fetch_prices,
-    get_company_price_service,
+    get_instrument_analysis_service,
 )
-from api.services.company_price_service import (
-    CompanyPriceService,
-    CompanyPriceUnavailableError,
-    UnknownCompanyError,
+from api.services.instrument_analysis_service import (
+    InstrumentAnalysisService,
+    InstrumentPriceUnavailableError,
+    UnknownInstrumentError,
 )
 from api.schemas.backtest import (
     AnalyzeRequest,
@@ -94,18 +94,18 @@ def run_backtest(req: BacktestRequest) -> PortfolioResultResponse:
 def analyze_single_ticker(
     req: AnalyzeRequest,
     price_service: Annotated[
-        CompanyPriceService, Depends(get_company_price_service)
+        InstrumentAnalysisService, Depends(get_instrument_analysis_service)
     ],
 ) -> SingleTickerAnalysisResponse:
     """Full analytics for a single-ticker strategy: performance, trades, heatmaps, health."""
-    symbol = req.ticker.upper().strip()
     try:
-        stored = price_service.get_current_history(req.market, symbol)
-    except UnknownCompanyError as exc:
+        stored = price_service.get_current_history(req.instrument_id)
+    except UnknownInstrumentError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except CompanyPriceUnavailableError as exc:
+    except InstrumentPriceUnavailableError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    symbol = stored.instrument.symbol
     frame = stored.prices.data
     if req.start is not None:
         frame = frame.loc[frame.index.date >= req.start]
@@ -137,7 +137,8 @@ def analyze_single_ticker(
 
     return SingleTickerAnalysisResponse(
         **asdict(analysis),
-        market=stored.market,
+        instrument_id=stored.instrument.id,
+        venue_code=stored.instrument.venue_code,
         expected_last_session=stored.expected_last_session,
         data_last_session=stored.data_last_session,
         refreshed=stored.refreshed,

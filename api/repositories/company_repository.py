@@ -8,12 +8,13 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class CompanyRecord:
+    instrument_id: int
     ticker: str
     company_name: str
-    market: str
+    country_code: str
     sector: str | None
     industry: str | None
-    exchange: str | None
+    venue_code: str | None
     lists: tuple[str, ...]
     first_session: date | None
     last_session: date | None
@@ -24,7 +25,7 @@ class CompanyRecord:
 class UniverseRecord:
     code: str
     name: str
-    market: str
+    country_code: str
     description: str
     as_of: str | None
     fetched_at: datetime | None
@@ -33,13 +34,13 @@ class UniverseRecord:
 
 @dataclass(frozen=True)
 class CompanyQuery:
-    market: str
+    country_code: str
     price_basis: str
     universe: str | None = None
     search: str | None = None
     sector: str | None = None
     industry: str | None = None
-    exchange: str | None = None
+    venue_code: str | None = None
     offset: int = 0
     limit: int = 5000
 

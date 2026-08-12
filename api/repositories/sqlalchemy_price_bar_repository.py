@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date
 
-import pandas as pd
 from sqlalchemy import case, delete, func, insert, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -15,20 +14,16 @@ from api.db.models import (
     PriceBar,
     PriceBarCoverage,
     PriceRefreshState,
-    Universe,
-    UniverseMembership,
     Venue,
 )
 from api.repositories.price_bar_repository import (
-    PriceBarCoverageRecord,
-    PriceBarQuery,
     PriceBarRecord,
+    PriceInstrumentRecord,
     PriceRefreshStateRecord,
     PriceRefreshStateWriteRecord,
-    SymbolPriceBarQuery,
-    SymbolSetPriceBarQuery,
+    InstrumentPriceBarQuery,
+    InstrumentSetPriceBarQuery,
     SymbolPriceCoverageRecord,
-    PriceBarStatusRecord,
     PriceBarWriteRecord,
 )
 
@@ -40,104 +35,81 @@ class SqlAlchemyPriceBarRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def get_universe_market(self, universe: str) -> str | None:
-        return self._session.scalar(
-            select(Universe.market).where(Universe.code == universe)
-        )
-
-    def instrument_exists(self, market: str, ticker: str) -> bool:
-        return self._session.scalar(
-            select(Instrument.id).where(
-                Instrument.market == market,
-                Instrument.ticker == ticker,
-                Instrument.is_active.is_(True),
-            )
-        ) is not None
-
-    def get_symbol_coverage(
-        self, market: str, ticker: str, price_basis: str
-    ) -> SymbolPriceCoverageRecord | None:
+    def get_instrument(self, instrument_id: int) -> PriceInstrumentRecord | None:
         row = self._session.execute(
-            select(Instrument.ticker, Instrument.market, PriceBarCoverage)
-            .join(
-                PriceBarCoverage,
-                PriceBarCoverage.instrument_id == Instrument.id,
+            select(
+                Instrument.id,
+                Instrument.ticker,
+                Instrument.currency,
+                Instrument.instrument_type,
+                Venue.code.label("venue_code"),
             )
-            .where(
-                Instrument.market == market,
-                Instrument.ticker == ticker,
-                Instrument.is_active.is_(True),
-                PriceBarCoverage.price_basis == price_basis,
-            )
+            .outerjoin(Venue, Venue.id == Instrument.venue_id)
+            .where(Instrument.id == instrument_id, Instrument.is_active.is_(True))
         ).one_or_none()
         if row is None:
             return None
-        stored_ticker, stored_market, coverage = row
-        return SymbolPriceCoverageRecord(
-            ticker=stored_ticker,
-            market=stored_market,
-            first_date=coverage.first_date,
-            last_date=coverage.last_date,
-            row_count=int(coverage.row_count),
-            source=coverage.source,
-            fetched_at=coverage.fetched_at,
+        return PriceInstrumentRecord(
+            instrument_id=row.id,
+            ticker=row.ticker,
+            currency=row.currency,
+            instrument_type=row.instrument_type,
+            venue_code=row.venue_code,
         )
 
-    def list_symbol_coverages(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def get_instrument_coverage(
+        self, instrument_id: int, price_basis: str
+    ) -> SymbolPriceCoverageRecord | None:
+        rows = self.list_instrument_coverages((instrument_id,), price_basis)
+        return rows[0] if rows else None
+
+    def list_instrument_coverages(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[SymbolPriceCoverageRecord, ...]:
-        if not tickers:
+        if not instrument_ids:
             return ()
         rows = self._session.execute(
-            select(Instrument.ticker, Instrument.market, PriceBarCoverage)
-            .join(
-                PriceBarCoverage,
-                PriceBarCoverage.instrument_id == Instrument.id,
-            )
+            select(Instrument.id, Instrument.ticker, PriceBarCoverage)
+            .join(PriceBarCoverage, PriceBarCoverage.instrument_id == Instrument.id)
             .where(
-                Instrument.market == market,
-                Instrument.ticker.in_(tickers),
+                Instrument.id.in_(instrument_ids),
                 Instrument.is_active.is_(True),
                 PriceBarCoverage.price_basis == price_basis,
             )
-            .order_by(Instrument.ticker)
+            .order_by(Instrument.id)
         )
         return tuple(
             SymbolPriceCoverageRecord(
+                instrument_id=instrument_id,
                 ticker=ticker,
-                market=stored_market,
                 first_date=coverage.first_date,
                 last_date=coverage.last_date,
                 row_count=int(coverage.row_count),
                 source=coverage.source,
                 fetched_at=coverage.fetched_at,
             )
-            for ticker, stored_market, coverage in rows
+            for instrument_id, ticker, coverage in rows
         )
 
-    def list_refresh_states(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def list_instrument_refresh_states(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[PriceRefreshStateRecord, ...]:
-        if not tickers:
+        if not instrument_ids:
             return ()
         rows = self._session.execute(
-            select(Instrument.ticker, Instrument.market, PriceRefreshState)
-            .join(
-                PriceRefreshState,
-                PriceRefreshState.instrument_id == Instrument.id,
-            )
+            select(Instrument.id, Instrument.ticker, PriceRefreshState)
+            .join(PriceRefreshState, PriceRefreshState.instrument_id == Instrument.id)
             .where(
-                Instrument.market == market,
-                Instrument.ticker.in_(tickers),
+                Instrument.id.in_(instrument_ids),
                 Instrument.is_active.is_(True),
                 PriceRefreshState.price_basis == price_basis,
             )
-            .order_by(Instrument.ticker)
+            .order_by(Instrument.id)
         )
         return tuple(
             PriceRefreshStateRecord(
+                instrument_id=instrument_id,
                 ticker=ticker,
-                market=stored_market,
                 price_basis=state.price_basis,
                 attempted_through=state.attempted_through,
                 returned_through=state.returned_through,
@@ -147,279 +119,24 @@ class SqlAlchemyPriceBarRepository:
                 detail=state.detail,
                 attempted_at=state.attempted_at,
             )
-            for ticker, stored_market, state in rows
+            for instrument_id, ticker, state in rows
         )
-
-    def get_latest_date(self, universe: str, price_basis: str) -> date | None:
-        return self._session.scalar(
-            select(func.max(PriceBarCoverage.last_date))
-            .select_from(PriceBarCoverage)
-            .join(Instrument, Instrument.id == PriceBarCoverage.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(
-                Universe.code == universe,
-                PriceBarCoverage.price_basis == price_basis,
-            )
-        )
-
-    def load_close_matrix(self, query: PriceBarQuery) -> pd.DataFrame:
-        filters = [
-            Universe.code == query.universe,
-            PriceBar.price_basis == query.price_basis,
-        ]
-        if query.start:
-            filters.append(PriceBar.trading_date >= query.start)
-        if query.end:
-            filters.append(PriceBar.trading_date <= query.end)
-
-        members = dict(self._session.execute(
-            select(Instrument.id, Instrument.ticker)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(Universe.code == query.universe)
-        ).all())
-        statement = (
-            select(
-                PriceBar.instrument_id,
-                PriceBar.trading_date.label("date"),
-                PriceBar.close,
-            )
-            .join(Instrument, Instrument.id == PriceBar.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*filters)
-            .order_by(PriceBar.instrument_id, PriceBar.trading_date)
-        )
-        rows = pd.read_sql_query(statement, self._session.connection())
-        if rows.empty:
-            return pd.DataFrame()
-        rows["date"] = pd.to_datetime(rows["date"])
-        matrix = rows.pivot(
-            index="date", columns="instrument_id", values="close"
-        )
-        matrix = matrix.rename(columns=members).sort_index()
-        matrix.columns.name = None
-        return matrix.astype(float)
-
-    def list_coverage(
-        self, universe: str, price_basis: str
-    ) -> tuple[PriceBarCoverageRecord, ...]:
-        rows = self._session.execute(
-            select(
-                Instrument.ticker,
-                PriceBarCoverage.first_date,
-                PriceBarCoverage.last_date,
-            )
-            .select_from(PriceBarCoverage)
-            .join(Instrument, Instrument.id == PriceBarCoverage.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(
-                Universe.code == universe,
-                PriceBarCoverage.price_basis == price_basis,
-            )
-            .order_by(Instrument.ticker)
-        )
-        return tuple(
-            PriceBarCoverageRecord(
-                ticker=ticker,
-                first_date=first_date,
-                last_date=last_date,
-            )
-            for ticker, first_date, last_date in rows
-        )
-
-    def get_status(
-        self, universe: str, price_basis: str, expected_session: date
-    ) -> PriceBarStatusRecord | None:
-        summary = self._session.execute(
-            select(
-                Universe.market,
-                func.max(PriceBarCoverage.fetched_at),
-                func.min(PriceBarCoverage.first_date),
-                func.max(PriceBarCoverage.last_date),
-                func.count(func.distinct(Instrument.id)),
-                func.sum(PriceBarCoverage.row_count),
-            )
-            .select_from(PriceBarCoverage)
-            .join(Instrument, Instrument.id == PriceBarCoverage.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(
-                Universe.code == universe,
-                PriceBarCoverage.price_basis == price_basis,
-            )
-            .group_by(Universe.market)
-        ).one_or_none()
-        if summary is None:
-            return None
-        coverages = self.list_coverage(universe, price_basis)
-        all_member_tickers = tuple(self._session.scalars(
-            select(Instrument.ticker)
-            .select_from(UniverseMembership)
-            .join(Instrument, Instrument.id == UniverseMembership.instrument_id)
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(Universe.code == universe)
-            .order_by(Instrument.ticker)
-        ))
-        universe_symbol_count = len(all_member_tickers)
-        current_tickers = {
-            row.ticker for row in coverages if row.last_date >= expected_session
-        }
-        refresh_states = self.list_refresh_states(
-            summary[0], all_member_tickers, price_basis
-        )
-        checked_no_new_tickers = {
-            row.ticker
-            for row in refresh_states
-            if row.ticker not in current_tickers
-            and row.attempted_through >= expected_session
-            and row.outcome == "checked_no_new_bar"
-        }
-        failed_refresh_symbol_count = sum(
-            row.attempted_through >= expected_session and row.outcome == "failed"
-            for row in refresh_states
-        )
-        current_symbol_count = len(current_tickers)
-        stale_symbol_count = max(
-            0,
-            len(coverages) - current_symbol_count - len(checked_no_new_tickers),
-        )
-        missing_symbol_count = max(0, universe_symbol_count - len(coverages))
-        sources = tuple(self._session.scalars(
-            select(PriceBarCoverage.source)
-            .select_from(PriceBarCoverage)
-            .join(Instrument, Instrument.id == PriceBarCoverage.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(
-                Universe.code == universe,
-                PriceBarCoverage.price_basis == price_basis,
-            )
-            .distinct()
-            .order_by(PriceBarCoverage.source)
-        ))
-        return PriceBarStatusRecord(
-            universe=universe,
-            market=summary[0],
-            fetched_at=summary[1],
-            first_date=summary[2],
-            last_date=summary[3],
-            symbol_count=int(summary[4]),
-            row_count=int(summary[5]),
-            sources=sources,
-            price_basis=price_basis,
-            expected_session=expected_session,
-            coverage_through=min(row.last_date for row in coverages),
-            universe_symbol_count=universe_symbol_count,
-            current_symbol_count=current_symbol_count,
-            stale_symbol_count=stale_symbol_count,
-            missing_symbol_count=missing_symbol_count,
-            checked_no_new_bar_count=len(checked_no_new_tickers),
-            failed_refresh_symbol_count=failed_refresh_symbol_count,
-        )
-
-    def list_market_universes(self, market: str) -> tuple[str, ...]:
-        return tuple(self._session.scalars(
-            select(Universe.code)
-            .where(Universe.market == market)
-            .order_by(Universe.code)
-        ))
-
-    def delete_market_bars(self, market: str) -> int:
-        instrument_ids = select(Instrument.id).where(Instrument.market == market)
-        self._session.execute(
-            delete(PriceBarCoverage).where(
-                PriceBarCoverage.instrument_id.in_(instrument_ids)
-            )
-        )
-        result = self._session.execute(
-            delete(PriceBar).where(PriceBar.instrument_id.in_(instrument_ids))
-        )
-        return max(0, int(result.rowcount or 0))
 
     def upsert_bars(self, records: Iterable[PriceBarWriteRecord]) -> int:
         values = tuple(records)
         if not values:
             return 0
-        instrument_keys = {
-            (record.market, record.ticker, record.venue_code) for record in values
-        }
-        markets = {market for market, _, _ in instrument_keys}
-        tickers = {ticker for _, ticker, _ in instrument_keys}
-        instrument_ids: dict[tuple[str, str, str | None], int] = {}
-        unscoped = {key for key in instrument_keys if key[2] is None}
-        if unscoped:
-            matches: dict[tuple[str, str], list[int]] = {}
-            for market, ticker, instrument_id in self._session.execute(
-                select(Instrument.market, Instrument.ticker, Instrument.id).where(
-                    Instrument.market.in_(markets),
-                    Instrument.ticker.in_(tickers),
-                )
-            ):
-                matches.setdefault((market, ticker), []).append(instrument_id)
-            ambiguous = sorted(
-                key for key, ids in matches.items()
-                if len(ids) > 1 and (key[0], key[1], None) in unscoped
-            )
-            if ambiguous:
-                raise ValueError(
-                    "Price bars require a venue for ambiguous instruments: "
-                    f"{ambiguous}"
-                )
-            instrument_ids.update({
-                (market, ticker, None): ids[0]
-                for (market, ticker), ids in matches.items()
-                if len(ids) == 1
-            })
-        scoped = {key for key in instrument_keys if key[2] is not None}
-        if scoped:
-            venue_codes = {venue for _, _, venue in scoped if venue is not None}
-            instrument_ids.update({
-                (market, ticker, venue_code): instrument_id
-                for market, ticker, venue_code, instrument_id in self._session.execute(
-                    select(
-                        Instrument.market,
-                        Instrument.ticker,
-                        Venue.code,
-                        Instrument.id,
-                    )
-                    .join(Venue, Venue.id == Instrument.venue_id)
-                    .where(
-                        Instrument.market.in_(markets),
-                        Instrument.ticker.in_(tickers),
-                        Venue.code.in_(venue_codes),
-                    )
-                )
-            })
-        missing = sorted(instrument_keys - set(instrument_ids))
+        instrument_ids = {record.instrument_id for record in values}
+        existing_ids = set(self._session.scalars(
+            select(Instrument.id).where(Instrument.id.in_(instrument_ids))
+        ))
+        missing = sorted(instrument_ids - existing_ids)
         if missing:
             raise ValueError(f"Price bars reference unknown instruments: {missing}")
 
         rows = [
             {
-                "instrument_id": instrument_ids[
-                    (record.market, record.ticker, record.venue_code)
-                ],
+                "instrument_id": record.instrument_id,
                 "trading_date": record.trading_date,
                 "open": record.open,
                 "high": record.high,
@@ -474,7 +191,7 @@ class SqlAlchemyPriceBarRepository:
                 if result.rowcount is None or result.rowcount < 0
                 else int(result.rowcount)
             )
-        self._rebuild_coverage(set(instrument_ids.values()))
+        self._rebuild_coverage(instrument_ids)
         return affected
 
     def upsert_refresh_states(
@@ -483,24 +200,16 @@ class SqlAlchemyPriceBarRepository:
         values = tuple(records)
         if not values:
             return 0
-        instrument_keys = {(record.market, record.ticker) for record in values}
-        markets = {market for market, _ in instrument_keys}
-        tickers = {ticker for _, ticker in instrument_keys}
-        instrument_ids = {
-            (market, ticker): instrument_id
-            for market, ticker, instrument_id in self._session.execute(
-                select(Instrument.market, Instrument.ticker, Instrument.id).where(
-                    Instrument.market.in_(markets),
-                    Instrument.ticker.in_(tickers),
-                )
-            )
-        }
-        missing = sorted(instrument_keys - set(instrument_ids))
+        instrument_ids = {record.instrument_id for record in values}
+        existing_ids = set(self._session.scalars(
+            select(Instrument.id).where(Instrument.id.in_(instrument_ids))
+        ))
+        missing = sorted(instrument_ids - existing_ids)
         if missing:
             raise ValueError(f"Refresh states reference unknown instruments: {missing}")
         rows = [
             {
-                "instrument_id": instrument_ids[(record.market, record.ticker)],
+                "instrument_id": record.instrument_id,
                 "price_basis": record.price_basis,
                 "attempted_through": record.attempted_through,
                 "returned_through": record.returned_through,
@@ -581,67 +290,11 @@ class SqlAlchemyPriceBarRepository:
             insert(PriceBarCoverage).from_select(columns, aggregate)
         )
 
-    def iter_bars(self, query: PriceBarQuery) -> Iterable[PriceBarRecord]:
-        filters = [
-            Universe.code == query.universe,
-            PriceBar.price_basis == query.price_basis,
-        ]
-        if query.ticker:
-            filters.append(Instrument.ticker == query.ticker)
-        if query.start:
-            filters.append(PriceBar.trading_date >= query.start)
-        if query.end:
-            filters.append(PriceBar.trading_date <= query.end)
-
-        statement = (
-            select(
-                Instrument.ticker,
-                Instrument.market,
-                PriceBar.trading_date,
-                PriceBar.open,
-                PriceBar.high,
-                PriceBar.low,
-                PriceBar.close,
-                PriceBar.volume,
-                PriceBar.currency,
-                PriceBar.price_scale,
-                PriceBar.price_basis,
-                PriceBar.source,
-                PriceBar.fetched_at,
-            )
-            .join(PriceBar, PriceBar.instrument_id == Instrument.id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*filters)
-            .order_by(Instrument.ticker, PriceBar.trading_date)
-            .execution_options(yield_per=5_000)
-        )
-        for row in self._session.execute(statement):
-            yield PriceBarRecord(
-                ticker=row.ticker,
-                market=row.market,
-                trading_date=row.trading_date,
-                open=float(row.open),
-                high=float(row.high),
-                low=float(row.low),
-                close=float(row.close),
-                volume=float(row.volume) if row.volume is not None else None,
-                currency=row.currency,
-                price_scale=row.price_scale,
-                price_basis=row.price_basis,
-                source=row.source,
-                fetched_at=row.fetched_at,
-            )
-
-    def iter_symbol_bars(
-        self, query: SymbolPriceBarQuery
+    def iter_instrument_bars(
+        self, query: InstrumentPriceBarQuery
     ) -> Iterable[PriceBarRecord]:
         filters = [
-            Instrument.market == query.market,
-            Instrument.ticker == query.ticker,
+            Instrument.id == query.instrument_id,
             Instrument.is_active.is_(True),
             PriceBar.price_basis == query.price_basis,
         ]
@@ -652,7 +305,6 @@ class SqlAlchemyPriceBarRepository:
         statement = (
             select(
                 Instrument.ticker,
-                Instrument.market,
                 PriceBar.trading_date,
                 PriceBar.open,
                 PriceBar.high,
@@ -673,7 +325,6 @@ class SqlAlchemyPriceBarRepository:
         for row in self._session.execute(statement):
             yield PriceBarRecord(
                 ticker=row.ticker,
-                market=row.market,
                 trading_date=row.trading_date,
                 open=float(row.open),
                 high=float(row.high),
@@ -687,14 +338,13 @@ class SqlAlchemyPriceBarRepository:
                 fetched_at=row.fetched_at,
             )
 
-    def iter_symbol_set_bars(
-        self, query: SymbolSetPriceBarQuery
+    def iter_instrument_set_bars(
+        self, query: InstrumentSetPriceBarQuery
     ) -> Iterable[PriceBarRecord]:
-        if not query.tickers:
+        if not query.instrument_ids:
             return
         filters = [
-            Instrument.market == query.market,
-            Instrument.ticker.in_(query.tickers),
+            Instrument.id.in_(query.instrument_ids),
             Instrument.is_active.is_(True),
             PriceBar.price_basis == query.price_basis,
         ]
@@ -705,7 +355,6 @@ class SqlAlchemyPriceBarRepository:
         statement = (
             select(
                 Instrument.ticker,
-                Instrument.market,
                 PriceBar.trading_date,
                 PriceBar.open,
                 PriceBar.high,
@@ -720,13 +369,12 @@ class SqlAlchemyPriceBarRepository:
             )
             .join(PriceBar, PriceBar.instrument_id == Instrument.id)
             .where(*filters)
-            .order_by(Instrument.ticker, PriceBar.trading_date)
+            .order_by(Instrument.id, PriceBar.trading_date)
             .execution_options(yield_per=5_000)
         )
         for row in self._session.execute(statement):
             yield PriceBarRecord(
                 ticker=row.ticker,
-                market=row.market,
                 trading_date=row.trading_date,
                 open=float(row.open),
                 high=float(row.high),

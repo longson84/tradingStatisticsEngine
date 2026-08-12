@@ -9,19 +9,19 @@ from sqlalchemy.orm import Session
 
 from api.config import env_float
 from api.db.session import create_db_engine
-from api.market_sessions import latest_completed_session
+from api.instrument_data_routing import resolve_instrument_data_route
+from api.market_sessions import latest_completed_venue_session
 from api.providers.vietnam_market import (
     create_vietnam_market_provider,
     provider_runtime_label,
 )
 from api.providers.vietnam_price_loader import VietnamPriceLoader
 from api.repositories.sqlalchemy_price_bar_repository import SqlAlchemyPriceBarRepository
-from api.repositories.sqlalchemy_watchlist_repository import SqlAlchemyWatchlistRepository
-from api.services.company_price_service import (
-    CompanyPriceService,
-    FULL_HISTORY_START,
+from api.repositories.sqlalchemy_instrument_routing_repository import (
+    SqlAlchemyInstrumentRoutingRepository,
 )
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
+from api.repositories.sqlalchemy_watchlist_repository import SqlAlchemyWatchlistRepository
+from api.services.company_price_service import CompanyPriceService
 from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
 from api.services.watchlist_service import WatchlistService
 from trading_engine.data.yfinance_loader import YFinanceLoader
@@ -31,9 +31,11 @@ from trading_engine.types import DataLoadError, DataLoader, PriceFrame
 DEFAULT_VN_REQUESTS_PER_MINUTE = 30.0
 
 
-def _loader_config(market: str) -> tuple[DataLoader, str, float]:
-    if market == "US":
+def _loader_config(price_adapter: str) -> tuple[DataLoader, str, float]:
+    if price_adapter == "yfinance":
         return YFinanceLoader(), "yfinance", 0.0
+    if price_adapter != "vnstock_data":
+        raise ValueError(f"Unsupported equity price adapter: {price_adapter}")
     provider = create_vietnam_market_provider(require_sponsored=True)
     requests_per_minute = env_float(
         "VNSTOCK_REQUESTS_PER_MINUTE", DEFAULT_VN_REQUESTS_PER_MINUTE
@@ -53,50 +55,78 @@ def refresh_watchlist(watchlist_id: int) -> None:
         watchlist = WatchlistService(
             SqlAlchemyWatchlistRepository(session)
         ).get_watchlist(watchlist_id)
-        tickers = tuple(member.ticker for member in watchlist.members)
+        routing_metadata = SqlAlchemyInstrumentRoutingRepository(
+            session
+        ).get_instrument_routes_metadata(
+            tuple(member.instrument_id for member in watchlist.members)
+        )
+        routes = {
+            row.instrument_id: resolve_instrument_data_route(row)
+            for row in routing_metadata
+        }
+        route_adapters = {
+            route.price_adapter for route in routes.values()
+            if route.fundamental_adapter is not None
+        }
+        if (
+            len(routes) != len(watchlist.members)
+            or len(route_adapters) != 1
+            or any(route.fundamental_adapter is None for route in routes.values())
+        ):
+            raise RuntimeError(
+                "Automatic refresh requires a non-empty watchlist containing "
+                "equities served by one configured data adapter"
+            )
+        price_adapter = next(iter(route_adapters))
+        members = tuple(watchlist.members)
+        instrument_ids = tuple(member.instrument_id for member in members)
+        members_by_id = {member.instrument_id: member for member in members}
         coverages = {
-            row.ticker: row
-            for row in SqlAlchemyPriceBarRepository(session).list_symbol_coverages(
-                watchlist.market,
-                tickers,
-                DEFAULT_PRICE_BASIS[watchlist.market],
+            row.instrument_id: row
+            for row in SqlAlchemyPriceBarRepository(session).list_instrument_coverages(
+                instrument_ids,
+                next(iter(routes.values())).price_basis,
             )
         }
         refresh_states = {
-            row.ticker: row
-            for row in SqlAlchemyPriceBarRepository(session).list_refresh_states(
-                watchlist.market,
-                tickers,
-                DEFAULT_PRICE_BASIS[watchlist.market],
+            row.instrument_id: row
+            for row in SqlAlchemyPriceBarRepository(session).list_instrument_refresh_states(
+                instrument_ids,
+                next(iter(routes.values())).price_basis,
             )
         }
-    if not tickers:
+    if not members:
         raise RuntimeError("Watchlist has no companies")
 
     now = datetime.now(UTC)
-    expected = latest_completed_session(now, watchlist.market)
+    expected = latest_completed_venue_session(
+        now, next(iter(routes.values())).schedule
+    )
     requested = {
-        ticker: (
-            max(FULL_HISTORY_START, coverages[ticker].last_date - timedelta(days=7))
-            if ticker in coverages
-            else FULL_HISTORY_START
+        member.instrument_id: (
+            max(
+                routes[member.instrument_id].full_history_start,
+                coverages[member.instrument_id].last_date - timedelta(days=7),
+            )
+            if member.instrument_id in coverages
+            else routes[member.instrument_id].full_history_start
         )
-        for ticker in tickers
+        for member in members
         if (
-            ticker not in coverages
+            member.instrument_id not in coverages
             or (
-                coverages[ticker].last_date < expected
+                coverages[member.instrument_id].last_date < expected
                 and not (
-                    ticker in refresh_states
-                    and refresh_states[ticker].attempted_through >= expected
-                    and refresh_states[ticker].outcome == "checked_no_new_bar"
+                    member.instrument_id in refresh_states
+                    and refresh_states[member.instrument_id].attempted_through >= expected
+                    and refresh_states[member.instrument_id].outcome == "checked_no_new_bar"
                 )
             )
         )
     }
     total = len(requested)
     print(
-        f"WATCHLIST {watchlist_id}: reusing {len(tickers) - total}/{len(tickers)}; "
+        f"WATCHLIST {watchlist_id}: reusing {len(members) - total}/{len(members)}; "
         f"downloading {total}",
         flush=True,
     )
@@ -104,16 +134,17 @@ def refresh_watchlist(watchlist_id: int) -> None:
         print(f"WATCHLIST {watchlist_id}: 0/0 already current", flush=True)
         return
 
-    loader, primary_source, request_interval = _loader_config(watchlist.market)
-    downloaded: dict[str, PriceFrame] = {}
-    errors: dict[str, str] = {}
-    for position, (ticker, start) in enumerate(requested.items(), start=1):
+    loader, primary_source, request_interval = _loader_config(price_adapter)
+    downloaded: dict[int, PriceFrame] = {}
+    errors: dict[int, str] = {}
+    for position, (instrument_id, start) in enumerate(requested.items(), start=1):
+        ticker = routes[instrument_id].provider_symbol
         try:
-            downloaded[ticker] = loader.load(
+            downloaded[instrument_id] = loader.load(
                 ticker, start, expected + timedelta(days=1)
             )
         except (DataLoadError, ValueError) as exc:
-            errors[ticker] = str(exc)
+            errors[instrument_id] = str(exc)
         print(
             f"WATCHLIST {watchlist_id}: {position}/{total} errors={len(errors)}",
             flush=True,
@@ -126,47 +157,50 @@ def refresh_watchlist(watchlist_id: int) -> None:
             repository = SqlAlchemyPriceBarRepository(session)
             if downloaded:
                 stored = CompanyPriceService(
-                    repository, {}
+                    repository,
+                    SqlAlchemyInstrumentRoutingRepository(session),
+                    {},
                 ).store_downloaded_histories(
-                    watchlist.market,
                     downloaded,
                     fetched_at=now,
                 )
             attempts = [
                 PriceRefreshAttempt(
-                    ticker=ticker,
+                    instrument_id=instrument_id,
+                    price_basis=routes[instrument_id].price_basis,
                     attempted_through=expected,
                     returned_through=(
-                        downloaded[ticker].data.index.max().date()
-                        if ticker in downloaded else None
+                        downloaded[instrument_id].data.index.max().date()
+                        if instrument_id in downloaded else None
                     ),
                     outcome=(
                         "current"
-                        if ticker in downloaded
-                        and downloaded[ticker].data.index.max().date() >= expected
+                        if instrument_id in downloaded
+                        and downloaded[instrument_id].data.index.max().date() >= expected
                         else "checked_no_new_bar"
-                        if ticker in downloaded
+                        if instrument_id in downloaded
                         else "failed"
                     ),
                     primary_source=primary_source,
                     selected_source=(
-                        downloaded[ticker].source if ticker in downloaded else None
+                        downloaded[instrument_id].source
+                        if instrument_id in downloaded else None
                     ),
                     attempted_at=now,
-                    detail=errors.get(ticker),
+                    detail=errors.get(instrument_id),
                 )
-                for ticker in requested
+                for instrument_id in requested
             ]
-            PriceRefreshService(repository).record_attempts(
-                "VNALL" if watchlist.market == "VN" else "US500",
-                attempts,
-            )
+            PriceRefreshService(repository).record_attempts(attempts)
     if downloaded:
         print(f"WATCHLIST {watchlist_id}: stored {stored} rows", flush=True)
     if errors:
         print(
             "Refresh errors: "
-            + " | ".join(f"{ticker}: {error}" for ticker, error in errors.items()),
+            + " | ".join(
+                f"{members_by_id[instrument_id].symbol}: {error}"
+                for instrument_id, error in errors.items()
+            ),
             flush=True,
         )
     if not downloaded:

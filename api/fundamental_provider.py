@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 
@@ -12,7 +12,6 @@ from api.providers.vietnam_fundamentals import (
     fundamental_source_label,
 )
 
-FundamentalMarket = Literal["US", "VN"]
 IDENTITY_COLUMNS = ["effective_date", "period_end", "period"]
 VALUE_COLUMNS = [
     "eps_ttm",
@@ -45,14 +44,16 @@ FUNDAMENTAL_COLUMNS = IDENTITY_COLUMNS + VALUE_COLUMNS
 
 def fetch_provider_fundamentals(
     symbol: str,
-    market: FundamentalMarket,
+    adapter: str,
     *,
     vn_provider: VnstockDataFundamentalProvider | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
     """Fetch normalized snapshots without reading or writing local files."""
     normalized = symbol.upper().strip()
-    if market == "VN":
+    if adapter == "vnstock_data":
         return _fetch_vn_fundamentals(normalized, provider=vn_provider)
+    if adapter != "yfinance":
+        raise ValueError(f"Unsupported fundamental adapter: {adapter}")
     frame, method = _fetch_us_fundamentals(normalized)
     return frame, "yfinance", method
 

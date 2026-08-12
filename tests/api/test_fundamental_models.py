@@ -25,7 +25,6 @@ def _seed_identity(session: Session) -> tuple[Instrument, Universe]:
         company=Company(
             display_name="FPT Corporation", country_code="VN", source="test"
         ),
-        market="VN",
         ticker="FPT",
         currency="VND",
         source="test",
@@ -33,7 +32,6 @@ def _seed_identity(session: Session) -> tuple[Instrument, Universe]:
     universe = Universe(
         code="VN100",
         name="VN100",
-        market="VN",
         description="",
         source="test",
     )

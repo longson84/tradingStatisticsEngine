@@ -19,10 +19,10 @@ def test_fetch_provider_fundamentals_selects_market_source(monkeypatch):
     )
 
     us_frame, us_source, us_method = (
-        fundamental_provider.fetch_provider_fundamentals("aapl", "US")
+        fundamental_provider.fetch_provider_fundamentals("aapl", "yfinance")
     )
     vn_frame, vn_source, vn_method = (
-        fundamental_provider.fetch_provider_fundamentals("fpt", "VN")
+        fundamental_provider.fetch_provider_fundamentals("fpt", "vnstock_data")
     )
 
     assert us_frame is frame

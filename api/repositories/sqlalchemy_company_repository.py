@@ -10,6 +10,7 @@ from api.db.models import (
     PriceBarCoverage,
     Universe,
     UniverseMembership,
+    Venue,
 )
 from api.repositories.company_repository import (
     CompanyQuery,
@@ -25,28 +26,46 @@ class SqlAlchemyCompanyRepository:
         self._session = session
 
     def list_universes(self) -> tuple[UniverseRecord, ...]:
+        derived_country = func.min(Company.country_code)
         rows = self._session.execute(
-            select(Universe, func.count(UniverseMembership.id))
-            .outerjoin(UniverseMembership)
-            .where(Universe.market.in_(("US", "VN")))
+            select(
+                Universe,
+                derived_country.label("country_code"),
+                func.count(UniverseMembership.id),
+            )
+            .select_from(Universe)
+            .join(
+                UniverseMembership,
+                UniverseMembership.universe_id == Universe.id,
+            )
+            .join(
+                Instrument,
+                Instrument.id == UniverseMembership.instrument_id,
+            )
+            .join(Company, Company.id == Instrument.company_id)
             .group_by(Universe.id)
+            .having(func.count(func.distinct(Company.country_code)) == 1)
+            .having(derived_country.in_(("US", "VN")))
             .order_by(Universe.code)
         )
         return tuple(
             UniverseRecord(
                 code=universe.code,
                 name=universe.name,
-                market=universe.market,
+                country_code=country_code,
                 description=universe.description,
                 as_of=universe.as_of,
                 fetched_at=universe.fetched_at,
                 company_count=int(company_count),
             )
-            for universe, company_count in rows
+            for universe, country_code, company_count in rows
         )
 
     def count_companies(self, query: CompanyQuery) -> int:
-        filters = [Instrument.market == query.market]
+        filters = [
+            Instrument.instrument_type == "common_stock",
+            Instrument.company.has(Company.country_code == query.country_code),
+        ]
         if query.universe:
             filters.append(
                 Instrument.memberships.any(
@@ -63,15 +82,18 @@ class SqlAlchemyCompanyRepository:
         self,
         query: CompanyQuery,
     ) -> tuple[tuple[CompanyRecord, ...], int, CompanyListFacets]:
-        base_filters = [Instrument.market == query.market]
+        base_filters = [
+            Instrument.instrument_type == "common_stock",
+            Instrument.company.has(Company.country_code == query.country_code),
+        ]
         if query.search:
             pattern = f"%{query.search.strip()}%"
             base_filters.append(or_(
                 Instrument.ticker.ilike(pattern),
                 Company.display_name.ilike(pattern),
             ))
-        if query.exchange:
-            base_filters.append(Instrument.exchange == query.exchange)
+        if query.venue_code:
+            base_filters.append(Instrument.venue.has(Venue.code == query.venue_code))
 
         filters = list(base_filters)
         if query.universe:
@@ -117,12 +139,13 @@ class SqlAlchemyCompanyRepository:
         ).all()
         records = tuple(
             CompanyRecord(
+                instrument_id=instrument.id,
                 ticker=instrument.ticker,
                 company_name=company.display_name,
-                market=instrument.market,
+                country_code=company.country_code,
                 sector=company.sector,
                 industry=company.industry,
-                exchange=instrument.exchange,
+                venue_code=(instrument.venue.code if instrument.venue else None),
                 lists=tuple(sorted(
                     membership.universe.code
                     for membership in instrument.memberships

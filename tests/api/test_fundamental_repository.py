@@ -30,7 +30,6 @@ def _seed(session: Session) -> FundamentalReport:
         company=Company(
             display_name="FPT Corporation", country_code="VN", source="test"
         ),
-        market="VN",
         ticker="FPT",
         currency="VND",
         source="test",
@@ -38,7 +37,6 @@ def _seed(session: Session) -> FundamentalReport:
     universe = Universe(
         code="VN100",
         name="VN100",
-        market="VN",
         description="",
         source="test",
     )
@@ -115,13 +113,15 @@ def test_repository_reads_symbol_fundamentals_in_stable_order():
     with Session(engine) as session:
         report = _seed(session)
         repository = SqlAlchemyFundamentalRepository(session)
+        instrument_id = report.instrument_id
 
-        reports = repository.list_reports("VN", "FPT")
+        reports = repository.list_reports(instrument_id)
         facts = repository.list_facts((report.id,))
-        valuations = repository.list_valuations("VN", "FPT")
+        valuations = repository.list_valuations(instrument_id)
 
-        assert repository.instrument_exists("VN", "FPT")
-        assert not repository.instrument_exists("US", "FPT")
+        assert repository.get_instrument(instrument_id) is not None
+        assert repository.instrument_exists(instrument_id)
+        assert not repository.instrument_exists(instrument_id + 1)
         assert reports[0].period_label == "2025-Q1"
         assert reports[0].methodology == "VCI normalized point-in-time fundamentals"
         assert [fact.metric_code for fact in facts] == [
@@ -143,7 +143,6 @@ def test_repository_aggregates_universe_status():
         status = repository.get_universe_status("VN100")
 
         assert status is not None
-        assert status.market == "VN"
         assert status.first_effective_date == date(2025, 4, 25)
         assert status.last_effective_date == date(2025, 4, 25)
         assert status.symbol_count == 1

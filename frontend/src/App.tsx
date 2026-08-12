@@ -9,12 +9,13 @@ import { FundamentalsPage } from "@/pages/FundamentalsPage"
 import { GrowthDashboardPage } from "@/pages/GrowthDashboardPage"
 import { InstrumentsPage } from "@/pages/InstrumentsPage"
 import { CompaniesPage } from "@/pages/CompaniesPage"
-import { MarketHealthPage } from "@/pages/MarketHealthPage"
-import { MarketDataPage } from "@/pages/MarketDataPage"
+import { DataOperationsPage } from "@/pages/DataOperationsPage"
 import { PriceHistoryPage } from "@/pages/PriceHistoryPage"
-import { WatchlistsPage } from "@/pages/WatchlistsPage"
+import { InstrumentCollectionsPage } from "@/pages/InstrumentCollectionsPage"
 import { CryptoMarketsPage } from "@/pages/CryptoMarketsPage"
 import { DataModelPage } from "@/pages/DataModelPage"
+import { ReferenceRatesPage } from "@/pages/ReferenceRatesPage"
+import { VenuesPage } from "@/pages/VenuesPage"
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -44,11 +45,16 @@ export default function App() {
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/company/lists" element={<LegacyInstrumentsRedirect />} />
           <Route path="/company/price-history" element={<PriceHistoryPage />} />
-          <Route path="/company/watchlists" element={<WatchlistsPage />} />
-          <Route path="/market/health" element={<MarketHealthPage />} />
-          <Route path="/market-data" element={<MarketDataPage />} />
+          <Route path="/collections" element={<Navigate to="/collections/universes" replace />} />
+          <Route path="/collections/universes" element={<InstrumentCollectionsPage tab="universes" />} />
+          <Route path="/collections/watchlists" element={<InstrumentCollectionsPage tab="watchlists" />} />
+          <Route path="/company/watchlists" element={<LegacyWatchlistsRedirect />} />
+          <Route path="/data-operations" element={<DataOperationsPage />} />
           <Route path="/crypto" element={<CryptoMarketsPage />} />
+          <Route path="/reference-rates" element={<ReferenceRatesPage />} />
           <Route path="/build/data-model" element={<DataModelPage />} />
+          <Route path="/venues" element={<VenuesPage />} />
+          <Route path="/build/venues" element={<Navigate to="/venues" replace />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />
         </Routes>
       </BrowserRouter>
@@ -59,4 +65,9 @@ export default function App() {
 function LegacyInstrumentsRedirect() {
   const location = useLocation()
   return <Navigate to={{ pathname: "/instruments", search: location.search }} replace />
+}
+
+function LegacyWatchlistsRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: "/collections/watchlists", search: location.search }} replace />
 }

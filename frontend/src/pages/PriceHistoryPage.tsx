@@ -2,10 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChartNoAxesCombined } from "lucide-react"
 import { FormLabel } from "@/components/forms/FormSelect"
-import {
-  CompanyTickerSelector,
-  type CompanyMarket,
-} from "@/components/forms/CompanyTickerSelector"
+import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { Sidebar } from "@/components/Sidebar"
 import {
   SymbolPriceHistoryChart,
@@ -13,44 +10,43 @@ import {
 } from "@/components/market/SymbolPriceHistoryChart"
 import { Badge } from "@/components/ui/badge"
 import {
-  companiesApi,
-  symbolPriceHistoryApi,
-  type CompanyResponse,
-  type SymbolPriceHistoryResponse,
+  instrumentPriceHistoryApi,
+  instrumentsApi,
+  type AnalysisInstrument,
+  type InstrumentPriceHistoryResponse,
+  type InstrumentScope,
 } from "@/lib/api"
 import { fmtProviderSource } from "@/lib/format"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 
-type CachedUniverse = SymbolPriceHistoryResponse["universe"]
 export function PriceHistoryPage() {
-  const [market, setMarket] = useState<CompanyMarket>("VN_ALL")
-  const [ticker, setTicker] = useState("FPT")
+  const [scope, setScope] = useState<InstrumentScope>("equity")
+  const [search, setSearch] = useState("")
+  const [instrument, setInstrument] = useState<AnalysisInstrument | null>(null)
   const [smaInput, setSmaInput] = useState("")
   const [emaInput, setEmaInput] = useState("")
   const [cursorSnapshot, setCursorSnapshot] = useState<PriceHistoryCursorSnapshot | null>(null)
   const [selection, setSelection] = useState({
-    market: "VN_ALL" as CompanyMarket,
-    universe: "VN100" as CachedUniverse,
-    ticker: "FPT",
+    instrument: null as AnalysisInstrument | null,
     smaLengths: [] as number[],
     emaLengths: [] as number[],
   })
 
-  const companies = useQuery({
-    queryKey: ["companies", market],
-    queryFn: () => companiesApi({ universe: market }),
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
+  const instruments = useQuery({
+    queryKey: ["price-history-instruments", scope, debouncedSearch],
+    queryFn: () => instrumentsApi({ scope, search: debouncedSearch, limit: 20 }),
+    enabled: debouncedSearch.length >= 3,
   })
   const history = useQuery({
-    queryKey: ["symbol-price-history", selection.universe, selection.ticker],
-    queryFn: () => symbolPriceHistoryApi(selection.ticker, selection.universe),
+    queryKey: ["instrument-price-history", selection.instrument?.id],
+    queryFn: () => instrumentPriceHistoryApi(selection.instrument!.id),
+    enabled: selection.instrument != null,
     retry: false,
   })
 
-  const normalizedTicker = ticker.toUpperCase().trim()
-  const selectedCompany = companies.data?.companies.find(
-    item => item.ticker.toUpperCase() === normalizedTicker
-  )
   const prices = history.data?.prices ?? []
   const first = prices[0]
   const latest = prices[prices.length - 1]
@@ -59,15 +55,13 @@ export function PriceHistoryPage() {
   const latestEpsTtm = [...prices].reverse().find(point => point.eps_ttm != null)?.eps_ttm ?? null
   const latestTrailingPe = [...prices].reverse().find(point => point.trailing_pe != null)?.trailing_pe ?? null
   const latestTrailingPb = [...prices].reverse().find(point => point.trailing_pb != null)?.trailing_pb ?? null
-  const isVietnam = history.data?.universe.startsWith("VN") ?? selection.universe.startsWith("VN")
+  const isVietnam = history.data?.currency === "VND"
 
   const viewHistory = () => {
-    if (!selectedCompany) return
+    if (!instrument) return
     setCursorSnapshot(null)
     setSelection({
-      market,
-      universe: historyUniverse(market, selectedCompany),
-      ticker: selectedCompany.ticker.toUpperCase(),
+      instrument,
       smaLengths: parseIndicatorLengths(smaInput),
       emaLengths: parseIndicatorLengths(emaInput),
     })
@@ -75,15 +69,23 @@ export function PriceHistoryPage() {
 
   const controls = (
     <div className="space-y-4">
-      <CompanyTickerSelector
-        market={market}
-        ticker={ticker}
-        companies={companies.data?.companies ?? []}
-        total={companies.data?.total}
-        isPending={companies.isPending}
-        id="price-history-symbols"
-        onMarketChange={setMarket}
-        onTickerChange={setTicker}
+      <AnalysisInstrumentSelector
+        scope={scope}
+        search={search}
+        instruments={instruments.data?.instruments ?? []}
+        selectedInstrument={instrument}
+        total={instruments.data?.total}
+        isPending={instruments.isFetching}
+        onScopeChange={value => {
+          setScope(value)
+          setSearch("")
+          setInstrument(null)
+        }}
+        onSearchChange={value => {
+          setSearch(value)
+          setInstrument(null)
+        }}
+        onInstrumentChange={setInstrument}
         onSubmit={viewHistory}
       />
 
@@ -116,7 +118,7 @@ export function PriceHistoryPage() {
 
       <button
         onClick={viewHistory}
-        disabled={!selectedCompany || history.isFetching}
+        disabled={!instrument || history.isFetching}
         className="w-full rounded-md bg-primary py-2.5 text-sm font-semibold tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {history.isFetching ? "Loading…" : "View history"}
@@ -132,13 +134,13 @@ export function PriceHistoryPage() {
           <div className="flex items-center gap-2">
             <ChartNoAxesCombined size={20} className="text-primary" />
             <h1 className="text-2xl font-bold tracking-tight">
-              {history.data?.symbol ?? selection.ticker} Price History
+              {history.data?.symbol ?? selection.instrument?.symbol ?? "Instrument"} Price History
             </h1>
             <Badge variant="secondary">{fmtProviderSource(history.data?.source)}</Badge>
-            <Badge variant="outline">{companyMarketLabel(selection.market)}</Badge>
+            {history.data?.venue_code && <Badge variant="outline">{history.data.venue_code}</Badge>}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Maximum daily price history available in PostgreSQL for the selected market.
+            Maximum daily price history available in PostgreSQL for the selected instrument.
           </p>
         </div>
 
@@ -198,7 +200,7 @@ export function PriceHistoryPage() {
 
             <section className="rounded-lg border border-border bg-card p-5">
               <SymbolPriceHistoryChart
-                key={`${history.data.universe}-${history.data.symbol}`}
+                key={history.data.instrument_id}
                 symbol={history.data.symbol}
                 relativeStrengthBenchmark={history.data.relative_strength_benchmark}
                 prices={prices}
@@ -210,8 +212,8 @@ export function PriceHistoryPage() {
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
               {history.data.trailing_pe_method
-                ? `Fundamentals: ${history.data.trailing_pe_method}. Stored history is retained indefinitely and changes only through Market Data refresh. `
-                : "Fundamentals are not stored for this ticker. Refresh them from Market Data to display P/E and P/B. "}
+                ? `Fundamentals: ${history.data.trailing_pe_method}. Stored history changes only through Data Operations. `
+                : "Fundamentals are not stored for this instrument. Update them through Data Operations to display P/E and P/B. "}
               {isVietnam
                 ? "VCI does not expose an adjustment switch or adjusted-close column. The chart shows the stored provider closing series; its corporate-action adjustment methodology is unspecified."
                 : "Yahoo Finance history is stored with auto-adjustment enabled, so historical OHLC values reflect splits and distributions according to Yahoo Finance's adjustment data."}
@@ -281,29 +283,10 @@ function CursorMetricCards({
 }
 
 
-function providerRatioDetail(history: SymbolPriceHistoryResponse): string {
+function providerRatioDetail(history: InstrumentPriceHistoryResponse): string {
   return [history.provider_ratio_period, history.provider_ratio_effective_date]
     .filter(Boolean)
     .join(" · ")
-}
-
-
-function companyMarketLabel(market: CompanyMarket): string {
-  return market === "US_ALL" ? "US Companies" : "VN Companies"
-}
-
-
-function historyUniverse(market: CompanyMarket, company: CompanyResponse): CachedUniverse {
-  if (market === "VN_ALL") {
-    if (company.lists.includes("VN30")) return "VN30"
-    if (company.lists.includes("VNMID")) return "VNMID"
-    if (company.lists.includes("VN100")) return "VN100"
-    if (company.lists.includes("VNSML")) return "VNSML"
-    return "VNALL"
-  }
-  if (company.lists.includes("US100")) return "US100"
-  if (company.lists.includes("US500") || company.lists.includes("US30")) return "US500"
-  return "US2000"
 }
 
 
@@ -339,7 +322,7 @@ function formatPerShareValue(value: number | null, isVietnam: boolean): string {
 }
 
 
-function shareGrowthLabel(history: SymbolPriceHistoryResponse): string {
+function shareGrowthLabel(history: InstrumentPriceHistoryResponse): string {
   if (history.shares_growth_full_10y) return "10Y share growth"
   if (history.shares_growth_observed_years != null) {
     return `${history.shares_growth_observed_years.toFixed(1)}Y share growth`
@@ -348,7 +331,7 @@ function shareGrowthLabel(history: SymbolPriceHistoryResponse): string {
 }
 
 
-function shareGrowthDetail(history: SymbolPriceHistoryResponse): string {
+function shareGrowthDetail(history: InstrumentPriceHistoryResponse): string {
   if (history.shares_growth_cagr_pct == null || history.shares_growth_start_date == null) {
     return "Insufficient share history"
   }
@@ -357,7 +340,7 @@ function shareGrowthDetail(history: SymbolPriceHistoryResponse): string {
 }
 
 
-function shareCagr5yLabel(history: SymbolPriceHistoryResponse): string {
+function shareCagr5yLabel(history: InstrumentPriceHistoryResponse): string {
   if (history.shares_cagr_full_5y) return "5Y share CAGR"
   if (history.shares_cagr_5y_observed_years != null) {
     return `${history.shares_cagr_5y_observed_years.toFixed(1)}Y share CAGR`
@@ -366,7 +349,7 @@ function shareCagr5yLabel(history: SymbolPriceHistoryResponse): string {
 }
 
 
-function shareCagr5yDetail(history: SymbolPriceHistoryResponse): string {
+function shareCagr5yDetail(history: InstrumentPriceHistoryResponse): string {
   if (history.shares_cagr_5y_start_date == null) return "Insufficient share history"
   const suffix = history.shares_cagr_full_5y ? "" : " · available history"
   return `Since ${history.shares_cagr_5y_start_date}${suffix}`

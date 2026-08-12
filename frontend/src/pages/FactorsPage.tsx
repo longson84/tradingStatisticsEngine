@@ -1,14 +1,20 @@
-import { useState, useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
 import { RarityResults } from "@/components/rarity/RarityResults"
 import {
-  CompanyTickerSelector,
-  type CompanyMarket,
-} from "@/components/forms/CompanyTickerSelector"
-import { companiesApi, rarityAnalysisApi } from "@/lib/api"
-import type { FactorType, MaType, RarityRecoveryMode } from "@/lib/api"
+  AnalysisInstrumentSelector,
+} from "@/components/forms/AnalysisInstrumentSelector"
+import { instrumentsApi, rarityAnalysisApi } from "@/lib/api"
+import type {
+  AnalysisInstrument,
+  FactorType,
+  InstrumentScope,
+  MaType,
+  RarityRecoveryMode,
+} from "@/lib/api"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -73,8 +79,9 @@ function NumberInput({
 
 export function FactorsPage() {
   // Form state
-  const [market, setMarket]         = useState<CompanyMarket>("US_ALL")
-  const [symbol, setSymbol]         = useState("MSFT")
+  const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
+  const [instrumentSearch, setInstrumentSearch] = useState("")
+  const [selectedInstrument, setSelectedInstrument] = useState<AnalysisInstrument | null>(null)
   const [factorType, setFactorType] = useState<FactorType>("distance_from_peak")
   const [period, setPeriod]         = useState(200)
   const [maType, setMaType]         = useState<MaType>("sma")
@@ -83,9 +90,17 @@ export function FactorsPage() {
   const [qrDays, setQrDays]         = useState(5)
   const [activeTab, setActiveTab]   = useState<AnalysisType>("rarity")
 
-  const companies = useQuery({
-    queryKey: ["companies", market],
-    queryFn: () => companiesApi({ universe: market }),
+  const debouncedInstrumentSearch = useDebouncedValue(instrumentSearch.trim(), 300)
+  const canSearchInstruments = debouncedInstrumentSearch.length >= 3
+  const instruments = useQuery({
+    queryKey: ["analysis-instruments", instrumentScope, debouncedInstrumentSearch],
+    queryFn: () => instrumentsApi({
+      scope: instrumentScope,
+      search: debouncedInstrumentSearch || undefined,
+      has_price_history: true,
+      limit: 25,
+    }),
+    enabled: canSearchInstruments,
   })
 
   const {
@@ -98,13 +113,9 @@ export function FactorsPage() {
   })
 
   const handleAnalyse = useCallback(() => {
-    const valid = companies.data?.companies.some(
-      item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
-    )
-    if (!valid) return
+    if (!selectedInstrument) return
     runAnalysis({
-      market: market === "US_ALL" ? "US" : "VN",
-      ticker: symbol.toUpperCase().trim(),
+      instrument_id: selectedInstrument.id,
       factor_type: factorType,
       period,
       ma_type: maType,
@@ -112,23 +123,27 @@ export function FactorsPage() {
       quick_recovery_days: qrDays,
       recovery_mode: recoveryMode,
     })
-  }, [companies.data, market, symbol, factorType, period, maType, stdDev, recoveryMode, qrDays, runAnalysis])
-
-  const selectedCompany = companies.data?.companies.some(
-    item => item.ticker.toUpperCase() === symbol.toUpperCase().trim()
-  ) ?? false
+  }, [selectedInstrument, factorType, period, maType, stdDev, recoveryMode, qrDays, runAnalysis])
 
   const controls = (
     <div className="space-y-4">
-      <CompanyTickerSelector
-        market={market}
-        ticker={symbol}
-        companies={companies.data?.companies ?? []}
-        total={companies.data?.total}
-        isPending={companies.isPending}
-        id="factor-rarity-symbols"
-        onMarketChange={setMarket}
-        onTickerChange={setSymbol}
+      <AnalysisInstrumentSelector
+        scope={instrumentScope}
+        search={instrumentSearch}
+        instruments={instruments.data?.instruments ?? []}
+        selectedInstrument={selectedInstrument}
+        total={instruments.data?.total}
+        isPending={canSearchInstruments && instruments.isFetching}
+        onScopeChange={scope => {
+          setInstrumentScope(scope)
+          setInstrumentSearch("")
+          setSelectedInstrument(null)
+        }}
+        onSearchChange={search => {
+          setInstrumentSearch(search)
+          setSelectedInstrument(null)
+        }}
+        onInstrumentChange={setSelectedInstrument}
         onSubmit={handleAnalyse}
       />
 
@@ -187,7 +202,7 @@ export function FactorsPage() {
       {/* Analyse button */}
       <button
         onClick={handleAnalyse}
-        disabled={isFetching || !selectedCompany}
+        disabled={isFetching || !selectedInstrument}
         className="w-full py-2.5 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground text-sm font-semibold transition-colors tracking-wide"
       >
         {isFetching ? "Analysing…" : "Analyse"}
@@ -251,7 +266,7 @@ export function FactorsPage() {
               {(data.refreshed || data.is_stale || data.refresh_warning) && (
                 <div className={`mb-4 rounded-md border px-4 py-3 text-xs ${data.is_stale ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-muted/30 text-muted-foreground"}`}>
                   Data through {data.data_last_session}; expected {data.expected_last_session}.
-                  {data.refreshed ? " PostgreSQL was refreshed for this ticker." : ""}
+                  {data.refreshed ? " PostgreSQL was refreshed for this instrument." : ""}
                   {data.refresh_warning ? ` ${data.refresh_warning}` : ""}
                 </div>
               )}

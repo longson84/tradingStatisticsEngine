@@ -4,16 +4,18 @@ import {
   Binary,
   Blocks,
   Building2,
+  CalendarDays,
   CircleDollarSign,
+  Clock3,
   Database,
   Landmark,
+  ListChecks,
   ListTree,
   MapPin,
   Network,
   Tag,
 } from "lucide-react"
 import { Sidebar } from "@/components/Sidebar"
-import { Badge } from "@/components/ui/badge"
 
 
 const entities = [
@@ -35,14 +37,14 @@ const entities = [
     name: "Instrument",
     icon: Blocks,
     definition: "A specific tradable product or observable market relationship.",
-    examples: "NASDAQ GOOGL, Binance BTC/USDT, Yahoo BTC-USD",
+    examples: "NASDAQ GOOGL, Binance BTC/USDT, Yahoo BTC-USD or ETH-USD",
     stores: "Type, asset roles, venue, currency, trading rules, active state",
   },
   {
     name: "Symbol",
     icon: Tag,
     definition: "A name assigned to an instrument inside a particular namespace.",
-    examples: "GOOGL, BTCUSDT, BTC-USDT, BTC-USD",
+    examples: "GOOGL, BTCUSDT, BTC-USDT, BTC-USD, ETH-USD",
     stores: "Namespace, symbol, primary flag, valid-from and valid-to dates",
   },
   {
@@ -50,7 +52,7 @@ const entities = [
     icon: Landmark,
     definition: "The economic location where trades occur—not the data provider.",
     examples: "NASDAQ, Binance Spot, future OKX Spot",
-    stores: "Stable code, display name, venue type, country, active state",
+    stores: "Stable code, type, country, timezone, calendar policy code and session cutoff",
   },
   {
     name: "Observation",
@@ -62,9 +64,16 @@ const entities = [
   {
     name: "Universe",
     icon: ListTree,
-    definition: "A named collection whose membership points to instruments.",
+    definition: "A named, system-managed collection whose membership points to instruments.",
     examples: "S&P 500, Nasdaq 100, VN30, Binance Spot",
-    stores: "Name, market, description, source and many-to-many membership",
+    stores: "Stable code, name, description, source, synchronization metadata and membership",
+  },
+  {
+    name: "Watchlist",
+    icon: ListChecks,
+    definition: "A user-managed ordered collection of exact canonical instruments.",
+    examples: "Long-term holdings, crypto and equity candidates, rates to monitor",
+    stores: "Name, description, instrument IDs, membership order and timestamps",
   },
 ]
 
@@ -76,9 +85,26 @@ const assetTypes = [
 ]
 
 const instrumentTypes = [
-  ["common_stock", "Tradable equity security", "NASDAQ GOOGL", "Current"],
-  ["spot", "Venue-specific exchange of base for quote", "Binance BTC/USDT", "Current"],
-  ["reference_rate", "Provider-defined observation without an execution venue", "Yahoo BTC-USD", "Next"],
+  ["common_stock", "Tradable equity security", "NASDAQ GOOGL"],
+  ["spot", "Venue-specific exchange of base for quote", "Binance BTC/USDT"],
+  ["reference_rate", "Provider-defined observation without an execution venue", "Yahoo BTC-USD, ETH-USD"],
+]
+
+const collectionTypes = [
+  ["Universe", "Read-only provider/system-defined instrument membership", "S&P 500, VN30, Binance Spot"],
+  ["Watchlist", "User-defined ordered analysis selection", "GOOGL, Binance BTC/USDT, BTC/USD"],
+]
+
+const venueScheduleFields = [
+  ["timezone_name", "IANA timezone for interpreting the venue session boundary", "America/New_York"],
+  ["trading_calendar_code", "String policy key interpreted by the application; not a foreign key", "US_EQUITIES"],
+  ["session_cutoff_time", "Local time after which the current daily session is considered complete", "16:15"],
+]
+
+const calendarPolicies = [
+  ["US_EQUITIES", "US equity daily sessions; currently excludes weekends", "NASDAQ, NYSE"],
+  ["VN_EQUITIES", "Vietnam equity daily sessions; currently excludes weekends", "HOSE, HNX, UPCOM"],
+  ["CRYPTO_24_7", "Continuous daily bars completed at the next midnight boundary", "Binance Spot"],
 ]
 
 
@@ -86,23 +112,19 @@ export function DataModelPage() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar className="w-72" />
-      <main className="min-w-0 flex-1 overflow-y-auto p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl space-y-8">
-          <header className="flex flex-col justify-between gap-4 border-b border-border pb-6 lg:flex-row lg:items-end">
+      <main className="min-w-0 flex-1 overflow-y-auto p-6">
+        <div className="space-y-5">
+          <header className="border-b border-border pb-5">
             <div>
               <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 <Network size={13} />
                 Build · Canonical domain reference
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">Data Model</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              <h1 className="text-2xl font-bold tracking-tight">Data Model</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 The durable taxonomy for companies, assets, instruments, symbols, venues,
-                observations, and their data provenance.
+                observations, universes, watchlists, and their data provenance.
               </p>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <Badge variant="secondary">Current model</Badge>
-              <Badge variant="outline">Next extension</Badge>
             </div>
           </header>
 
@@ -140,6 +162,20 @@ export function DataModelPage() {
                 <ArrowRight size={18} className="text-muted-foreground" />
                 <FlowNode label="Price bars" detail="dated observations" icon={Database} />
               </div>
+              <div className="mx-auto mt-5 grid min-w-[900px] max-w-4xl grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3">
+                <FlowNode label="Venue" detail="owns schedule columns" icon={Landmark} />
+                <ArrowRight size={18} className="text-muted-foreground" />
+                <FlowNode label="Calendar code" detail="string policy key, not table" icon={CalendarDays} strong />
+                <ArrowRight size={18} className="text-muted-foreground" />
+                <FlowNode label="Expected session" detail="calculated at read time" icon={Clock3} />
+              </div>
+              <div className="mx-auto mt-5 grid min-w-[900px] max-w-4xl grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3">
+                <FlowNode label="Universe" detail="sourced membership" icon={ListTree} />
+                <ArrowRight size={18} className="text-muted-foreground" />
+                <FlowNode label="Instrument" detail="stable member identity" icon={Blocks} strong />
+                <ArrowRight size={18} className="text-muted-foreground" />
+                <FlowNode label="Watchlist" detail="personal ordered set" icon={ListChecks} />
+              </div>
               <div className="mt-4 flex min-w-[900px] items-center justify-center gap-2 text-xs text-muted-foreground">
                 <MapPin size={13} />
                 Venue is optional for reference rates. Company is optional for decentralized assets.
@@ -170,10 +206,46 @@ export function DataModelPage() {
             <TaxonomyTable
               eyebrow="Instrument taxonomy"
               title="What kind of product or rate is it?"
-              columns={["Type", "Meaning", "Example", "Status"]}
+              columns={["Type", "Meaning", "Example"]}
               rows={instrumentTypes}
-              statusColumn
             />
+          </section>
+
+          <TaxonomyTable
+            eyebrow="Collection taxonomy"
+            title="Who defines the instrument set?"
+            columns={["Collection", "Meaning", "Example"]}
+            rows={collectionTypes}
+          />
+
+          <section className="grid gap-5 xl:grid-cols-2">
+            <TaxonomyTable
+              eyebrow="Venue schedule storage"
+              title="Which fields live on every Venue row?"
+              columns={["Column", "Meaning", "Example"]}
+              rows={venueScheduleFields}
+            />
+            <TaxonomyTable
+              eyebrow="Calendar policies"
+              title="Which schedule behaviors exist today?"
+              columns={["String code", "Meaning", "Used by"]}
+              rows={calendarPolicies}
+            />
+          </section>
+
+          <section className="rounded-xl border border-border bg-muted/30 p-5">
+            <div className="flex items-start gap-3">
+              <CalendarDays size={17} className="mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-sm font-semibold">Trading calendars are policies, not records</h2>
+                <p className="mt-2 max-w-5xl text-sm leading-6 text-muted-foreground">
+                  The database stores a calendar code string on <code className="text-xs text-foreground">venues</code>.
+                  Python maps that code to expected-session behavior. There is no calendar table, calendar foreign key,
+                  or holiday-row table yet, and reference rates remain venue-less because their observation schedule
+                  belongs to the provider rather than an execution venue.
+                </p>
+              </div>
+            </div>
           </section>
 
           <section className="space-y-3">
@@ -213,7 +285,6 @@ export function DataModelPage() {
                 number="03"
                 title="Reference rate"
                 subtitle="Yahoo Finance Bitcoin / US Dollar"
-                status="Next extension"
                 lines={[
                   ["Company", "None"],
                   ["Assets", "BTC · crypto / USD · fiat"],
@@ -258,7 +329,7 @@ export function DataModelPage() {
 
           <footer className="border-t border-border py-5 text-xs leading-5 text-muted-foreground">
             PostgreSQL is authoritative. JSON and CSV may be ingestion inputs, but they are not the
-            application&apos;s canonical company, instrument, or price store.
+            application&apos;s canonical company, instrument, watchlist, or price store.
           </footer>
         </div>
       </main>
@@ -357,13 +428,11 @@ function TaxonomyTable({
   title,
   columns,
   rows,
-  statusColumn = false,
 }: {
   eyebrow: string
   title: string
   columns: string[]
   rows: string[][]
-  statusColumn?: boolean
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card">
@@ -384,9 +453,7 @@ function TaxonomyTable({
                 {row.map((cell, index) => (
                   <td key={`${row[0]}-${columns[index]}`} className="px-4 py-3 align-top">
                     {index === 0 ? <code className="text-xs font-semibold">{cell}</code> : null}
-                    {index !== 0 && statusColumn && index === row.length - 1
-                      ? <Badge variant={cell === "Current" ? "secondary" : "outline"}>{cell}</Badge>
-                      : index !== 0 && <span className="text-muted-foreground">{cell}</span>}
+                    {index !== 0 && <span className="text-muted-foreground">{cell}</span>}
                   </td>
                 ))}
               </tr>
@@ -404,23 +471,18 @@ function ExampleCard({
   title,
   subtitle,
   lines,
-  status,
 }: {
   number: string
   title: string
   subtitle: string
   lines: string[][]
-  status?: string
 }) {
   return (
     <article className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{number}</div>
-          <h3 className="mt-1 font-semibold">{title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-        {status && <Badge variant="outline">{status}</Badge>}
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{number}</div>
+        <h3 className="mt-1 font-semibold">{title}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
       </div>
       <dl className="mt-5 space-y-0">
         {lines.map(([label, value], index) => (

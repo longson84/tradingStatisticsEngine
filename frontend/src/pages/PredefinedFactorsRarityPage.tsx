@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { Sidebar } from "@/components/Sidebar"
-import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
+import { FormLabel as Label } from "@/components/forms/FormSelect"
 import {
   predefinedRarityApi,
   watchlistsApi,
@@ -14,19 +14,11 @@ import {
 import { fmtDate, fmtInt, fmtPct, fmtPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-type Market = "US" | "VN"
-
-const MARKET_OPTIONS: Array<{ label: string; value: Market }> = [
-  { label: "US Companies", value: "US" },
-  { label: "VN Companies", value: "VN" },
-]
-
 export function PredefinedFactorsRarityPage() {
-  const [market, setMarket] = useState<Market>("US")
   const [watchlistId, setWatchlistId] = useState("")
   const watchlists = useQuery({
-    queryKey: ["watchlists", market],
-    queryFn: () => watchlistsApi(market),
+    queryKey: ["watchlists"],
+    queryFn: watchlistsApi,
   })
   const {
     mutate: runAnalysis,
@@ -43,18 +35,6 @@ export function PredefinedFactorsRarityPage() {
   const controls = (
     <div className="space-y-4">
       <div>
-        <Label>Company market</Label>
-        <FormSelect
-          value={market}
-          onChange={value => {
-            setMarket(value)
-            setWatchlistId("")
-          }}
-          options={MARKET_OPTIONS}
-        />
-      </div>
-
-      <div>
         <Label>Watchlist</Label>
         <select
           value={watchlistId}
@@ -70,12 +50,12 @@ export function PredefinedFactorsRarityPage() {
         </select>
         {selectedWatchlist && (
           <p className="mt-1 text-[10px] text-muted-foreground">
-            {selectedWatchlist.member_count.toLocaleString()} PostgreSQL companies
+            {selectedWatchlist.member_count.toLocaleString()} canonical instruments
           </p>
         )}
         {!watchlists.isPending && watchlists.data?.watchlists.length === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            No {market} watchlists. <Link to="/company/watchlists" className="text-primary hover:underline">Create one</Link>.
+            No watchlists. <Link to="/collections/watchlists" className="text-primary hover:underline">Create one</Link>.
           </p>
         )}
       </div>
@@ -106,7 +86,7 @@ export function PredefinedFactorsRarityPage() {
           {data && (
             <div className="text-xs text-muted-foreground text-right">
               <div>{data.watchlist_name}</div>
-              <div>{fmtInt(data.available_symbols)} / {fmtInt(data.requested_symbols)} symbols · {data.market}</div>
+              <div>{fmtInt(data.available_instruments)} / {fmtInt(data.requested_instruments)} instruments with stored history</div>
             </div>
           )}
         </div>
@@ -155,7 +135,9 @@ type SummaryP50FactorKey =
   | "distance_high_200"
 
 interface SummaryRow {
+  instrumentId: number
   symbol: string
+  identity: string
   currentPrice: number
   p50Prices: number[]
   factorP50Prices: Partial<Record<SummaryP50FactorKey, number>>
@@ -189,8 +171,11 @@ function SummarySection({ data }: { data: PredefinedRarityResponse }) {
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map(row => (
-              <tr key={row.symbol} className="hover:bg-muted/30">
-                <td className="px-3 py-2 font-medium">{row.symbol}</td>
+              <tr key={row.instrumentId} className="hover:bg-muted/30">
+                <td className="px-3 py-2 font-medium">
+                  <div>{row.symbol}</div>
+                  <div className="text-[10px] font-normal text-muted-foreground">{row.identity}</div>
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums font-medium">{fmtPrice(row.currentPrice)}</td>
                 <td className="px-3 py-2 text-right tabular-nums font-medium">
                   <P50PriceRangeCell row={row} />
@@ -392,12 +377,16 @@ function ToP50RangeCell({ row }: { row: SummaryRow }) {
 }
 
 function buildSummaryRows(data: PredefinedRarityResponse): SummaryRow[] {
-  const bySymbol = new Map<string, SummaryRow>()
+  const byInstrument = new Map<number, SummaryRow>()
+  const statusById = new Map(data.instruments.map(status => [status.instrument_id, status]))
 
   for (const table of data.tables) {
     for (const row of table.rows) {
-      const current = bySymbol.get(row.symbol) ?? {
+      const status = statusById.get(row.instrument_id)
+      const current = byInstrument.get(row.instrument_id) ?? {
+        instrumentId: row.instrument_id,
         symbol: row.symbol,
+        identity: instrumentIdentity(status),
         currentPrice: row.current_price,
         p50Prices: [],
         factorP50Prices: {},
@@ -414,11 +403,25 @@ function buildSummaryRows(data: PredefinedRarityResponse): SummaryRow[] {
       }
       current.toP50Values.push(returnToMedianPct(row))
       current.percentiles[table.factor_key] = row.current_percentile
-      bySymbol.set(row.symbol, current)
+      byInstrument.set(row.instrument_id, current)
     }
   }
 
-  return [...bySymbol.values()]
+  return [...byInstrument.values()]
+}
+
+function instrumentIdentity(
+  status: PredefinedRarityResponse["instruments"][number] | undefined,
+): string {
+  if (!status) return "Canonical instrument"
+  const economicIdentity = status.company_name
+    ?? (status.base_asset && status.quote_asset
+      ? `${status.base_asset}/${status.quote_asset}`
+      : status.instrument_type)
+  const location = status.venue_name ?? status.venue_code
+  return [economicIdentity, location, status.currency]
+    .filter(Boolean)
+    .join(" · ")
 }
 
 function isSummaryP50FactorKey(factorKey: PredefinedRarityFactorKey): factorKey is SummaryP50FactorKey {
@@ -486,7 +489,7 @@ function PredefinedFactorSection({
       {chartsOpen && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {table.rows.map(row => (
-            <FactorPercentileCard key={`${table.factor_key}-${row.symbol}`} row={row} />
+            <FactorPercentileCard key={`${table.factor_key}-${row.instrument_id}`} row={row} />
           ))}
         </div>
       )}
@@ -523,8 +526,13 @@ function PredefinedRarityTable({
           const currentColumn = nearestPercentileColumn(data.percentile_columns, row.current_percentile)
 
           return (
-            <tr key={row.symbol} className="hover:bg-muted/30">
-              <td className="px-3 py-2 font-medium">{row.symbol}</td>
+            <tr key={row.instrument_id} className="hover:bg-muted/30">
+              <td className="px-3 py-2 font-medium">
+                <div>{row.symbol}</div>
+                <div className="text-[10px] font-normal text-muted-foreground">
+                  {instrumentIdentity(data.instruments.find(status => status.instrument_id === row.instrument_id))}
+                </div>
+              </td>
               <td className="px-3 py-2 text-right tabular-nums font-medium">{fmtPrice(row.reference_price)}</td>
               <td className="px-3 py-2 text-right tabular-nums font-medium">{fmtPrice(row.p50_price)}</td>
               <td className="px-3 py-2 text-right tabular-nums font-medium">{fmtPrice(row.current_price)}</td>

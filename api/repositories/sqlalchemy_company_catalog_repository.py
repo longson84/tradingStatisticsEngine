@@ -52,6 +52,8 @@ class SqlAlchemyCompanyCatalogRepository:
             .options(
                 selectinload(Company.identifiers),
                 selectinload(Company.instruments)
+                .selectinload(Instrument.venue),
+                selectinload(Company.instruments)
                 .selectinload(Instrument.memberships)
                 .selectinload(UniverseMembership.universe),
             )
@@ -111,10 +113,9 @@ class SqlAlchemyCompanyCatalogRepository:
                 CompanyInstrumentRecord(
                     id=instrument.id,
                     ticker=instrument.ticker,
-                    market=instrument.market,
                     instrument_type=instrument.instrument_type,
                     share_class=instrument.share_class,
-                    exchange=instrument.exchange,
+                    venue_code=(instrument.venue.code if instrument.venue else None),
                     currency=instrument.currency,
                     is_active=instrument.is_active,
                     universes=tuple(sorted(
@@ -124,7 +125,10 @@ class SqlAlchemyCompanyCatalogRepository:
                 )
                 for instrument in sorted(
                     company.instruments,
-                    key=lambda row: (row.market, row.ticker),
+                    key=lambda row: (
+                        row.venue.code if row.venue else "",
+                        row.ticker,
+                    ),
                 )
             ),
         )

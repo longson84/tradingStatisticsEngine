@@ -10,8 +10,8 @@ from typing import Protocol
 @dataclass(frozen=True)
 class FundamentalReportRecord:
     id: int
+    instrument_id: int
     ticker: str
-    market: str
     source: str
     period_end: date | None
     period_label: str | None
@@ -82,8 +82,8 @@ class FundamentalReportWriteRecord:
 
 @dataclass(frozen=True)
 class FundamentalWriteBatch:
-    market: str
-    ticker: str
+    instrument_id: int
+    reporting_currency: str
     source: str
     methodology: str
     fetched_at: datetime
@@ -98,9 +98,15 @@ class FundamentalWriteResult:
 
 
 @dataclass(frozen=True)
+class FundamentalInstrumentRecord:
+    instrument_id: int
+    ticker: str
+    currency: str
+
+
+@dataclass(frozen=True)
 class FundamentalStatusRecord:
     universe: str
-    market: str
     fetched_at: datetime
     first_effective_date: date
     last_effective_date: date
@@ -113,10 +119,14 @@ class FundamentalStatusRecord:
 
 
 class FundamentalRepository(Protocol):
-    def instrument_exists(self, market: str, ticker: str) -> bool: ...
+    def get_instrument(
+        self, instrument_id: int
+    ) -> FundamentalInstrumentRecord | None: ...
+
+    def instrument_exists(self, instrument_id: int) -> bool: ...
 
     def list_reports(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ) -> tuple[FundamentalReportRecord, ...]: ...
 
     def list_facts(
@@ -124,7 +134,7 @@ class FundamentalRepository(Protocol):
     ) -> tuple[FundamentalFactRecord, ...]: ...
 
     def list_valuations(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ) -> tuple[ProviderValuationRecord, ...]: ...
 
     def get_universe_status(
@@ -132,7 +142,7 @@ class FundamentalRepository(Protocol):
     ) -> FundamentalStatusRecord | None: ...
 
     def get_latest_fetched_at(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ) -> datetime | None: ...
 
     def upsert_fundamentals(

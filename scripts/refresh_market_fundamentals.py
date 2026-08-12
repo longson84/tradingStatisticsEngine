@@ -10,15 +10,17 @@ from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
 from api.fundamental_provider import fetch_provider_fundamentals
-from api.repositories.company_repository import CompanyQuery
-from api.repositories.sqlalchemy_company_repository import (
-    SqlAlchemyCompanyRepository,
+from api.repositories.sqlalchemy_data_operation_repository import (
+    SqlAlchemyDataOperationRepository,
 )
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
+from api.repositories.sqlalchemy_instrument_routing_repository import (
+    SqlAlchemyInstrumentRoutingRepository,
+)
+from api.instrument_data_routing import resolve_instrument_data_route
 from api.services.fundamental_write_service import FundamentalWriteService
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
 from api.providers.vietnam_fundamentals import VnstockDataFundamentalProvider
 
 
@@ -27,12 +29,11 @@ REUSE_WINDOW = timedelta(hours=12)
 
 def _recently_refreshed(
     repository: SqlAlchemyFundamentalRepository,
-    symbol: str,
-    market: str,
+    instrument_id: int,
     started_at: datetime,
     refreshed_after: datetime | None = None,
 ) -> bool:
-    fetched_at = repository.get_latest_fetched_at(market, symbol)
+    fetched_at = repository.get_latest_fetched_at(instrument_id)
     if fetched_at is None:
         return False
     if fetched_at.tzinfo is None:
@@ -45,30 +46,56 @@ def _recently_refreshed(
 def refresh_universe(
     universe: str,
     *,
-    delay: float,
+    us_delay: float,
+    vn_delay: float,
     mode: str = "incremental",
     job_id: str | None = None,
     full_run_started_at: datetime | None = None,
 ) -> None:
-    market = "VN" if universe.startswith("VN") else "US"
     started_at = datetime.now(timezone.utc)
     engine = create_db_engine()
     with Session(engine) as session:
-        company_repository = SqlAlchemyCompanyRepository(session)
-        companies, _ = company_repository.list_companies(CompanyQuery(
-            market=market,
-            price_basis=DEFAULT_PRICE_BASIS[market],
-            universe=universe,
-            limit=5_000,
-        ))
-        symbols = [company.ticker for company in companies]
+        scope = SqlAlchemyDataOperationRepository(session).get_scope(
+            "universe", universe
+        )
+        if scope is None:
+            raise RuntimeError(f"Unknown PostgreSQL universe: {universe}")
+        instruments = [
+            instrument
+            for instrument in scope.instruments
+            if instrument.company_id is not None
+        ]
+        if not instruments:
+            raise RuntimeError(
+                f"PostgreSQL universe {scope.scope_id} has no active equities"
+            )
+        routing_metadata = SqlAlchemyInstrumentRoutingRepository(
+            session
+        ).get_instrument_routes_metadata(
+            tuple(instrument.id for instrument in instruments)
+        )
+        routes = {
+            row.instrument_id: resolve_instrument_data_route(row)
+            for row in routing_metadata
+        }
+        fundamental_adapters = {
+            route.fundamental_adapter for route in routes.values()
+        }
+        if (
+            len(routes) != len(instruments)
+            or len(fundamental_adapters) != 1
+            or None in fundamental_adapters
+        ):
+            raise RuntimeError(
+                f"{universe} fundamentals require one configured equity adapter"
+            )
+        fundamental_adapter = next(iter(fundamental_adapters))
         fundamental_repository = SqlAlchemyFundamentalRepository(session)
         to_fetch = [
-            symbol for symbol in symbols
+            instrument for instrument in instruments
             if not _recently_refreshed(
                 fundamental_repository,
-                symbol,
-                market,
+                instrument.id,
                 started_at,
                 refreshed_after=(
                     full_run_started_at or started_at
@@ -77,9 +104,13 @@ def refresh_universe(
                 ),
             )
         ]
-    reused = len(symbols) - len(to_fetch)
+    reused = len(instruments) - len(to_fetch)
     run_id = job_id or uuid4().hex
-    vn_provider = VnstockDataFundamentalProvider() if market == "VN" else None
+    vn_provider = (
+        VnstockDataFundamentalProvider()
+        if fundamental_adapter == "vnstock_data" else None
+    )
+    delay = vn_delay if fundamental_adapter == "vnstock_data" else us_delay
     source = "vci" if vn_provider is not None else "yfinance"
     provider_version = (
         vn_provider.package_version if vn_provider is not None else None
@@ -90,37 +121,38 @@ def refresh_universe(
             universe=universe,
             source=source,
             provider_version=provider_version,
-            requested_count=len(symbols),
+            requested_count=len(instruments),
             reused_count=reused,
             started_at=started_at,
         )
     print(
-        f"{universe}: reusing {reused}/{len(symbols)} recent fundamental caches; "
+        f"{universe}: reusing {reused}/{len(instruments)} recent fundamental caches; "
         f"downloading {len(to_fetch)}",
         flush=True,
     )
     errors: list[dict[str, str]] = []
-    for index, symbol in enumerate(to_fetch, start=1):
+    for index, instrument in enumerate(to_fetch, start=1):
         try:
             frame, source, methodology = fetch_provider_fundamentals(
-                symbol, market, vn_provider=vn_provider
+                routes[instrument.id].provider_symbol,
+                fundamental_adapter,
+                vn_provider=vn_provider,
             )
             with Session(engine) as session, session.begin():
                 FundamentalWriteService(
                     SqlAlchemyFundamentalRepository(session)
                 ).store_provider_frame(
-                    market=market,
-                    ticker=symbol,
+                    instrument_id=instrument.id,
                     source=source,
                     methodology=methodology,
                     fetched_at=started_at,
                     frame=frame,
                 )
         except Exception as exc:
-            errors.append({"symbol": symbol, "error": str(exc)})
+            errors.append({"symbol": instrument.symbol, "error": str(exc)})
         completed = reused + index
         print(
-            f"{universe}: {completed}/{len(symbols)} errors={len(errors)}",
+            f"{universe}: {completed}/{len(instruments)} errors={len(errors)}",
             flush=True,
         )
         if index < len(to_fetch):
@@ -149,7 +181,7 @@ def refresh_universe(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--market",
+        "--universe",
         choices=(
             "all", "us2000", "us500", "us100",
             "vnall", "vn100", "vn30", "vnmid", "vnsml",
@@ -162,31 +194,28 @@ def main() -> None:
     parser.add_argument("--job-id")
     args = parser.parse_args()
     order = (
-        ("US2000", args.us_delay),
-        ("US500", args.us_delay),
-        ("US100", args.us_delay),
-        ("VNALL", args.vn_delay),
-        ("VN100", args.vn_delay),
-        ("VN30", args.vn_delay),
-        ("VNMID", args.vn_delay),
-        ("VNSML", args.vn_delay),
+        "US2000", "US500", "US100", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
     )
-    if args.market == "all":
+    if args.universe == "all":
         full_run_started_at = datetime.now(timezone.utc)
-        for universe, delay in order:
+        for universe in order:
             run_id = f"{args.job_id}:{universe}" if args.job_id else None
             refresh_universe(
                 universe,
-                delay=delay,
+                us_delay=args.us_delay,
+                vn_delay=args.vn_delay,
                 mode=args.mode,
                 job_id=run_id,
                 full_run_started_at=full_run_started_at,
             )
         return
-    universe = args.market.upper()
-    delay = args.vn_delay if universe.startswith("VN") else args.us_delay
+    universe = args.universe.upper()
     refresh_universe(
-        universe, delay=delay, mode=args.mode, job_id=args.job_id
+        universe,
+        us_delay=args.us_delay,
+        vn_delay=args.vn_delay,
+        mode=args.mode,
+        job_id=args.job_id,
     )
 
 

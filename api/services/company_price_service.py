@@ -7,23 +7,30 @@ from threading import Lock
 
 import pandas as pd
 
-from api.market_sessions import latest_completed_session
+from api.instrument_data_routing import (
+    InstrumentDataRoute,
+    UnsupportedInstrumentRouteError,
+    resolve_instrument_data_route,
+)
+from api.market_sessions import latest_completed_venue_session
+from api.repositories.instrument_routing_repository import (
+    InstrumentRoutingRepository,
+)
 from api.repositories.price_bar_repository import (
     PriceBarRecord,
     PriceBarRepository,
     PriceBarWriteRecord,
-    SymbolPriceBarQuery,
-    SymbolSetPriceBarQuery,
+    PriceInstrumentRecord,
+    InstrumentPriceBarQuery,
 )
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
 from trading_engine.types import DataLoadError, DataLoader, PriceFrame
 
 
 FULL_HISTORY_START = date(2000, 1, 1)
 REFRESH_OVERLAP_DAYS = 7
 _lock_guard = Lock()
-_symbol_locks: dict[tuple[str, str], Lock] = {}
-_checked_sessions: dict[tuple[str, str], date] = {}
+_symbol_locks: dict[int, Lock] = {}
+_checked_sessions: dict[int, date] = {}
 
 
 class UnknownCompanyError(ValueError):
@@ -37,7 +44,6 @@ class CompanyPriceUnavailableError(ValueError):
 @dataclass(frozen=True)
 class CompanyPriceData:
     prices: PriceFrame
-    market: str
     expected_last_session: date
     data_last_session: date
     refreshed: bool
@@ -47,51 +53,50 @@ class CompanyPriceData:
     price_basis: str
 
 
-@dataclass(frozen=True)
-class StoredCompanyPriceData:
-    prices: dict[str, PriceFrame]
-    expected_last_session: date
-    missing_tickers: tuple[str, ...]
-    stale_tickers: tuple[str, ...]
-    price_basis: str
-
-
 class CompanyPriceService:
     def __init__(
         self,
         repository: PriceBarRepository,
+        routing_repository: InstrumentRoutingRepository,
         loaders: dict[str, DataLoader],
     ):
         self._repository = repository
+        self._routing_repository = routing_repository
         self._loaders = loaders
 
-    def get_current_history(
+    def get_current_instrument_history(
         self,
-        market: str,
-        ticker: str,
+        instrument_id: int,
         *,
         now: datetime | None = None,
     ) -> CompanyPriceData:
-        normalized_market = market.upper().strip()
-        normalized_ticker = ticker.upper().strip()
-        if normalized_market not in DEFAULT_PRICE_BASIS or not normalized_ticker:
-            raise UnknownCompanyError("A valid market and ticker are required")
-        if not self._repository.instrument_exists(
-            normalized_market, normalized_ticker
-        ):
+        instrument = self._repository.get_instrument(instrument_id)
+        if instrument is None:
+            raise UnknownCompanyError(f"Unknown equity instrument: {instrument_id}")
+        return self._get_current_history(instrument, now=now)
+
+    def _get_current_history(
+        self,
+        instrument: PriceInstrumentRecord,
+        *,
+        now: datetime | None,
+    ) -> CompanyPriceData:
+        route = self._route(instrument.instrument_id)
+        if route.fundamental_adapter is None:
             raise UnknownCompanyError(
-                f"Unknown company: {normalized_market}-{normalized_ticker}"
+                f"Instrument {instrument.instrument_id} is not a supported equity"
             )
+        normalized_ticker = instrument.ticker
         current = now or datetime.now(UTC)
-        expected = latest_completed_session(current, normalized_market)
-        basis = DEFAULT_PRICE_BASIS[normalized_market]
-        key = (normalized_market, normalized_ticker)
+        expected = latest_completed_venue_session(current, route.schedule)
+        basis = route.price_basis
+        key = instrument.instrument_id
         lock = _symbol_lock(key)
         refreshed = False
         warning: str | None = None
         with lock:
-            coverage = self._repository.get_symbol_coverage(
-                normalized_market, normalized_ticker, basis
+            coverage = self._repository.get_instrument_coverage(
+                instrument.instrument_id, basis
             )
             already_checked = _checked_sessions.get(key) == expected
             if (coverage is None or coverage.last_date < expected) and not already_checked:
@@ -100,37 +105,36 @@ class CompanyPriceService:
                     if coverage else FULL_HISTORY_START
                 )
                 try:
-                    fetched = self._loaders[normalized_market].load(
-                        normalized_ticker,
+                    fetched = self._loaders[route.price_adapter].load(
+                        route.provider_symbol,
                         start,
                         expected + timedelta(days=1),
                     )
                     self._store_frame(
-                        normalized_market, normalized_ticker, basis, fetched, current
+                        instrument, route, fetched, current
                     )
                     refreshed = True
                 except (DataLoadError, ValueError, KeyError) as exc:
                     warning = f"Automatic refresh failed: {exc}"
                 finally:
                     _checked_sessions[key] = expected
-                coverage = self._repository.get_symbol_coverage(
-                    normalized_market, normalized_ticker, basis
+                coverage = self._repository.get_instrument_coverage(
+                    instrument.instrument_id, basis
                 )
             elif coverage is not None and coverage.last_date < expected:
-                warning = "Automatic refresh was already attempted for this market session"
+                warning = "Automatic refresh was already attempted for this venue session"
 
         if coverage is None:
             raise CompanyPriceUnavailableError(
-                warning or f"No stored price history for {normalized_market}-{normalized_ticker}"
+                warning or f"No stored price history for instrument {instrument.instrument_id} ({normalized_ticker})"
             )
-        records = tuple(self._repository.iter_symbol_bars(SymbolPriceBarQuery(
-            market=normalized_market,
-            ticker=normalized_ticker,
+        records = tuple(self._repository.iter_instrument_bars(InstrumentPriceBarQuery(
+            instrument_id=instrument.instrument_id,
             price_basis=basis,
         )))
         if not records:
             raise CompanyPriceUnavailableError(
-                f"No stored price history for {normalized_market}-{normalized_ticker}"
+                f"No stored price history for instrument {instrument.instrument_id} ({normalized_ticker})"
             )
         frame = pd.DataFrame(
             {
@@ -149,7 +153,6 @@ class CompanyPriceService:
                 data=frame,
                 source=coverage.source,
             ),
-            market=normalized_market,
             expected_last_session=expected,
             data_last_session=last_date,
             refreshed=refreshed,
@@ -159,68 +162,17 @@ class CompanyPriceService:
             price_basis=basis,
         )
 
-    def get_stored_histories(
-        self,
-        market: str,
-        tickers: list[str] | tuple[str, ...],
-        *,
-        now: datetime | None = None,
-    ) -> StoredCompanyPriceData:
-        normalized_market = market.upper().strip()
-        if normalized_market not in DEFAULT_PRICE_BASIS:
-            raise ValueError("Market must be US or VN")
-        normalized_tickers = tuple(dict.fromkeys(
-            ticker.upper().strip() for ticker in tickers if ticker.strip()
-        ))
-        basis = DEFAULT_PRICE_BASIS[normalized_market]
-        expected = latest_completed_session(now or datetime.now(UTC), normalized_market)
-        coverages = {
-            row.ticker: row
-            for row in self._repository.list_symbol_coverages(
-                normalized_market, normalized_tickers, basis
-            )
-        }
-        grouped: dict[str, list[PriceBarRecord]] = {}
-        for row in self._repository.iter_symbol_set_bars(SymbolSetPriceBarQuery(
-            market=normalized_market,
-            tickers=normalized_tickers,
-            price_basis=basis,
-        )):
-            grouped.setdefault(row.ticker, []).append(row)
-        prices = {
-            ticker: _price_frame(ticker, rows)
-            for ticker, rows in grouped.items()
-            if rows
-        }
-        return StoredCompanyPriceData(
-            prices=prices,
-            expected_last_session=expected,
-            missing_tickers=tuple(
-                ticker for ticker in normalized_tickers if ticker not in prices
-            ),
-            stale_tickers=tuple(
-                ticker
-                for ticker in normalized_tickers
-                if ticker in coverages and coverages[ticker].last_date < expected
-            ),
-            price_basis=basis,
-        )
-
     def _store_frame(
         self,
-        market: str,
-        ticker: str,
-        basis: str,
+        instrument: PriceInstrumentRecord,
+        route: InstrumentDataRoute,
         prices: PriceFrame,
         fetched_at: datetime,
     ) -> None:
-        currency = "VND" if market == "VN" else "USD"
-        scale = 1_000 if market == "VN" else 1
         source = prices.source
         records = (
             PriceBarWriteRecord(
-                market=market,
-                ticker=ticker,
+                instrument_id=instrument.instrument_id,
                 trading_date=pd.Timestamp(index).date(),
                 open=float(row["open"]),
                 high=float(row["high"]),
@@ -231,9 +183,9 @@ class CompanyPriceService:
                     if "volume" in row and not pd.isna(row["volume"])
                     else None
                 ),
-                currency=currency,
-                price_scale=scale,
-                price_basis=basis,
+                currency=route.currency,
+                price_scale=route.price_scale,
+                price_basis=route.price_basis,
                 source=source,
                 fetched_at=fetched_at,
             )
@@ -243,23 +195,31 @@ class CompanyPriceService:
 
     def store_downloaded_histories(
         self,
-        market: str,
-        prices: dict[str, PriceFrame],
+        prices: dict[int, PriceFrame],
         *,
         fetched_at: datetime,
     ) -> int:
-        normalized_market = market.upper().strip()
-        if normalized_market not in DEFAULT_PRICE_BASIS:
-            raise ValueError("Market must be US or VN")
         if fetched_at.tzinfo is None:
             raise ValueError("fetched_at must be timezone-aware")
-        basis = DEFAULT_PRICE_BASIS[normalized_market]
-        currency = "VND" if normalized_market == "VN" else "USD"
-        scale = 1_000 if normalized_market == "VN" else 1
+        targets: dict[int, PriceInstrumentRecord] = {}
+        routes: dict[int, InstrumentDataRoute] = {}
+        for instrument_id, frame in prices.items():
+            target = self._repository.get_instrument(instrument_id)
+            if target is None:
+                raise ValueError(f"Unknown equity instrument: {instrument_id}")
+            route = self._route(instrument_id)
+            if route.fundamental_adapter is None:
+                raise ValueError(f"Unsupported equity instrument: {instrument_id}")
+            if frame.symbol.upper().strip() != route.provider_symbol:
+                raise ValueError(
+                    f"Price history for {frame.symbol} cannot update instrument "
+                    f"{instrument_id} ({route.provider_symbol})"
+                )
+            targets[instrument_id] = target
+            routes[instrument_id] = route
         records = (
             PriceBarWriteRecord(
-                market=normalized_market,
-                ticker=ticker.upper().strip(),
+                instrument_id=instrument_id,
                 trading_date=pd.Timestamp(index).date(),
                 open=float(row["open"]),
                 high=float(row["high"]),
@@ -270,19 +230,32 @@ class CompanyPriceService:
                     if "volume" in row and not pd.isna(row["volume"])
                     else None
                 ),
-                currency=currency,
-                price_scale=scale,
-                price_basis=basis,
+                currency=route.currency,
+                price_scale=route.price_scale,
+                price_basis=route.price_basis,
                 source=frame.source,
                 fetched_at=fetched_at,
             )
-            for ticker, frame in prices.items()
+            for instrument_id, frame in prices.items()
+            for target in (targets[instrument_id],)
+            for route in (routes[instrument_id],)
             for index, row in frame.data.iterrows()
         )
         return self._repository.upsert_bars(records)
 
+    def _route(self, instrument_id: int) -> InstrumentDataRoute:
+        metadata = self._routing_repository.get_instrument_route_metadata(
+            instrument_id
+        )
+        if metadata is None:
+            raise UnknownCompanyError(f"Unknown instrument: {instrument_id}")
+        try:
+            return resolve_instrument_data_route(metadata)
+        except UnsupportedInstrumentRouteError as exc:
+            raise UnknownCompanyError(str(exc)) from exc
 
-def _symbol_lock(key: tuple[str, str]) -> Lock:
+
+def _symbol_lock(key: int) -> Lock:
     with _lock_guard:
         return _symbol_locks.setdefault(key, Lock())
 

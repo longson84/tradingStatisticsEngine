@@ -11,19 +11,24 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
-from api.market_sessions import latest_completed_session
+from api.market_sessions import latest_completed_venue_session
+from api.venue_calendars import venue_calendar
 from api.providers.vietnam_market import (
     create_vietnam_market_provider,
     normalize_ohlcv_result,
 )
-from api.repositories.price_bar_repository import SymbolPriceBarQuery
+from api.repositories.price_bar_repository import InstrumentPriceBarQuery
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
 )
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
+from api.repositories.sqlalchemy_instrument_routing_repository import (
+    SqlAlchemyInstrumentRoutingRepository,
+)
+from api.instrument_data_routing import resolve_instrument_data_route
 from api.services.price_refresh_service import (
     PriceRefreshAttempt,
     PriceRefreshService,
+    PriceRefreshTarget,
 )
 
 
@@ -99,11 +104,14 @@ def compare_frames(sponsored: pd.DataFrame, stored: pd.DataFrame) -> dict[str, A
     }
 
 
-def _stored_frame(repository: SqlAlchemyPriceBarRepository, symbol: str) -> pd.DataFrame:
-    records = tuple(repository.iter_symbol_bars(SymbolPriceBarQuery(
-        market="VN",
-        ticker=symbol,
-        price_basis=DEFAULT_PRICE_BASIS["VN"],
+def _stored_frame(
+    repository: SqlAlchemyPriceBarRepository,
+    instrument_id: int,
+    price_basis: str,
+) -> pd.DataFrame:
+    records = tuple(repository.iter_instrument_bars(InstrumentPriceBarQuery(
+        instrument_id=instrument_id,
+        price_basis=price_basis,
     )))
     return pd.DataFrame([{
         "date": record.trading_date,
@@ -130,7 +138,16 @@ def run_canary(
     sponsored = normalize_ohlcv_result(provider_result)
     engine = create_db_engine(database_url)
     with Session(engine) as session:
-        stored = _stored_frame(SqlAlchemyPriceBarRepository(session), normalized_symbol)
+        repository = SqlAlchemyPriceBarRepository(session)
+        metadata = SqlAlchemyInstrumentRoutingRepository(
+            session
+        ).find_instrument_route_metadata("listing", normalized_symbol)
+        if metadata is None:
+            raise RuntimeError(f"Unknown listing symbol: {normalized_symbol}")
+        route = resolve_instrument_data_route(metadata)
+        if route.price_adapter != "vnstock_data":
+            raise RuntimeError(f"{normalized_symbol} is not routed to vnstock_data")
+        stored = _stored_frame(repository, metadata.instrument_id, route.price_basis)
     comparison = compare_frames(sponsored, stored)
     result: dict[str, Any] = {
         "symbol": normalized_symbol,
@@ -155,11 +172,23 @@ def run_canary(
         write_result = service.store_frames(
             "VNALL",
             [sponsored.drop(columns=["provider_source"])],
+            targets_by_provider_symbol={
+                route.provider_symbol: PriceRefreshTarget(
+                    instrument_id=metadata.instrument_id,
+                    canonical_symbol=metadata.canonical_symbol,
+                    provider_symbol=route.provider_symbol,
+                    price_adapter=route.price_adapter,
+                    price_basis=route.price_basis,
+                    currency=route.currency,
+                    price_scale=route.price_scale,
+                )
+            },
             source=source,
             fetched_at=fetched_at,
         )
-        service.record_attempts("VNALL", [PriceRefreshAttempt(
-            ticker=normalized_symbol,
+        service.record_attempts([PriceRefreshAttempt(
+            instrument_id=metadata.instrument_id,
+            price_basis=route.price_basis,
             attempted_through=end,
             returned_through=pd.to_datetime(sponsored["date"]).max().date(),
             outcome=(
@@ -179,8 +208,8 @@ def run_canary(
         "stored_rows": write_result.stored_rows,
     }
     with Session(engine) as session:
-        coverage = SqlAlchemyPriceBarRepository(session).get_symbol_coverage(
-            "VN", normalized_symbol, DEFAULT_PRICE_BASIS["VN"]
+        coverage = SqlAlchemyPriceBarRepository(session).get_instrument_coverage(
+            metadata.instrument_id, route.price_basis
         )
     result["stored_coverage"] = (
         {
@@ -203,7 +232,9 @@ def main() -> None:
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--database-url")
     args = parser.parse_args()
-    end = args.end or latest_completed_session(datetime.now(UTC), "VN")
+    end = args.end or latest_completed_venue_session(
+        datetime.now(UTC), venue_calendar("HOSE")
+    )
     result = run_canary(
         args.symbol,
         args.start,

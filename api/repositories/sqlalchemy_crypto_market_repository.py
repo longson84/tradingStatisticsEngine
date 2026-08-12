@@ -26,6 +26,7 @@ from api.repositories.crypto_market_repository import (
     SpotMarketSummary,
     SpotMarketVenueFacet,
 )
+from api.venue_calendars import venue_calendar
 
 
 SPOT_PRICE_BASIS = "venue_unadjusted"
@@ -36,12 +37,16 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
         self._session = session
 
     def sync_spot_catalog(self, catalog: SpotCatalogWrite) -> SpotCatalogSyncResult:
+        schedule = venue_calendar(catalog.venue_code)
         venue = self._session.scalar(select(Venue).where(Venue.code == catalog.venue_code))
         if venue is None:
             venue = Venue(
                 code=catalog.venue_code,
                 name=catalog.venue_name,
                 venue_type="exchange",
+                timezone_name=schedule.timezone_name,
+                trading_calendar_code=schedule.trading_calendar_code,
+                session_cutoff_time=schedule.session_cutoff_time,
                 is_active=True,
                 source=catalog.source,
             )
@@ -49,6 +54,9 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             self._session.flush()
         else:
             venue.name = catalog.venue_name
+            venue.timezone_name = schedule.timezone_name
+            venue.trading_calendar_code = schedule.trading_calendar_code
+            venue.session_cutoff_time = schedule.session_cutoff_time
             venue.is_active = True
             venue.source = catalog.source
 
@@ -116,10 +124,8 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
                     base_asset_id=base_asset.id,
                     quote_asset_id=quote_asset.id,
                     settlement_asset_id=quote_asset.id,
-                    market="CRYPTO",
                     ticker=value.symbol,
                     instrument_type="spot",
-                    exchange="BINANCE",
                     currency=value.quote_asset,
                     base_precision=value.base_precision,
                     quote_precision=value.quote_precision,
@@ -135,7 +141,6 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
                 self._session.add(InstrumentSymbol(
                     instrument_id=instrument.id,
                     namespace="binance_spot",
-                    market="CRYPTO",
                     symbol=value.symbol,
                     is_primary=True,
                     source=catalog.source,
@@ -160,9 +165,7 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
                 instrument.base_asset_id = base_asset.id
                 instrument.quote_asset_id = quote_asset.id
                 instrument.settlement_asset_id = quote_asset.id
-                instrument.market = "CRYPTO"
                 instrument.instrument_type = "spot"
-                instrument.exchange = "BINANCE"
                 instrument.currency = value.quote_asset
                 instrument.base_precision = value.base_precision
                 instrument.quote_precision = value.quote_precision
@@ -188,7 +191,6 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             universe = Universe(
                 code=catalog.universe_code,
                 name=catalog.universe_name,
-                market="CRYPTO",
                 description="Currently active Binance Spot instruments.",
                 as_of=catalog.fetched_at.date().isoformat(),
                 fetched_at=catalog.fetched_at,
@@ -198,7 +200,6 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             self._session.flush()
         else:
             universe.name = catalog.universe_name
-            universe.market = "CRYPTO"
             universe.description = "Currently active Binance Spot instruments."
             universe.as_of = catalog.fetched_at.date().isoformat()
             universe.fetched_at = catalog.fetched_at

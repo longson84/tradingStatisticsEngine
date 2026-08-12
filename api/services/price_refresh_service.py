@@ -13,7 +13,6 @@ from api.repositories.price_bar_repository import (
     PriceBarWriteRecord,
     PriceRefreshStateWriteRecord,
 )
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
 
 
 RefreshMode = Literal["incremental", "full"]
@@ -27,8 +26,19 @@ class PriceRefreshError(ValueError):
 @dataclass(frozen=True)
 class PriceRefreshPlan:
     universe: str
-    requested_starts: dict[str, date]
-    reused_symbols: tuple[str, ...]
+    requested_starts: dict[int, date]
+    reused_instrument_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class PriceRefreshTarget:
+    instrument_id: int
+    canonical_symbol: str
+    provider_symbol: str
+    price_adapter: str
+    price_basis: str
+    currency: str
+    price_scale: int
 
 
 @dataclass(frozen=True)
@@ -40,7 +50,8 @@ class PriceRefreshWriteResult:
 
 @dataclass(frozen=True)
 class PriceRefreshAttempt:
-    ticker: str
+    instrument_id: int
+    price_basis: str
     attempted_through: date
     returned_through: date | None
     outcome: Literal["current", "checked_no_new_bar", "failed"]
@@ -57,73 +68,84 @@ class PriceRefreshService:
     def plan(
         self,
         universe: str,
-        symbols: list[str],
+        targets: list[PriceRefreshTarget],
         *,
         full_start: date,
         end: date,
         mode: RefreshMode,
-        already_refreshed: set[str] | None = None,
+        already_refreshed: set[int] | None = None,
     ) -> PriceRefreshPlan:
-        normalized, market = self._resolve_universe(universe)
+        normalized = universe.upper().strip()
         if full_start > end:
             raise PriceRefreshError("Refresh start date must not be after end date")
         if mode not in ("incremental", "full"):
             raise PriceRefreshError(f"Unsupported refresh mode: {mode}")
-        normalized_symbols = tuple(dict.fromkeys(
-            symbol.upper().strip() for symbol in symbols if symbol.strip()
-        ))
+        normalized_targets = tuple(dict.fromkeys(targets))
+        if not normalized_targets:
+            return PriceRefreshPlan(normalized, {}, ())
+        route_signatures = {
+            (target.price_adapter, target.price_basis)
+            for target in normalized_targets
+        }
+        if len(route_signatures) > 1:
+            raise PriceRefreshError(
+                f"{normalized} refresh targets must use one data route"
+            )
+        instrument_ids = tuple(target.instrument_id for target in normalized_targets)
         skipped_overlap = already_refreshed or set()
         coverage = {
-            row.ticker: row
-            for row in self._repository.list_symbol_coverages(
-                market, normalized_symbols, DEFAULT_PRICE_BASIS[market]
+            row.instrument_id: row
+            for row in self._repository.list_instrument_coverages(
+                instrument_ids, normalized_targets[0].price_basis
             )
         }
         refresh_states = {
-            row.ticker: row
-            for row in self._repository.list_refresh_states(
-                market, normalized_symbols, DEFAULT_PRICE_BASIS[market]
+            row.instrument_id: row
+            for row in self._repository.list_instrument_refresh_states(
+                instrument_ids, normalized_targets[0].price_basis
             )
         }
-        expected_latest = _latest_expected_session(end, market)
-        requested: dict[str, date] = {}
-        reused: list[str] = []
-        for symbol in normalized_symbols:
-            if symbol in skipped_overlap:
-                reused.append(symbol)
+        expected_latest = end
+        requested: dict[int, date] = {}
+        reused: list[int] = []
+        for target in normalized_targets:
+            instrument_id = target.instrument_id
+            if instrument_id in skipped_overlap:
+                reused.append(instrument_id)
                 continue
-            existing = coverage.get(symbol)
-            refresh_state = refresh_states.get(symbol)
+            existing = coverage.get(instrument_id)
+            refresh_state = refresh_states.get(instrument_id)
             if mode == "full" or existing is None:
-                requested[symbol] = full_start
+                requested[instrument_id] = full_start
             elif existing.last_date >= expected_latest:
-                reused.append(symbol)
+                reused.append(instrument_id)
             elif (
                 refresh_state is not None
                 and refresh_state.attempted_through >= expected_latest
                 and refresh_state.outcome == "checked_no_new_bar"
             ):
-                reused.append(symbol)
+                reused.append(instrument_id)
             else:
-                requested[symbol] = max(
+                requested[instrument_id] = max(
                     full_start,
                     existing.last_date - timedelta(days=INCREMENTAL_OVERLAP_DAYS),
                 )
         return PriceRefreshPlan(
             universe=normalized,
             requested_starts=requested,
-            reused_symbols=tuple(reused),
+            reused_instrument_ids=tuple(reused),
         )
 
     def store_frames(
         self,
-        universe: str,
+        scope_name: str,
         frames: list[pd.DataFrame],
         *,
+        targets_by_provider_symbol: dict[str, PriceRefreshTarget],
         source: str,
         fetched_at: datetime,
     ) -> PriceRefreshWriteResult:
-        normalized, market = self._resolve_universe(universe)
+        normalized = scope_name.upper().strip()
         if fetched_at.tzinfo is None:
             raise PriceRefreshError("Refresh fetched_at must be timezone-aware")
         if not frames:
@@ -137,6 +159,13 @@ class PriceRefreshService:
             )
         data = data.copy()
         data["symbol"] = data["symbol"].astype(str).str.upper().str.strip()
+        unknown_symbols = sorted(
+            set(data["symbol"]) - set(targets_by_provider_symbol)
+        )
+        if unknown_symbols:
+            raise PriceRefreshError(
+                f"{normalized} refresh returned unknown symbols: {unknown_symbols}"
+            )
         data["date"] = pd.to_datetime(data["date"], errors="coerce").dt.date
         for column in ("open", "high", "low", "close", "volume"):
             if column not in data:
@@ -160,25 +189,23 @@ class PriceRefreshService:
             .drop_duplicates(["symbol", "date"], keep="last")
         )
         rejected_rows = input_rows - len(clean)
-        currency = "VND" if market == "VN" else "USD"
-        price_scale = 1_000 if market == "VN" else 1
         records = (
             PriceBarWriteRecord(
-                market=market,
-                ticker=str(row.symbol),
+                instrument_id=target.instrument_id,
                 trading_date=row.date,
                 open=float(row.open),
                 high=float(row.high),
                 low=float(row.low),
                 close=float(row.close),
                 volume=float(row.volume) if not pd.isna(row.volume) else None,
-                currency=currency,
-                price_scale=price_scale,
-                price_basis=DEFAULT_PRICE_BASIS[market],
+                currency=target.currency,
+                price_scale=target.price_scale,
+                price_basis=target.price_basis,
                 source=source,
                 fetched_at=fetched_at,
             )
             for row in clean.itertuples(index=False)
+            for target in (targets_by_provider_symbol[str(row.symbol)],)
         )
         stored_rows = self._repository.upsert_bars(records)
         return PriceRefreshWriteResult(
@@ -189,10 +216,8 @@ class PriceRefreshService:
 
     def record_attempts(
         self,
-        universe: str,
         attempts: list[PriceRefreshAttempt],
     ) -> int:
-        _, market = self._resolve_universe(universe)
         records: list[PriceRefreshStateWriteRecord] = []
         for attempt in attempts:
             if attempt.attempted_at.tzinfo is None:
@@ -202,9 +227,8 @@ class PriceRefreshService:
                     "Refresh returned_through must not exceed attempted_through"
                 )
             records.append(PriceRefreshStateWriteRecord(
-                market=market,
-                ticker=attempt.ticker.upper().strip(),
-                price_basis=DEFAULT_PRICE_BASIS[market],
+                instrument_id=attempt.instrument_id,
+                price_basis=attempt.price_basis,
                 attempted_through=attempt.attempted_through,
                 returned_through=attempt.returned_through,
                 outcome=attempt.outcome,
@@ -214,19 +238,3 @@ class PriceRefreshService:
                 attempted_at=attempt.attempted_at,
             ))
         return self._repository.upsert_refresh_states(records)
-
-    def _resolve_universe(self, universe: str) -> tuple[str, str]:
-        normalized = universe.upper().strip()
-        market = self._repository.get_universe_market(normalized)
-        if market not in DEFAULT_PRICE_BASIS:
-            raise PriceRefreshError(f"Unknown price universe: {universe}")
-        return normalized, market
-
-
-def _latest_expected_session(end: date, market: str) -> date:
-    # The application operates in Asia/Ho_Chi_Minh. A US session with the same
-    # local calendar date has not completed yet, while a VN session may have.
-    expected = end - timedelta(days=1) if market == "US" else end
-    while expected.weekday() >= 5:
-        expected -= timedelta(days=1)
-    return expected

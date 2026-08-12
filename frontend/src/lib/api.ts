@@ -97,6 +97,29 @@ export type CryptoMarketListResponse = components["schemas"]["CryptoMarketListRe
 export type CryptoMarketQuery = NonNullable<
   operations["listCryptoMarkets"]["parameters"]["query"]
 >
+export type ReferenceRateInstrument = components["schemas"]["ReferenceRateInstrumentResponse"]
+export type ReferenceRateListResponse = components["schemas"]["ReferenceRateListResponse"]
+export type ReferenceRateQuery = NonNullable<
+  operations["listReferenceRates"]["parameters"]["query"]
+>
+export type Venue = components["schemas"]["VenueResponse"]
+export type VenueListResponse = components["schemas"]["VenueListResponse"]
+export type AnalysisInstrument = components["schemas"]["AnalysisInstrumentResponse"]
+export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
+export type UniverseListResponse = components["schemas"]["UniverseListResponse"]
+export type DataOperationRequest = components["schemas"]["DataOperationRequest"]
+export type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
+export type DataOperationJob = components["schemas"]["DataOperationJobResponse"]
+export type InstrumentPriceCoverage = components["schemas"]["InstrumentPriceCoverageResponse"]
+export type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPriceCoveragePageResponse"]
+export type DataOperationScopeType = DataOperationRequest["scope_type"]
+export type DataOperationDataset = NonNullable<DataOperationRequest["dataset"]>
+export type DataOperationMode = NonNullable<DataOperationRequest["mode"]>
+export type AnalysisInstrumentListResponse = components["schemas"]["AnalysisInstrumentListResponse"]
+export type AnalysisInstrumentQuery = NonNullable<
+  operations["listAnalysisInstruments"]["parameters"]["query"]
+>
+export type InstrumentScope = NonNullable<AnalysisInstrumentQuery["scope"]>
 export type CompanyListQuery = NonNullable<
   operations["listCompanies"]["parameters"]["query"]
 >
@@ -108,86 +131,6 @@ export type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateReque
 export type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
 export type WatchlistRefreshJob = components["schemas"]["WatchlistRefreshJobResponse"]
 export type WatchlistRefreshJobsResponse = components["schemas"]["WatchlistRefreshJobsResponse"]
-
-export interface MarketHealthPoint {
-  date: string
-  median_distance: number
-  coverage_pct: number
-  eligible_count: number
-}
-
-export interface MarketHealthSeriesPoint {
-  date: string
-  median_distance: number
-  running_median_10y: number
-  running_median_5y: number
-  running_median_1y: number
-}
-
-export interface MarketHealthCache {
-  fetched_at: string
-  first_date: string
-  last_date: string
-  symbol_count: number
-  source: string
-  price_basis: string
-}
-
-export interface MarketHealthDistributionBucket {
-  label: string
-  min_distance: number | null
-  max_distance: number | null
-  count: number
-  percentage: number
-  cumulative_percentage: number
-}
-
-export interface MarketHealthStockDistance {
-  symbol: string
-  date: string
-  current_price: number
-  rolling_high: number
-  distance: number
-}
-
-export interface MarketHealthDistributionResponse {
-  universe: MarketHealthMarket["universe"]
-  date: string
-  window: number
-  min_distance: number | null
-  max_distance: number | null
-  stocks: MarketHealthStockDistance[]
-}
-
-export interface MarketHealthHistoricalContext {
-  observation_count: number
-  median_distance: number
-  q25_distance: number
-  q75_distance: number
-  current_percentile: number
-  regime: "Exceptionally strong" | "Strong" | "Normal" | "Weak" | "Exceptionally weak"
-}
-
-export interface MarketHealthMarket {
-  universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML"
-  universe_size: number
-  cache: MarketHealthCache
-  current: MarketHealthPoint
-  historical_context: MarketHealthHistoricalContext
-  series: MarketHealthSeriesPoint[]
-  distribution: MarketHealthDistributionBucket[]
-}
-
-export interface MarketHealthRunResponse {
-  window: number
-  minimum_coverage: number
-  markets: MarketHealthMarket[]
-}
-
-export type MarketDataJob = components["schemas"]["MarketDataJobResponse"]
-export type MarketDataCacheStatus = components["schemas"]["MarketDataCacheStatus"]
-export type MarketDataStatusResponse = components["schemas"]["MarketDataStatusResponse"]
-export type MarketDataClearResponse = components["schemas"]["MarketDataClearResponse"]
 
 export interface SymbolPricePoint {
   date: string
@@ -203,9 +146,11 @@ export interface SymbolPricePoint {
   relative_strength: number | null
 }
 
-export interface SymbolPriceHistoryResponse {
+export interface InstrumentPriceHistoryResponse {
+  instrument_id: number
   symbol: string
-  universe: MarketDataCacheStatus["universe"]
+  venue_code: string | null
+  currency: string
   source: string
   price_basis: string
   fetched_at: string
@@ -497,8 +442,7 @@ export type UndercutDistributionRow = components["schemas"]["UndercutDistributio
 export type SingleTickerAnalysis = components["schemas"]["SingleTickerAnalysisResponse"]
 
 export function smaStrategyAnalysisApi(params: {
-  market: "US" | "VN"
-  ticker: string
+  instrument_id: number
   ma_type: MaType
   ma_length: number
   buy_lag: number
@@ -508,8 +452,7 @@ export function smaStrategyAnalysisApi(params: {
   end?: string
 }): Promise<SingleTickerAnalysis> {
   return post("/backtest/analyze", {
-    market: params.market,
-    ticker: params.ticker.toUpperCase().trim(),
+    instrument_id: params.instrument_id,
     strategy: {
       type: "price_vs_ma",
       ma_type: params.ma_type,
@@ -524,8 +467,7 @@ export function smaStrategyAnalysisApi(params: {
 }
 
 export function rarityAnalysisApi(params: {
-  market: "US" | "VN"
-  ticker: string
+  instrument_id: number
   factor_type: FactorType
   period: number
   ma_type?: MaType
@@ -536,8 +478,7 @@ export function rarityAnalysisApi(params: {
   zones?: number[]
 }): Promise<RarityAnalysisResponse> {
   return post("/factors/rarity", {
-    market: params.market,
-    ticker: params.ticker.toUpperCase().trim(),
+    instrument_id: params.instrument_id,
     factor_type: params.factor_type,
     period: params.period,
     ma_type: params.ma_type ?? "sma",
@@ -546,6 +487,21 @@ export function rarityAnalysisApi(params: {
     recovery_mode: params.recovery_mode ?? "price",
     zones: params.zones,
   })
+}
+
+export function instrumentsApi(
+  params: AnalysisInstrumentQuery = {},
+): Promise<AnalysisInstrumentListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) query.set(key, String(value))
+  }
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/instruments${suffix}`)
+}
+
+export function universesApi(): Promise<UniverseListResponse> {
+  return get("/universes")
 }
 
 export function predefinedRarityApi(params: {
@@ -593,9 +549,23 @@ export function cryptoMarketsApi(
   return get(`/crypto/markets${suffix}`)
 }
 
-export function watchlistsApi(market?: "US" | "VN"): Promise<WatchlistListResponse> {
-  const suffix = market ? `?market=${market}` : ""
-  return get(`/watchlists${suffix}`)
+export function referenceRatesApi(
+  params: ReferenceRateQuery = {},
+): Promise<ReferenceRateListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) query.set(key, String(value))
+  }
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/reference-rates${suffix}`)
+}
+
+export function venuesApi(): Promise<VenueListResponse> {
+  return get("/venues")
+}
+
+export function watchlistsApi(): Promise<WatchlistListResponse> {
+  return get("/watchlists")
 }
 
 export function watchlistApi(id: number): Promise<Watchlist> {
@@ -625,62 +595,44 @@ export function watchlistRefreshJobsApi(): Promise<WatchlistRefreshJobsResponse>
   return get("/watchlists/refresh-jobs")
 }
 
-export function marketHealthRunApi(
-  universes: MarketHealthMarket["universe"][],
-): Promise<MarketHealthRunResponse> {
-  return post("/market-health/run", {
-    universes,
-    window: 200,
-    minimum_coverage: 0.8,
-  })
+export function dataOperationPreviewApi(params: {
+  scope_type: DataOperationScopeType
+  scope_id: string
+  dataset: DataOperationDataset
+}): Promise<DataOperationPreview> {
+  const query = new URLSearchParams(params)
+  return get(`/data-operations/preview?${query}`)
 }
 
-export function marketHealthDistributionApi(params: {
-  universe: MarketHealthMarket["universe"]
-  date: string
-  window?: number
-  min_distance: number | null
-  max_distance: number | null
-}): Promise<MarketHealthDistributionResponse> {
+export function dataOperationPriceCoverageApi(params: {
+  scope_type: DataOperationScopeType
+  scope_id: string
+  offset?: number
+  limit?: number
+}): Promise<InstrumentPriceCoveragePage> {
   const query = new URLSearchParams({
-    date: params.date,
-    window: String(params.window ?? 200),
+    scope_type: params.scope_type,
+    scope_id: params.scope_id,
+    offset: String(params.offset ?? 0),
+    limit: String(params.limit ?? 50),
   })
-  if (params.min_distance != null) query.set("min_distance", String(params.min_distance))
-  if (params.max_distance != null) query.set("max_distance", String(params.max_distance))
-  return get(`/market-health/${params.universe}/distribution?${query}`)
+  return get(`/data-operations/coverage?${query}`)
 }
 
-export function marketDataStatusApi(): Promise<MarketDataStatusResponse> {
-  return get("/market-data/status")
+export function startDataOperationApi(
+  request: DataOperationRequest,
+): Promise<DataOperationJob> {
+  return post("/data-operations/jobs", request)
 }
 
-export function symbolPriceHistoryApi(
-  symbol: string,
-  universe: SymbolPriceHistoryResponse["universe"]
-): Promise<SymbolPriceHistoryResponse> {
-  const query = new URLSearchParams({ universe })
-  return get(
-    `/market-data/symbols/${encodeURIComponent(symbol.toUpperCase().trim())}/history?${query}`
-  )
+export function dataOperationJobApi(jobId: string): Promise<DataOperationJob> {
+  return get(`/data-operations/jobs/${encodeURIComponent(jobId)}`)
 }
 
-export function marketDataRefreshApi(
-  market: MarketDataCacheStatus["universe"],
-  mode: "incremental" | "full",
-  dataset: "prices" | "fundamentals" = "prices"
-): Promise<MarketDataJob> {
-  return post(`/market-data/${market}/refresh?mode=${mode}&dataset=${dataset}`, {})
-}
-
-export function marketDataJobApi(jobId: string): Promise<MarketDataJob> {
-  return get(`/market-data/jobs/${encodeURIComponent(jobId)}`)
-}
-
-export function marketDataClearApi(
-  market: MarketDataCacheStatus["universe"]
-): Promise<MarketDataClearResponse> {
-  return del(`/market-data/${market}`)
+export function instrumentPriceHistoryApi(
+  instrumentId: number,
+): Promise<InstrumentPriceHistoryResponse> {
+  return get(`/instruments/${instrumentId}/history`)
 }
 
 export function newLowEpisodesApi(params: {

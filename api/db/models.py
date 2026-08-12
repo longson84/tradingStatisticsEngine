@@ -1,7 +1,7 @@
 """Canonical application persistence models."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -12,12 +12,12 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
-    ForeignKeyConstraint,
     Index,
     Integer,
     JSON,
     Numeric,
     String,
+    Time,
     UniqueConstraint,
     func,
     text,
@@ -85,7 +85,6 @@ class CompanyIdentifier(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-
     company: Mapped[Company] = relationship(back_populates="identifiers")
 
 
@@ -194,6 +193,9 @@ class Venue(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     venue_type: Mapped[str] = mapped_column(String(32), nullable=False)
     country_code: Mapped[str | None] = mapped_column(String(2))
+    timezone_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    trading_calendar_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    session_cutoff_time: Mapped[time] = mapped_column(Time, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -215,18 +217,19 @@ class Instrument(Base):
     __tablename__ = "instruments"
     __table_args__ = (
         CheckConstraint(
-            "market IN ('US', 'VN', 'CRYPTO')", name="ck_instruments_market"
-        ),
-        CheckConstraint(
             "instrument_type != 'spot' OR "
             "(company_id IS NULL AND venue_id IS NOT NULL "
             "AND base_asset_id IS NOT NULL AND quote_asset_id IS NOT NULL)",
             name="ck_instruments_spot_identity",
         ),
-        UniqueConstraint("id", "market", name="uq_instruments_id_market"),
+        CheckConstraint(
+            "instrument_type != 'reference_rate' OR "
+            "(company_id IS NULL AND venue_id IS NULL "
+            "AND base_asset_id IS NOT NULL AND quote_asset_id IS NOT NULL)",
+            name="ck_instruments_reference_rate_identity",
+        ),
         Index(
-            "uq_instruments_market_ticker_without_venue",
-            "market",
+            "uq_instruments_ticker_without_venue",
             "ticker",
             unique=True,
             postgresql_where=text("venue_id IS NULL"),
@@ -258,7 +261,6 @@ class Instrument(Base):
     settlement_asset_id: Mapped[int | None] = mapped_column(
         ForeignKey("assets.id", ondelete="RESTRICT"), index=True
     )
-    market: Mapped[str] = mapped_column(String(16), nullable=False)
     # Compatibility/current-identity column. Full aliases and history live in
     # instrument_symbols; existing price and API callers can continue using it.
     ticker: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -266,7 +268,6 @@ class Instrument(Base):
         String(32), nullable=False, default="common_stock"
     )
     share_class: Mapped[str | None] = mapped_column(String(64))
-    exchange: Mapped[str | None] = mapped_column(String(32))
     currency: Mapped[str] = mapped_column(String(16), nullable=False)
     base_precision: Mapped[int | None] = mapped_column(Integer)
     quote_precision: Mapped[int | None] = mapped_column(Integer)
@@ -331,19 +332,13 @@ class InstrumentSymbol(Base):
     __tablename__ = "instrument_symbols"
     __table_args__ = (
         CheckConstraint(
-            "market IN ('US', 'VN', 'CRYPTO')",
-            name="ck_instrument_symbols_market",
-        ),
-        CheckConstraint(
             "valid_to IS NULL OR valid_from IS NULL OR valid_to >= valid_from",
             name="ck_instrument_symbols_validity",
         ),
         Index(
-            "uq_instrument_symbols_current_identity",
+            "ix_instrument_symbols_current_lookup",
             "namespace",
-            "market",
             "symbol",
-            unique=True,
             postgresql_where=text("valid_to IS NULL"),
             sqlite_where=text("valid_to IS NULL"),
         ),
@@ -362,7 +357,6 @@ class InstrumentSymbol(Base):
         ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
     )
     namespace: Mapped[str] = mapped_column(String(64), nullable=False)
-    market: Mapped[str] = mapped_column(String(16), nullable=False)
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
     valid_from: Mapped[date | None] = mapped_column(Date)
     valid_to: Mapped[date | None] = mapped_column(Date)
@@ -385,16 +379,10 @@ class Universe(Base):
     """A named current constituent universe such as US500 or VN30."""
 
     __tablename__ = "universes"
-    __table_args__ = (
-        CheckConstraint(
-            "market IN ('US', 'VN', 'CRYPTO')", name="ck_universes_market"
-        ),
-    )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    market: Mapped[str] = mapped_column(String(16), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
     as_of: Mapped[str | None] = mapped_column(String(64))
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -555,19 +543,16 @@ class PriceRefreshState(Base):
 
 
 class Watchlist(Base):
-    """One user-managed, single-market collection of companies."""
+    """One user-managed, ordered collection of canonical instruments."""
 
     __tablename__ = "watchlists"
     __table_args__ = (
-        CheckConstraint("market IN ('US', 'VN')", name="ck_watchlists_market"),
-        UniqueConstraint("market", "name_key", name="uq_watchlists_market_name_key"),
-        UniqueConstraint("id", "market", name="uq_watchlists_id_market"),
+        UniqueConstraint("name_key", name="uq_watchlists_name_key"),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     name_key: Mapped[str] = mapped_column(String(100), nullable=False)
-    market: Mapped[str] = mapped_column(String(2), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -595,24 +580,15 @@ class WatchlistMembership(Base):
         UniqueConstraint(
             "watchlist_id", "instrument_id", name="uq_watchlist_membership"
         ),
-        ForeignKeyConstraint(
-            ("watchlist_id", "market"),
-            ("watchlists.id", "watchlists.market"),
-            name="fk_watchlist_memberships_watchlist_market",
-            ondelete="CASCADE",
-        ),
-        ForeignKeyConstraint(
-            ("instrument_id", "market"),
-            ("instruments.id", "instruments.market"),
-            name="fk_watchlist_memberships_instrument_market",
-            ondelete="CASCADE",
-        ),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
-    watchlist_id: Mapped[int] = mapped_column(_ID_TYPE, nullable=False, index=True)
-    instrument_id: Mapped[int] = mapped_column(_ID_TYPE, nullable=False, index=True)
-    market: Mapped[str] = mapped_column(String(2), nullable=False)
+    watchlist_id: Mapped[int] = mapped_column(
+        ForeignKey("watchlists.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

@@ -8,6 +8,7 @@ import pytest
 
 from api.repositories.fundamental_repository import (
     FundamentalFactRecord,
+    FundamentalInstrumentRecord,
     FundamentalReportRecord,
     FundamentalStatusRecord,
     ProviderValuationRecord,
@@ -23,17 +24,20 @@ FETCHED_AT = datetime(2026, 8, 3, tzinfo=UTC)
 
 
 class FakeFundamentalRepository:
-    def instrument_exists(self, market: str, ticker: str) -> bool:
-        return (market, ticker) in {("VN", "FPT"), ("VN", "EMPTY")}
+    def get_instrument(self, instrument_id: int):
+        return {
+            1: FundamentalInstrumentRecord(1, "FPT", "VND"),
+            2: FundamentalInstrumentRecord(2, "EMPTY", "VND"),
+        }.get(instrument_id)
 
-    def list_reports(self, market: str, ticker: str):
-        if ticker == "EMPTY":
+    def list_reports(self, instrument_id: int):
+        if instrument_id == 2:
             return ()
         return (
             FundamentalReportRecord(
                 id=1,
+                instrument_id=1,
                 ticker="FPT",
-                market="VN",
                 source="vnstock-vci-4.0.5",
                 period_end=date(2025, 3, 31),
                 period_label="2025-Q1",
@@ -44,8 +48,8 @@ class FakeFundamentalRepository:
             ),
             FundamentalReportRecord(
                 id=2,
+                instrument_id=1,
                 ticker="FPT",
-                market="VN",
                 source="vnstock-vci-4.0.5",
                 period_end=date(2025, 6, 30),
                 period_label="2025-Q2",
@@ -83,7 +87,8 @@ class FakeFundamentalRepository:
             ),
         )
 
-    def list_valuations(self, market: str, ticker: str):
+    def list_valuations(self, instrument_id: int):
+        assert instrument_id == 1
         return (
             ProviderValuationRecord(
                 effective_session_date=date(2025, 7, 25),
@@ -103,7 +108,6 @@ class FakeFundamentalRepository:
             return None
         return FundamentalStatusRecord(
             universe="VN100",
-            market="VN",
             fetched_at=FETCHED_AT,
             first_effective_date=date(2025, 4, 25),
             last_effective_date=date(2025, 7, 25),
@@ -118,9 +122,9 @@ class FakeFundamentalRepository:
 def test_service_projects_normalized_records_to_existing_wide_contract():
     service = FundamentalService(FakeFundamentalRepository())
 
-    result = service.get_symbol_history("vn", "fpt")
+    result = service.get_instrument_history(1)
 
-    assert result.market == "VN"
+    assert result.instrument_id == 1
     assert result.ticker == "FPT"
     assert tuple(result.snapshots.columns) == FUNDAMENTAL_COLUMNS
     assert result.snapshots["effective_date"].tolist() == [
@@ -143,12 +147,10 @@ def test_service_projects_normalized_records_to_existing_wide_contract():
 def test_service_rejects_invalid_unknown_and_empty_instruments():
     service = FundamentalService(FakeFundamentalRepository())
 
-    with pytest.raises(FundamentalsNotFoundError, match="valid market"):
-        service.get_symbol_history("CA", "SHOP")
     with pytest.raises(FundamentalsNotFoundError, match="Unknown instrument"):
-        service.get_symbol_history("US", "MSFT")
+        service.get_instrument_history(999)
     with pytest.raises(FundamentalsNotFoundError, match="No stored fundamentals"):
-        service.get_symbol_history("VN", "EMPTY")
+        service.get_instrument_history(2)
 
 
 def test_service_normalizes_universe_status_lookup():

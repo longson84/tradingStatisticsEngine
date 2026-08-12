@@ -53,7 +53,6 @@ def test_company_route_contract_has_only_canonical_company_fields():
     service, session = _service()
     try:
         instrument = session.scalar(select(Instrument).where(
-            Instrument.market == "VN",
             Instrument.ticker == "FPT",
         ))
         assert instrument is not None
@@ -73,7 +72,7 @@ def test_company_route_contract_has_only_canonical_company_fields():
             search="FPT",
             sector=None,
             industry=None,
-            exchange=None,
+            venue=None,
             offset=0,
             limit=5000,
         )
@@ -82,12 +81,13 @@ def test_company_route_contract_has_only_canonical_company_fields():
 
     company = next(row for row in response.companies if row.ticker == "FPT")
     assert company.model_dump() == {
+        "instrument_id": instrument.id,
         "ticker": "FPT",
         "company_name": "FPT Corporation",
-        "market": "VN",
+        "country_code": "VN",
         "sector": "Information Technology",
         "industry": "Công nghệ và thông tin",
-        "exchange": "HOSE",
+        "venue_code": "HOSE",
         "lists": ["VN100", "VN30", "VNALL"],
         "first_session": date(2006, 12, 13),
         "last_session": date(2026, 8, 7),
@@ -117,7 +117,8 @@ def test_openapi_company_contract_is_generated_from_canonical_schema():
     assert not any(path.startswith("/symbol-lists") for path in schema["paths"])
     properties = schema["components"]["schemas"]["CompanyResponse"]["properties"]
     assert set(properties) == {
-        "ticker", "company_name", "market", "sector", "industry", "exchange",
+        "instrument_id", "ticker", "company_name", "country_code", "sector",
+        "industry", "venue_code",
         "lists", "first_session", "last_session", "stored_sessions",
     }
 
@@ -206,7 +207,7 @@ def test_instrument_list_paginates_and_returns_universe_and_sector_facets():
             search=None,
             sector=None,
             industry=None,
-            exchange=None,
+            venue=None,
             offset=0,
             limit=50,
         )

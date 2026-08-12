@@ -6,13 +6,9 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Protocol
 
-import pandas as pd
-
-
 @dataclass(frozen=True)
 class PriceBarRecord:
     ticker: str
-    market: str
     trading_date: date
     open: float
     high: float
@@ -28,6 +24,7 @@ class PriceBarRecord:
 
 @dataclass(frozen=True)
 class PriceBarCoverageRecord:
+    instrument_id: int
     ticker: str
     first_date: date
     last_date: date
@@ -35,8 +32,8 @@ class PriceBarCoverageRecord:
 
 @dataclass(frozen=True)
 class SymbolPriceCoverageRecord:
+    instrument_id: int
     ticker: str
-    market: str
     first_date: date
     last_date: date
     row_count: int
@@ -46,8 +43,8 @@ class SymbolPriceCoverageRecord:
 
 @dataclass(frozen=True)
 class PriceRefreshStateRecord:
+    instrument_id: int
     ticker: str
-    market: str
     price_basis: str
     attempted_through: date
     returned_through: date | None
@@ -60,8 +57,7 @@ class PriceRefreshStateRecord:
 
 @dataclass(frozen=True)
 class PriceRefreshStateWriteRecord:
-    market: str
-    ticker: str
+    instrument_id: int
     price_basis: str
     attempted_through: date
     returned_through: date | None
@@ -74,8 +70,7 @@ class PriceRefreshStateWriteRecord:
 
 @dataclass(frozen=True)
 class PriceBarWriteRecord:
-    market: str
-    ticker: str
+    instrument_id: int
     trading_date: date
     open: float
     high: float
@@ -87,84 +82,56 @@ class PriceBarWriteRecord:
     price_basis: str
     source: str
     fetched_at: datetime
-    venue_code: str | None = None
 
 
 @dataclass(frozen=True)
-class PriceBarStatusRecord:
-    universe: str
-    market: str
-    fetched_at: datetime
-    first_date: date
-    last_date: date
-    symbol_count: int
-    row_count: int
-    sources: tuple[str, ...]
-    price_basis: str
-    expected_session: date | None = None
-    coverage_through: date | None = None
-    universe_symbol_count: int = 0
-    current_symbol_count: int = 0
-    stale_symbol_count: int = 0
-    missing_symbol_count: int = 0
-    checked_no_new_bar_count: int = 0
-    failed_refresh_symbol_count: int = 0
-
-
-@dataclass(frozen=True)
-class PriceBarQuery:
-    universe: str
-    price_basis: str
-    ticker: str | None = None
-    start: date | None = None
-    end: date | None = None
-
-
-@dataclass(frozen=True)
-class SymbolPriceBarQuery:
-    market: str
+class PriceInstrumentRecord:
+    instrument_id: int
     ticker: str
+    currency: str
+    instrument_type: str
+    venue_code: str | None
+
+
+@dataclass(frozen=True)
+class InstrumentPriceBarQuery:
+    instrument_id: int
     price_basis: str
     start: date | None = None
     end: date | None = None
 
 
 @dataclass(frozen=True)
-class SymbolSetPriceBarQuery:
-    market: str
-    tickers: tuple[str, ...]
+class InstrumentSetPriceBarQuery:
+    instrument_ids: tuple[int, ...]
     price_basis: str
     start: date | None = None
     end: date | None = None
 
 
 class PriceBarRepository(Protocol):
-    def get_universe_market(self, universe: str) -> str | None: ...
+    def get_instrument(
+        self, instrument_id: int
+    ) -> PriceInstrumentRecord | None: ...
 
-    def get_latest_date(self, universe: str, price_basis: str) -> date | None: ...
-
-    def iter_bars(self, query: PriceBarQuery) -> Iterable[PriceBarRecord]: ...
-
-    def instrument_exists(self, market: str, ticker: str) -> bool: ...
-
-    def get_symbol_coverage(
-        self, market: str, ticker: str, price_basis: str
+    def get_instrument_coverage(
+        self, instrument_id: int, price_basis: str
     ) -> SymbolPriceCoverageRecord | None: ...
 
-    def iter_symbol_bars(
-        self, query: SymbolPriceBarQuery
-    ) -> Iterable[PriceBarRecord]: ...
-
-    def list_symbol_coverages(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def list_instrument_coverages(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[SymbolPriceCoverageRecord, ...]: ...
 
-    def list_refresh_states(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def list_instrument_refresh_states(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[PriceRefreshStateRecord, ...]: ...
 
-    def iter_symbol_set_bars(
-        self, query: SymbolSetPriceBarQuery
+    def iter_instrument_bars(
+        self, query: InstrumentPriceBarQuery
+    ) -> Iterable[PriceBarRecord]: ...
+
+    def iter_instrument_set_bars(
+        self, query: InstrumentSetPriceBarQuery
     ) -> Iterable[PriceBarRecord]: ...
 
     def upsert_bars(self, records: Iterable[PriceBarWriteRecord]) -> int: ...
@@ -172,16 +139,15 @@ class PriceBarRepository(Protocol):
     def upsert_refresh_states(
         self, records: Iterable[PriceRefreshStateWriteRecord]
     ) -> int: ...
+
 
 class PriceBarRefreshRepository(Protocol):
-    def get_universe_market(self, universe: str) -> str | None: ...
-
-    def list_symbol_coverages(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def list_instrument_coverages(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[SymbolPriceCoverageRecord, ...]: ...
 
-    def list_refresh_states(
-        self, market: str, tickers: tuple[str, ...], price_basis: str
+    def list_instrument_refresh_states(
+        self, instrument_ids: tuple[int, ...], price_basis: str
     ) -> tuple[PriceRefreshStateRecord, ...]: ...
 
     def upsert_bars(self, records: Iterable[PriceBarWriteRecord]) -> int: ...
@@ -189,27 +155,3 @@ class PriceBarRefreshRepository(Protocol):
     def upsert_refresh_states(
         self, records: Iterable[PriceRefreshStateWriteRecord]
     ) -> int: ...
-
-
-class MarketHealthRepository(Protocol):
-    def get_universe_market(self, universe: str) -> str | None: ...
-
-    def get_latest_date(self, universe: str, price_basis: str) -> date | None: ...
-
-    def load_close_matrix(self, query: PriceBarQuery) -> pd.DataFrame: ...
-
-    def get_status(
-        self, universe: str, price_basis: str, expected_session: date
-    ) -> PriceBarStatusRecord | None: ...
-
-
-class PriceBarMaintenanceRepository(Protocol):
-    def get_universe_market(self, universe: str) -> str | None: ...
-
-    def get_status(
-        self, universe: str, price_basis: str, expected_session: date
-    ) -> PriceBarStatusRecord | None: ...
-
-    def list_market_universes(self, market: str) -> tuple[str, ...]: ...
-
-    def delete_market_bars(self, market: str) -> int: ...

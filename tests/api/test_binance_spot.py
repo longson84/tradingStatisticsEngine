@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 import hashlib
 from io import BytesIO
@@ -175,7 +175,7 @@ def test_catalog_sync_creates_assets_venue_spot_instruments_and_active_universe(
         assert btc.base_asset is not None and btc.base_asset.canonical_code == "BTC"
         assert btc.quote_asset is not None and btc.quote_asset.canonical_code == "USDT"
         universe = session.scalar(select(Universe).where(Universe.code == "BINANCE_SPOT"))
-        assert universe is not None and universe.market == "CRYPTO"
+        assert universe is not None and universe.name == "Binance Spot"
         assert SqlAlchemyCompanyRepository(session).list_universes() == ()
         members = session.scalars(
             select(Instrument)
@@ -261,6 +261,9 @@ def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
             code="OKX_SPOT",
             name="OKX Spot",
             venue_type="exchange",
+            timezone_name="UTC",
+            trading_calendar_code="CRYPTO_24_7",
+            session_cutoff_time=time(0, 0),
             is_active=True,
             source="test",
         )
@@ -278,10 +281,8 @@ def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
             base_asset_id=btc_asset.id,
             quote_asset_id=usdt_asset.id,
             settlement_asset_id=usdt_asset.id,
-            market="CRYPTO",
             ticker="BTC-USDT",
             instrument_type="spot",
-            exchange="OKX",
             currency="USDT",
             price_tick_size=Decimal("0.1"),
             quantity_step_size=Decimal("0.00001"),

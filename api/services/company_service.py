@@ -11,10 +11,11 @@ from api.repositories.company_repository import (
     CompanyRepository,
     UniverseRecord,
 )
-from api.services.price_history_service import DEFAULT_PRICE_BASIS
-
-
 ALL_UNIVERSES = {"US_ALL": "US", "VN_ALL": "VN"}
+DEFAULT_PRICE_BASIS = {
+    "US": "adjusted",
+    "VN": "provider_unspecified",
+}
 UNIVERSE_ORDER = (
     "US_ALL", "US100", "US2000", "US500", "US30",
     "VN_ALL", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
@@ -29,7 +30,7 @@ class UnknownUniverseError(ValueError):
 class CompanyList:
     id: str
     name: str
-    market: str
+    country_code: str
     description: str
     as_of: str | None
     fetched_at: datetime | None
@@ -63,40 +64,40 @@ class CompanyService:
         search: str | None = None,
         sector: str | None = None,
         industry: str | None = None,
-        exchange: str | None = None,
+        venue_code: str | None = None,
         offset: int = 0,
         limit: int = 5000,
     ) -> CompanyList:
         universe_id = universe_id.upper()
         universes = {row.code: row for row in self._repository.list_universes()}
         if universe_id in ALL_UNIVERSES:
-            market = ALL_UNIVERSES[universe_id]
+            country_code = ALL_UNIVERSES[universe_id]
             universe = self._combined_universe(
-                universe_id, market, tuple(universes.values())
+                universe_id, country_code, tuple(universes.values())
             )
             stored_universe = None
         else:
             universe = universes.get(universe_id)
             if universe is None:
                 raise UnknownUniverseError(f"Unknown company universe: {universe_id}")
-            market = universe.market
+            country_code = universe.country_code
             stored_universe = universe_id
 
         companies, total, facets = self._repository.list_companies(CompanyQuery(
-            market=market,
-            price_basis=DEFAULT_PRICE_BASIS[market],
+            country_code=country_code,
+            price_basis=DEFAULT_PRICE_BASIS[country_code],
             universe=stored_universe,
             search=search,
             sector=sector,
             industry=industry,
-            exchange=exchange,
+            venue_code=venue_code,
             offset=offset,
             limit=limit,
         ))
         return CompanyList(
             id=universe.code,
             name=universe.name,
-            market=market,
+            country_code=country_code,
             description=universe.description,
             as_of=universe.as_of,
             fetched_at=universe.fetched_at,
@@ -110,21 +111,23 @@ class CompanyService:
     def _combined_universe(
         self,
         code: str,
-        market: str,
+        country_code: str,
         universes: tuple[UniverseRecord, ...],
     ) -> UniverseRecord:
-        market_universes = tuple(row for row in universes if row.market == market)
+        country_universes = tuple(
+            row for row in universes if row.country_code == country_code
+        )
         count = self._repository.count_companies(CompanyQuery(
-            market=market,
-            price_basis=DEFAULT_PRICE_BASIS[market],
+            country_code=country_code,
+            price_basis=DEFAULT_PRICE_BASIS[country_code],
         ))
-        fetched = [row.fetched_at for row in market_universes if row.fetched_at]
-        as_of_values = [row.as_of for row in market_universes if row.as_of]
+        fetched = [row.fetched_at for row in country_universes if row.fetched_at]
+        as_of_values = [row.as_of for row in country_universes if row.as_of]
         return UniverseRecord(
             code=code,
-            name=f"{market} Companies",
-            market=market,
-            description=f"All saved {market} companies merged without duplicate tickers.",
+            name=f"{country_code} Companies",
+            country_code=country_code,
+            description=f"All saved {country_code} companies merged without duplicate tickers.",
             as_of=" / ".join(as_of_values) or None,
             fetched_at=max(fetched) if fetched else None,
             company_count=count,

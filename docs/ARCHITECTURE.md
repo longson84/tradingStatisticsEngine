@@ -65,17 +65,18 @@ PostgreSQL is the canonical application database. SQLAlchemy 2.x provides the
 Python persistence boundary, transactions, and connection management. Alembic
 is the only supported mechanism for changing the database schema.
 
-The local development database is defined in `compose.yaml` and published on
-port 5434 to avoid other local PostgreSQL projects. The connection is selected
-through `DATABASE_URL`; committed credentials are development-only and must not
-be reused outside a local machine.
+The local development database is defined in `compose.yaml` and bound only to
+IPv4 loopback at `127.0.0.1:5436`, avoiding the Cloud SQL proxy on `5434` and
+preventing `localhost` from resolving to a different IPv6 listener. The
+connection is selected through `DATABASE_URL`; committed credentials are
+development-only and must not be reused outside a local machine.
 
 CSV and JSON snapshots remain valid ingestion inputs during migration. Company
 snapshots under `api/data/symbol_lists/` are importer inputs and rollback
 evidence only; all application company reads use PostgreSQL through the Company
-service. Price History and Market Health read canonical daily bars from
+service. Exact-instrument Price History reads canonical daily bars from
 PostgreSQL, and price refreshes incrementally upsert the same table. Price
-status and maintenance operations also use PostgreSQL. Benchmarks and
+coverage and maintenance operations also use PostgreSQL. Benchmarks and
 fundamentals remain file-backed until their separate migrations are verified.
 
 ### Canonical company, asset, venue, and instrument schema
@@ -94,19 +95,26 @@ fundamentals remain file-backed until their separate migrations are verified.
   row.
 - `venues` stores the economic location of trading, such as Binance Spot or
   NASDAQ. A venue is not a data-provider registry and remains part of market
-  identity even if its API becomes unavailable.
+  identity even if its API becomes unavailable. Every venue also owns an IANA
+  timezone, a `trading_calendar_code` policy string, and a local daily-session
+  cutoff. The calendar code is application metadata, not a foreign key to a
+  calendar table.
 - `instruments` stores venue-specific tradable-product identity: optional
   company, venue, base asset, quote asset, settlement asset, market class,
   current canonical ticker, product type, trading increments, active state,
   and source. Existing equity instruments retain their issuer relationship;
   crypto spot instruments have no company and require venue, base, and quote
-  assets.
+  assets. Reference-rate instruments have no company or venue and require base
+  and quote assets; they represent a provider observation, not an executable
+  market.
 - `instrument_symbols` stores canonical, source-specific, and historical
   ticker mappings with optional validity dates. `instruments.ticker` remains
   the denormalized current canonical symbol used by existing price and API
   consumers and must be updated with its current canonical mapping.
-- `universes` stores the named current snapshots such as US100, US500, US2000,
-  US30, VN30, VNMID, VN100, VNSML, and VNALL.
+- `universes` stores system-managed named current snapshots such as US100,
+  US500, US2000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
+  universe has no market classification; any instrument characteristics needed
+  by a consumer come from its current membership.
 - `universe_memberships` implements the many-to-many relationship between
   instruments and universes.
 - `price_bars` stores canonical daily OHLCV observations once per instrument,
@@ -145,7 +153,7 @@ explicit migration and a source capable of providing reliable membership dates.
 - Weekly and monthly bars are derived from daily observations and are not stored
   as duplicate source data at this stage.
 - The one-time universe CSV importer and its source caches were removed after
-  database, price-history, and Market Health parity were verified. PostgreSQL
+  database and price-history parity were verified. PostgreSQL
   backups, rather than CSV application caches, are the recovery mechanism for
   canonical price bars.
 - Provider rows with non-positive or non-finite prices, inverted high/low, or
@@ -181,6 +189,33 @@ explicit migration and a source capable of providing reliable membership dates.
   and a future OKX Spot listing over the same assets remain separate
   instruments. The UI labels rows as spot instruments rather than companies or
   global crypto assets.
+
+### Reference-rate ingestion
+
+- A reference rate is modeled with the same canonical `instruments` table as
+  other products, using `instrument_type = reference_rate`. It links canonical
+  base and quote assets but has no company and no economic venue.
+- `BTC-USD` and `ETH-USD` are the initial reference-rate instruments. BTC or
+  ETH is the base asset and USD is the quote asset. They are distinct from
+  venue instruments such as Binance BTC/USDT or ETH/USDT: the quote asset,
+  price semantics, and identity are different.
+- Yahoo Finance is the current observation provider and `yfinance` is the
+  software adapter. Provider provenance remains an open string on the symbol,
+  instrument, and price observation; changing adapters does not change the
+  instrument's canonical identity and does not require a provider table.
+- Daily observations use `price_basis = provider_unspecified` because the
+  provider contract does not give this application a durable adjusted-versus-
+  unadjusted guarantee. They are stored in canonical `price_bars` with USD as
+  the quote currency, never as a JSON cache or a venue-specific trade series.
+- `GET /reference-rates` is a 50-row server-paginated read projection with
+  search, base/quote, and active-state filters. Its explicit null venue is a
+  semantic distinction, not missing catalog data.
+- The operational sync seeds the registered catalog safely by default.
+  Historical network retrieval requires `--history`, can be bounded with an
+  explicit `--symbols` list, requests each asset's earliest plausible history
+  for a fresh database, and overlaps seven days on incremental refreshes before
+  idempotent upsert. Stored coverage begins on the provider's first returned
+  observation, which may be later than the requested start.
 
 ## Database conventions
 
@@ -227,12 +262,11 @@ The frontend is independent from backend implementation layers. It communicates
 only through HTTP clients and generated API contracts. Frontend code must never
 depend on repository, service, ORM, or database concepts.
 
-Price-history reads follow the same boundary. `PriceBarRepository` exposes
-persistence-neutral records and streaming range queries. `PriceHistoryService`
-selects the market's canonical price basis and constructs engine `PriceFrame`
-objects plus provenance metadata. Only dependency wiring may instantiate the
-SQLAlchemy implementation. Price History and Market Health consume this service;
-routes do not access ORM models or repository implementations.
+Exact-instrument price-history reads follow the same boundary.
+`InstrumentAnalysisService` resolves an instrument's canonical basis and
+constructs engine `PriceFrame` objects plus provenance metadata. Only dependency
+wiring may instantiate the SQLAlchemy implementation; routes do not access ORM
+models or repository implementations.
 
 ## End-to-end contracts
 
@@ -1083,3 +1117,429 @@ catalog at `/crypto`. It exposes base/quote identity, active state, scalar
 trading rules, venue identity, and stored daily-history coverage; it does not
 imply that Binance is the canonical issuer or the only possible venue for an
 asset.
+
+### 2026-08-10 — Venue-less reference-rate instruments
+
+Context: analysis already downloaded Yahoo's `BTC-USD`, while the canonical
+crypto model only represented executable venue spot products such as Binance
+BTC/USDT. Treating Yahoo as a venue would confuse observation provenance with
+economic execution, and treating BTC/USD as a company or JSON dataset would
+bypass the canonical asset and price-bar model.
+
+Decision: represent BTC/USD as a venue-less `reference_rate` instrument linking
+the canonical BTC and USD assets. Migration `0013` adds the database identity
+constraint and seeds the instrument plus its Yahoo Finance symbol. Yahoo
+Finance is stored as open-string provenance and `yfinance` remains an adapter,
+not a provider or venue entity. Store its daily observations in `price_bars`
+with `provider_unspecified` basis and expose a paginated `/reference-rates`
+catalog and frontend page.
+
+Consequences: BTC/USD and Binance BTC/USDT can coexist without pretending they
+are interchangeable prices. Reference rates reuse the same coverage,
+provenance, refresh, and PostgreSQL recovery model as other daily bars, while a
+future provider or adapter can be substituted without changing instrument
+identity. New reference-rate pairs can use the same model without creating a
+new table per data family.
+
+### 2026-08-10 — Register ETH/USD as a reference rate
+
+Context: the reference-rate implementation initially registered only BTC/USD,
+but ETH/USD has the same venue-less provider-observation semantics and should
+not require a duplicated ingestion path or a new persistence model.
+
+Decision: migration `0014` seeds canonical ETH and the Yahoo `ETH-USD` symbol.
+The operational synchronizer now processes a bounded registry containing both
+BTC-USD and ETH-USD, with optional symbol selection for targeted backfills.
+
+Consequences: the Reference Rates page discovers ETH/USD automatically through
+the existing paginated projection. Both rates share validation, provenance,
+coverage, and canonical `price_bars` storage while remaining separate
+instruments linked to their respective base assets.
+
+### 2026-08-10 — Instrument-identified Factor Rarity
+
+Context: Factor Rarity still used the legacy company-list projection and sent
+`market + ticker`, even after issuer, tradable-product, venue, asset, and symbol
+identity had been separated. That compatibility path was ambiguous for multiple
+share classes and could not identify venue-specific spot instruments or
+venue-less reference rates.
+
+Decision: Factor Rarity now accepts only a positive canonical `instrument_id`.
+`GET /instruments` is the server-side discovery boundary for analysis-ready
+instruments and can search equities by issuer or symbol, spot instruments by
+asset or venue, and reference rates by their asset pair. The selector stores the
+ID while symbol, company, venue, base/quote assets, currency, coverage, price
+basis, and source remain display or provenance metadata. Discovery defaults to
+instruments with canonical PostgreSQL price coverage.
+
+Price resolution reads `price_bars` by the exact instrument ID and canonical
+basis: adjusted for US equities, provider-unspecified for VN equities and
+reference rates, and venue-unadjusted for spot instruments. Existing targeted
+US/VN refresh behavior remains behind the instrument boundary. Crypto spot and
+reference-rate series are refreshed by their dedicated ingestion workflows; an
+analysis request reports stale stored data explicitly instead of routing those
+instruments through an equity provider.
+
+Consequences: GOOG and GOOGL remain separate analyzable instruments of one
+Alphabet issuer; Binance and OKX products with similar symbols cannot collide;
+and BTC/USD reference-rate analysis does not invent a company or venue. The
+engine contract remains unchanged because the API still resolves the selected
+instrument into one `PriceFrame` before factor computation.
+
+### 2026-08-10 — Cross-market instrument watchlists and predefined rarity
+
+Context: saved watchlists were created as single-market company groups and
+accepted ticker strings. Their memberships already referenced instruments, but
+duplicated the watchlist market in each row and constrained every member to the
+same market. Predefined Rarity then converted the membership back to
+`market + ticker`, losing exact identity for venue-specific crypto instruments,
+reference rates, and potentially colliding symbols.
+
+Decision: migration `0015` removes market from `watchlists` and
+`watchlist_memberships`. A watchlist is now a globally named, user-managed,
+ordered set of active canonical `instrument_id` values. It may contain equities,
+venue-specific crypto spot products, and venue-less reference rates together.
+Universes remain provider or system-defined sourced collections; watchlists are
+personal selections and do not carry source provenance. Predefined Rarity loads
+canonical PostgreSQL price bars in bulk by exact instrument IDs and reports
+availability, staleness, price basis, and source per instrument.
+
+The existing bulk refresh workflow remains intentionally narrower than the
+watchlist model: it is available only when every member is an equity and all
+members belong to the same supported US or VN market. Mixed-asset, cross-market,
+crypto, and reference-rate watchlists remain analyzable from stored canonical
+bars, while their refreshes use the dedicated ingestion workflows for those
+instrument types.
+
+Consequences: watchlist membership no longer conflates companies with tradable
+products or depends on mutable ticker text. Equal symbols on different venues
+remain distinct, ordering is durable, and Predefined Rarity can analyze a mixed
+instrument set without merging provenance. Existing duplicate watchlist names
+from different markets are preserved during migration by adding their former
+market suffix before global name uniqueness is applied.
+
+### 2026-08-10 — Instrument Collections navigation and canonical universe catalog
+
+Context: watchlists remained under the legacy `/company/watchlists` route even
+after they became cross-market instrument collections. The only frontend-facing
+universe endpoint was `/companies/universes`, which intentionally excluded
+crypto and added synthetic `US_ALL` and `VN_ALL` company views. It therefore
+could not describe the canonical `universes` table or a venue universe such as
+Binance Spot.
+
+Decision: introduce an Instrument Collections surface with separate
+`/collections/universes` and `/collections/watchlists` URLs. The former is a
+read-only projection of actual persisted universe records, including source,
+as-of and synchronization metadata, active and total membership counts,
+instrument types, and venues. Its membership table reuses the canonical
+instrument discovery endpoint with an exact universe filter and 50-row
+server-side pagination. The Watchlists tab retains user-managed ordered
+membership. `/company/watchlists` is retired as a product URL and redirects to
+the new watchlist collection URL for bookmark compatibility.
+
+Universes and watchlists remain separate persistence models. A universe is a
+provider- or system-synchronized collection with provenance and unordered
+membership; a watchlist is a user-managed ordered collection and is never
+overwritten by universe synchronization. The shared Collection concept exists
+only in navigation and selection UI, not as a new polymorphic database table.
+
+Consequences: Binance Spot is visible beside US and Vietnam universes without
+inventing a company, while synthetic company catalog filters do not masquerade
+as canonical universes. Cross-asset watchlists are no longer placed under
+Company Analysis, and future data-coverage screens can select either collection
+type while still resolving observations by exact instrument ID.
+
+### 2026-08-10 — Market-neutral system universes
+
+Context: the Universe catalog exposed `US`, `VN`, and `CRYPTO` as one `market`
+classification. Those values mixed geography with asset class and made a
+display filter look like a first-class domain entity. Universe identity and
+membership do not require that classification: a universe is simply a named,
+system-managed collection of canonical instruments.
+
+Decision: migration `0016` removes `market` from `universes`. The canonical
+Universe API and Collections UI expose the universe name, stable code,
+provenance, synchronization metadata, and membership-derived instrument types
+and venues, without a market field, filter, or badge. Universe membership is
+read-only to application users and is replaced only by ingestion or internal
+synchronization workflows. Watchlists remain separately persisted,
+user-managed, ordered collections.
+
+Legacy price-refresh, market-health, fundamentals, and company-list workflows
+that currently require one operational US or VN scope derive it from the
+universe's member instruments. They reject an empty or mixed-scope universe
+instead of inferring behaviour from its code or display name. Names are for
+people; backend routing must use canonical instrument metadata.
+
+Consequences: new universes can span regions, venues, or asset classes without
+schema changes, and `CRYPTO` is no longer presented as comparable to country
+codes. Removing or renaming a universe does not alter instrument identity or
+provider routing. The `market` compatibility field on instruments remains a
+separate migration concern and is not part of Universe identity.
+
+### 2026-08-11 — Instrument-centered Data Operations
+
+Context: the retired Market Data page hardcoded eight US and Vietnam universes,
+called each universe a market, inferred routing from code prefixes, and could
+not update canonical Binance Spot or reference-rate instruments. It also mixed
+collection coverage, update execution, destructive market-wide clearing, and
+watchlist job monitoring on one legacy surface.
+
+Decision: replace the product route with `/data-operations` and retain
+`/market-data` only as a frontend redirect for bookmarks. Data Operations uses
+a preview-first contract: the user selects a Universe, Watchlist, or exact
+Instrument plus dataset and mode; the backend resolves current active members
+to canonical instrument IDs and returns eligible, current, stale, missing, and
+unsupported counts before allowing execution. Updating observations never
+mutates collection membership.
+
+Existing proven workers remain behind the new boundary. Supported US/VN
+Universe price and fundamental jobs use the established universe refreshers;
+homogeneous US- or VN-equity Watchlists use the watchlist price worker; and an
+exact-instrument worker dispatches equities, Binance Spot instruments, and
+registered Yahoo reference rates to their configured adapters. Fundamental
+updates remain Universe-scoped for now. Bulk Binance-universe history is
+intentionally unavailable because an unfiltered run would request more than a
+thousand instruments; operators must select exact spot instruments.
+
+Both Universe price and fundamental workers resolve their execution set from
+the same active PostgreSQL `universe_memberships` projection used by the
+preview. Checked-in JSON/CSV symbol snapshots are not an execution input. This
+keeps the preview count, provider work, and canonical writes aligned even when
+an ingestion workflow replaces current membership.
+
+The legacy `/market-data` HTTP endpoints remain temporarily because Price
+History and the established workers still consume their contracts. They are
+compatibility adapters, not the product navigation or the canonical new update
+boundary. Market-wide destructive clearing is removed from the UI; future
+maintenance deletion must be explicitly instrument- and dataset-scoped.
+
+Consequences: collection names no longer control provider routing, overlapping
+Universe or Watchlist membership cannot duplicate canonical instrument
+identity, and crypto/reference-rate histories are operable from the same UI as
+equities. Operation coordination and progress remain in-process and are not a
+durable history; canonical observation coverage and provider provenance remain
+persisted on the data rows and coverage projections.
+
+Price coverage on this surface is instrument-grained. The
+`GET /data-operations/coverage` projection joins each active scope member to its
+canonical `price_bar_coverages` and `price_refresh_states` rows. It exposes the
+first and last stored sessions, stored observation count, price basis and
+source, latest provider-check outcome, and the expected session calculated at
+read time. No Universe- or Watchlist-level coverage row is persisted; their
+current, stale, missing, checked-no-new-bar, and failed totals are derived from
+the resolved member instruments.
+
+`expected_sessions_behind` is a trailing freshness measure, not a claim that
+the full historical series has no internal holes. It counts weekday sessions
+after the latest stored US/VN equity bar through the expected session and daily
+sessions for continuously traded crypto/reference-rate series. The expected
+session follows the existing operational market-close calendar. Exchange
+holiday-aware calendars and exact internal-gap auditing remain separate future
+capabilities and must not be inferred from this field. Price coverage is shown
+independently of the selected operation dataset; fundamental report coverage
+requires its own point-in-time projection.
+
+### 2026-08-11 — Canonical equity venues
+
+Context: equity instruments originally stored free-text exchange labels and
+migration `0012` converted those labels into `LEGACY:{market}:{exchange}` venue
+rows. Those identifiers retained the old market shortcut and left equities
+whose source snapshot omitted exchange without a venue. They were unsuitable
+as the eventual replacement for `instruments.market`.
+
+Decision: migration `0017` seeds canonical equity venues (`NASDAQ`, `NYSE`,
+`NYSE_AMERICAN`, `NYSE_ARCA`, `CBOE_BZX`, `IEX`, `HOSE`, `HNX`, and `UPCOM`),
+reassigns every trusted legacy exchange label, standardizes the compatibility
+exchange value to the stable venue code, and removes unreferenced legacy venue
+rows. Company-universe
+imports resolve the same registry for future writes and preserve an already
+enriched venue when a static membership snapshot has no exchange field.
+
+Current US listing assignments can be refreshed from Nasdaq Trader's
+`nasdaqlisted.txt` and `otherlisted.txt` directories with
+`pnpm sync:equity-venues`. The adapter fetches both files in memory, excludes
+test issues, reconciles current canonical and alias symbols, updates only
+unambiguous matches, and persists no downloaded JSON or CSV snapshot. Unknown
+or ambiguous symbols remain visible in command output rather than being
+assigned to a fabricated catch-all venue. Vietnam assignments currently come
+from the trusted HOSE/HNX/UPCOM labels supplied by the universe ingestion
+source.
+
+Consequences: venue is now the canonical current listing location for resolved
+equities, while issuer country remains on Company and asset class remains on
+Instrument. `instruments.market` and the free-text `exchange` column remain
+temporary compatibility fields because loaders, calendars, and older
+repositories still consume them; this migration does not claim that the legacy
+market cutover is complete. Venue trading-calendar/timezone metadata is the
+next prerequisite before those consumers can be migrated safely.
+
+### 2026-08-11 — Venue-owned daily-session calendars
+
+Context: expected-session logic still translated the legacy `US` and `VN`
+instrument market values into hardcoded timezones and close cutoffs. That
+shortcut cannot distinguish venues, cannot represent continuously traded spot
+markets, and would block removing `instruments.market`.
+
+Decision: migration `0018` adds mandatory `timezone_name`,
+`trading_calendar_code`, and `session_cutoff_time` metadata to every Venue.
+Canonical US equity venues use `America/New_York`, `US_EQUITIES`, and 16:15;
+HOSE/HNX/UPCOM use `Asia/Ho_Chi_Minh`, `VN_EQUITIES`, and 15:15; Binance Spot
+uses `UTC`, `CRYPTO_24_7`, and the midnight daily-bar boundary. All venue
+writers reassert this registry so synchronization cannot create an incomplete
+venue.
+
+`latest_completed_venue_session()` is the canonical venue-based calculation.
+The legacy `latest_completed_session(now, market)` entrypoint now delegates to
+the NYSE or HOSE schedule to preserve existing behavior during cutover. The
+current equity calendars continue to exclude weekends only; exchange-holiday
+support requires a versioned holiday calendar and must not be inferred from the
+calendar code. A reference rate remains venue-less, so its provider-defined
+observation schedule is not represented by Venue metadata.
+
+Consequences: timezone and daily-session semantics now belong to the economic
+venue instead of country/asset-class shorthand. Existing consumers can migrate
+from `instrument.market` to `instrument.venue` incrementally without changing
+their expected-session results. The legacy market column is still retained
+until those consumers have completed that cutover.
+
+### 2026-08-11 — Read-only canonical Venue catalog
+
+Context: venue rows and their schedule metadata were visible only through
+database inspection and instrument projections. That made the canonical venue
+registry, schedule policy assignments, and current instrument relationships
+hard to audit from the application.
+
+Decision: `GET /venues` exposes a read-only PostgreSQL projection of every
+Venue, including identity, type, country, timezone, calendar policy code,
+session cutoff, status, source, and derived total/active instrument counts. The
+Data → Venues UI reads this endpoint and supports local search and filtering;
+it does not mutate venue metadata. The Data Model UI explicitly models
+`trading_calendar_code` as a string column interpreted by application calendar
+logic, alongside `timezone_name` and `session_cutoff_time`.
+
+Consequences: operators can inspect the live canonical registry without SQL,
+while venue synchronization remains the only writer. The UI must not imply
+that `US_EQUITIES`, `VN_EQUITIES`, or `CRYPTO_24_7` are database entities or
+that the current weekend-only equity policies include exchange holidays. A
+future persisted holiday/calendar model would require a separate versioned
+design and migration rather than silently changing the meaning of these codes.
+
+### 2026-08-11 — Exact instrument identity for observation persistence
+
+Context: the canonical observation tables already referenced `instrument_id`,
+but several repository write contracts and refresh workers still accepted
+`market + ticker` and resolved an instrument during persistence. That shortcut
+is ambiguous when the same symbol exists on multiple venues and allows a
+provider result to be attached to a different product than the one selected by
+the operation preview.
+
+Decision: price bars, price refresh state, fundamental reports, and provider
+valuation observations are now written by exact canonical `instrument_id`.
+Coverage and refresh planning are keyed by instrument ID as well. Universe,
+Watchlist, exact-instrument, Binance Spot, reference-rate, canary, and
+fundamental workers carry the selected ID from their PostgreSQL scope through
+to persistence. Single-instrument analysis refresh also delegates by ID.
+
+Legacy API and service entrypoints may temporarily accept `market + ticker` for
+backward compatibility, but they resolve that pair exactly once at the service
+boundary and continue internally with the ID. An ambiguous pair resolves to no
+instrument instead of choosing an arbitrary venue. Provider selection still
+uses the compatibility market field during this phase; replacing that routing
+with instrument type, venue, and source metadata is the next cutover.
+
+Consequences: equal ticker text on different venues cannot cause observation
+writes to cross instruments, overlapping collections remain idempotent by
+canonical identity, and per-instrument coverage is aligned with the operation
+scope. No database migration is required for this phase because the stored
+tables already use instrument foreign keys; the change removes identity loss
+from repository contracts and worker orchestration.
+
+### 2026-08-12 — Metadata-driven observation-source routing
+
+Context: exact `instrument_id` persistence removed identity ambiguity, but the
+refresh layer still chose a downloader from the compatibility
+`instruments.market` value. Market is neither a venue nor a data source, and it
+cannot represent one instrument having different identifiers at Yahoo Finance,
+VNStock, Binance, or a future provider.
+
+Decision: canonical refresh and analysis paths now load an
+`InstrumentRoutingMetadata` projection and resolve an `InstrumentDataRoute`
+from the instrument type, canonical Venue code and schedule, catalog source,
+and current primary `instrument_symbols`. The route supplies the price adapter,
+provider-specific symbol, price basis, currency, storage scale, observation
+schedule, full-history boundary, and optional fundamental adapter. Current
+adapter policies are US equity venues to Yahoo Finance, Vietnam equity venues
+to VNStock Data, Binance Spot instruments to Binance, and venue-less Yahoo
+Finance reference rates to Yahoo Finance.
+
+The adapter registry is application code rather than a Provider table. Venue
+continues to answer where a product trades; source-specific identifiers remain
+rows in `instrument_symbols`; the adapter answers how the application obtains
+observations. Missing or unsupported routing metadata is rejected explicitly
+instead of falling back to a country-like market value. Stored observations
+retain their existing source provenance.
+
+Consequences: Data Operations, exact-instrument refresh, collection refresh,
+fundamental refresh, canaries, and on-demand analysis refresh no longer select
+providers from `instruments.market`. A collection must resolve to one compatible
+adapter for a single refresh job, while its membership remains canonical
+instrument IDs. Legacy market-data APIs and compatibility read projections may
+still expose `market` until the API/UI retirement phase; they are not the
+canonical routing mechanism. No database migration is required for this phase.
+
+### 2026-08-12 — Retire legacy Market Data and remove instrument market columns
+
+Context: metadata-driven routing and exact-instrument observation persistence
+made the old `/market-data` API redundant. Its contracts still exposed
+`market + ticker`, destructive market-wide clearing, and in-process job state.
+The `instruments.market`, `instruments.exchange`, and
+`instrument_symbols.market` columns duplicated Company country, Venue identity,
+and symbol namespace without representing any independent domain entity.
+
+Decision: remove the legacy Market Data router, schemas, storage service, UI,
+and frontend route. Price History remains available through
+`GET /instruments/{instrument_id}/history`; SMA and rarity analyses also select
+an exact instrument ID. Data Operations is the sole update surface and resolves
+Universe, Watchlist, or Instrument scopes to canonical IDs before routing.
+
+Migration `0019` drops `instruments.market`, `instruments.exchange`, and
+`instrument_symbols.market`. A venue-specific instrument is unique by
+`venue_id + ticker`; a venue-less instrument is unique by ticker. Current
+provider symbols are searchable by `namespace + symbol` but are not globally
+unique because two venues or instruments may legitimately share provider text.
+Company country remains issuer geography, Venue remains trading location, and
+the adapter registry remains acquisition behavior. Catalog reads may include an
+equity whose venue is unresolved, but refresh routing rejects it until a
+canonical venue is assigned.
+
+Universe and Watchlist coverage and refresh status continue to be derived from
+their member instruments. No operation-run table or collection-level coverage
+row is introduced. Durable history is the exact instrument observation,
+coverage, refresh-state, and fundamental refresh evidence already stored in
+PostgreSQL.
+
+Consequences: `market` is no longer stored or returned as instrument identity,
+equal symbol text can coexist on different venues, and UI filters use Venue or
+Company country explicitly. Old `/market-data` clients receive 404 and must
+migrate to `/data-operations`, `/instruments`, and exact instrument history.
+
+### 2026-08-12 — Retire Market Health before canonical redesign
+
+Context: the Market Health feature still modeled named Universes as hardcoded
+markets, collapsed exact instrument IDs back into ticker-keyed matrices, and
+reconstructed historical breadth from current membership. Retaining that
+boundary while designing its replacement would preserve ambiguous identity and
+survivorship-biased semantics.
+
+Decision: remove Market Health completely before designing a replacement. The
+`/market-health` API, schemas, data service, engine calculation and result types,
+frontend page, navigation, charts, distribution drill-down, generated contracts,
+and dedicated tests are retired. The obsolete Universe-wide price-history and
+close-matrix repository paths used only by Market Health are removed as well.
+Exact-instrument Price History and canonical price observations remain.
+
+Consequences: `/market/health` and `/market-health/*` no longer exist, and the
+Instruments page no longer interprets Market Health query parameters or renders
+health-derived columns. No replacement analysis, persistence model, or formula
+is implied by this retirement; those will require a separate reviewed design.

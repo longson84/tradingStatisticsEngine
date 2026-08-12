@@ -1,6 +1,176 @@
 {
   "components": {
     "schemas": {
+      "AnalysisInstrumentListResponse": {
+        "properties": {
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisInstrumentResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "instruments"
+        ],
+        "title": "AnalysisInstrumentListResponse",
+        "type": "object"
+      },
+      "AnalysisInstrumentResponse": {
+        "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "first_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Session"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "instrument_type",
+          "currency",
+          "price_basis",
+          "stored_sessions"
+        ],
+        "title": "AnalysisInstrumentResponse",
+        "type": "object"
+      },
       "AnalyzeRequest": {
         "properties": {
           "end": {
@@ -20,13 +190,9 @@
             "title": "Initial Capital",
             "type": "number"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
           },
           "start": {
             "anyOf": [
@@ -50,15 +216,10 @@
               }
             ],
             "title": "Strategy"
-          },
-          "ticker": {
-            "title": "Ticker",
-            "type": "string"
           }
         },
         "required": [
-          "market",
-          "ticker",
+          "instrument_id",
           "strategy"
         ],
         "title": "AnalyzeRequest",
@@ -430,17 +591,6 @@
             "title": "Currency",
             "type": "string"
           },
-          "exchange": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exchange"
-          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -452,14 +602,6 @@
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
           },
           "share_class": {
             "anyOf": [
@@ -482,12 +624,22 @@
             },
             "title": "Universes",
             "type": "array"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
           }
         },
         "required": [
           "id",
           "ticker",
-          "market",
           "instrument_type",
           "currency",
           "is_active",
@@ -545,6 +697,14 @@
             "title": "Companies",
             "type": "array"
           },
+          "country_code": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Country Code",
+            "type": "string"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -585,14 +745,6 @@
             "title": "Limit",
             "type": "integer"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -609,7 +761,7 @@
         "required": [
           "id",
           "name",
-          "market",
+          "country_code",
           "description",
           "total",
           "offset",
@@ -626,16 +778,13 @@
             "title": "Company Name",
             "type": "string"
           },
-          "exchange": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "country_code": {
+            "enum": [
+              "US",
+              "VN"
             ],
-            "title": "Exchange"
+            "title": "Country Code",
+            "type": "string"
           },
           "first_session": {
             "anyOf": [
@@ -660,6 +809,10 @@
             ],
             "title": "Industry"
           },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
           "last_session": {
             "anyOf": [
               {
@@ -679,14 +832,6 @@
             "title": "Lists",
             "type": "array"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
           "sector": {
             "anyOf": [
               {
@@ -705,12 +850,24 @@
           "ticker": {
             "title": "Ticker",
             "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
           }
         },
         "required": [
+          "instrument_id",
           "ticker",
           "company_name",
-          "market",
+          "country_code",
           "lists",
           "first_session",
           "last_session",
@@ -735,6 +892,14 @@
           "company_count": {
             "title": "Company Count",
             "type": "integer"
+          },
+          "country_code": {
+            "enum": [
+              "US",
+              "VN"
+            ],
+            "title": "Country Code",
+            "type": "string"
           },
           "description": {
             "title": "Description",
@@ -769,14 +934,6 @@
             "title": "Id",
             "type": "string"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -785,7 +942,7 @@
         "required": [
           "id",
           "name",
-          "market",
+          "country_code",
           "description",
           "company_count"
         ],
@@ -1275,6 +1432,237 @@
           "mfe_pct"
         ],
         "title": "CurrentPositionResponse",
+        "type": "object"
+      },
+      "DataOperationJobResponse": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "dataset": {
+            "enum": [
+              "prices",
+              "fundamentals"
+            ],
+            "title": "Dataset",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "incremental",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
+          },
+          "scope_name": {
+            "title": "Scope Name",
+            "type": "string"
+          },
+          "scope_type": {
+            "enum": [
+              "universe",
+              "watchlist",
+              "instrument"
+            ],
+            "title": "Scope Type",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "scope_type",
+          "scope_id",
+          "scope_name",
+          "dataset",
+          "mode",
+          "status",
+          "current",
+          "total",
+          "message",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "DataOperationJobResponse",
+        "type": "object"
+      },
+      "DataOperationPreviewResponse": {
+        "properties": {
+          "can_run": {
+            "title": "Can Run",
+            "type": "boolean"
+          },
+          "current_count": {
+            "title": "Current Count",
+            "type": "integer"
+          },
+          "dataset": {
+            "enum": [
+              "prices",
+              "fundamentals"
+            ],
+            "title": "Dataset",
+            "type": "string"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "instrument_count": {
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "missing_count": {
+            "title": "Missing Count",
+            "type": "integer"
+          },
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
+          },
+          "scope_name": {
+            "title": "Scope Name",
+            "type": "string"
+          },
+          "scope_type": {
+            "enum": [
+              "universe",
+              "watchlist",
+              "instrument"
+            ],
+            "title": "Scope Type",
+            "type": "string"
+          },
+          "stale_count": {
+            "title": "Stale Count",
+            "type": "integer"
+          },
+          "unsupported_count": {
+            "title": "Unsupported Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope_type",
+          "scope_id",
+          "scope_name",
+          "dataset",
+          "instrument_count",
+          "eligible_count",
+          "current_count",
+          "stale_count",
+          "missing_count",
+          "unsupported_count",
+          "can_run",
+          "message"
+        ],
+        "title": "DataOperationPreviewResponse",
+        "type": "object"
+      },
+      "DataOperationRequest": {
+        "properties": {
+          "dataset": {
+            "default": "prices",
+            "enum": [
+              "prices",
+              "fundamentals"
+            ],
+            "title": "Dataset",
+            "type": "string"
+          },
+          "mode": {
+            "default": "incremental",
+            "enum": [
+              "incremental",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
+          },
+          "scope_type": {
+            "enum": [
+              "universe",
+              "watchlist",
+              "instrument"
+            ],
+            "title": "Scope Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_type",
+          "scope_id"
+        ],
+        "title": "DataOperationRequest",
         "type": "object"
       },
       "DateRange": {
@@ -2822,399 +3210,59 @@
         "title": "HealthRowResponse",
         "type": "object"
       },
-      "MarketDataCacheStatus": {
+      "InstrumentPriceCoveragePageResponse": {
         "properties": {
           "checked_no_new_bar_count": {
-            "default": 0,
             "title": "Checked No New Bar Count",
             "type": "integer"
           },
-          "coverage_through": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coverage Through"
-          },
-          "current_symbol_count": {
-            "default": 0,
-            "title": "Current Symbol Count",
+          "current_count": {
+            "title": "Current Count",
             "type": "integer"
           },
-          "errors": {
+          "failed_count": {
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "instruments": {
             "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
+              "$ref": "#/components/schemas/InstrumentPriceCoverageResponse"
             },
-            "title": "Errors",
+            "title": "Instruments",
             "type": "array"
           },
-          "exists": {
-            "title": "Exists",
-            "type": "boolean"
-          },
-          "expected_session": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Session"
-          },
-          "failed_refresh_symbol_count": {
-            "default": 0,
-            "title": "Failed Refresh Symbol Count",
+          "limit": {
+            "title": "Limit",
             "type": "integer"
           },
-          "fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fetched At"
-          },
-          "first_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Date"
-          },
-          "fundamentals_exists": {
-            "default": false,
-            "title": "Fundamentals Exists",
-            "type": "boolean"
-          },
-          "fundamentals_fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fundamentals Fetched At"
-          },
-          "fundamentals_oldest_fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fundamentals Oldest Fetched At"
-          },
-          "fundamentals_recent_activity_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fundamentals Recent Activity At"
-          },
-          "fundamentals_snapshot_count": {
-            "default": 0,
-            "title": "Fundamentals Snapshot Count",
+          "missing_count": {
+            "title": "Missing Count",
             "type": "integer"
           },
-          "fundamentals_symbol_count": {
-            "default": 0,
-            "title": "Fundamentals Symbol Count",
+          "offset": {
+            "title": "Offset",
             "type": "integer"
           },
-          "last_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Date"
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
           },
-          "latest_fundamentals_job": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MarketDataJobResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "scope_name": {
+            "title": "Scope Name",
+            "type": "string"
           },
-          "latest_job": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MarketDataJobResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "missing_symbol_count": {
-            "default": 0,
-            "title": "Missing Symbol Count",
-            "type": "integer"
-          },
-          "price_basis": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Basis"
-          },
-          "recent_activity_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Recent Activity At"
-          },
-          "row_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Row Count"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "stale_symbol_count": {
-            "default": 0,
-            "title": "Stale Symbol Count",
-            "type": "integer"
-          },
-          "symbol_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Symbol Count"
-          },
-          "universe": {
+          "scope_type": {
             "enum": [
-              "US500",
-              "US2000",
-              "US100",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
+              "universe",
+              "watchlist",
+              "instrument"
             ],
-            "title": "Universe",
+            "title": "Scope Type",
             "type": "string"
           },
-          "universe_symbol_count": {
-            "default": 0,
-            "title": "Universe Symbol Count",
+          "stale_count": {
+            "title": "Stale Count",
             "type": "integer"
-          }
-        },
-        "required": [
-          "universe",
-          "exists"
-        ],
-        "title": "MarketDataCacheStatus",
-        "type": "object"
-      },
-      "MarketDataClearResponse": {
-        "properties": {
-          "affected_universes": {
-            "items": {
-              "enum": [
-                "US500",
-                "US2000",
-                "US100",
-                "VNALL",
-                "VN100",
-                "VN30",
-                "VNMID",
-                "VNSML"
-              ],
-              "type": "string"
-            },
-            "title": "Affected Universes",
-            "type": "array"
-          },
-          "cleared": {
-            "title": "Cleared",
-            "type": "boolean"
-          },
-          "deleted_rows": {
-            "title": "Deleted Rows",
-            "type": "integer"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
-          "requested_universe": {
-            "enum": [
-              "US500",
-              "US2000",
-              "US100",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Requested Universe",
-            "type": "string"
-          }
-        },
-        "required": [
-          "requested_universe",
-          "market",
-          "affected_universes",
-          "deleted_rows",
-          "cleared"
-        ],
-        "title": "MarketDataClearResponse",
-        "type": "object"
-      },
-      "MarketDataJobResponse": {
-        "properties": {
-          "current": {
-            "title": "Current",
-            "type": "integer"
-          },
-          "dataset": {
-            "default": "prices",
-            "enum": [
-              "prices",
-              "fundamentals"
-            ],
-            "title": "Dataset",
-            "type": "string"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "finished_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Finished At"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "market": {
-            "enum": [
-              "US500",
-              "US2000",
-              "US100",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "mode": {
-            "enum": [
-              "incremental",
-              "full"
-            ],
-            "title": "Mode",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
           },
           "total": {
             "title": "Total",
@@ -3222,432 +3270,252 @@
           }
         },
         "required": [
-          "id",
-          "market",
-          "mode",
-          "status",
-          "current",
+          "scope_type",
+          "scope_id",
+          "scope_name",
           "total",
-          "message",
-          "started_at",
-          "finished_at",
-          "error"
+          "offset",
+          "limit",
+          "current_count",
+          "stale_count",
+          "missing_count",
+          "checked_no_new_bar_count",
+          "failed_count",
+          "instruments"
         ],
-        "title": "MarketDataJobResponse",
+        "title": "InstrumentPriceCoveragePageResponse",
         "type": "object"
       },
-      "MarketDataStatusResponse": {
+      "InstrumentPriceCoverageResponse": {
         "properties": {
-          "fundamentals_storage": {
-            "const": "PostgreSQL",
-            "title": "Fundamentals Storage",
-            "type": "string"
-          },
-          "markets": {
-            "items": {
-              "$ref": "#/components/schemas/MarketDataCacheStatus"
-            },
-            "title": "Markets",
-            "type": "array"
-          },
-          "price_storage": {
-            "const": "PostgreSQL",
-            "title": "Price Storage",
-            "type": "string"
-          }
-        },
-        "required": [
-          "price_storage",
-          "fundamentals_storage",
-          "markets"
-        ],
-        "title": "MarketDataStatusResponse",
-        "type": "object"
-      },
-      "MarketHealthDistributionBucketResponse": {
-        "properties": {
-          "count": {
-            "title": "Count",
-            "type": "integer"
-          },
-          "cumulative_percentage": {
-            "title": "Cumulative Percentage",
-            "type": "number"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "max_distance": {
+          "coverage_fetched_at": {
             "anyOf": [
               {
-                "type": "number"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Max Distance"
+            "title": "Coverage Fetched At"
           },
-          "min_distance": {
+          "coverage_source": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Min Distance"
+            "title": "Coverage Source"
           },
-          "percentage": {
-            "title": "Percentage",
-            "type": "number"
-          }
-        },
-        "required": [
-          "label",
-          "min_distance",
-          "max_distance",
-          "count",
-          "percentage",
-          "cumulative_percentage"
-        ],
-        "title": "MarketHealthDistributionBucketResponse",
-        "type": "object"
-      },
-      "MarketHealthDistributionResponse": {
-        "properties": {
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "max_distance": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Distance"
-          },
-          "min_distance": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Min Distance"
-          },
-          "stocks": {
-            "items": {
-              "$ref": "#/components/schemas/MarketHealthStockDistanceResponse"
-            },
-            "title": "Stocks",
-            "type": "array"
-          },
-          "universe": {
-            "title": "Universe",
-            "type": "string"
-          },
-          "window": {
-            "title": "Window",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "universe",
-          "date",
-          "window",
-          "min_distance",
-          "max_distance",
-          "stocks"
-        ],
-        "title": "MarketHealthDistributionResponse",
-        "type": "object"
-      },
-      "MarketHealthHistoricalContextResponse": {
-        "properties": {
-          "current_percentile": {
-            "title": "Current Percentile",
-            "type": "number"
-          },
-          "median_distance": {
-            "title": "Median Distance",
-            "type": "number"
-          },
-          "observation_count": {
-            "title": "Observation Count",
-            "type": "integer"
-          },
-          "q25_distance": {
-            "title": "Q25 Distance",
-            "type": "number"
-          },
-          "q75_distance": {
-            "title": "Q75 Distance",
-            "type": "number"
-          },
-          "regime": {
+          "coverage_status": {
             "enum": [
-              "Exceptionally strong",
-              "Strong",
-              "Normal",
-              "Weak",
-              "Exceptionally weak"
+              "current",
+              "stale",
+              "missing"
             ],
-            "title": "Regime",
+            "title": "Coverage Status",
             "type": "string"
-          }
-        },
-        "required": [
-          "observation_count",
-          "median_distance",
-          "q25_distance",
-          "q75_distance",
-          "current_percentile",
-          "regime"
-        ],
-        "title": "MarketHealthHistoricalContextResponse",
-        "type": "object"
-      },
-      "MarketHealthPointResponse": {
-        "properties": {
-          "coverage_pct": {
-            "title": "Coverage Pct",
-            "type": "number"
           },
-          "date": {
+          "expected_session": {
             "format": "date",
-            "title": "Date",
+            "title": "Expected Session",
             "type": "string"
           },
-          "eligible_count": {
-            "title": "Eligible Count",
+          "expected_sessions_behind": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Sessions Behind"
+          },
+          "first_stored_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Stored Session"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
             "type": "integer"
           },
-          "median_distance": {
-            "title": "Median Distance",
-            "type": "number"
-          }
-        },
-        "required": [
-          "date",
-          "median_distance",
-          "coverage_pct",
-          "eligible_count"
-        ],
-        "title": "MarketHealthPointResponse",
-        "type": "object"
-      },
-      "MarketHealthRunRequest": {
-        "properties": {
-          "minimum_coverage": {
-            "default": 0.8,
-            "exclusiveMinimum": 0.0,
-            "maximum": 1.0,
-            "title": "Minimum Coverage",
-            "type": "number"
-          },
-          "universes": {
-            "items": {
-              "enum": [
-                "US500",
-                "US2000",
-                "US100",
-                "VNALL",
-                "VN100",
-                "VN30",
-                "VNMID",
-                "VNSML"
-              ],
-              "type": "string"
-            },
-            "maxItems": 8,
-            "minItems": 1,
-            "title": "Universes",
-            "type": "array"
-          },
-          "window": {
-            "default": 200,
-            "maximum": 500.0,
-            "minimum": 20.0,
-            "title": "Window",
-            "type": "integer"
-          }
-        },
-        "title": "MarketHealthRunRequest",
-        "type": "object"
-      },
-      "MarketHealthRunResponse": {
-        "properties": {
-          "markets": {
-            "items": {
-              "$ref": "#/components/schemas/MarketHealthUniverseResponse"
-            },
-            "title": "Markets",
-            "type": "array"
-          },
-          "minimum_coverage": {
-            "title": "Minimum Coverage",
-            "type": "number"
-          },
-          "window": {
-            "title": "Window",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "window",
-          "minimum_coverage",
-          "markets"
-        ],
-        "title": "MarketHealthRunResponse",
-        "type": "object"
-      },
-      "MarketHealthSeriesPointResponse": {
-        "properties": {
-          "date": {
-            "format": "date",
-            "title": "Date",
+          "instrument_type": {
+            "title": "Instrument Type",
             "type": "string"
           },
-          "median_distance": {
-            "title": "Median Distance",
-            "type": "number"
+          "last_attempted_through": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempted Through"
           },
-          "running_median_10y": {
-            "title": "Running Median 10Y",
-            "type": "number"
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked At"
           },
-          "running_median_1y": {
-            "title": "Running Median 1Y",
-            "type": "number"
+          "last_returned_through": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Returned Through"
           },
-          "running_median_5y": {
-            "title": "Running Median 5Y",
-            "type": "number"
-          }
-        },
-        "required": [
-          "date",
-          "median_distance",
-          "running_median_10y",
-          "running_median_5y",
-          "running_median_1y"
-        ],
-        "title": "MarketHealthSeriesPointResponse",
-        "type": "object"
-      },
-      "MarketHealthStockDistanceResponse": {
-        "properties": {
-          "current_price": {
-            "title": "Current Price",
-            "type": "number"
+          "last_stored_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Stored Session"
           },
-          "date": {
-            "format": "date",
-            "title": "Date",
+          "price_basis": {
+            "title": "Price Basis",
             "type": "string"
           },
-          "distance": {
-            "title": "Distance",
-            "type": "number"
+          "refresh_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Detail"
           },
-          "rolling_high": {
-            "title": "Rolling High",
-            "type": "number"
+          "refresh_outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current",
+                  "checked_no_new_bar",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Outcome"
+          },
+          "refresh_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Source"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
           },
           "symbol": {
             "title": "Symbol",
             "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
           }
         },
         "required": [
+          "instrument_id",
           "symbol",
-          "date",
-          "current_price",
-          "rolling_high",
-          "distance"
+          "instrument_type",
+          "venue_code",
+          "price_basis",
+          "first_stored_session",
+          "last_stored_session",
+          "expected_session",
+          "stored_sessions",
+          "expected_sessions_behind",
+          "coverage_status",
+          "coverage_source",
+          "coverage_fetched_at",
+          "last_attempted_through",
+          "last_returned_through",
+          "refresh_outcome",
+          "refresh_source",
+          "last_checked_at",
+          "refresh_detail"
         ],
-        "title": "MarketHealthStockDistanceResponse",
+        "title": "InstrumentPriceCoverageResponse",
         "type": "object"
       },
-      "MarketHealthUniverseResponse": {
+      "InstrumentPriceHistoryResponse": {
         "properties": {
-          "cache": {
-            "$ref": "#/components/schemas/MarketHistoryCacheResponse"
-          },
-          "current": {
-            "$ref": "#/components/schemas/MarketHealthPointResponse"
-          },
-          "distribution": {
-            "items": {
-              "$ref": "#/components/schemas/MarketHealthDistributionBucketResponse"
-            },
-            "title": "Distribution",
-            "type": "array"
-          },
-          "historical_context": {
-            "$ref": "#/components/schemas/MarketHealthHistoricalContextResponse"
-          },
-          "series": {
-            "items": {
-              "$ref": "#/components/schemas/MarketHealthSeriesPointResponse"
-            },
-            "title": "Series",
-            "type": "array"
-          },
-          "universe": {
-            "enum": [
-              "US500",
-              "US2000",
-              "US100",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Universe",
+          "currency": {
+            "title": "Currency",
             "type": "string"
           },
-          "universe_size": {
-            "title": "Universe Size",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "universe",
-          "universe_size",
-          "cache",
-          "current",
-          "historical_context",
-          "series",
-          "distribution"
-        ],
-        "title": "MarketHealthUniverseResponse",
-        "type": "object"
-      },
-      "MarketHistoryCacheResponse": {
-        "properties": {
           "fetched_at": {
             "title": "Fetched At",
             "type": "string"
           },
           "first_date": {
-            "format": "date",
             "title": "First Date",
             "type": "string"
           },
+          "fundamentals_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fundamentals Fields",
+            "type": "array"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
           "last_date": {
-            "format": "date",
             "title": "Last Date",
             "type": "string"
           },
@@ -3655,24 +3523,322 @@
             "title": "Price Basis",
             "type": "string"
           },
+          "prices": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentPricePointResponse"
+            },
+            "title": "Prices",
+            "type": "array"
+          },
+          "provider_ratio_effective_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Ratio Effective Date"
+          },
+          "provider_ratio_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Ratio Period"
+          },
+          "provider_reported_pb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Reported Pb"
+          },
+          "provider_reported_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Reported Pe"
+          },
+          "relative_strength_benchmark": {
+            "enum": [
+              "VN30",
+              "SPX"
+            ],
+            "title": "Relative Strength Benchmark",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "shares_cagr_5y_observed_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Observed Years"
+          },
+          "shares_cagr_5y_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Pct"
+          },
+          "shares_cagr_5y_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Cagr 5Y Start Date"
+          },
+          "shares_cagr_full_5y": {
+            "default": false,
+            "title": "Shares Cagr Full 5Y",
+            "type": "boolean"
+          },
+          "shares_growth_cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Cagr Pct"
+          },
+          "shares_growth_full_10y": {
+            "default": false,
+            "title": "Shares Growth Full 10Y",
+            "type": "boolean"
+          },
+          "shares_growth_observed_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Observed Years"
+          },
+          "shares_growth_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Pct"
+          },
+          "shares_growth_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Growth Start Date"
+          },
           "source": {
             "title": "Source",
             "type": "string"
           },
-          "symbol_count": {
-            "title": "Symbol Count",
-            "type": "integer"
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trailing_pe_fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Fetched At"
+          },
+          "trailing_pe_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Method"
+          },
+          "trailing_pe_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe Source"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
           }
         },
         "required": [
+          "instrument_id",
+          "symbol",
+          "currency",
+          "source",
+          "price_basis",
           "fetched_at",
           "first_date",
           "last_date",
-          "symbol_count",
-          "source",
-          "price_basis"
+          "row_count",
+          "relative_strength_benchmark",
+          "prices"
         ],
-        "title": "MarketHistoryCacheResponse",
+        "title": "InstrumentPriceHistoryResponse",
+        "type": "object"
+      },
+      "InstrumentPricePointResponse": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "eps_ttm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eps Ttm"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "open": {
+            "title": "Open",
+            "type": "number"
+          },
+          "relative_strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Strength"
+          },
+          "shares_outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares Outstanding"
+          },
+          "trailing_pb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pb"
+          },
+          "trailing_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "date",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "title": "InstrumentPricePointResponse",
         "type": "object"
       },
       "MonthlyStatRowResponse": {
@@ -4403,6 +4569,145 @@
         "title": "PortfolioResultResponse",
         "type": "object"
       },
+      "PredefinedRarityInstrumentStatus": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "data_last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Last Session"
+          },
+          "expected_last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Last Session"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "price_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Basis"
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "instrument_type",
+          "currency",
+          "available",
+          "is_stale"
+        ],
+        "title": "PredefinedRarityInstrumentStatus",
+        "type": "object"
+      },
       "PredefinedRarityRequest": {
         "properties": {
           "watchlist_id": {
@@ -4419,8 +4724,8 @@
       },
       "PredefinedRarityResponse": {
         "properties": {
-          "available_symbols": {
-            "title": "Available Symbols",
+          "available_instruments": {
+            "title": "Available Instruments",
             "type": "integer"
           },
           "errors": {
@@ -4430,24 +4735,18 @@
             "title": "Errors",
             "type": "array"
           },
-          "expected_last_session": {
-            "format": "date",
-            "title": "Expected Last Session",
-            "type": "string"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
-          },
-          "missing_symbols": {
+          "instruments": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/PredefinedRarityInstrumentStatus"
             },
-            "title": "Missing Symbols",
+            "title": "Instruments",
+            "type": "array"
+          },
+          "missing_instrument_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Missing Instrument Ids",
             "type": "array"
           },
           "percentile_columns": {
@@ -4457,19 +4756,15 @@
             "title": "Percentile Columns",
             "type": "array"
           },
-          "price_basis": {
-            "title": "Price Basis",
-            "type": "string"
-          },
-          "requested_symbols": {
-            "title": "Requested Symbols",
+          "requested_instruments": {
+            "title": "Requested Instruments",
             "type": "integer"
           },
-          "stale_symbols": {
+          "stale_instrument_ids": {
             "items": {
-              "type": "string"
+              "type": "integer"
             },
-            "title": "Stale Symbols",
+            "title": "Stale Instrument Ids",
             "type": "array"
           },
           "tables": {
@@ -4491,13 +4786,11 @@
         "required": [
           "watchlist_id",
           "watchlist_name",
-          "market",
-          "requested_symbols",
-          "available_symbols",
-          "stale_symbols",
-          "missing_symbols",
-          "expected_last_session",
-          "price_basis",
+          "requested_instruments",
+          "available_instruments",
+          "stale_instrument_ids",
+          "missing_instrument_ids",
+          "instruments",
           "percentile_columns",
           "tables"
         ],
@@ -4522,6 +4815,10 @@
             "format": "date",
             "title": "First Date",
             "type": "string"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
           },
           "last_date": {
             "format": "date",
@@ -4553,6 +4850,7 @@
           }
         },
         "required": [
+          "instrument_id",
           "symbol",
           "first_date",
           "last_date",
@@ -4849,6 +5147,32 @@
       },
       "RarityAnalysisResponse": {
         "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
           "current_percentile": {
             "title": "Current Percentile",
             "type": "number"
@@ -4903,6 +5227,14 @@
             "title": "First Date",
             "type": "string"
           },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
           "is_stale": {
             "title": "Is Stale",
             "type": "boolean"
@@ -4910,14 +5242,6 @@
           "last_date": {
             "format": "date",
             "title": "Last Date",
-            "type": "string"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
             "type": "string"
           },
           "max_potential_drop_pct": {
@@ -4931,6 +5255,17 @@
           "price_source": {
             "title": "Price Source",
             "type": "string"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
           },
           "refresh_warning": {
             "anyOf": [
@@ -4971,6 +5306,28 @@
             "title": "Total Bars",
             "type": "integer"
           },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          },
           "zone_entry_date": {
             "anyOf": [
               {
@@ -5003,8 +5360,11 @@
           }
         },
         "required": [
+          "instrument_id",
           "factor_name",
           "symbol",
+          "instrument_type",
+          "currency",
           "stats_date",
           "first_date",
           "last_date",
@@ -5021,7 +5381,6 @@
           "zone_stats",
           "entries",
           "time_series",
-          "market",
           "expected_last_session",
           "data_last_session",
           "refreshed",
@@ -5045,6 +5404,11 @@
             "title": "Factor Type",
             "type": "string"
           },
+          "instrument_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Instrument Id",
+            "type": "integer"
+          },
           "ma_type": {
             "default": "sma",
             "enum": [
@@ -5053,14 +5417,6 @@
               "wma"
             ],
             "title": "Ma Type",
-            "type": "string"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
             "type": "string"
           },
           "period": {
@@ -5087,10 +5443,6 @@
             "title": "Std Dev",
             "type": "number"
           },
-          "ticker": {
-            "title": "Ticker",
-            "type": "string"
-          },
           "zones": {
             "default": [
               1,
@@ -5109,11 +5461,267 @@
           }
         },
         "required": [
-          "market",
-          "ticker",
+          "instrument_id",
           "factor_type"
         ],
         "title": "RarityRequest",
+        "type": "object"
+      },
+      "ReferenceRateFacetCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "ReferenceRateFacetCountResponse",
+        "type": "object"
+      },
+      "ReferenceRateFacetsResponse": {
+        "properties": {
+          "active_count": {
+            "title": "Active Count",
+            "type": "integer"
+          },
+          "base_assets": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRateFacetCountResponse"
+            },
+            "title": "Base Assets",
+            "type": "array"
+          },
+          "inactive_count": {
+            "title": "Inactive Count",
+            "type": "integer"
+          },
+          "quote_assets": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRateFacetCountResponse"
+            },
+            "title": "Quote Assets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "base_assets",
+          "quote_assets",
+          "active_count",
+          "inactive_count"
+        ],
+        "title": "ReferenceRateFacetsResponse",
+        "type": "object"
+      },
+      "ReferenceRateInstrumentResponse": {
+        "properties": {
+          "base_asset": {
+            "title": "Base Asset",
+            "type": "string"
+          },
+          "base_asset_name": {
+            "title": "Base Asset Name",
+            "type": "string"
+          },
+          "catalog_source": {
+            "title": "Catalog Source",
+            "type": "string"
+          },
+          "first_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Session"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "default": "reference_rate",
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "price_fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Fetched At"
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "quote_asset": {
+            "title": "Quote Asset",
+            "type": "string"
+          },
+          "quote_asset_name": {
+            "title": "Quote Asset Name",
+            "type": "string"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "null"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "base_asset",
+          "base_asset_name",
+          "quote_asset",
+          "quote_asset_name",
+          "is_active",
+          "catalog_source",
+          "stored_sessions",
+          "price_basis"
+        ],
+        "title": "ReferenceRateInstrumentResponse",
+        "type": "object"
+      },
+      "ReferenceRateListResponse": {
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/ReferenceRateFacetsResponse"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRateInstrumentResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ReferenceRateSummaryResponse"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "instruments",
+          "facets",
+          "summary"
+        ],
+        "title": "ReferenceRateListResponse",
+        "type": "object"
+      },
+      "ReferenceRateSummaryResponse": {
+        "properties": {
+          "active_count": {
+            "title": "Active Count",
+            "type": "integer"
+          },
+          "earliest_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Session"
+          },
+          "inactive_count": {
+            "title": "Inactive Count",
+            "type": "integer"
+          },
+          "instrument_count": {
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "latest_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Session"
+          },
+          "with_history_count": {
+            "title": "With History Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instrument_count",
+          "active_count",
+          "inactive_count",
+          "with_history_count"
+        ],
+        "title": "ReferenceRateSummaryResponse",
         "type": "object"
       },
       "RegimeRequest": {
@@ -5262,6 +5870,10 @@
             "title": "Health By Year",
             "type": "array"
           },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
           "is_stale": {
             "title": "Is Stale",
             "type": "boolean"
@@ -5272,14 +5884,6 @@
             },
             "title": "Mae Percentiles Winners",
             "type": "array"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
           },
           "mfe_percentiles_losers": {
             "items": {
@@ -5419,6 +6023,17 @@
               }
             ],
             "title": "Undercut Distribution"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
           }
         },
         "required": [
@@ -5443,7 +6058,7 @@
           "equity_curve_strategy",
           "equity_curve_bah",
           "ticker_prices",
-          "market",
+          "instrument_id",
           "expected_last_session",
           "data_last_session",
           "refreshed",
@@ -5590,351 +6205,6 @@
           "trade_count"
         ],
         "title": "SweepResultItem",
-        "type": "object"
-      },
-      "SymbolPriceHistoryResponse": {
-        "properties": {
-          "fetched_at": {
-            "title": "Fetched At",
-            "type": "string"
-          },
-          "first_date": {
-            "title": "First Date",
-            "type": "string"
-          },
-          "fundamentals_fields": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Fundamentals Fields",
-            "type": "array"
-          },
-          "last_date": {
-            "title": "Last Date",
-            "type": "string"
-          },
-          "price_basis": {
-            "title": "Price Basis",
-            "type": "string"
-          },
-          "prices": {
-            "items": {
-              "$ref": "#/components/schemas/SymbolPricePointResponse"
-            },
-            "title": "Prices",
-            "type": "array"
-          },
-          "provider_ratio_effective_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Ratio Effective Date"
-          },
-          "provider_ratio_period": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Ratio Period"
-          },
-          "provider_reported_pb": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Reported Pb"
-          },
-          "provider_reported_pe": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Reported Pe"
-          },
-          "relative_strength_benchmark": {
-            "enum": [
-              "VN30",
-              "SPX"
-            ],
-            "title": "Relative Strength Benchmark",
-            "type": "string"
-          },
-          "row_count": {
-            "title": "Row Count",
-            "type": "integer"
-          },
-          "shares_cagr_5y_observed_years": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Cagr 5Y Observed Years"
-          },
-          "shares_cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Cagr 5Y Pct"
-          },
-          "shares_cagr_5y_start_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Cagr 5Y Start Date"
-          },
-          "shares_cagr_full_5y": {
-            "default": false,
-            "title": "Shares Cagr Full 5Y",
-            "type": "boolean"
-          },
-          "shares_growth_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Growth Cagr Pct"
-          },
-          "shares_growth_full_10y": {
-            "default": false,
-            "title": "Shares Growth Full 10Y",
-            "type": "boolean"
-          },
-          "shares_growth_observed_years": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Growth Observed Years"
-          },
-          "shares_growth_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Growth Pct"
-          },
-          "shares_growth_start_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Growth Start Date"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "trailing_pe_fetched_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trailing Pe Fetched At"
-          },
-          "trailing_pe_method": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trailing Pe Method"
-          },
-          "trailing_pe_source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trailing Pe Source"
-          },
-          "universe": {
-            "enum": [
-              "US500",
-              "US2000",
-              "US100",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Universe",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "universe",
-          "source",
-          "price_basis",
-          "fetched_at",
-          "first_date",
-          "last_date",
-          "row_count",
-          "relative_strength_benchmark",
-          "prices"
-        ],
-        "title": "SymbolPriceHistoryResponse",
-        "type": "object"
-      },
-      "SymbolPricePointResponse": {
-        "properties": {
-          "close": {
-            "title": "Close",
-            "type": "number"
-          },
-          "date": {
-            "title": "Date",
-            "type": "string"
-          },
-          "eps_ttm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Ttm"
-          },
-          "high": {
-            "title": "High",
-            "type": "number"
-          },
-          "low": {
-            "title": "Low",
-            "type": "number"
-          },
-          "open": {
-            "title": "Open",
-            "type": "number"
-          },
-          "relative_strength": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Relative Strength"
-          },
-          "shares_outstanding": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shares Outstanding"
-          },
-          "trailing_pb": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trailing Pb"
-          },
-          "trailing_pe": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trailing Pe"
-          },
-          "volume": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Volume"
-          }
-        },
-        "required": [
-          "date",
-          "open",
-          "high",
-          "low",
-          "close"
-        ],
-        "title": "SymbolPricePointResponse",
         "type": "object"
       },
       "TimeSeriesPoint": {
@@ -6253,6 +6523,104 @@
         "title": "UndercutDistributionRowResponse",
         "type": "object"
       },
+      "UniverseCatalogResponse": {
+        "properties": {
+          "active_instrument_count": {
+            "title": "Active Instrument Count",
+            "type": "integer"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_count": {
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "instrument_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Instrument Types",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "venue_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Venue Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "source",
+          "instrument_count",
+          "active_instrument_count",
+          "instrument_types",
+          "venue_codes"
+        ],
+        "title": "UniverseCatalogResponse",
+        "type": "object"
+      },
+      "UniverseListResponse": {
+        "properties": {
+          "universes": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseCatalogResponse"
+            },
+            "title": "Universes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "universes"
+        ],
+        "title": "UniverseListResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6293,6 +6661,102 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VenueListResponse": {
+        "properties": {
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "venues": {
+            "items": {
+              "$ref": "#/components/schemas/VenueResponse"
+            },
+            "title": "Venues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "venues"
+        ],
+        "title": "VenueListResponse",
+        "type": "object"
+      },
+      "VenueResponse": {
+        "properties": {
+          "active_instrument_count": {
+            "title": "Active Instrument Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_count": {
+            "title": "Instrument Count",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "session_cutoff_time": {
+            "format": "time",
+            "title": "Session Cutoff Time",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "timezone_name": {
+            "title": "Timezone Name",
+            "type": "string"
+          },
+          "trading_calendar_code": {
+            "title": "Trading Calendar Code",
+            "type": "string"
+          },
+          "venue_type": {
+            "title": "Venue Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "venue_type",
+          "timezone_name",
+          "trading_calendar_code",
+          "session_cutoff_time",
+          "is_active",
+          "source",
+          "instrument_count",
+          "active_instrument_count"
+        ],
+        "title": "VenueResponse",
+        "type": "object"
+      },
       "WatchlistCreateRequest": {
         "properties": {
           "description": {
@@ -6301,32 +6765,23 @@
             "title": "Description",
             "type": "string"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
+          "instrument_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 5000,
+            "title": "Instrument Ids",
+            "type": "array"
           },
           "name": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "tickers": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 5000,
-            "title": "Tickers",
-            "type": "array"
           }
         },
         "required": [
-          "name",
-          "market"
+          "name"
         ],
         "title": "WatchlistCreateRequest",
         "type": "object"
@@ -6367,11 +6822,7 @@
       },
       "WatchlistMemberResponse": {
         "properties": {
-          "company_name": {
-            "title": "Company Name",
-            "type": "string"
-          },
-          "exchange": {
+          "base_asset": {
             "anyOf": [
               {
                 "type": "string"
@@ -6380,7 +6831,33 @@
                 "type": "null"
               }
             ],
-            "title": "Exchange"
+            "title": "Base Asset"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
           },
           "industry": {
             "anyOf": [
@@ -6393,17 +6870,28 @@
             ],
             "title": "Industry"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
             "type": "string"
           },
           "position": {
             "title": "Position",
             "type": "integer"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
           },
           "sector": {
             "anyOf": [
@@ -6416,15 +6904,38 @@
             ],
             "title": "Sector"
           },
-          "ticker": {
-            "title": "Ticker",
+          "symbol": {
+            "title": "Symbol",
             "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
           }
         },
         "required": [
-          "ticker",
-          "company_name",
-          "market",
+          "instrument_id",
+          "symbol",
+          "instrument_type",
+          "currency",
           "position"
         ],
         "title": "WatchlistMemberResponse",
@@ -6460,14 +6971,6 @@
           },
           "id": {
             "title": "Id",
-            "type": "string"
-          },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
             "type": "string"
           },
           "message": {
@@ -6512,7 +7015,6 @@
           "id",
           "watchlist_id",
           "watchlist_name",
-          "market",
           "status",
           "current",
           "total",
@@ -6547,21 +7049,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "crypto_spot_count": {
+            "title": "Crypto Spot Count",
+            "type": "integer"
+          },
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "equity_count": {
+            "title": "Equity Count",
+            "type": "integer"
           },
           "id": {
             "title": "Id",
             "type": "integer"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
+          "instrument_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Instrument Types",
+            "type": "array"
           },
           "member_count": {
             "title": "Member Count",
@@ -6578,6 +7087,14 @@
             "title": "Name",
             "type": "string"
           },
+          "price_refresh_supported": {
+            "title": "Price Refresh Supported",
+            "type": "boolean"
+          },
+          "reference_rate_count": {
+            "title": "Reference Rate Count",
+            "type": "integer"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -6587,9 +7104,13 @@
         "required": [
           "id",
           "name",
-          "market",
           "description",
           "member_count",
+          "instrument_types",
+          "equity_count",
+          "crypto_spot_count",
+          "reference_rate_count",
+          "price_refresh_supported",
           "created_at",
           "updated_at",
           "members"
@@ -6604,21 +7125,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "crypto_spot_count": {
+            "title": "Crypto Spot Count",
+            "type": "integer"
+          },
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "equity_count": {
+            "title": "Equity Count",
+            "type": "integer"
           },
           "id": {
             "title": "Id",
             "type": "integer"
           },
-          "market": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Market",
-            "type": "string"
+          "instrument_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Instrument Types",
+            "type": "array"
           },
           "member_count": {
             "title": "Member Count",
@@ -6627,6 +7155,14 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "price_refresh_supported": {
+            "title": "Price Refresh Supported",
+            "type": "boolean"
+          },
+          "reference_rate_count": {
+            "title": "Reference Rate Count",
+            "type": "integer"
           },
           "updated_at": {
             "format": "date-time",
@@ -6637,9 +7173,13 @@
         "required": [
           "id",
           "name",
-          "market",
           "description",
           "member_count",
+          "instrument_types",
+          "equity_count",
+          "crypto_spot_count",
+          "reference_rate_count",
+          "price_refresh_supported",
           "created_at",
           "updated_at"
         ],
@@ -6654,19 +7194,19 @@
             "title": "Description",
             "type": "string"
           },
+          "instrument_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 5000,
+            "title": "Instrument Ids",
+            "type": "array"
+          },
           "name": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "tickers": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 5000,
-            "title": "Tickers",
-            "type": "array"
           }
         },
         "required": [
@@ -7099,19 +7639,19 @@
           },
           {
             "in": "query",
-            "name": "exchange",
+            "name": "venue",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "maxLength": 32,
+                  "maxLength": 64,
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Exchange"
+              "title": "Venue"
             }
           },
           {
@@ -7416,6 +7956,242 @@
         "summary": "List Crypto Markets",
         "tags": [
           "crypto"
+        ]
+      }
+    },
+    "/data-operations/coverage": {
+      "get": {
+        "operationId": "getDataOperationPriceCoverage",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "universe",
+                "watchlist",
+                "instrument"
+              ],
+              "title": "Scope Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Scope Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentPriceCoveragePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Data Operation Price Coverage",
+        "tags": [
+          "data-operations"
+        ]
+      }
+    },
+    "/data-operations/jobs": {
+      "post": {
+        "operationId": "startDataOperation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataOperationJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Data Operation",
+        "tags": [
+          "data-operations"
+        ]
+      }
+    },
+    "/data-operations/jobs/{job_id}": {
+      "get": {
+        "operationId": "getDataOperationJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataOperationJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Data Operation Job",
+        "tags": [
+          "data-operations"
+        ]
+      }
+    },
+    "/data-operations/preview": {
+      "get": {
+        "operationId": "previewDataOperation",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "universe",
+                "watchlist",
+                "instrument"
+              ],
+              "title": "Scope Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Scope Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataset",
+            "required": false,
+            "schema": {
+              "default": "prices",
+              "enum": [
+                "prices",
+                "fundamentals"
+              ],
+              "title": "Dataset",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataOperationPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Data Operation",
+        "tags": [
+          "data-operations"
         ]
       }
     },
@@ -7808,338 +8584,96 @@
         "summary": "Health"
       }
     },
-    "/market-data/jobs/{job_id}": {
+    "/instruments": {
       "get": {
-        "operationId": "market_data_job_market_data_jobs__job_id__get",
+        "operationId": "listAnalysisInstruments",
         "parameters": [
           {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
+            "in": "query",
+            "name": "scope",
+            "required": false,
             "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketDataJobResponse"
+              "anyOf": [
+                {
+                  "enum": [
+                    "equity",
+                    "crypto_spot",
+                    "reference_rate"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
                 }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Market Data Job",
-        "tags": [
-          "market-data"
-        ]
-      }
-    },
-    "/market-data/status": {
-      "get": {
-        "operationId": "market_data_status_market_data_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketDataStatusResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Market Data Status",
-        "tags": [
-          "market-data"
-        ]
-      }
-    },
-    "/market-data/symbols/{symbol}/history": {
-      "get": {
-        "operationId": "symbol_price_history_market_data_symbols__symbol__history_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "symbol",
-            "required": true,
-            "schema": {
-              "title": "Symbol",
-              "type": "string"
+              ],
+              "title": "Scope"
             }
           },
           {
             "in": "query",
             "name": "universe",
-            "required": true,
-            "schema": {
-              "title": "Universe",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SymbolPriceHistoryResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Symbol Price History",
-        "tags": [
-          "market-data"
-        ]
-      }
-    },
-    "/market-data/{market}": {
-      "delete": {
-        "operationId": "clear_market_data_market_data__market__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "market",
-            "required": true,
-            "schema": {
-              "title": "Market",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketDataClearResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Clear Market Data",
-        "tags": [
-          "market-data"
-        ]
-      }
-    },
-    "/market-data/{market}/refresh": {
-      "post": {
-        "operationId": "refresh_market_data_market_data__market__refresh_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "market",
-            "required": true,
-            "schema": {
-              "title": "Market",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "mode",
             "required": false,
             "schema": {
-              "default": "incremental",
-              "enum": [
-                "incremental",
-                "full"
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Mode",
-              "type": "string"
+              "title": "Universe"
             }
           },
           {
             "in": "query",
-            "name": "dataset",
+            "name": "search",
             "required": false,
             "schema": {
-              "default": "prices",
-              "enum": [
-                "prices",
-                "fundamentals"
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Dataset",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketDataJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Refresh Market Data",
-        "tags": [
-          "market-data"
-        ]
-      }
-    },
-    "/market-health/run": {
-      "post": {
-        "operationId": "run_market_health_market_health_run_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MarketHealthRunRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketHealthRunResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Run Market Health",
-        "tags": [
-          "market-health"
-        ]
-      }
-    },
-    "/market-health/{universe}/distribution": {
-      "get": {
-        "operationId": "market_health_distribution_market_health__universe__distribution_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "universe",
-            "required": true,
-            "schema": {
-              "title": "Universe",
-              "type": "string"
+              "title": "Search"
             }
           },
           {
             "in": "query",
-            "name": "date",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "Date",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "window",
+            "name": "has_price_history",
             "required": false,
             "schema": {
-              "default": 200,
-              "maximum": 500,
-              "minimum": 20,
-              "title": "Window",
+              "default": true,
+              "title": "Has Price History",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           },
           {
             "in": "query",
-            "name": "min_distance",
+            "name": "limit",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Min Distance"
-            }
-          },
-          {
-            "in": "query",
-            "name": "max_distance",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Max Distance"
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -8148,7 +8682,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MarketHealthDistributionResponse"
+                  "$ref": "#/components/schemas/AnalysisInstrumentListResponse"
                 }
               }
             },
@@ -8165,9 +8699,173 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Market Health Distribution",
+        "summary": "List Analysis Instruments",
         "tags": [
-          "market-health"
+          "instruments"
+        ]
+      }
+    },
+    "/instruments/{instrument_id}/history": {
+      "get": {
+        "operationId": "getInstrumentPriceHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_id",
+            "required": true,
+            "schema": {
+              "title": "Instrument Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentPriceHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Instrument Price History",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/reference-rates": {
+      "get": {
+        "operationId": "listReferenceRates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "base_asset",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Base Asset"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quote_asset",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quote Asset"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "inactive",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceRateListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reference Rates",
+        "tags": [
+          "reference-rates"
         ]
       }
     },
@@ -8212,31 +8910,51 @@
         ]
       }
     },
+    "/universes": {
+      "get": {
+        "operationId": "listUniverses",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UniverseListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Universes",
+        "tags": [
+          "universes"
+        ]
+      }
+    },
+    "/venues": {
+      "get": {
+        "operationId": "listVenues",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Venues",
+        "tags": [
+          "venues"
+        ]
+      }
+    },
     "/watchlists": {
       "get": {
         "operationId": "listWatchlists",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "market",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "US",
-                    "VN"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Market"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -8247,16 +8965,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Watchlists",

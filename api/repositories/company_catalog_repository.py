@@ -24,10 +24,9 @@ class CompanyIdentifierRecord:
 class CompanyInstrumentRecord:
     id: int
     ticker: str
-    market: str
     instrument_type: str
     share_class: str | None
-    exchange: str | None
+    venue_code: str | None
     currency: str
     is_active: bool
     universes: tuple[str, ...]

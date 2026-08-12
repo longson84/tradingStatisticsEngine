@@ -7,6 +7,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from api.db.models import (
+    Company,
     FundamentalFact,
     FundamentalRefreshRun,
     FundamentalReport,
@@ -14,9 +15,11 @@ from api.db.models import (
     ProviderValuationObservation,
     Universe,
     UniverseMembership,
+    Venue,
 )
 from api.repositories.fundamental_repository import (
     FundamentalFactRecord,
+    FundamentalInstrumentRecord,
     FundamentalReportRecord,
     FundamentalStatusRecord,
     FundamentalWriteBatch,
@@ -29,21 +32,39 @@ class SqlAlchemyFundamentalRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def instrument_exists(self, market: str, ticker: str) -> bool:
-        return self._session.scalar(
-            select(Instrument.id).where(
-                Instrument.market == market,
-                Instrument.ticker == ticker,
+    def get_instrument(
+        self, instrument_id: int
+    ) -> FundamentalInstrumentRecord | None:
+        row = self._session.execute(
+            select(
+                Instrument.id,
+                Instrument.ticker,
+                Instrument.currency,
+            ).where(
+                Instrument.id == instrument_id,
+                Instrument.is_active.is_(True),
             )
+        ).one_or_none()
+        if row is None:
+            return None
+        return FundamentalInstrumentRecord(
+            instrument_id=row.id,
+            ticker=row.ticker,
+            currency=row.currency,
+        )
+
+    def instrument_exists(self, instrument_id: int) -> bool:
+        return self._session.scalar(
+            select(Instrument.id).where(Instrument.id == instrument_id)
         ) is not None
 
     def list_reports(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ) -> tuple[FundamentalReportRecord, ...]:
         rows = self._session.execute(
-            select(FundamentalReport, Instrument.ticker, Instrument.market)
+            select(FundamentalReport, Instrument.ticker)
             .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .where(Instrument.market == market, Instrument.ticker == ticker)
+            .where(Instrument.id == instrument_id)
             .order_by(
                 FundamentalReport.effective_session_date,
                 FundamentalReport.id,
@@ -52,8 +73,8 @@ class SqlAlchemyFundamentalRepository:
         return tuple(
             FundamentalReportRecord(
                 id=report.id,
+                instrument_id=report.instrument_id,
                 ticker=stored_ticker,
-                market=stored_market,
                 source=report.source,
                 period_end=report.period_end,
                 period_label=report.period_label,
@@ -62,7 +83,7 @@ class SqlAlchemyFundamentalRepository:
                 reporting_currency=report.reporting_currency,
                 methodology=report.methodology,
             )
-            for report, stored_ticker, stored_market in rows
+            for report, stored_ticker in rows
         )
 
     def list_facts(
@@ -91,7 +112,7 @@ class SqlAlchemyFundamentalRepository:
         )
 
     def list_valuations(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ) -> tuple[ProviderValuationRecord, ...]:
         rows = self._session.scalars(
             select(ProviderValuationObservation)
@@ -99,7 +120,7 @@ class SqlAlchemyFundamentalRepository:
                 Instrument,
                 Instrument.id == ProviderValuationObservation.instrument_id,
             )
-            .where(Instrument.market == market, Instrument.ticker == ticker)
+            .where(Instrument.id == instrument_id)
             .order_by(
                 ProviderValuationObservation.effective_session_date,
                 ProviderValuationObservation.id,
@@ -124,9 +145,19 @@ class SqlAlchemyFundamentalRepository:
         self, universe: str
     ) -> FundamentalStatusRecord | None:
         report_filters = (Universe.code == universe,)
+        countries = tuple(self._session.scalars(
+            select(Company.country_code)
+            .select_from(UniverseMembership)
+            .join(Instrument, Instrument.id == UniverseMembership.instrument_id)
+            .join(Company, Company.id == Instrument.company_id)
+            .join(Universe, Universe.id == UniverseMembership.universe_id)
+            .where(Universe.code == universe)
+            .distinct()
+        ))
+        if len(countries) != 1:
+            return None
         summary = self._session.execute(
             select(
-                Universe.market,
                 func.max(FundamentalReport.fetched_at),
                 func.min(FundamentalReport.effective_session_date),
                 func.max(FundamentalReport.effective_session_date),
@@ -141,9 +172,8 @@ class SqlAlchemyFundamentalRepository:
             )
             .join(Universe, Universe.id == UniverseMembership.universe_id)
             .where(*report_filters)
-            .group_by(Universe.market)
         ).one_or_none()
-        if summary is None:
+        if summary is None or summary[0] is None:
             return None
         fact_count = int(self._session.scalar(
             select(func.count(FundamentalFact.id))
@@ -204,12 +234,11 @@ class SqlAlchemyFundamentalRepository:
         )
         return FundamentalStatusRecord(
             universe=universe,
-            market=summary[0],
-            fetched_at=summary[1],
-            first_effective_date=summary[2],
-            last_effective_date=summary[3],
-            symbol_count=int(summary[4]),
-            report_count=int(summary[5]),
+            fetched_at=summary[0],
+            first_effective_date=summary[1],
+            last_effective_date=summary[2],
+            symbol_count=int(summary[3]),
+            report_count=int(summary[4]),
             fact_count=fact_count,
             valuation_count=valuation_count,
             sources=sources,
@@ -217,26 +246,19 @@ class SqlAlchemyFundamentalRepository:
         )
 
     def get_latest_fetched_at(
-        self, market: str, ticker: str
+        self, instrument_id: int
     ):
         return self._session.scalar(
             select(func.max(FundamentalReport.fetched_at))
-            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .where(Instrument.market == market, Instrument.ticker == ticker)
+            .where(FundamentalReport.instrument_id == instrument_id)
         )
 
     def upsert_fundamentals(
         self, batch: FundamentalWriteBatch
     ) -> FundamentalWriteResult:
-        instrument_id = self._session.scalar(
-            select(Instrument.id).where(
-                Instrument.market == batch.market,
-                Instrument.ticker == batch.ticker,
-            )
-        )
-        if instrument_id is None:
-            raise ValueError(f"Unknown instrument: {batch.market}-{batch.ticker}")
-        currency = "VND" if batch.market == "VN" else "USD"
+        instrument_id = batch.instrument_id
+        if not self.instrument_exists(instrument_id):
+            raise ValueError(f"Unknown instrument: {instrument_id}")
         report_rows = [{
             "instrument_id": instrument_id,
             "source": batch.source,
@@ -250,7 +272,7 @@ class SqlAlchemyFundamentalRepository:
             "published_at": None,
             "effective_session_date": report.effective_session_date,
             "fetched_at": batch.fetched_at,
-            "reporting_currency": currency,
+            "reporting_currency": batch.reporting_currency,
             "scope": "unknown",
             "is_restatement": False,
             "raw_payload_hash": None,

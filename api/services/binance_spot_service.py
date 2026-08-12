@@ -192,8 +192,7 @@ class BinanceSpotService:
                 rejected += 1
                 continue
             records.append(PriceBarWriteRecord(
-                market="CRYPTO",
-                ticker=instrument.symbol,
+                instrument_id=instrument.id,
                 trading_date=row.trading_date,
                 open=float(row.open),
                 high=float(row.high),
@@ -205,7 +204,6 @@ class BinanceSpotService:
                 price_basis=BINANCE_PRICE_BASIS,
                 source=row.source,
                 fetched_at=fetched_at,
-                venue_code=BINANCE_SPOT_VENUE,
             ))
         stored = self._price_repository.upsert_bars(records)
         return PriceRefreshWriteResult(

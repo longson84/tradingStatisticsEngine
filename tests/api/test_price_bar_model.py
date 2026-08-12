@@ -19,10 +19,8 @@ def _instrument() -> Instrument:
             industry="Công nghệ và thông tin",
             source="company_import",
         ),
-        market="VN",
         ticker="FPT",
         currency="VND",
-        exchange="HOSE",
         source="company_import",
     )
 

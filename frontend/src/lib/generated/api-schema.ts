@@ -109,6 +109,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/data-operations/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Data Operation Price Coverage */
+        get: operations["getDataOperationPriceCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Data Operation */
+        post: operations["startDataOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Data Operation Job */
+        get: operations["getDataOperationJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Data Operation */
+        get: operations["previewDataOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events/new-low-episodes": {
         parameters: {
             query?: never;
@@ -279,15 +347,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/market-data/jobs/{job_id}": {
+    "/instruments": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Market Data Job */
-        get: operations["market_data_job_market_data_jobs__job_id__get"];
+        /** List Analysis Instruments */
+        get: operations["listAnalysisInstruments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -296,15 +364,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/market-data/status": {
+    "/instruments/{instrument_id}/history": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Market Data Status */
-        get: operations["market_data_status_market_data_status_get"];
+        /** Instrument Price History */
+        get: operations["getInstrumentPriceHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -313,83 +381,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/market-data/symbols/{symbol}/history": {
+    "/reference-rates": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Symbol Price History */
-        get: operations["symbol_price_history_market_data_symbols__symbol__history_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/market-data/{market}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Clear Market Data */
-        delete: operations["clear_market_data_market_data__market__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/market-data/{market}/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Market Data */
-        post: operations["refresh_market_data_market_data__market__refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/market-health/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run Market Health */
-        post: operations["run_market_health_market_health_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/market-health/{universe}/distribution": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Market Health Distribution */
-        get: operations["market_health_distribution_market_health__universe__distribution_get"];
+        /** List Reference Rates */
+        get: operations["listReferenceRates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -409,6 +409,40 @@ export interface paths {
         put?: never;
         /** Run Sweep */
         post: operations["run_sweep_sweep_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Universes */
+        get: operations["listUniverses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/venues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Venues */
+        get: operations["listVenues"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -507,6 +541,50 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnalysisInstrumentListResponse */
+        AnalysisInstrumentListResponse: {
+            /** Instruments */
+            instruments: components["schemas"]["AnalysisInstrumentResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** AnalysisInstrumentResponse */
+        AnalysisInstrumentResponse: {
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Id */
+            company_id?: number | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
+            /** First Session */
+            first_session?: string | null;
+            /** Id */
+            id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Last Session */
+            last_session?: string | null;
+            /** Price Basis */
+            price_basis: string;
+            /** Price Source */
+            price_source?: string | null;
+            /** Quote Asset */
+            quote_asset?: string | null;
+            /** Stored Sessions */
+            stored_sessions: number;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
         /** AnalyzeRequest */
         AnalyzeRequest: {
             /** End */
@@ -516,17 +594,12 @@ export interface components {
              * @default 10000
              */
             initial_capital: number;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
+            /** Instrument Id */
+            instrument_id: number;
             /** Start */
             start?: string | null;
             /** Strategy */
             strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
-            /** Ticker */
-            ticker: string;
         };
         /** AnnualGrowthRowSchema */
         AnnualGrowthRowSchema: {
@@ -645,25 +718,20 @@ export interface components {
         CompanyInstrumentResponse: {
             /** Currency */
             currency: string;
-            /** Exchange */
-            exchange?: string | null;
             /** Id */
             id: number;
             /** Instrument Type */
             instrument_type: string;
             /** Is Active */
             is_active: boolean;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Share Class */
             share_class?: string | null;
             /** Ticker */
             ticker: string;
             /** Universes */
             universes: string[];
+            /** Venue Code */
+            venue_code?: string | null;
         };
         /** CompanyListFacetsResponse */
         CompanyListFacetsResponse: {
@@ -680,6 +748,11 @@ export interface components {
             as_of?: string | null;
             /** Companies */
             companies: components["schemas"]["CompanyResponse"][];
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "VN";
             /** Description */
             description: string;
             facets: components["schemas"]["CompanyListFacetsResponse"];
@@ -692,11 +765,6 @@ export interface components {
             id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
             /** Limit */
             limit: number;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Name */
             name: string;
             /** Offset */
@@ -708,27 +776,29 @@ export interface components {
         CompanyResponse: {
             /** Company Name */
             company_name: string;
-            /** Exchange */
-            exchange?: string | null;
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "VN";
             /** First Session */
             first_session: string | null;
             /** Industry */
             industry?: string | null;
+            /** Instrument Id */
+            instrument_id: number;
             /** Last Session */
             last_session: string | null;
             /** Lists */
             lists: string[];
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Sector */
             sector?: string | null;
             /** Stored Sessions */
             stored_sessions: number;
             /** Ticker */
             ticker: string;
+            /** Venue Code */
+            venue_code?: string | null;
         };
         /** CompanyUniverseResponse */
         CompanyUniverseResponse: {
@@ -736,6 +806,11 @@ export interface components {
             as_of?: string | null;
             /** Company Count */
             company_count: number;
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "VN";
             /** Description */
             description: string;
             /** Fetched At */
@@ -745,11 +820,6 @@ export interface components {
              * @enum {string}
              */
             id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Name */
             name: string;
         };
@@ -914,6 +984,102 @@ export interface components {
             mfe_pct: number | null;
             /** Unrealized Return Pct */
             unrealized_return_pct: number | null;
+        };
+        /** DataOperationJobResponse */
+        DataOperationJobResponse: {
+            /** Current */
+            current: number;
+            /**
+             * Dataset
+             * @enum {string}
+             */
+            dataset: "prices" | "fundamentals";
+            /** Error */
+            error: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Message */
+            message: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "incremental" | "full";
+            /** Scope Id */
+            scope_id: string;
+            /** Scope Name */
+            scope_name: string;
+            /**
+             * Scope Type
+             * @enum {string}
+             */
+            scope_type: "universe" | "watchlist" | "instrument";
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Total */
+            total: number;
+        };
+        /** DataOperationPreviewResponse */
+        DataOperationPreviewResponse: {
+            /** Can Run */
+            can_run: boolean;
+            /** Current Count */
+            current_count: number;
+            /**
+             * Dataset
+             * @enum {string}
+             */
+            dataset: "prices" | "fundamentals";
+            /** Eligible Count */
+            eligible_count: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Message */
+            message: string;
+            /** Missing Count */
+            missing_count: number;
+            /** Scope Id */
+            scope_id: string;
+            /** Scope Name */
+            scope_name: string;
+            /**
+             * Scope Type
+             * @enum {string}
+             */
+            scope_type: "universe" | "watchlist" | "instrument";
+            /** Stale Count */
+            stale_count: number;
+            /** Unsupported Count */
+            unsupported_count: number;
+        };
+        /** DataOperationRequest */
+        DataOperationRequest: {
+            /**
+             * Dataset
+             * @default prices
+             * @enum {string}
+             */
+            dataset: "prices" | "fundamentals";
+            /**
+             * Mode
+             * @default incremental
+             * @enum {string}
+             */
+            mode: "incremental" | "full";
+            /** Scope Id */
+            scope_id: string;
+            /**
+             * Scope Type
+             * @enum {string}
+             */
+            scope_type: "universe" | "watchlist" | "instrument";
         };
         /** DateRange */
         DateRange: {
@@ -1285,323 +1451,177 @@ export interface components {
             /** Year */
             year: number;
         };
-        /** MarketDataCacheStatus */
-        MarketDataCacheStatus: {
-            /**
-             * Checked No New Bar Count
-             * @default 0
-             */
+        /** InstrumentPriceCoveragePageResponse */
+        InstrumentPriceCoveragePageResponse: {
+            /** Checked No New Bar Count */
             checked_no_new_bar_count: number;
-            /** Coverage Through */
-            coverage_through?: string | null;
+            /** Current Count */
+            current_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Instruments */
+            instruments: components["schemas"]["InstrumentPriceCoverageResponse"][];
+            /** Limit */
+            limit: number;
+            /** Missing Count */
+            missing_count: number;
+            /** Offset */
+            offset: number;
+            /** Scope Id */
+            scope_id: string;
+            /** Scope Name */
+            scope_name: string;
             /**
-             * Current Symbol Count
-             * @default 0
-             */
-            current_symbol_count: number;
-            /** Errors */
-            errors?: {
-                [key: string]: string;
-            }[];
-            /** Exists */
-            exists: boolean;
-            /** Expected Session */
-            expected_session?: string | null;
-            /**
-             * Failed Refresh Symbol Count
-             * @default 0
-             */
-            failed_refresh_symbol_count: number;
-            /** Fetched At */
-            fetched_at?: string | null;
-            /** First Date */
-            first_date?: string | null;
-            /**
-             * Fundamentals Exists
-             * @default false
-             */
-            fundamentals_exists: boolean;
-            /** Fundamentals Fetched At */
-            fundamentals_fetched_at?: string | null;
-            /** Fundamentals Oldest Fetched At */
-            fundamentals_oldest_fetched_at?: string | null;
-            /** Fundamentals Recent Activity At */
-            fundamentals_recent_activity_at?: string | null;
-            /**
-             * Fundamentals Snapshot Count
-             * @default 0
-             */
-            fundamentals_snapshot_count: number;
-            /**
-             * Fundamentals Symbol Count
-             * @default 0
-             */
-            fundamentals_symbol_count: number;
-            /** Last Date */
-            last_date?: string | null;
-            latest_fundamentals_job?: components["schemas"]["MarketDataJobResponse"] | null;
-            latest_job?: components["schemas"]["MarketDataJobResponse"] | null;
-            /**
-             * Missing Symbol Count
-             * @default 0
-             */
-            missing_symbol_count: number;
-            /** Price Basis */
-            price_basis?: string | null;
-            /** Recent Activity At */
-            recent_activity_at?: string | null;
-            /** Row Count */
-            row_count?: number | null;
-            /** Source */
-            source?: string | null;
-            /**
-             * Stale Symbol Count
-             * @default 0
-             */
-            stale_symbol_count: number;
-            /** Symbol Count */
-            symbol_count?: number | null;
-            /**
-             * Universe
+             * Scope Type
              * @enum {string}
              */
-            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /**
-             * Universe Symbol Count
-             * @default 0
-             */
-            universe_symbol_count: number;
-        };
-        /** MarketDataClearResponse */
-        MarketDataClearResponse: {
-            /** Affected Universes */
-            affected_universes: ("US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML")[];
-            /** Cleared */
-            cleared: boolean;
-            /** Deleted Rows */
-            deleted_rows: number;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
-            /**
-             * Requested Universe
-             * @enum {string}
-             */
-            requested_universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-        };
-        /** MarketDataJobResponse */
-        MarketDataJobResponse: {
-            /** Current */
-            current: number;
-            /**
-             * Dataset
-             * @default prices
-             * @enum {string}
-             */
-            dataset: "prices" | "fundamentals";
-            /** Error */
-            error: string | null;
-            /** Finished At */
-            finished_at: string | null;
-            /** Id */
-            id: string;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /** Message */
-            message: string;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "incremental" | "full";
-            /** Started At */
-            started_at: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "queued" | "running" | "completed" | "failed";
+            scope_type: "universe" | "watchlist" | "instrument";
+            /** Stale Count */
+            stale_count: number;
             /** Total */
             total: number;
         };
-        /** MarketDataStatusResponse */
-        MarketDataStatusResponse: {
+        /** InstrumentPriceCoverageResponse */
+        InstrumentPriceCoverageResponse: {
+            /** Coverage Fetched At */
+            coverage_fetched_at: string | null;
+            /** Coverage Source */
+            coverage_source: string | null;
             /**
-             * Fundamentals Storage
-             * @constant
-             */
-            fundamentals_storage: "PostgreSQL";
-            /** Markets */
-            markets: components["schemas"]["MarketDataCacheStatus"][];
-            /**
-             * Price Storage
-             * @constant
-             */
-            price_storage: "PostgreSQL";
-        };
-        /** MarketHealthDistributionBucketResponse */
-        MarketHealthDistributionBucketResponse: {
-            /** Count */
-            count: number;
-            /** Cumulative Percentage */
-            cumulative_percentage: number;
-            /** Label */
-            label: string;
-            /** Max Distance */
-            max_distance: number | null;
-            /** Min Distance */
-            min_distance: number | null;
-            /** Percentage */
-            percentage: number;
-        };
-        /** MarketHealthDistributionResponse */
-        MarketHealthDistributionResponse: {
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /** Max Distance */
-            max_distance: number | null;
-            /** Min Distance */
-            min_distance: number | null;
-            /** Stocks */
-            stocks: components["schemas"]["MarketHealthStockDistanceResponse"][];
-            /** Universe */
-            universe: string;
-            /** Window */
-            window: number;
-        };
-        /** MarketHealthHistoricalContextResponse */
-        MarketHealthHistoricalContextResponse: {
-            /** Current Percentile */
-            current_percentile: number;
-            /** Median Distance */
-            median_distance: number;
-            /** Observation Count */
-            observation_count: number;
-            /** Q25 Distance */
-            q25_distance: number;
-            /** Q75 Distance */
-            q75_distance: number;
-            /**
-             * Regime
+             * Coverage Status
              * @enum {string}
              */
-            regime: "Exceptionally strong" | "Strong" | "Normal" | "Weak" | "Exceptionally weak";
-        };
-        /** MarketHealthPointResponse */
-        MarketHealthPointResponse: {
-            /** Coverage Pct */
-            coverage_pct: number;
+            coverage_status: "current" | "stale" | "missing";
             /**
-             * Date
+             * Expected Session
              * Format: date
              */
-            date: string;
-            /** Eligible Count */
-            eligible_count: number;
-            /** Median Distance */
-            median_distance: number;
-        };
-        /** MarketHealthRunRequest */
-        MarketHealthRunRequest: {
-            /**
-             * Minimum Coverage
-             * @default 0.8
-             */
-            minimum_coverage: number;
-            /** Universes */
-            universes?: ("US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML")[];
-            /**
-             * Window
-             * @default 200
-             */
-            window: number;
-        };
-        /** MarketHealthRunResponse */
-        MarketHealthRunResponse: {
-            /** Markets */
-            markets: components["schemas"]["MarketHealthUniverseResponse"][];
-            /** Minimum Coverage */
-            minimum_coverage: number;
-            /** Window */
-            window: number;
-        };
-        /** MarketHealthSeriesPointResponse */
-        MarketHealthSeriesPointResponse: {
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /** Median Distance */
-            median_distance: number;
-            /** Running Median 10Y */
-            running_median_10y: number;
-            /** Running Median 1Y */
-            running_median_1y: number;
-            /** Running Median 5Y */
-            running_median_5y: number;
-        };
-        /** MarketHealthStockDistanceResponse */
-        MarketHealthStockDistanceResponse: {
-            /** Current Price */
-            current_price: number;
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /** Distance */
-            distance: number;
-            /** Rolling High */
-            rolling_high: number;
+            expected_session: string;
+            /** Expected Sessions Behind */
+            expected_sessions_behind: number | null;
+            /** First Stored Session */
+            first_stored_session: string | null;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Last Attempted Through */
+            last_attempted_through: string | null;
+            /** Last Checked At */
+            last_checked_at: string | null;
+            /** Last Returned Through */
+            last_returned_through: string | null;
+            /** Last Stored Session */
+            last_stored_session: string | null;
+            /** Price Basis */
+            price_basis: string;
+            /** Refresh Detail */
+            refresh_detail: string | null;
+            /** Refresh Outcome */
+            refresh_outcome: ("current" | "checked_no_new_bar" | "failed") | null;
+            /** Refresh Source */
+            refresh_source: string | null;
+            /** Stored Sessions */
+            stored_sessions: number;
             /** Symbol */
             symbol: string;
+            /** Venue Code */
+            venue_code: string | null;
         };
-        /** MarketHealthUniverseResponse */
-        MarketHealthUniverseResponse: {
-            cache: components["schemas"]["MarketHistoryCacheResponse"];
-            current: components["schemas"]["MarketHealthPointResponse"];
-            /** Distribution */
-            distribution: components["schemas"]["MarketHealthDistributionBucketResponse"][];
-            historical_context: components["schemas"]["MarketHealthHistoricalContextResponse"];
-            /** Series */
-            series: components["schemas"]["MarketHealthSeriesPointResponse"][];
-            /**
-             * Universe
-             * @enum {string}
-             */
-            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /** Universe Size */
-            universe_size: number;
-        };
-        /** MarketHistoryCacheResponse */
-        MarketHistoryCacheResponse: {
+        /** InstrumentPriceHistoryResponse */
+        InstrumentPriceHistoryResponse: {
+            /** Currency */
+            currency: string;
             /** Fetched At */
             fetched_at: string;
-            /**
-             * First Date
-             * Format: date
-             */
+            /** First Date */
             first_date: string;
-            /**
-             * Last Date
-             * Format: date
-             */
+            /** Fundamentals Fields */
+            fundamentals_fields?: string[];
+            /** Instrument Id */
+            instrument_id: number;
+            /** Last Date */
             last_date: string;
             /** Price Basis */
             price_basis: string;
+            /** Prices */
+            prices: components["schemas"]["InstrumentPricePointResponse"][];
+            /** Provider Ratio Effective Date */
+            provider_ratio_effective_date?: string | null;
+            /** Provider Ratio Period */
+            provider_ratio_period?: string | null;
+            /** Provider Reported Pb */
+            provider_reported_pb?: number | null;
+            /** Provider Reported Pe */
+            provider_reported_pe?: number | null;
+            /**
+             * Relative Strength Benchmark
+             * @enum {string}
+             */
+            relative_strength_benchmark: "VN30" | "SPX";
+            /** Row Count */
+            row_count: number;
+            /** Shares Cagr 5Y Observed Years */
+            shares_cagr_5y_observed_years?: number | null;
+            /** Shares Cagr 5Y Pct */
+            shares_cagr_5y_pct?: number | null;
+            /** Shares Cagr 5Y Start Date */
+            shares_cagr_5y_start_date?: string | null;
+            /**
+             * Shares Cagr Full 5Y
+             * @default false
+             */
+            shares_cagr_full_5y: boolean;
+            /** Shares Growth Cagr Pct */
+            shares_growth_cagr_pct?: number | null;
+            /**
+             * Shares Growth Full 10Y
+             * @default false
+             */
+            shares_growth_full_10y: boolean;
+            /** Shares Growth Observed Years */
+            shares_growth_observed_years?: number | null;
+            /** Shares Growth Pct */
+            shares_growth_pct?: number | null;
+            /** Shares Growth Start Date */
+            shares_growth_start_date?: string | null;
             /** Source */
             source: string;
-            /** Symbol Count */
-            symbol_count: number;
+            /** Symbol */
+            symbol: string;
+            /** Trailing Pe Fetched At */
+            trailing_pe_fetched_at?: string | null;
+            /** Trailing Pe Method */
+            trailing_pe_method?: string | null;
+            /** Trailing Pe Source */
+            trailing_pe_source?: string | null;
+            /** Venue Code */
+            venue_code?: string | null;
+        };
+        /** InstrumentPricePointResponse */
+        InstrumentPricePointResponse: {
+            /** Close */
+            close: number;
+            /** Date */
+            date: string;
+            /** Eps Ttm */
+            eps_ttm?: number | null;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Open */
+            open: number;
+            /** Relative Strength */
+            relative_strength?: number | null;
+            /** Shares Outstanding */
+            shares_outstanding?: number | null;
+            /** Trailing Pb */
+            trailing_pb?: number | null;
+            /** Trailing Pe */
+            trailing_pe?: number | null;
+            /** Volume */
+            volume?: number | null;
         };
         /** MonthlyStatRowResponse */
         MonthlyStatRowResponse: {
@@ -1879,6 +1899,39 @@ export interface components {
                 };
             };
         };
+        /** PredefinedRarityInstrumentStatus */
+        PredefinedRarityInstrumentStatus: {
+            /** Available */
+            available: boolean;
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
+            /** Data Last Session */
+            data_last_session?: string | null;
+            /** Expected Last Session */
+            expected_last_session?: string | null;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Is Stale */
+            is_stale: boolean;
+            /** Price Basis */
+            price_basis?: string | null;
+            /** Price Source */
+            price_source?: string | null;
+            /** Quote Asset */
+            quote_asset?: string | null;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
         /** PredefinedRarityRequest */
         PredefinedRarityRequest: {
             /** Watchlist Id */
@@ -1886,30 +1939,20 @@ export interface components {
         };
         /** PredefinedRarityResponse */
         PredefinedRarityResponse: {
-            /** Available Symbols */
-            available_symbols: number;
+            /** Available Instruments */
+            available_instruments: number;
             /** Errors */
             errors?: string[];
-            /**
-             * Expected Last Session
-             * Format: date
-             */
-            expected_last_session: string;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
-            /** Missing Symbols */
-            missing_symbols: string[];
+            /** Instruments */
+            instruments: components["schemas"]["PredefinedRarityInstrumentStatus"][];
+            /** Missing Instrument Ids */
+            missing_instrument_ids: number[];
             /** Percentile Columns */
             percentile_columns: string[];
-            /** Price Basis */
-            price_basis: string;
-            /** Requested Symbols */
-            requested_symbols: number;
-            /** Stale Symbols */
-            stale_symbols: string[];
+            /** Requested Instruments */
+            requested_instruments: number;
+            /** Stale Instrument Ids */
+            stale_instrument_ids: number[];
             /** Tables */
             tables: components["schemas"]["PredefinedRarityTable"][];
             /** Watchlist Id */
@@ -1930,6 +1973,8 @@ export interface components {
              * Format: date
              */
             first_date: string;
+            /** Instrument Id */
+            instrument_id: number;
             /**
              * Last Date
              * Format: date
@@ -2041,6 +2086,12 @@ export interface components {
         };
         /** RarityAnalysisResponse */
         RarityAnalysisResponse: {
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
             /** Current Percentile */
             current_percentile: number;
             /** Current Price */
@@ -2072,6 +2123,10 @@ export interface components {
              * Format: date
              */
             first_date: string;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
             /** Is Stale */
             is_stale: boolean;
             /**
@@ -2079,17 +2134,14 @@ export interface components {
              * Format: date
              */
             last_date: string;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Max Potential Drop Pct */
             max_potential_drop_pct: number;
             /** Price Basis */
             price_basis: string;
             /** Price Source */
             price_source: string;
+            /** Quote Asset */
+            quote_asset?: string | null;
             /** Refresh Warning */
             refresh_warning?: string | null;
             /** Refreshed */
@@ -2107,6 +2159,10 @@ export interface components {
             time_series: components["schemas"]["TimeSeriesPoint"][];
             /** Total Bars */
             total_bars: number;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
             /** Zone Entry Date */
             zone_entry_date: string | null;
             /** Zone Entry Price */
@@ -2121,17 +2177,14 @@ export interface components {
              * @enum {string}
              */
             factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak";
+            /** Instrument Id */
+            instrument_id: number;
             /**
              * Ma Type
              * @default sma
              * @enum {string}
              */
             ma_type: "sma" | "ema" | "wma";
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /**
              * Period
              * @default 200
@@ -2153,8 +2206,6 @@ export interface components {
              * @default 2
              */
             std_dev: number;
-            /** Ticker */
-            ticker: string;
             /**
              * Zones
              * @default [
@@ -2168,6 +2219,90 @@ export interface components {
              *     ]
              */
             zones: number[];
+        };
+        /** ReferenceRateFacetCountResponse */
+        ReferenceRateFacetCountResponse: {
+            /** Count */
+            count: number;
+            /** Value */
+            value: string;
+        };
+        /** ReferenceRateFacetsResponse */
+        ReferenceRateFacetsResponse: {
+            /** Active Count */
+            active_count: number;
+            /** Base Assets */
+            base_assets: components["schemas"]["ReferenceRateFacetCountResponse"][];
+            /** Inactive Count */
+            inactive_count: number;
+            /** Quote Assets */
+            quote_assets: components["schemas"]["ReferenceRateFacetCountResponse"][];
+        };
+        /** ReferenceRateInstrumentResponse */
+        ReferenceRateInstrumentResponse: {
+            /** Base Asset */
+            base_asset: string;
+            /** Base Asset Name */
+            base_asset_name: string;
+            /** Catalog Source */
+            catalog_source: string;
+            /** First Session */
+            first_session?: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Instrument Type
+             * @default reference_rate
+             */
+            instrument_type: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Session */
+            last_session?: string | null;
+            /** Price Basis */
+            price_basis: string;
+            /** Price Fetched At */
+            price_fetched_at?: string | null;
+            /** Price Source */
+            price_source?: string | null;
+            /** Quote Asset */
+            quote_asset: string;
+            /** Quote Asset Name */
+            quote_asset_name: string;
+            /** Stored Sessions */
+            stored_sessions: number;
+            /** Symbol */
+            symbol: string;
+            /** Venue */
+            venue?: null;
+        };
+        /** ReferenceRateListResponse */
+        ReferenceRateListResponse: {
+            facets: components["schemas"]["ReferenceRateFacetsResponse"];
+            /** Instruments */
+            instruments: components["schemas"]["ReferenceRateInstrumentResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            summary: components["schemas"]["ReferenceRateSummaryResponse"];
+            /** Total */
+            total: number;
+        };
+        /** ReferenceRateSummaryResponse */
+        ReferenceRateSummaryResponse: {
+            /** Active Count */
+            active_count: number;
+            /** Earliest Session */
+            earliest_session?: string | null;
+            /** Inactive Count */
+            inactive_count: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Latest Session */
+            latest_session?: string | null;
+            /** With History Count */
+            with_history_count: number;
         };
         /** RegimeRequest */
         RegimeRequest: {
@@ -2249,15 +2384,12 @@ export interface components {
             from_date: string;
             /** Health By Year */
             health_by_year: components["schemas"]["HealthRowResponse"][];
+            /** Instrument Id */
+            instrument_id: number;
             /** Is Stale */
             is_stale: boolean;
             /** Mae Percentiles Winners */
             mae_percentiles_winners: components["schemas"]["DistributionRowResponse"][];
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Mfe Percentiles Losers */
             mfe_percentiles_losers: components["schemas"]["DistributionRowResponse"][];
             /** Mfe Percentiles Winners */
@@ -2305,6 +2437,8 @@ export interface components {
             trades: components["schemas"]["TradeRowResponse"][];
             /** Undercut Distribution */
             undercut_distribution?: components["schemas"]["UndercutDistributionRowResponse"][] | null;
+            /** Venue Code */
+            venue_code?: string | null;
         };
         /** SweepErrorItem */
         SweepErrorItem: {
@@ -2363,100 +2497,6 @@ export interface components {
             total_return_pct: number;
             /** Trade Count */
             trade_count: number;
-        };
-        /** SymbolPriceHistoryResponse */
-        SymbolPriceHistoryResponse: {
-            /** Fetched At */
-            fetched_at: string;
-            /** First Date */
-            first_date: string;
-            /** Fundamentals Fields */
-            fundamentals_fields?: string[];
-            /** Last Date */
-            last_date: string;
-            /** Price Basis */
-            price_basis: string;
-            /** Prices */
-            prices: components["schemas"]["SymbolPricePointResponse"][];
-            /** Provider Ratio Effective Date */
-            provider_ratio_effective_date?: string | null;
-            /** Provider Ratio Period */
-            provider_ratio_period?: string | null;
-            /** Provider Reported Pb */
-            provider_reported_pb?: number | null;
-            /** Provider Reported Pe */
-            provider_reported_pe?: number | null;
-            /**
-             * Relative Strength Benchmark
-             * @enum {string}
-             */
-            relative_strength_benchmark: "VN30" | "SPX";
-            /** Row Count */
-            row_count: number;
-            /** Shares Cagr 5Y Observed Years */
-            shares_cagr_5y_observed_years?: number | null;
-            /** Shares Cagr 5Y Pct */
-            shares_cagr_5y_pct?: number | null;
-            /** Shares Cagr 5Y Start Date */
-            shares_cagr_5y_start_date?: string | null;
-            /**
-             * Shares Cagr Full 5Y
-             * @default false
-             */
-            shares_cagr_full_5y: boolean;
-            /** Shares Growth Cagr Pct */
-            shares_growth_cagr_pct?: number | null;
-            /**
-             * Shares Growth Full 10Y
-             * @default false
-             */
-            shares_growth_full_10y: boolean;
-            /** Shares Growth Observed Years */
-            shares_growth_observed_years?: number | null;
-            /** Shares Growth Pct */
-            shares_growth_pct?: number | null;
-            /** Shares Growth Start Date */
-            shares_growth_start_date?: string | null;
-            /** Source */
-            source: string;
-            /** Symbol */
-            symbol: string;
-            /** Trailing Pe Fetched At */
-            trailing_pe_fetched_at?: string | null;
-            /** Trailing Pe Method */
-            trailing_pe_method?: string | null;
-            /** Trailing Pe Source */
-            trailing_pe_source?: string | null;
-            /**
-             * Universe
-             * @enum {string}
-             */
-            universe: "US500" | "US2000" | "US100" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-        };
-        /** SymbolPricePointResponse */
-        SymbolPricePointResponse: {
-            /** Close */
-            close: number;
-            /** Date */
-            date: string;
-            /** Eps Ttm */
-            eps_ttm?: number | null;
-            /** High */
-            high: number;
-            /** Low */
-            low: number;
-            /** Open */
-            open: number;
-            /** Relative Strength */
-            relative_strength?: number | null;
-            /** Shares Outstanding */
-            shares_outstanding?: number | null;
-            /** Trailing Pb */
-            trailing_pb?: number | null;
-            /** Trailing Pe */
-            trailing_pe?: number | null;
-            /** Volume */
-            volume?: number | null;
         };
         /** TimeSeriesPoint */
         TimeSeriesPoint: {
@@ -2545,6 +2585,36 @@ export interface components {
             /** Undercuts */
             undercuts: number;
         };
+        /** UniverseCatalogResponse */
+        UniverseCatalogResponse: {
+            /** Active Instrument Count */
+            active_instrument_count: number;
+            /** As Of */
+            as_of?: string | null;
+            /** Code */
+            code: string;
+            /** Description */
+            description: string;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Id */
+            id: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Instrument Types */
+            instrument_types: string[];
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+            /** Venue Codes */
+            venue_codes: string[];
+        };
+        /** UniverseListResponse */
+        UniverseListResponse: {
+            /** Universes */
+            universes: components["schemas"]["UniverseCatalogResponse"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2558,6 +2628,43 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VenueListResponse */
+        VenueListResponse: {
+            /** Total */
+            total: number;
+            /** Venues */
+            venues: components["schemas"]["VenueResponse"][];
+        };
+        /** VenueResponse */
+        VenueResponse: {
+            /** Active Instrument Count */
+            active_instrument_count: number;
+            /** Code */
+            code: string;
+            /** Country Code */
+            country_code?: string | null;
+            /** Id */
+            id: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Session Cutoff Time
+             * Format: time
+             */
+            session_cutoff_time: string;
+            /** Source */
+            source: string;
+            /** Timezone Name */
+            timezone_name: string;
+            /** Trading Calendar Code */
+            trading_calendar_code: string;
+            /** Venue Type */
+            venue_type: string;
+        };
         /** WatchlistCreateRequest */
         WatchlistCreateRequest: {
             /**
@@ -2565,15 +2672,10 @@ export interface components {
              * @default
              */
             description: string;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
+            /** Instrument Ids */
+            instrument_ids?: number[];
             /** Name */
             name: string;
-            /** Tickers */
-            tickers?: string[];
         };
         /** WatchlistDeleteResponse */
         WatchlistDeleteResponse: {
@@ -2589,23 +2691,32 @@ export interface components {
         };
         /** WatchlistMemberResponse */
         WatchlistMemberResponse: {
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Id */
+            company_id?: number | null;
             /** Company Name */
-            company_name: string;
-            /** Exchange */
-            exchange?: string | null;
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
             /** Industry */
             industry?: string | null;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
             /** Position */
             position: number;
+            /** Quote Asset */
+            quote_asset?: string | null;
             /** Sector */
             sector?: string | null;
-            /** Ticker */
-            ticker: string;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
         };
         /** WatchlistRefreshJobResponse */
         WatchlistRefreshJobResponse: {
@@ -2617,11 +2728,6 @@ export interface components {
             finished_at: string | null;
             /** Id */
             id: string;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
             /** Message */
             message: string;
             /** Started At */
@@ -2650,21 +2756,26 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Crypto Spot Count */
+            crypto_spot_count: number;
             /** Description */
             description: string;
+            /** Equity Count */
+            equity_count: number;
             /** Id */
             id: number;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
+            /** Instrument Types */
+            instrument_types: string[];
             /** Member Count */
             member_count: number;
             /** Members */
             members: components["schemas"]["WatchlistMemberResponse"][];
             /** Name */
             name: string;
+            /** Price Refresh Supported */
+            price_refresh_supported: boolean;
+            /** Reference Rate Count */
+            reference_rate_count: number;
             /**
              * Updated At
              * Format: date-time
@@ -2678,19 +2789,24 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Crypto Spot Count */
+            crypto_spot_count: number;
             /** Description */
             description: string;
+            /** Equity Count */
+            equity_count: number;
             /** Id */
             id: number;
-            /**
-             * Market
-             * @enum {string}
-             */
-            market: "US" | "VN";
+            /** Instrument Types */
+            instrument_types: string[];
             /** Member Count */
             member_count: number;
             /** Name */
             name: string;
+            /** Price Refresh Supported */
+            price_refresh_supported: boolean;
+            /** Reference Rate Count */
+            reference_rate_count: number;
             /**
              * Updated At
              * Format: date-time
@@ -2704,10 +2820,10 @@ export interface components {
              * @default
              */
             description: string;
+            /** Instrument Ids */
+            instrument_ids?: number[];
             /** Name */
             name: string;
-            /** Tickers */
-            tickers?: string[];
         };
         /** WeightEventSchema */
         WeightEventSchema: {
@@ -2883,7 +2999,7 @@ export interface operations {
                 search?: string | null;
                 sector?: string | null;
                 industry?: string | null;
-                exchange?: string | null;
+                venue?: string | null;
                 offset?: number;
                 limit?: number;
             };
@@ -2991,6 +3107,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoMarketListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getDataOperationPriceCoverage: {
+        parameters: {
+            query: {
+                scope_type: "universe" | "watchlist" | "instrument";
+                scope_id: string;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentPriceCoveragePageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startDataOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataOperationJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getDataOperationJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataOperationJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    previewDataOperation: {
+        parameters: {
+            query: {
+                scope_type: "universe" | "watchlist" | "instrument";
+                scope_id: string;
+                dataset?: "prices" | "fundamentals";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataOperationPreviewResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3323,167 +3570,21 @@ export interface operations {
             };
         };
     };
-    market_data_job_market_data_jobs__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MarketDataJobResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    market_data_status_market_data_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MarketDataStatusResponse"];
-                };
-            };
-        };
-    };
-    symbol_price_history_market_data_symbols__symbol__history_get: {
-        parameters: {
-            query: {
-                universe: string;
-            };
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SymbolPriceHistoryResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    clear_market_data_market_data__market__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                market: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MarketDataClearResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refresh_market_data_market_data__market__refresh_post: {
+    listAnalysisInstruments: {
         parameters: {
             query?: {
-                mode?: "incremental" | "full";
-                dataset?: "prices" | "fundamentals";
+                scope?: ("equity" | "crypto_spot" | "reference_rate") | null;
+                universe?: string | null;
+                search?: string | null;
+                has_price_history?: boolean;
+                offset?: number;
+                limit?: number;
             };
-            header?: never;
-            path: {
-                market: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MarketDataJobResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    run_market_health_market_health_run_post: {
-        parameters: {
-            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MarketHealthRunRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3491,7 +3592,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MarketHealthRunResponse"];
+                    "application/json": components["schemas"]["AnalysisInstrumentListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3505,17 +3606,12 @@ export interface operations {
             };
         };
     };
-    market_health_distribution_market_health__universe__distribution_get: {
+    getInstrumentPriceHistory: {
         parameters: {
-            query: {
-                date: string;
-                window?: number;
-                min_distance?: number | null;
-                max_distance?: number | null;
-            };
+            query?: never;
             header?: never;
             path: {
-                universe: string;
+                instrument_id: number;
             };
             cookie?: never;
         };
@@ -3527,7 +3623,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MarketHealthDistributionResponse"];
+                    "application/json": components["schemas"]["InstrumentPriceHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listReferenceRates: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                base_asset?: string | null;
+                quote_asset?: string | null;
+                status?: "active" | "inactive" | "all";
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceRateListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3574,11 +3706,49 @@ export interface operations {
             };
         };
     };
+    listUniverses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniverseListResponse"];
+                };
+            };
+        };
+    };
+    listVenues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VenueListResponse"];
+                };
+            };
+        };
+    };
     listWatchlists: {
         parameters: {
-            query?: {
-                market?: ("US" | "VN") | null;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -3592,15 +3762,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WatchlistListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -108,8 +108,7 @@ class SweepResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class AnalyzeRequest(BaseModel):
-    market: Literal["US", "VN"]
-    ticker: str
+    instrument_id: int
     strategy: StrategyConfig
     initial_capital: float = 10_000.0
     start: date | None = None
@@ -232,7 +231,8 @@ class SingleTickerAnalysisResponse(BaseModel):
     equity_curve_bah: dict[str, float]
     ticker_prices: dict[str, float]
     undercut_distribution: list[UndercutDistributionRowResponse] | None = None
-    market: Literal["US", "VN"]
+    instrument_id: int
+    venue_code: str | None = None
     expected_last_session: date
     data_last_session: date
     refreshed: bool

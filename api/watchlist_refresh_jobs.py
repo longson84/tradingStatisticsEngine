@@ -26,7 +26,7 @@ class WatchlistRefreshJob:
     id: str
     watchlist_id: int
     watchlist_name: str
-    market: str
+    routing_adapter: str
     status: JobStatus = "queued"
     current: int = 0
     total: int = 0
@@ -70,15 +70,19 @@ def list_latest_jobs() -> tuple[WatchlistRefreshJob, ...]:
 
 
 def start_refresh_job(
-    watchlist_id: int, watchlist_name: str, market: str
+    watchlist_id: int,
+    watchlist_name: str,
+    routing_adapter: str,
 ) -> WatchlistRefreshJob:
+    if routing_adapter not in {"yfinance", "vnstock_data"}:
+        raise ValueError(f"Unsupported watchlist price adapter: {routing_adapter}")
     job = WatchlistRefreshJob(
         id=uuid4().hex,
         watchlist_id=watchlist_id,
         watchlist_name=watchlist_name,
-        market=market,
+        routing_adapter=routing_adapter,
     )
-    acquire_price_refresh(market, job.id, f"watchlist {watchlist_name}")
+    acquire_price_refresh(routing_adapter, job.id, f"watchlist {watchlist_name}")
     try:
         with _lock:
             if watchlist_id in _active_by_watchlist:
@@ -93,7 +97,7 @@ def start_refresh_job(
             _active_by_watchlist.pop(watchlist_id, None)
             if _latest_by_watchlist.get(watchlist_id) == job.id:
                 _latest_by_watchlist.pop(watchlist_id, None)
-        release_price_refresh(market, job.id)
+        release_price_refresh(routing_adapter, job.id)
         raise
     return job
 
@@ -169,4 +173,4 @@ def _run_job(job_id: str) -> None:
     finally:
         with _lock:
             _active_by_watchlist.pop(watchlist_id, None)
-        release_price_refresh(job.market, job_id)
+        release_price_refresh(job.routing_adapter, job_id)

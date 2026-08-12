@@ -19,11 +19,15 @@ from trading_engine.factors.moving_average import DistanceFromMovingAverage, Mov
 from trading_engine.factors.ahr999 import AHR999
 from trading_engine.types import Factor
 
-from api.deps import fetch_prices, get_company_price_service, get_watchlist_service
-from api.services.company_price_service import (
-    CompanyPriceService,
-    CompanyPriceUnavailableError,
-    UnknownCompanyError,
+from api.deps import (
+    fetch_prices,
+    get_instrument_analysis_service,
+    get_watchlist_service,
+)
+from api.services.instrument_analysis_service import (
+    InstrumentAnalysisService,
+    InstrumentPriceUnavailableError,
+    UnknownInstrumentError,
 )
 from api.services.watchlist_service import UnknownWatchlistError, WatchlistService
 import pandas as pd
@@ -37,6 +41,7 @@ from api.schemas.factor import (
     RarityAnalysisResponse,
     PredefinedRarityRequest,
     PredefinedRarityResponse,
+    PredefinedRarityInstrumentStatus,
     PredefinedRarityRow,
     PredefinedRarityTable,
     ZoneStatsSchema,
@@ -93,7 +98,9 @@ def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 
     raise HTTPException(status_code=400, detail=f"Unknown factor type: {factor_type!r}")
 
 
-def _predefined_row(symbol: str, factor: Factor, prices: PriceFrame) -> PredefinedRarityRow:
+def _predefined_row(
+    instrument_id: int, symbol: str, factor: Factor, prices: PriceFrame
+) -> PredefinedRarityRow:
     series = factor.compute(prices)
     values = series.values.dropna()
     if values.empty:
@@ -108,6 +115,7 @@ def _predefined_row(symbol: str, factor: Factor, prices: PriceFrame) -> Predefin
     p50 = float(percentile_values.loc[0.5])
 
     return PredefinedRarityRow(
+        instrument_id=instrument_id,
         symbol=symbol,
         first_date=values.index[0].date(),
         last_date=values.index[-1].date(),
@@ -157,49 +165,58 @@ def predefined_rarity_endpoint(
     watchlist_service: Annotated[
         WatchlistService, Depends(get_watchlist_service)
     ],
-    price_service: Annotated[
-        CompanyPriceService, Depends(get_company_price_service)
+    instrument_service: Annotated[
+        InstrumentAnalysisService, Depends(get_instrument_analysis_service)
     ],
 ) -> PredefinedRarityResponse:
     try:
         watchlist = watchlist_service.get_watchlist(req.watchlist_id)
     except UnknownWatchlistError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    symbols = [member.ticker for member in watchlist.members]
-    if not symbols:
-        raise HTTPException(status_code=422, detail="Watchlist has no companies")
+    instrument_ids = [member.instrument_id for member in watchlist.members]
+    if not instrument_ids:
+        raise HTTPException(status_code=422, detail="Watchlist has no instruments")
 
-    stored = price_service.get_stored_histories(
-        watchlist.market,
-        symbols,
-    )
+    stored = instrument_service.get_stored_histories(instrument_ids)
     prices = stored.prices
     if not prices:
         raise HTTPException(
             status_code=422,
-            detail="No watchlist companies have stored PostgreSQL price history",
+            detail="No watchlist instruments have stored PostgreSQL price history",
         )
 
     errors = [
-        f"{symbol}: no stored PostgreSQL price history"
-        for symbol in stored.missing_tickers
+        f"{member.symbol} (instrument {member.instrument_id}): "
+        "no stored PostgreSQL price history"
+        for member in watchlist.members
+        if member.instrument_id in stored.missing_instrument_ids
     ]
-    if stored.stale_tickers:
+    if stored.stale_instrument_ids:
+        stale_labels = [
+            f"{member.symbol} ({member.instrument_id})"
+            for member in watchlist.members
+            if member.instrument_id in stored.stale_instrument_ids
+        ]
         errors.append(
-            "Stale through the expected market session: "
-            + ", ".join(stored.stale_tickers)
+            "Stale through each instrument's expected session: "
+            + ", ".join(stale_labels)
         )
     tables: list[PredefinedRarityTable] = []
 
     for factor_key, factor_name, factor in _PREDEFINED_FACTORS:
         rows: list[PredefinedRarityRow] = []
-        for symbol in symbols:
-            if symbol not in prices:
+        for member in watchlist.members:
+            if member.instrument_id not in prices:
                 continue
             try:
-                rows.append(_predefined_row(symbol, factor, prices[symbol]))
+                rows.append(_predefined_row(
+                    member.instrument_id,
+                    member.symbol,
+                    factor,
+                    prices[member.instrument_id],
+                ))
             except (FactorComputeError, InsufficientDataError, ValueError) as exc:
-                errors.append(f"{symbol} / {factor_name}: {exc}")
+                errors.append(f"{member.symbol} / {factor_name}: {exc}")
 
         tables.append(
             PredefinedRarityTable(
@@ -209,16 +226,36 @@ def predefined_rarity_endpoint(
             )
         )
 
+    statuses = []
+    for member in watchlist.members:
+        instrument = stored.instruments.get(member.instrument_id)
+        available = member.instrument_id in prices
+        statuses.append(PredefinedRarityInstrumentStatus(
+            instrument_id=member.instrument_id,
+            symbol=member.symbol,
+            instrument_type=member.instrument_type,
+            company_name=member.company_name,
+            venue_code=member.venue_code,
+            venue_name=member.venue_name,
+            base_asset=member.base_asset,
+            quote_asset=member.quote_asset,
+            currency=member.currency,
+            price_basis=instrument.price_basis if instrument is not None else None,
+            price_source=stored.price_sources.get(member.instrument_id),
+            expected_last_session=stored.expected_last_sessions.get(member.instrument_id),
+            data_last_session=stored.data_last_sessions.get(member.instrument_id),
+            available=available,
+            is_stale=member.instrument_id in stored.stale_instrument_ids,
+        ))
+
     return PredefinedRarityResponse(
         watchlist_id=watchlist.id,
         watchlist_name=watchlist.name,
-        market=watchlist.market,
-        requested_symbols=len(symbols),
-        available_symbols=len(prices),
-        stale_symbols=list(stored.stale_tickers),
-        missing_symbols=list(stored.missing_tickers),
-        expected_last_session=stored.expected_last_session,
-        price_basis=stored.price_basis,
+        requested_instruments=len(instrument_ids),
+        available_instruments=len(prices),
+        stale_instrument_ids=list(stored.stale_instrument_ids),
+        missing_instrument_ids=list(stored.missing_instrument_ids),
+        instruments=statuses,
         percentile_columns=[f"p{p}" for p in _PREDEFINED_PERCENTILES],
         tables=tables,
         errors=errors,
@@ -286,24 +323,23 @@ def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
 def rarity_analysis_endpoint(
     req: RarityRequest,
     price_service: Annotated[
-        CompanyPriceService, Depends(get_company_price_service)
+        InstrumentAnalysisService, Depends(get_instrument_analysis_service)
     ],
 ) -> RarityAnalysisResponse:
-    ticker = req.ticker.upper().strip()
     try:
-        stored = price_service.get_current_history(req.market, ticker)
-    except UnknownCompanyError as exc:
+        stored = price_service.get_current_history(req.instrument_id)
+    except UnknownInstrumentError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except CompanyPriceUnavailableError as exc:
+    except InstrumentPriceUnavailableError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    prices = {ticker: stored.prices}
+    prices = stored.prices
 
     try:
         factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
-        series = factor.compute(prices[ticker])
+        series = factor.compute(prices)
         result = zone_rarity_analysis(
             series=series,
-            prices=prices[ticker],
+            prices=prices,
             zones=req.zones,
             quick_recovery_days=req.quick_recovery_days,
             recovery_mode=req.recovery_mode,
@@ -311,14 +347,14 @@ def rarity_analysis_endpoint(
         # Attach factor-specific context (optional — not all factors implement context())
         factor_context = {}
         if hasattr(factor, "context"):
-            factor_context = factor.context(prices[ticker])
+            factor_context = factor.context(prices)
         result.factor_context = factor_context
 
     except (FactorComputeError, InsufficientDataError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     # ── Time series ───────────────────────────────────────────────────────────
-    price_close = prices[ticker].data["close"]
+    price_close = prices.data["close"]
     factor_vals = series.values.dropna()
     ts_points: list[TimeSeriesPoint] = []
     for ts, fv in factor_vals.items():
@@ -348,8 +384,16 @@ def rarity_analysis_endpoint(
         }
 
     return RarityAnalysisResponse(
+        instrument_id=stored.instrument.id,
         factor_name=result.factor_name,
         symbol=result.symbol,
+        instrument_type=stored.instrument.instrument_type,
+        company_name=stored.instrument.company_name,
+        venue_code=stored.instrument.venue_code,
+        venue_name=stored.instrument.venue_name,
+        base_asset=stored.instrument.base_asset,
+        quote_asset=stored.instrument.quote_asset,
+        currency=stored.instrument.currency,
         stats_date=result.stats_date,
         first_date=result.first_date,
         last_date=result.last_date,
@@ -406,7 +450,6 @@ def rarity_analysis_endpoint(
             for e in result.entries
         ],
         time_series=ts_points,
-        market=stored.market,
         expected_last_session=stored.expected_last_session,
         data_last_session=stored.data_last_session,
         refreshed=stored.refreshed,

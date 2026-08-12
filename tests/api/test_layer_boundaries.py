@@ -27,7 +27,7 @@ def test_company_route_depends_on_service_not_repository_or_database():
 
 
 def test_price_routes_do_not_depend_on_repository_or_database_models():
-    for filename in ("market_data.py", "market_health.py"):
+    for filename in ("instrument_history.py",):
         imports = _imports(PROJECT_ROOT / "api" / "routes" / filename)
         assert not any(
             imported.startswith("api.repositories") or imported.startswith("api.db")

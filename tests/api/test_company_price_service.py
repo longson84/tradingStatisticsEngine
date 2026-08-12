@@ -6,13 +6,15 @@ import pandas as pd
 import pytest
 
 from api.repositories.price_bar_repository import (
+    PriceInstrumentRecord,
     PriceBarRecord,
     SymbolPriceCoverageRecord,
 )
+from api.instrument_data_routing import InstrumentRoutingMetadata
+from api.venue_calendars import venue_calendar
 from api.services.company_price_service import (
     CompanyPriceService,
     UnknownCompanyError,
-    latest_completed_session,
 )
 from trading_engine.types import PriceFrame
 
@@ -23,16 +25,25 @@ class StubRepository:
         self.last_date = last_date
         self.records = [] if last_date is None else [self._row(last_date, 100.0)]
         self.writes = []
+        self.target = PriceInstrumentRecord(
+            instrument_id=42,
+            ticker="MSFT",
+            currency="USD",
+            instrument_type="common_stock",
+            venue_code="NASDAQ",
+        )
 
-    def instrument_exists(self, market, ticker):
-        return self.exists
+    def get_instrument(self, instrument_id):
+        if not self.exists or instrument_id != self.target.instrument_id:
+            return None
+        return self.target
 
-    def get_symbol_coverage(self, market, ticker, price_basis):
+    def get_instrument_coverage(self, instrument_id, price_basis):
         if self.last_date is None:
             return None
         return SymbolPriceCoverageRecord(
-            ticker=ticker,
-            market=market,
+            instrument_id=self.target.instrument_id,
+            ticker=self.target.ticker,
             first_date=self.records[0].trading_date,
             last_date=self.last_date,
             row_count=len(self.records),
@@ -40,15 +51,8 @@ class StubRepository:
             fetched_at=datetime(2026, 8, 4, tzinfo=UTC),
         )
 
-    def iter_symbol_bars(self, query):
+    def iter_instrument_bars(self, query):
         return tuple(self.records)
-
-    def list_symbol_coverages(self, market, tickers, price_basis):
-        coverage = self.get_symbol_coverage(market, "MSFT", price_basis)
-        return (coverage,) if coverage is not None and "MSFT" in tickers else ()
-
-    def iter_symbol_set_bars(self, query):
-        return tuple(row for row in self.records if row.ticker in query.tickers)
 
     def upsert_bars(self, records):
         self.writes = list(records)
@@ -63,7 +67,6 @@ class StubRepository:
     def _row(day, close):
         return PriceBarRecord(
             ticker="MSFT",
-            market="US",
             trading_date=day,
             open=close,
             high=close,
@@ -75,6 +78,29 @@ class StubRepository:
             price_basis="adjusted",
             source="yfinance",
             fetched_at=datetime(2026, 8, 4, tzinfo=UTC),
+        )
+
+
+class StubRoutingRepository:
+    def __init__(self, repository: StubRepository):
+        self.repository = repository
+
+    def get_instrument_route_metadata(self, instrument_id):
+        target = self.repository.get_instrument(instrument_id)
+        if target is None:
+            return None
+        schedule = venue_calendar(target.venue_code)
+        return InstrumentRoutingMetadata(
+            instrument_id=target.instrument_id,
+            canonical_symbol=target.ticker,
+            instrument_type=target.instrument_type,
+            company_id=1,
+            venue_code=target.venue_code,
+            currency=target.currency,
+            catalog_source="test",
+            timezone_name=schedule.timezone_name,
+            trading_calendar_code=schedule.trading_calendar_code,
+            session_cutoff_time=schedule.session_cutoff_time,
         )
 
 
@@ -100,10 +126,12 @@ def test_fresh_postgresql_history_does_not_download():
     expected = date(2026, 8, 3)
     repository = StubRepository(expected)
     loader = StubLoader(expected)
-    service = CompanyPriceService(repository, {"US": loader, "VN": loader})
+    service = CompanyPriceService(
+        repository, StubRoutingRepository(repository), {"yfinance": loader}
+    )
 
-    result = service.get_current_history(
-        "US", "MSFT", now=datetime(2026, 8, 4, 12, tzinfo=UTC)
+    result = service.get_current_instrument_history(
+        42, now=datetime(2026, 8, 4, 12, tzinfo=UTC)
     )
 
     assert loader.calls == []
@@ -115,10 +143,12 @@ def test_fresh_postgresql_history_does_not_download():
 def test_stale_ticker_downloads_only_that_ticker_and_upserts():
     repository = StubRepository(date(2026, 7, 31))
     loader = StubLoader(date(2026, 8, 3))
-    service = CompanyPriceService(repository, {"US": loader, "VN": loader})
+    service = CompanyPriceService(
+        repository, StubRoutingRepository(repository), {"yfinance": loader}
+    )
 
-    result = service.get_current_history(
-        "US", "MSFT", now=datetime(2026, 8, 4, 12, tzinfo=UTC)
+    result = service.get_current_instrument_history(
+        42, now=datetime(2026, 8, 4, 12, tzinfo=UTC)
     )
 
     assert len(loader.calls) == 1
@@ -133,37 +163,13 @@ def test_unknown_company_is_rejected_before_provider_access():
     repository = StubRepository(None)
     repository.exists = False
     loader = StubLoader(date(2026, 8, 3))
-    service = CompanyPriceService(repository, {"US": loader, "VN": loader})
-
-    with pytest.raises(UnknownCompanyError):
-        service.get_current_history("US", "UNKNOWN")
-    assert loader.calls == []
-
-
-def test_stored_histories_report_stale_and_missing_without_provider_calls():
-    repository = StubRepository(date(2026, 7, 31))
-    loader = StubLoader(date(2026, 8, 3))
-    service = CompanyPriceService(repository, {"US": loader, "VN": loader})
-
-    result = service.get_stored_histories(
-        "US",
-        ["MSFT", "AAPL"],
-        now=datetime(2026, 8, 4, 12, tzinfo=UTC),
+    service = CompanyPriceService(
+        repository, StubRoutingRepository(repository), {"yfinance": loader}
     )
 
-    assert tuple(result.prices) == ("MSFT",)
-    assert result.stale_tickers == ("MSFT",)
-    assert result.missing_tickers == ("AAPL",)
+    with pytest.raises(UnknownCompanyError):
+        service.get_current_instrument_history(42)
     assert loader.calls == []
-
-
-def test_latest_completed_session_respects_market_close_and_weekend():
-    assert latest_completed_session(
-        datetime(2026, 8, 3, 7, tzinfo=UTC), "VN"
-    ) == date(2026, 7, 31)
-    assert latest_completed_session(
-        datetime(2026, 8, 3, 9, tzinfo=UTC), "VN"
-    ) == date(2026, 8, 3)
 
 
 @pytest.mark.parametrize(
@@ -177,7 +183,16 @@ def test_store_downloaded_histories_uses_canonical_market_metadata(
     market, ticker, currency, scale, basis, source
 ):
     repository = StubRepository(None)
-    service = CompanyPriceService(repository, {})
+    repository.target = PriceInstrumentRecord(
+        instrument_id=42,
+        ticker=ticker,
+        currency=currency,
+        instrument_type="common_stock",
+        venue_code="HOSE" if market == "VN" else "NASDAQ",
+    )
+    service = CompanyPriceService(
+        repository, StubRoutingRepository(repository), {}
+    )
     frame = PriceFrame(
         symbol=ticker,
         data=pd.DataFrame(
@@ -195,13 +210,12 @@ def test_store_downloaded_histories_uses_canonical_market_metadata(
     fetched_at = datetime(2026, 8, 4, tzinfo=UTC)
 
     stored = service.store_downloaded_histories(
-        market, {ticker: frame}, fetched_at=fetched_at
+        {repository.target.instrument_id: frame}, fetched_at=fetched_at
     )
 
     assert stored == 1
     written = repository.writes[0]
-    assert written.market == market
-    assert written.ticker == ticker
+    assert written.instrument_id == repository.target.instrument_id
     assert written.currency == currency
     assert written.price_scale == scale
     assert written.price_basis == basis

@@ -13,6 +13,9 @@ from api.fundamental_provider import VALUE_COLUMNS, fetch_provider_fundamentals
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
+from api.repositories.sqlalchemy_instrument_routing_repository import (
+    SqlAlchemyInstrumentRoutingRepository,
+)
 from api.services.fundamental_service import FundamentalService
 from api.services.fundamental_write_service import FundamentalWriteService
 
@@ -72,10 +75,17 @@ def main() -> None:
     symbol = args.symbol.upper().strip()
     engine = create_db_engine()
     with Session(engine) as session:
-        stored = FundamentalService(
-            SqlAlchemyFundamentalRepository(session)
-        ).get_symbol_history("VN", symbol)
-    fetched, source, methodology = fetch_provider_fundamentals(symbol, "VN")
+        repository = SqlAlchemyFundamentalRepository(session)
+        metadata = SqlAlchemyInstrumentRoutingRepository(
+            session
+        ).find_instrument_route_metadata("listing", symbol)
+        if metadata is None:
+            raise RuntimeError(f"Unknown PostgreSQL instrument: {symbol}")
+        instrument_id = metadata.instrument_id
+        stored = FundamentalService(repository).get_instrument_history(instrument_id)
+    fetched, source, methodology = fetch_provider_fundamentals(
+        symbol, "vnstock_data"
+    )
     errors = parity_errors(stored.snapshots, fetched)
     print(
         f"{symbol}: stored={len(stored.snapshots)} sponsored={len(fetched)} "
@@ -102,8 +112,7 @@ def main() -> None:
         result = FundamentalWriteService(
             SqlAlchemyFundamentalRepository(session)
         ).store_provider_frame(
-            market="VN",
-            ticker=symbol,
+            instrument_id=instrument_id,
             source=source,
             methodology=methodology,
             fetched_at=datetime.now(timezone.utc),

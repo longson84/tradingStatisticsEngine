@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { ArrowUpDown } from "lucide-react"
-import type { CompanyResponse, MarketHealthStockDistance } from "@/lib/api"
+import type { CompanyResponse } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
@@ -9,14 +9,7 @@ type CoverageSortKey = "first_session" | "last_session" | "stored_sessions"
 type SortDirection = "asc" | "desc"
 
 
-export function InstrumentTable({
-  rows,
-  healthBySymbol,
-}: {
-  rows: InstrumentRow[]
-  healthBySymbol?: Map<string, MarketHealthStockDistance>
-}) {
-  const showHealth = healthBySymbol != null
+export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
   const [coverageSort, setCoverageSort] = useState<{
     key: CoverageSortKey
     direction: SortDirection
@@ -54,7 +47,7 @@ export function InstrumentTable({
             <th className="px-3 py-2 text-left font-medium">Issuer</th>
             <th className="px-3 py-2 text-left font-medium">Sector</th>
             <th className="px-3 py-2 text-left font-medium">Industry</th>
-            <th className="px-3 py-2 text-left font-medium">Exchange</th>
+            <th className="px-3 py-2 text-left font-medium">Venue</th>
             <SortableCoverageHeader
               label="First session"
               active={coverageSort?.key === "first_session"}
@@ -73,22 +66,17 @@ export function InstrumentTable({
               direction={coverageSort?.key === "stored_sessions" ? coverageSort.direction : null}
               onClick={() => toggleCoverageSort("stored_sessions")}
             />
-            {showHealth && <th className="px-3 py-2 text-right font-medium">Price</th>}
-            {showHealth && <th className="px-3 py-2 text-right font-medium">200D High</th>}
-            {showHealth && <th className="px-3 py-2 text-right font-medium">Distance</th>}
             <th className="px-3 py-2 text-left font-medium">Universe</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {displayRows.map(row => {
-            const health = healthBySymbol?.get(row.ticker)
-            return (
-              <tr key={`${row.market}-${row.ticker}`} className="hover:bg-muted/30">
+          {displayRows.map(row => (
+              <tr key={row.instrument_id} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-semibold tabular-nums">{row.ticker}</td>
                 <td className="min-w-72 px-3 py-2">{row.company_name}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.sector ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.industry ?? "n/a"}</td>
-                <td className="px-3 py-2 text-muted-foreground">{row.exchange ?? "n/a"}</td>
+                <td className="px-3 py-2 text-muted-foreground">{row.venue_code ?? "n/a"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {row.first_session ?? "—"}
                 </td>
@@ -98,21 +86,6 @@ export function InstrumentTable({
                 <td className="px-3 py-2 text-right tabular-nums">
                   {row.stored_sessions.toLocaleString()}
                 </td>
-                {showHealth && (
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {health ? health.current_price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "n/a"}
-                  </td>
-                )}
-                {showHealth && (
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {health ? health.rolling_high.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "n/a"}
-                  </td>
-                )}
-                {showHealth && (
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                    {health ? `${health.distance.toFixed(2)}%` : "n/a"}
-                  </td>
-                )}
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1.5">
                     {row.lists.map(list => (
@@ -129,11 +102,10 @@ export function InstrumentTable({
                   </div>
                 </td>
               </tr>
-            )
-          })}
+          ))}
           {displayRows.length === 0 && (
             <tr>
-              <td colSpan={showHealth ? 12 : 9} className="px-3 py-10 text-center text-muted-foreground">
+              <td colSpan={9} className="px-3 py-10 text-center text-muted-foreground">
                 No instruments match the current filters.
               </td>
             </tr>

@@ -1,0 +1,132 @@
+"""Instrument-centered data update endpoints."""
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from api.data_operation_jobs import (
+    get_job,
+    start_instrument_operation,
+    start_universe_operation,
+    start_watchlist_operation,
+)
+from api.deps import get_data_operation_service
+from api.schemas.data_operations import (
+    DataOperationDataset,
+    DataOperationJobResponse,
+    DataOperationPreviewResponse,
+    DataOperationRequest,
+    DataOperationScopeType,
+    InstrumentPriceCoveragePageResponse,
+)
+from api.services.data_operation_service import (
+    DataOperationService,
+    UnknownDataOperationScopeError,
+)
+
+
+router = APIRouter(prefix="/data-operations", tags=["data-operations"])
+
+
+@router.get(
+    "/preview",
+    response_model=DataOperationPreviewResponse,
+    operation_id="previewDataOperation",
+)
+def preview_data_operation(
+    service: Annotated[DataOperationService, Depends(get_data_operation_service)],
+    scope_type: DataOperationScopeType = Query(...),
+    scope_id: str = Query(..., min_length=1, max_length=64),
+    dataset: DataOperationDataset = Query(default="prices"),
+) -> DataOperationPreviewResponse:
+    try:
+        preview = service.preview(scope_type, scope_id, dataset)
+    except UnknownDataOperationScopeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    values = preview.__dict__.copy()
+    values.pop("execution_route")
+    return DataOperationPreviewResponse(**values)
+
+
+@router.get(
+    "/coverage",
+    response_model=InstrumentPriceCoveragePageResponse,
+    operation_id="getDataOperationPriceCoverage",
+)
+def get_data_operation_price_coverage(
+    service: Annotated[DataOperationService, Depends(get_data_operation_service)],
+    scope_type: DataOperationScopeType = Query(...),
+    scope_id: str = Query(..., min_length=1, max_length=64),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> InstrumentPriceCoveragePageResponse:
+    try:
+        coverage = service.price_coverage(
+            scope_type,
+            scope_id,
+            offset=offset,
+            limit=limit,
+        )
+    except UnknownDataOperationScopeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    values = coverage.__dict__.copy()
+    values["instruments"] = [row.__dict__ for row in coverage.instruments]
+    return InstrumentPriceCoveragePageResponse(**values)
+
+
+@router.post(
+    "/jobs",
+    response_model=DataOperationJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="startDataOperation",
+)
+def start_data_operation(
+    request: DataOperationRequest,
+    service: Annotated[DataOperationService, Depends(get_data_operation_service)],
+) -> DataOperationJobResponse:
+    try:
+        preview = service.preview(
+            request.scope_type, request.scope_id, request.dataset
+        )
+    except UnknownDataOperationScopeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not preview.can_run:
+        raise HTTPException(status_code=422, detail=preview.message)
+    try:
+        if preview.scope_type == "universe":
+            assert preview.execution_route is not None
+            job = start_universe_operation(
+                preview.scope_id,
+                preview.scope_name,
+                request.dataset,
+                request.mode,
+                preview.execution_route,
+            )
+        elif preview.scope_type == "watchlist":
+            assert preview.execution_route is not None
+            job = start_watchlist_operation(
+                int(preview.scope_id),
+                preview.scope_name,
+                preview.execution_route,
+                request.mode,
+            )
+        else:
+            job = start_instrument_operation(
+                int(preview.scope_id), preview.scope_name, request.mode
+            )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return DataOperationJobResponse(**job.to_dict())
+
+
+@router.get(
+    "/jobs/{job_id}",
+    response_model=DataOperationJobResponse,
+    operation_id="getDataOperationJob",
+)
+def get_data_operation_job(job_id: str) -> DataOperationJobResponse:
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Data operation job not found")
+    return DataOperationJobResponse(**job.to_dict())

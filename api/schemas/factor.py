@@ -83,8 +83,7 @@ class RegimeResponse(BaseModel):
 # ── Rarity Analysis ──────────────────────────────────────────────────────────
 
 class RarityRequest(BaseModel):
-    market: Literal["US", "VN"]
-    ticker: str
+    instrument_id: int = Field(gt=0)
     factor_type: RarityFactorType
     period: int = 200
     ma_type: Literal["sma", "ema", "wma"] = "sma"
@@ -139,8 +138,16 @@ class TimeSeriesPoint(BaseModel):
 
 
 class RarityAnalysisResponse(BaseModel):
+    instrument_id: int
     factor_name: str
     symbol: str
+    instrument_type: str
+    company_name: str | None = None
+    venue_code: str | None = None
+    venue_name: str | None = None
+    base_asset: str | None = None
+    quote_asset: str | None = None
+    currency: str
     stats_date: date
     first_date: date
     last_date: date
@@ -157,7 +164,6 @@ class RarityAnalysisResponse(BaseModel):
     zone_stats: list[ZoneStatsSchema]
     entries: list[ZoneEntrySchema]
     time_series: list[TimeSeriesPoint]
-    market: Literal["US", "VN"]
     expected_last_session: date
     data_last_session: date
     refreshed: bool
@@ -174,6 +180,7 @@ class PredefinedRarityRequest(BaseModel):
 
 
 class PredefinedRarityRow(BaseModel):
+    instrument_id: int
     symbol: str
     first_date: date
     last_date: date
@@ -203,16 +210,32 @@ class PredefinedRarityTable(BaseModel):
     rows: list[PredefinedRarityRow]
 
 
+class PredefinedRarityInstrumentStatus(BaseModel):
+    instrument_id: int
+    symbol: str
+    instrument_type: str
+    company_name: str | None = None
+    venue_code: str | None = None
+    venue_name: str | None = None
+    base_asset: str | None = None
+    quote_asset: str | None = None
+    currency: str
+    price_basis: str | None = None
+    price_source: str | None = None
+    expected_last_session: date | None = None
+    data_last_session: date | None = None
+    available: bool
+    is_stale: bool
+
+
 class PredefinedRarityResponse(BaseModel):
     watchlist_id: int
     watchlist_name: str
-    market: Literal["US", "VN"]
-    requested_symbols: int
-    available_symbols: int
-    stale_symbols: list[str]
-    missing_symbols: list[str]
-    expected_last_session: date
-    price_basis: str
+    requested_instruments: int
+    available_instruments: int
+    stale_instrument_ids: list[int]
+    missing_instrument_ids: list[int]
+    instruments: list[PredefinedRarityInstrumentStatus]
     percentile_columns: list[str]
     tables: list[PredefinedRarityTable]
     errors: list[str] = Field(default_factory=list)

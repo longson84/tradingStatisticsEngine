@@ -16,7 +16,7 @@ class DuplicateWatchlistError(ValueError):
     pass
 
 
-class InvalidWatchlistCompanyError(ValueError):
+class InvalidWatchlistInstrumentError(ValueError):
     pass
 
 
@@ -24,11 +24,8 @@ class WatchlistService:
     def __init__(self, repository: WatchlistRepository):
         self._repository = repository
 
-    def list_watchlists(
-        self, market: str | None = None
-    ) -> tuple[WatchlistSummaryRecord, ...]:
-        normalized_market = _market(market) if market is not None else None
-        return self._repository.list_watchlists(normalized_market)
+    def list_watchlists(self) -> tuple[WatchlistSummaryRecord, ...]:
+        return self._repository.list_watchlists()
 
     def get_watchlist(self, watchlist_id: int) -> WatchlistRecord:
         watchlist = self._repository.get_watchlist(watchlist_id)
@@ -40,29 +37,22 @@ class WatchlistService:
         self,
         *,
         name: str,
-        market: str,
         description: str = "",
-        tickers: list[str] | tuple[str, ...] = (),
+        instrument_ids: list[int] | tuple[int, ...] = (),
     ) -> WatchlistRecord:
-        normalized_market = _market(market)
         normalized_name, name_key = _name(name)
-        normalized_tickers = _tickers(tickers)
-        if self._repository.name_exists(normalized_market, name_key):
+        normalized_ids = _instrument_ids(instrument_ids)
+        if self._repository.name_exists(name_key):
             raise DuplicateWatchlistError(
-                f"A {normalized_market} watchlist named {normalized_name!r} already exists"
+                f"A watchlist named {normalized_name!r} already exists"
             )
-        instrument_ids = self._resolve_members(
-            normalized_market, normalized_tickers
-        )
+        self._validate_members(normalized_ids)
         watchlist_id = self._repository.create_watchlist(
             name=normalized_name,
             name_key=name_key,
-            market=normalized_market,
             description=description.strip(),
         )
-        self._repository.replace_members(
-            watchlist_id, normalized_market, instrument_ids
-        )
+        self._repository.replace_members(watchlist_id, normalized_ids)
         return self.get_watchlist(watchlist_id)
 
     def update_watchlist(
@@ -71,19 +61,16 @@ class WatchlistService:
         *,
         name: str,
         description: str = "",
-        tickers: list[str] | tuple[str, ...] = (),
+        instrument_ids: list[int] | tuple[int, ...] = (),
     ) -> WatchlistRecord:
-        existing = self.get_watchlist(watchlist_id)
+        self.get_watchlist(watchlist_id)
         normalized_name, name_key = _name(name)
-        if self._repository.name_exists(
-            existing.market, name_key, exclude_id=watchlist_id
-        ):
+        if self._repository.name_exists(name_key, exclude_id=watchlist_id):
             raise DuplicateWatchlistError(
-                f"A {existing.market} watchlist named {normalized_name!r} already exists"
+                f"A watchlist named {normalized_name!r} already exists"
             )
-        instrument_ids = self._resolve_members(
-            existing.market, _tickers(tickers)
-        )
+        normalized_ids = _instrument_ids(instrument_ids)
+        self._validate_members(normalized_ids)
         if not self._repository.update_watchlist(
             watchlist_id,
             name=normalized_name,
@@ -91,30 +78,21 @@ class WatchlistService:
             description=description.strip(),
         ):
             raise UnknownWatchlistError(f"Unknown watchlist: {watchlist_id}")
-        self._repository.replace_members(watchlist_id, existing.market, instrument_ids)
+        self._repository.replace_members(watchlist_id, normalized_ids)
         return self.get_watchlist(watchlist_id)
 
     def delete_watchlist(self, watchlist_id: int) -> None:
         if not self._repository.delete_watchlist(watchlist_id):
             raise UnknownWatchlistError(f"Unknown watchlist: {watchlist_id}")
 
-    def _resolve_members(
-        self, market: str, tickers: tuple[str, ...]
-    ) -> tuple[int, ...]:
-        resolved = self._repository.resolve_instrument_ids(market, tickers)
-        missing = tuple(ticker for ticker in tickers if ticker not in resolved)
+    def _validate_members(self, instrument_ids: tuple[int, ...]) -> None:
+        resolved = self._repository.resolve_active_instrument_ids(instrument_ids)
+        missing = tuple(value for value in instrument_ids if value not in resolved)
         if missing:
-            raise InvalidWatchlistCompanyError(
-                f"These tickers are not active {market} companies: {', '.join(missing)}"
+            rendered = ", ".join(str(value) for value in missing)
+            raise InvalidWatchlistInstrumentError(
+                f"These instrument IDs are unknown or inactive: {rendered}"
             )
-        return tuple(resolved[ticker] for ticker in tickers)
-
-
-def _market(value: str) -> str:
-    market = value.upper().strip()
-    if market not in {"US", "VN"}:
-        raise ValueError("Watchlist market must be US or VN")
-    return market
 
 
 def _name(value: str) -> tuple[str, str]:
@@ -124,12 +102,11 @@ def _name(value: str) -> tuple[str, str]:
     return name, name.casefold()
 
 
-def _tickers(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
-    seen: set[str] = set()
-    result: list[str] = []
+def _instrument_ids(values: list[int] | tuple[int, ...]) -> tuple[int, ...]:
+    seen: set[int] = set()
+    result: list[int] = []
     for value in values:
-        ticker = value.upper().strip()
-        if ticker and ticker not in seen:
-            seen.add(ticker)
-            result.append(ticker)
+        if value > 0 and value not in seen:
+            seen.add(value)
+            result.append(value)
     return tuple(result)

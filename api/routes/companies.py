@@ -72,10 +72,9 @@ def list_company_catalog(
                     CompanyInstrumentResponse(
                         id=instrument.id,
                         ticker=instrument.ticker,
-                        market=instrument.market,
                         instrument_type=instrument.instrument_type,
                         share_class=instrument.share_class,
-                        exchange=instrument.exchange,
+                        venue_code=instrument.venue_code,
                         currency=instrument.currency,
                         is_active=instrument.is_active,
                         universes=list(instrument.universes),
@@ -111,7 +110,7 @@ def list_company_universes(
             CompanyUniverseResponse(
                 id=row.code,
                 name=row.name,
-                market=row.market,
+                country_code=row.country_code,
                 description=row.description,
                 company_count=row.company_count,
                 as_of=row.as_of,
@@ -133,7 +132,7 @@ def list_companies(
     search: str | None = Query(default=None, max_length=100),
     sector: str | None = Query(default=None, max_length=255),
     industry: str | None = Query(default=None, max_length=255),
-    exchange: str | None = Query(default=None, max_length=32),
+    venue: str | None = Query(default=None, max_length=64),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=5000, ge=1, le=5000),
 ) -> CompanyListResponse:
@@ -143,7 +142,7 @@ def list_companies(
             search=search,
             sector=sector,
             industry=industry,
-            exchange=exchange,
+            venue_code=venue,
             offset=offset,
             limit=limit,
         )
@@ -152,7 +151,7 @@ def list_companies(
     return CompanyListResponse(
         id=result.id,
         name=result.name,
-        market=result.market,
+        country_code=result.country_code,
         description=result.description,
         as_of=result.as_of,
         fetched_at=result.fetched_at,
@@ -161,12 +160,13 @@ def list_companies(
         limit=result.limit,
         companies=[
             CompanyResponse(
+                instrument_id=row.instrument_id,
                 ticker=row.ticker,
                 company_name=row.company_name,
-                market=row.market,
+                country_code=row.country_code,
                 sector=row.sector,
                 industry=row.industry,
-                exchange=row.exchange,
+                venue_code=row.venue_code,
                 lists=list(row.lists),
                 first_session=row.first_session,
                 last_session=row.last_session,
