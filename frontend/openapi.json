@@ -1839,6 +1839,11 @@
             "title": "Currency",
             "type": "string"
           },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
+          },
           "fetched_at": {
             "title": "Fetched At",
             "type": "string"
@@ -1857,6 +1862,10 @@
           "instrument_id": {
             "title": "Instrument Id",
             "type": "integer"
+          },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
           },
           "last_date": {
             "title": "Last Date",
@@ -2078,6 +2087,8 @@
           "fetched_at",
           "first_date",
           "last_date",
+          "expected_last_session",
+          "is_stale",
           "row_count",
           "relative_strength_benchmark",
           "prices"
@@ -3481,21 +3492,6 @@
             ],
             "title": "Quote Asset"
           },
-          "refresh_warning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refresh Warning"
-          },
-          "refreshed": {
-            "title": "Refreshed",
-            "type": "boolean"
-          },
           "sessions_in_zone": {
             "title": "Sessions In Zone",
             "type": "integer"
@@ -3597,7 +3593,6 @@
           "time_series",
           "expected_last_session",
           "data_last_session",
-          "refreshed",
           "is_stale",
           "price_source",
           "price_basis"
@@ -4073,21 +4068,6 @@
             "title": "Price Source",
             "type": "string"
           },
-          "refresh_warning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refresh Warning"
-          },
-          "refreshed": {
-            "title": "Refreshed",
-            "type": "boolean"
-          },
           "return_percentiles": {
             "items": {
               "$ref": "#/components/schemas/DistributionRowResponse"
@@ -4179,7 +4159,6 @@
           "instrument_id",
           "expected_last_session",
           "data_last_session",
-          "refreshed",
           "is_stale",
           "price_source",
           "price_basis"

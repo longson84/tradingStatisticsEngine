@@ -81,7 +81,7 @@ class RejectingInstrumentPriceService:
     def __init__(self, error: Exception):
         self.error = error
 
-    def get_current_history(self, instrument_id):
+    def get_stored_history(self, instrument_id):
         raise self.error
 
 

@@ -163,8 +163,6 @@ class SingleTickerAnalysisResponse(BaseModel):
     venue_code: str | None = None
     expected_last_session: date
     data_last_session: date
-    refreshed: bool
     is_stale: bool
-    refresh_warning: str | None = None
     price_source: str
     price_basis: str

@@ -1650,3 +1650,29 @@ test enumerates both the retired paths and the canonical request schemas so the
 legacy ingress cannot be accidentally restored. Making every remaining analysis
 read stored observations without an implicit refresh is a separate subsequent
 cutover.
+
+### 2026-08-13 — Stored-only analytical reads
+
+Context: the canonical analysis contracts used exact `instrument_id` values,
+but Backtest, Factor Rarity, and Instrument Price History shared an analysis
+service method that could download and persist newer equity observations while
+serving the read. This made a read request mutate PostgreSQL, treated equities
+differently from crypto and reference rates, and obscured whether an analytical
+result used the data visible before the request.
+
+Decision: all analysis and price-history reads now load only canonical
+PostgreSQL `price_bars` for the instrument's canonical price basis. They compute
+the latest expected session from the instrument's Venue or observation schedule
+and return freshness metadata without contacting a provider. Stale data remains
+analyzable and is clearly labeled in the UI. Provider adapters are instantiated
+only by explicit Data Operations jobs and their refresh scripts; downloaded
+equity frames are persisted by exact `instrument_id` through the price-write
+service.
+
+Consequences: GET and analytical POST requests are deterministic with respect to
+the stored observation snapshot and have no price-refresh side effects. Users
+must run Data Operations to update stale or missing histories. The response
+fields `refreshed` and `refresh_warning` are removed because an analysis can no
+longer refresh; `expected_last_session`, `data_last_session`, `is_stale`, source,
+and price basis describe the stored input instead. Instrument Price History now
+exposes the same expected-session and stale status.

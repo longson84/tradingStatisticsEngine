@@ -24,9 +24,6 @@ from api.repositories.sqlalchemy_fundamental_repository import (
 from api.repositories.sqlalchemy_crypto_market_repository import (
     SqlAlchemyCryptoMarketRepository,
 )
-from api.repositories.sqlalchemy_price_bar_repository import (
-    SqlAlchemyPriceBarRepository,
-)
 from api.repositories.sqlalchemy_instrument_analysis_repository import (
     SqlAlchemyInstrumentAnalysisRepository,
 )
@@ -55,7 +52,6 @@ from api.services.crypto_instrument_service import CryptoInstrumentService
 from api.services.company_catalog_service import CompanyCatalogService
 from api.services.fundamental_service import FundamentalService
 from api.services.reference_rate_service import ReferenceRateService
-from api.services.company_price_service import CompanyPriceService
 from api.services.instrument_analysis_service import InstrumentAnalysisService
 from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
@@ -63,9 +59,6 @@ from api.services.data_operation_service import DataOperationService
 from api.services.venue_service import VenueService
 from api.services.universe_stats_service import UniverseStatsService
 from api.services.new_low_analysis_service import NewLowAnalysisService
-from api.providers.vietnam_price_loader import VietnamPriceLoader
-
-from trading_engine.data.yfinance_loader import YFinanceLoader
 from trading_engine.factors.moving_average import MovingAverageRatio
 from trading_engine.strategy.buy_and_hold import BuyAndHold
 from trading_engine.strategy.factor_threshold import FactorThresholdStrategy
@@ -131,34 +124,12 @@ def get_fundamental_service(
     return FundamentalService(SqlAlchemyFundamentalRepository(session))
 
 
-def get_company_price_service(
-    session: Annotated[Session, Depends(get_db_transaction_session)],
-) -> CompanyPriceService:
-    return CompanyPriceService(
-        SqlAlchemyPriceBarRepository(session),
-        SqlAlchemyInstrumentRoutingRepository(session),
-        {
-            "yfinance": YFinanceLoader(),
-            "vnstock_data": VietnamPriceLoader(),
-        },
-    )
-
-
 def get_instrument_analysis_service(
-    session: Annotated[Session, Depends(get_db_transaction_session)],
+    session: Annotated[Session, Depends(get_db_session)],
 ) -> InstrumentAnalysisService:
-    price_repository = SqlAlchemyPriceBarRepository(session)
     return InstrumentAnalysisService(
         SqlAlchemyInstrumentAnalysisRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
-        CompanyPriceService(
-            price_repository,
-            SqlAlchemyInstrumentRoutingRepository(session),
-            {
-                "yfinance": YFinanceLoader(),
-                "vnstock_data": VietnamPriceLoader(),
-            },
-        ),
     )
 
 

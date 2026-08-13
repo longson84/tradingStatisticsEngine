@@ -39,3 +39,22 @@ def test_canonical_analysis_requests_do_not_accept_symbol_or_data_source_identit
         assert "symbol" not in properties, path
         assert "symbols" not in properties, path
         assert "data_source" not in properties, path
+
+
+def test_single_instrument_analysis_responses_do_not_claim_implicit_refresh():
+    schema = app.openapi()["components"]["schemas"]
+
+    for name in ("SingleTickerAnalysisResponse", "RarityAnalysisResponse"):
+        properties = schema[name]["properties"]
+        assert "refreshed" not in properties, name
+        assert "refresh_warning" not in properties, name
+        assert {
+            "expected_last_session",
+            "data_last_session",
+            "is_stale",
+            "price_source",
+            "price_basis",
+        } <= properties.keys(), name
+
+    history = schema["InstrumentPriceHistoryResponse"]["properties"]
+    assert {"expected_last_session", "is_stale"} <= history.keys()

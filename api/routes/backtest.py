@@ -35,7 +35,7 @@ def analyze_single_ticker(
 ) -> SingleTickerAnalysisResponse:
     """Full analytics for a single-ticker strategy: performance, trades, heatmaps, health."""
     try:
-        stored = price_service.get_current_history(req.instrument_id)
+        stored = price_service.get_stored_history(req.instrument_id)
     except UnknownInstrumentError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InstrumentPriceUnavailableError as exc:
@@ -77,9 +77,7 @@ def analyze_single_ticker(
         venue_code=stored.instrument.venue_code,
         expected_last_session=stored.expected_last_session,
         data_last_session=stored.data_last_session,
-        refreshed=stored.refreshed,
         is_stale=stored.is_stale,
-        refresh_warning=stored.refresh_warning,
         price_source=stored.price_source,
         price_basis=stored.price_basis,
     )

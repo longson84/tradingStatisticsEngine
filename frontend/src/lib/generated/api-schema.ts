@@ -988,6 +988,11 @@ export interface components {
         InstrumentPriceHistoryResponse: {
             /** Currency */
             currency: string;
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
             /** Fetched At */
             fetched_at: string;
             /** First Date */
@@ -996,6 +1001,8 @@ export interface components {
             fundamentals_fields?: string[];
             /** Instrument Id */
             instrument_id: number;
+            /** Is Stale */
+            is_stale: boolean;
             /** Last Date */
             last_date: string;
             /** Price Basis */
@@ -1579,10 +1586,6 @@ export interface components {
             price_source: string;
             /** Quote Asset */
             quote_asset?: string | null;
-            /** Refresh Warning */
-            refresh_warning?: string | null;
-            /** Refreshed */
-            refreshed: boolean;
             /** Sessions In Zone */
             sessions_in_zone: number;
             /**
@@ -1797,10 +1800,6 @@ export interface components {
             price_basis: string;
             /** Price Source */
             price_source: string;
-            /** Refresh Warning */
-            refresh_warning?: string | null;
-            /** Refreshed */
-            refreshed: boolean;
             /** Return Percentiles */
             return_percentiles: components["schemas"]["DistributionRowResponse"][];
             strategy: components["schemas"]["PerformanceSummaryResponse"];

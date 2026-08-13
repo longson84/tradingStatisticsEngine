@@ -88,7 +88,6 @@ def _refresh_equity(
         CompanyPriceService(
             SqlAlchemyPriceBarRepository(session),
             SqlAlchemyInstrumentRoutingRepository(session),
-            {},
         ).store_downloaded_histories(
             {instrument.id: prices},
             fetched_at=now,

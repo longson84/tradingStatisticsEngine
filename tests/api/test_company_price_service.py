@@ -14,7 +14,6 @@ from api.instrument_data_routing import InstrumentRoutingMetadata
 from api.venue_calendars import venue_calendar
 from api.services.company_price_service import (
     CompanyPriceService,
-    UnknownCompanyError,
 )
 from trading_engine.types import PriceFrame
 
@@ -104,74 +103,6 @@ class StubRoutingRepository:
         )
 
 
-class StubLoader:
-    def __init__(self, day: date):
-        self.day = day
-        self.calls = []
-
-    def load(self, symbol, start, end):
-        self.calls.append((symbol, start, end))
-        index = pd.DatetimeIndex([self.day], name="date")
-        return PriceFrame(
-            symbol=symbol,
-            data=pd.DataFrame({
-                "open": [101.0], "high": [101.0], "low": [101.0],
-                "close": [101.0], "volume": [2_000.0],
-            }, index=index),
-            source="yfinance",
-        )
-
-
-def test_fresh_postgresql_history_does_not_download():
-    expected = date(2026, 8, 3)
-    repository = StubRepository(expected)
-    loader = StubLoader(expected)
-    service = CompanyPriceService(
-        repository, StubRoutingRepository(repository), {"yfinance": loader}
-    )
-
-    result = service.get_current_instrument_history(
-        42, now=datetime(2026, 8, 4, 12, tzinfo=UTC)
-    )
-
-    assert loader.calls == []
-    assert result.data_last_session == expected
-    assert result.refreshed is False
-    assert result.is_stale is False
-
-
-def test_stale_ticker_downloads_only_that_ticker_and_upserts():
-    repository = StubRepository(date(2026, 7, 31))
-    loader = StubLoader(date(2026, 8, 3))
-    service = CompanyPriceService(
-        repository, StubRoutingRepository(repository), {"yfinance": loader}
-    )
-
-    result = service.get_current_instrument_history(
-        42, now=datetime(2026, 8, 4, 12, tzinfo=UTC)
-    )
-
-    assert len(loader.calls) == 1
-    assert loader.calls[0][0] == "MSFT"
-    assert repository.writes
-    assert result.refreshed is True
-    assert result.data_last_session == date(2026, 8, 3)
-    assert result.is_stale is False
-
-
-def test_unknown_company_is_rejected_before_provider_access():
-    repository = StubRepository(None)
-    repository.exists = False
-    loader = StubLoader(date(2026, 8, 3))
-    service = CompanyPriceService(
-        repository, StubRoutingRepository(repository), {"yfinance": loader}
-    )
-
-    with pytest.raises(UnknownCompanyError):
-        service.get_current_instrument_history(42)
-    assert loader.calls == []
-
-
 @pytest.mark.parametrize(
     ("market", "ticker", "currency", "scale", "basis", "source"),
     [
@@ -190,9 +121,7 @@ def test_store_downloaded_histories_uses_canonical_market_metadata(
         instrument_type="common_stock",
         venue_code="HOSE" if market == "VN" else "NASDAQ",
     )
-    service = CompanyPriceService(
-        repository, StubRoutingRepository(repository), {}
-    )
+    service = CompanyPriceService(repository, StubRoutingRepository(repository))
     frame = PriceFrame(
         symbol=ticker,
         data=pd.DataFrame(

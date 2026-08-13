@@ -230,7 +230,7 @@ def rarity_analysis_endpoint(
     ],
 ) -> RarityAnalysisResponse:
     try:
-        stored = price_service.get_current_history(req.instrument_id)
+        stored = price_service.get_stored_history(req.instrument_id)
     except UnknownInstrumentError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InstrumentPriceUnavailableError as exc:
@@ -355,9 +355,7 @@ def rarity_analysis_endpoint(
         time_series=ts_points,
         expected_last_session=stored.expected_last_session,
         data_last_session=stored.data_last_session,
-        refreshed=stored.refreshed,
         is_stale=stored.is_stale,
-        refresh_warning=stored.refresh_warning,
         price_source=stored.price_source,
         price_basis=stored.price_basis,
     )

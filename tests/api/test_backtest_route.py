@@ -18,12 +18,12 @@ from api.services.instrument_analysis_service import (
 from trading_engine.types import PriceFrame
 
 
-class StubCompanyPriceService:
+class StubInstrumentAnalysisService:
     def __init__(self, result: InstrumentPriceData | Exception):
         self.result = result
         self.calls: list[int] = []
 
-    def get_current_history(self, instrument_id: int) -> InstrumentPriceData:
+    def get_stored_history(self, instrument_id: int) -> InstrumentPriceData:
         self.calls.append(instrument_id)
         if isinstance(self.result, Exception):
             raise self.result
@@ -73,9 +73,7 @@ def _stored_prices() -> InstrumentPriceData:
         prices=PriceFrame(symbol="MSFT", data=frame, source="yfinance"),
         expected_last_session=index[-1].date(),
         data_last_session=index[-1].date(),
-        refreshed=False,
         is_stale=False,
-        refresh_warning=None,
         price_source="yfinance",
         price_basis="adjusted",
         fetched_at=datetime(2026, 8, 12, tzinfo=UTC),
@@ -95,7 +93,7 @@ def test_analyze_request_rejects_reversed_date_range():
     ],
 )
 def test_analyze_maps_company_price_errors(error: Exception, status: int):
-    service = StubCompanyPriceService(error)
+    service = StubInstrumentAnalysisService(error)
 
     with pytest.raises(HTTPException) as raised:
         analyze_single_ticker(_request(), service)
@@ -104,8 +102,8 @@ def test_analyze_maps_company_price_errors(error: Exception, status: int):
     assert service.calls == [42]
 
 
-def test_analyze_uses_stored_history_and_preserves_refresh_metadata():
-    service = StubCompanyPriceService(_stored_prices())
+def test_analyze_uses_stored_history_and_preserves_coverage_metadata():
+    service = StubInstrumentAnalysisService(_stored_prices())
 
     result = analyze_single_ticker(
         _request(start=date(2024, 6, 3)),
@@ -119,5 +117,4 @@ def test_analyze_uses_stored_history_and_preserves_refresh_metadata():
     assert result.venue_code == "NASDAQ"
     assert result.price_source == "yfinance"
     assert result.price_basis == "adjusted"
-    assert result.refreshed is False
     assert result.is_stale is False

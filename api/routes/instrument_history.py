@@ -47,7 +47,7 @@ def instrument_price_history(
     ],
 ) -> InstrumentPriceHistoryResponse:
     try:
-        stored = price_service.get_current_history(instrument_id)
+        stored = price_service.get_stored_history(instrument_id)
     except UnknownInstrumentError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InstrumentPriceUnavailableError as exc:
@@ -145,6 +145,8 @@ def instrument_price_history(
         fetched_at=stored.fetched_at.isoformat(),
         first_date=prices.data.index.min().date().isoformat(),
         last_date=prices.data.index.max().date().isoformat(),
+        expected_last_session=stored.expected_last_session,
+        is_stale=stored.is_stale,
         row_count=len(points),
         relative_strength_benchmark=benchmark,
         trailing_pe_source=(

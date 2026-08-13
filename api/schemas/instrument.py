@@ -59,6 +59,8 @@ class InstrumentPriceHistoryResponse(BaseModel):
     fetched_at: str
     first_date: str
     last_date: str
+    expected_last_session: date
+    is_stale: bool
     row_count: int
     relative_strength_benchmark: Literal["VN30", "SPX"]
     trailing_pe_source: str | None = None

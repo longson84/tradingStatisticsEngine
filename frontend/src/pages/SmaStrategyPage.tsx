@@ -176,11 +176,9 @@ export function SmaStrategyPage() {
 
         {data && !isFetching && (
           <>
-            {(data.refreshed || data.is_stale || data.refresh_warning) && (
-              <div className={`mb-4 rounded-md border px-4 py-3 text-xs ${data.is_stale ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-muted/30 text-muted-foreground"}`}>
-                Data through {data.data_last_session}; expected {data.expected_last_session}.
-                {data.refreshed ? " PostgreSQL was refreshed for this ticker." : ""}
-                {data.refresh_warning ? ` ${data.refresh_warning}` : ""}
+            {data.is_stale && (
+              <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
+                Stored data ends at {data.data_last_session}; expected {data.expected_last_session}. Update this instrument through Data Operations before treating the analysis as current.
               </div>
             )}
             <StrategyAnalysisResults data={data} sellLag={resultSellLag} />

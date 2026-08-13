@@ -155,6 +155,12 @@ export function PriceHistoryPage() {
           </div>
         )}
 
+        {history.data?.is_stale && (
+          <div className="mb-5 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
+            Stored data ends at {history.data.last_date}; expected {history.data.expected_last_session}. Update this instrument through Data Operations to load newer observations.
+          </div>
+        )}
+
         {history.data && first && latest && (
           <>
             <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">

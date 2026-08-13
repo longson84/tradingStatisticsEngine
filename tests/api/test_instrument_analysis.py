@@ -15,9 +15,7 @@ from api.repositories.sqlalchemy_instrument_routing_repository import (
     SqlAlchemyInstrumentRoutingRepository,
 )
 from api.routes.instruments import list_analysis_instruments
-from api.services.company_price_service import CompanyPriceUnavailableError
 from api.services.instrument_analysis_service import InstrumentAnalysisService
-from api.services.instrument_analysis_service import InstrumentPriceUnavailableError
 
 
 def _service_with_msft_history():
@@ -89,10 +87,10 @@ def test_analysis_instrument_search_returns_stable_id_and_issuer_metadata():
     assert row.stored_sessions == 1
 
 
-def test_instrument_price_history_is_read_by_exact_instrument_id():
+def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():
     service, session, instrument_id = _service_with_msft_history()
     try:
-        result = service.get_current_history(
+        result = service.get_stored_history(
             instrument_id,
             now=datetime(2026, 8, 10, 12, tzinfo=UTC),
         )
@@ -104,29 +102,6 @@ def test_instrument_price_history_is_read_by_exact_instrument_id():
     assert result.prices.symbol == "MSFT"
     assert result.prices.data.index[-1].date() == date(2026, 8, 7)
     assert result.price_basis == "adjusted"
-
-
-def test_equity_refresh_failure_remains_an_analysis_price_error():
-    _, session, instrument_id = _service_with_msft_history()
-
-    class MissingPrices:
-        def get_current_instrument_history(self, instrument_id, *, now):
-            raise CompanyPriceUnavailableError("No stored price history")
-
-    service = InstrumentAnalysisService(
-        SqlAlchemyInstrumentAnalysisRepository(session),
-        SqlAlchemyInstrumentRoutingRepository(session),
-        MissingPrices(),
-    )
-    try:
-        try:
-            service.get_current_history(instrument_id)
-        except InstrumentPriceUnavailableError as exc:
-            assert str(exc) == "No stored price history"
-        else:
-            raise AssertionError("Expected InstrumentPriceUnavailableError")
-    finally:
-        session.close()
 
 
 def test_instrument_openapi_and_rarity_contracts_use_instrument_identity():
@@ -234,7 +209,7 @@ def test_crypto_scopes_and_exact_id_keep_venues_and_reference_rates_distinct():
     try:
         spots = service.list_instruments(scope="crypto_spot", search="BTCUSDT")
         rates = service.list_instruments(scope="reference_rate", search="BTC")
-        okx_history = service.get_current_history(
+        okx_history = service.get_stored_history(
             instruments[1].id,
             now=datetime(2026, 8, 10, 12, tzinfo=UTC),
         )

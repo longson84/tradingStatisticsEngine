@@ -159,7 +159,6 @@ def refresh_watchlist(watchlist_id: int) -> None:
                 stored = CompanyPriceService(
                     repository,
                     SqlAlchemyInstrumentRoutingRepository(session),
-                    {},
                 ).store_downloaded_histories(
                     downloaded,
                     fetched_at=now,

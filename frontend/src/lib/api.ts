@@ -158,6 +158,8 @@ export interface InstrumentPriceHistoryResponse {
   fetched_at: string
   first_date: string
   last_date: string
+  expected_last_session: string
+  is_stale: boolean
   row_count: number
   relative_strength_benchmark: "VN30" | "SPX"
   trailing_pe_source: string | null
