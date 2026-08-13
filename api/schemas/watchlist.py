@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
 
@@ -44,7 +42,6 @@ class WatchlistSummaryResponse(BaseModel):
     equity_count: int
     crypto_spot_count: int
     reference_rate_count: int
-    price_refresh_supported: bool
     created_at: datetime
     updated_at: datetime
 
@@ -60,20 +57,3 @@ class WatchlistListResponse(BaseModel):
 class WatchlistDeleteResponse(BaseModel):
     id: int
     deleted: bool
-
-
-class WatchlistRefreshJobResponse(BaseModel):
-    id: str
-    watchlist_id: int
-    watchlist_name: str
-    status: Literal["queued", "running", "completed", "failed"]
-    current: int
-    total: int
-    message: str
-    started_at: str | None
-    finished_at: str | None
-    error: str | None
-
-
-class WatchlistRefreshJobsResponse(BaseModel):
-    jobs: list[WatchlistRefreshJobResponse]

@@ -1,15 +1,7 @@
-"""Refresh canonical US and Vietnam OHLCV history in PostgreSQL.
+"""Refresh canonical prices for one PostgreSQL Universe.
 
 Usage:
-    uv run python -m scripts.refresh_market_history --universe all
-    uv run python -m scripts.refresh_market_history --universe us500
-    uv run python -m scripts.refresh_market_history --universe us2000
-    uv run python -m scripts.refresh_market_history --universe us100
-    uv run python -m scripts.refresh_market_history --universe vnall
-    uv run python -m scripts.refresh_market_history --universe vn30
-    uv run python -m scripts.refresh_market_history --universe vnmid
-    uv run python -m scripts.refresh_market_history --universe vnsml
-    uv run python -m scripts.refresh_market_history --universe vn100
+    uv run python -m scripts.refresh_universe_prices --universe <code>
 """
 from __future__ import annotations
 
@@ -61,7 +53,6 @@ VN_MAX_HISTORY_START = date(2000, 1, 1)
 INCREMENTAL_OVERLAP_DAYS = 7
 US_DOWNLOAD_BATCH_SIZE = 100
 BENCHMARK_SYMBOLS = {"SPX": "^GSPC", "VN30": "VN30"}
-VN_REFRESH_ORDER = ("VNALL", "VN100", "VN30", "VNMID", "VNSML")
 DEFAULT_VN_REQUESTS_PER_MINUTE = 30.0
 
 
@@ -813,11 +804,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--universe",
-        choices=(
-            "all", "us500", "us2000", "us100",
-            "vnall", "vn100", "vn30", "vnmid", "vnsml",
-        ),
-        default="all",
+        required=True,
+        help="Any PostgreSQL Universe code; routing comes from its Instrument metadata.",
     )
     parser.add_argument(
         "--calendar-days",
@@ -864,10 +852,7 @@ def main() -> None:
         else env_bool("VNSTOCK_ALLOW_COMMUNITY_FALLBACK", False)
     )
 
-    order = (
-        "US2000", "US500", "US100", "VNALL", "VN100", "VN30", "VNMID", "VNSML",
-    )
-    universes = order if args.universe == "all" else (args.universe.upper(),)
+    universes = (args.universe.upper(),)
     refreshed_by_adapter: dict[str, set[int]] = {}
     benchmarked_adapters: set[str] = set()
     for universe in universes:

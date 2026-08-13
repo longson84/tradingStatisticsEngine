@@ -4723,107 +4723,6 @@
         "title": "WatchlistMemberResponse",
         "type": "object"
       },
-      "WatchlistRefreshJobResponse": {
-        "properties": {
-          "current": {
-            "title": "Current",
-            "type": "integer"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "finished_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Finished At"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          },
-          "watchlist_id": {
-            "title": "Watchlist Id",
-            "type": "integer"
-          },
-          "watchlist_name": {
-            "title": "Watchlist Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "watchlist_id",
-          "watchlist_name",
-          "status",
-          "current",
-          "total",
-          "message",
-          "started_at",
-          "finished_at",
-          "error"
-        ],
-        "title": "WatchlistRefreshJobResponse",
-        "type": "object"
-      },
-      "WatchlistRefreshJobsResponse": {
-        "properties": {
-          "jobs": {
-            "items": {
-              "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
-            },
-            "title": "Jobs",
-            "type": "array"
-          }
-        },
-        "required": [
-          "jobs"
-        ],
-        "title": "WatchlistRefreshJobsResponse",
-        "type": "object"
-      },
       "WatchlistResponse": {
         "properties": {
           "created_at": {
@@ -4869,10 +4768,6 @@
             "title": "Name",
             "type": "string"
           },
-          "price_refresh_supported": {
-            "title": "Price Refresh Supported",
-            "type": "boolean"
-          },
           "reference_rate_count": {
             "title": "Reference Rate Count",
             "type": "integer"
@@ -4892,7 +4787,6 @@
           "equity_count",
           "crypto_spot_count",
           "reference_rate_count",
-          "price_refresh_supported",
           "created_at",
           "updated_at",
           "members"
@@ -4938,10 +4832,6 @@
             "title": "Name",
             "type": "string"
           },
-          "price_refresh_supported": {
-            "title": "Price Refresh Supported",
-            "type": "boolean"
-          },
           "reference_rate_count": {
             "title": "Reference Rate Count",
             "type": "integer"
@@ -4961,7 +4851,6 @@
           "equity_count",
           "crypto_spot_count",
           "reference_rate_count",
-          "price_refresh_supported",
           "created_at",
           "updated_at"
         ],
@@ -6366,69 +6255,6 @@
         ]
       }
     },
-    "/watchlists/refresh-jobs": {
-      "get": {
-        "operationId": "listWatchlistRefreshJobs",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WatchlistRefreshJobsResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Watchlist Refresh Jobs",
-        "tags": [
-          "watchlists"
-        ]
-      }
-    },
-    "/watchlists/refresh-jobs/{job_id}": {
-      "get": {
-        "operationId": "getWatchlistRefreshJob",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Watchlist Refresh Job",
-        "tags": [
-          "watchlists"
-        ]
-      }
-    },
     "/watchlists/{watchlist_id}": {
       "delete": {
         "operationId": "deleteWatchlist",
@@ -6556,48 +6382,6 @@
           }
         },
         "summary": "Update Watchlist",
-        "tags": [
-          "watchlists"
-        ]
-      }
-    },
-    "/watchlists/{watchlist_id}/refresh": {
-      "post": {
-        "operationId": "refreshWatchlistPrices",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "watchlist_id",
-            "required": true,
-            "schema": {
-              "title": "Watchlist Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WatchlistRefreshJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Refresh Watchlist Prices",
         "tags": [
           "watchlists"
         ]

@@ -7,9 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from api.data_operation_jobs import (
     get_job,
-    start_instrument_operation,
-    start_universe_operation,
-    start_watchlist_operation,
+    start_data_operation_job,
 )
 from api.deps import get_data_operation_service
 from api.schemas.data_operations import (
@@ -44,9 +42,7 @@ def preview_data_operation(
         preview = service.preview(scope_type, scope_id, dataset)
     except UnknownDataOperationScopeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    values = preview.__dict__.copy()
-    values.pop("execution_route")
-    return DataOperationPreviewResponse(**values)
+    return DataOperationPreviewResponse(**preview.__dict__)
 
 
 @router.get(
@@ -86,35 +82,23 @@ def start_data_operation(
     service: Annotated[DataOperationService, Depends(get_data_operation_service)],
 ) -> DataOperationJobResponse:
     try:
-        preview = service.preview(
+        plan = service.plan(
             request.scope_type, request.scope_id, request.dataset
         )
     except UnknownDataOperationScopeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    if not preview.can_run:
-        raise HTTPException(status_code=422, detail=preview.message)
+    if not plan.can_run:
+        raise HTTPException(status_code=422, detail=plan.message)
     try:
-        if preview.scope_type == "universe":
-            assert preview.execution_route is not None
-            job = start_universe_operation(
-                preview.scope_id,
-                preview.scope_name,
-                request.dataset,
-                request.mode,
-                preview.execution_route,
-            )
-        elif preview.scope_type == "watchlist":
-            assert preview.execution_route is not None
-            job = start_watchlist_operation(
-                int(preview.scope_id),
-                preview.scope_name,
-                preview.execution_route,
-                request.mode,
-            )
-        else:
-            job = start_instrument_operation(
-                int(preview.scope_id), preview.scope_name, request.mode
-            )
+        job = start_data_operation_job(
+            scope_type=plan.scope_type,
+            scope_id=plan.scope_id,
+            scope_name=plan.scope_name,
+            dataset=request.dataset,
+            mode=request.mode,
+            adapter_keys=tuple(group.adapter for group in plan.groups),
+            total=plan.eligible_count,
+        )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return DataOperationJobResponse(**job.to_dict())

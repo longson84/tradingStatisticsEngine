@@ -77,8 +77,8 @@ supported bootstrap input. Live Universe adapters validate provider data in
 memory and synchronize PostgreSQL directly. All application company reads use
 PostgreSQL through the Company service. Exact-instrument Price History reads canonical daily bars from
 PostgreSQL, and price refreshes incrementally upsert the same table. Price
-coverage and maintenance operations also use PostgreSQL. Benchmarks and
-fundamentals remain file-backed until their separate migrations are verified.
+coverage, refresh state, and fundamentals also use PostgreSQL. Benchmark
+history remains file-backed until its separate migration is verified.
 
 ### Canonical company, asset, venue, and instrument schema
 
@@ -1751,3 +1751,38 @@ dependency, not an API-startup dependency; synchronization is never run during
 application startup. The checked-in symbol-list files and old importer remain
 only until the later file-layer removal phase confirms every remaining consumer
 has been cut over.
+
+### 2026-08-13 — Metadata-driven Data Operations execution
+
+Context: Data Operations previewed exact Instrument metadata but execution
+still branched by a fixed list of Universe codes. Universe, Watchlist, and
+single-Instrument updates delegated to three registries and three workers;
+Watchlists had to contain equities from one adapter, Watchlist and exact-
+Instrument fundamentals were disabled, and adding a Universe required code.
+
+Decision: one Data Operations planner resolves the selected Universe,
+Watchlist, or Instrument into exact active Instrument IDs, derives dataset
+capability from each Instrument's Venue, type, Symbol namespace, and source
+metadata, and groups eligible Instruments by adapter. One transient job runner
+executes those groups and every persistence write remains keyed by exact
+`instrument_id`. Universe code and display name have no routing meaning. Mixed
+Watchlists can therefore update supported price and fundamental subsets, and a
+new persisted Universe requires no worker change. Adapter limits are explicit
+operational policy; the Binance Spot price limit defaults to 100 and can be
+configured with `DATA_OPERATION_PRICES_BINANCE_SPOT_MAX_INSTRUMENTS`.
+
+The legacy Watchlist refresh endpoints, Watchlist and Universe job registries,
+fixed supported-Universe constants, and market-named fundamental/history
+workers are retired. `/data-operations/jobs` is the only HTTP launch surface.
+Jobs remain process-local progress state and are not durable business history.
+Canonical `price_bar_coverages`, `price_refresh_states`, observation provenance,
+and fundamental fetch timestamps are the durable per-Instrument operational
+state. A failed price acquisition records a failed attempt without erasing
+stored bars; a successful check records its attempted and returned sessions.
+
+Consequences: renaming a Universe cannot alter adapter selection, same-symbol
+Instruments on different Venues remain independent IDs, and collection coverage
+is always derived from member state. The Watchlists page manages membership
+only; updates are launched centrally through Data Operations. Fundamentals no
+longer create Universe-scoped refresh-run rows when launched through the new
+executor, because no persistent Data Operation run-history model is desired.

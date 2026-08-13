@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDown, ArrowUp, ListPlus, RefreshCw, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, ListPlus, Trash2 } from "lucide-react"
 
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { FormLabel } from "@/components/forms/FormSelect"
@@ -8,15 +8,12 @@ import {
   createWatchlistApi,
   deleteWatchlistApi,
   instrumentsApi,
-  refreshWatchlistPricesApi,
   updateWatchlistApi,
   watchlistApi,
   watchlistsApi,
-  watchlistRefreshJobsApi,
   type InstrumentCatalogItem,
   type InstrumentScope,
   type Watchlist,
-  type WatchlistRefreshJob,
 } from "@/lib/api"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
@@ -45,15 +42,6 @@ export function WatchlistsPanel() {
     queryFn: () => watchlistApi(selectedId!),
     enabled: selectedId != null,
   })
-  const refreshJobs = useQuery({
-    queryKey: ["watchlist-refresh-jobs"],
-    queryFn: watchlistRefreshJobsApi,
-    staleTime: 0,
-    refetchInterval: query => query.state.data?.jobs.some(
-      job => job.status === "queued" || job.status === "running"
-    ) ? 1_500 : false,
-  })
-
   return (
     <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
       <section className="rounded-lg border border-border bg-card p-4">
@@ -100,9 +88,6 @@ export function WatchlistsPanel() {
         <WatchlistEditor
           key={selectedId != null && detail.data ? detail.data.id : "new"}
           initial={selectedId != null ? detail.data ?? null : null}
-          refreshJob={selectedId == null ? undefined : refreshJobs.data?.jobs.find(
-            job => job.watchlist_id === selectedId
-          )}
           onSaved={id => setSelectedId(id)}
           onDeleted={() => setSelectedId(null)}
         />
@@ -114,12 +99,10 @@ export function WatchlistsPanel() {
 
 function WatchlistEditor({
   initial,
-  refreshJob,
   onSaved,
   onDeleted,
 }: {
   initial: Watchlist | null
-  refreshJob?: WatchlistRefreshJob
   onSaved: (id: number) => void
   onDeleted: () => void
 }) {
@@ -181,14 +164,6 @@ function WatchlistEditor({
       onDeleted()
     },
   })
-  const refresh = useMutation({
-    mutationFn: () => refreshWatchlistPricesApi(initial!.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["watchlist-refresh-jobs"] })
-    },
-  })
-  const refreshing = refreshJob?.status === "queued" || refreshJob?.status === "running"
-  const canRefresh = initial?.price_refresh_supported === true
   const canAdd = candidate != null && !members.some(member => member.id === candidate.id)
 
   const addCandidate = () => {
@@ -219,19 +194,10 @@ function WatchlistEditor({
         {initial && (
           <div className="flex gap-2">
             <button
-              onClick={() => refresh.mutate()}
-              disabled={refresh.isPending || refreshing || !canRefresh}
-              title={canRefresh ? undefined : "Bulk refresh requires equities supported by one acquisition adapter"}
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-            >
-              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-              Update prices
-            </button>
-            <button
               onClick={() => {
                 if (window.confirm(`Delete watchlist “${initial.name}”?`)) remove.mutate()
               }}
-              disabled={remove.isPending || refreshing}
+              disabled={remove.isPending}
               className="flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5 disabled:opacity-50"
             >
               <Trash2 size={13} /> Delete
@@ -239,21 +205,6 @@ function WatchlistEditor({
           </div>
         )}
       </div>
-
-      {refreshJob && (
-        <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
-          <div className="flex justify-between gap-3">
-            <span className="font-medium">Price refresh · {refreshJob.status}</span>
-            <span className="tabular-nums text-muted-foreground">
-              {refreshJob.total > 0 ? `${refreshJob.current}/${refreshJob.total}` : refreshJob.status}
-            </span>
-          </div>
-          <p className="mt-1 truncate text-[11px] text-muted-foreground" title={refreshJob.message}>
-            {refreshJob.message}
-          </p>
-          {refreshJob.error && <p className="mt-2 whitespace-pre-wrap text-destructive">{refreshJob.error}</p>}
-        </div>
-      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
@@ -337,9 +288,9 @@ function WatchlistEditor({
         )}
       </div>
 
-      {(save.error || remove.error || refresh.error) && (
+      {(save.error || remove.error) && (
         <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {(save.error ?? remove.error ?? refresh.error)?.message}
+          {(save.error ?? remove.error)?.message}
         </div>
       )}
 
@@ -347,7 +298,7 @@ function WatchlistEditor({
         <span className="text-xs text-muted-foreground">{members.length.toLocaleString()} instruments</span>
         <button
           onClick={() => save.mutate()}
-          disabled={!name.trim() || save.isPending || refreshing}
+          disabled={!name.trim() || save.isPending}
           className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
         >
           {save.isPending ? "Saving…" : initial ? "Save watchlist" : "Create watchlist"}

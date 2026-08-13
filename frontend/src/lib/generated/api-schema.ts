@@ -314,40 +314,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/watchlists/refresh-jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Watchlist Refresh Jobs */
-        get: operations["listWatchlistRefreshJobs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/watchlists/refresh-jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Watchlist Refresh Job */
-        get: operations["getWatchlistRefreshJob"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/watchlists/{watchlist_id}": {
         parameters: {
             query?: never;
@@ -362,23 +328,6 @@ export interface paths {
         post?: never;
         /** Delete Watchlist */
         delete: operations["deleteWatchlist"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/watchlists/{watchlist_id}/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Watchlist Prices */
-        post: operations["refreshWatchlistPrices"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1978,37 +1927,6 @@ export interface components {
             /** Venue Name */
             venue_name?: string | null;
         };
-        /** WatchlistRefreshJobResponse */
-        WatchlistRefreshJobResponse: {
-            /** Current */
-            current: number;
-            /** Error */
-            error: string | null;
-            /** Finished At */
-            finished_at: string | null;
-            /** Id */
-            id: string;
-            /** Message */
-            message: string;
-            /** Started At */
-            started_at: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "queued" | "running" | "completed" | "failed";
-            /** Total */
-            total: number;
-            /** Watchlist Id */
-            watchlist_id: number;
-            /** Watchlist Name */
-            watchlist_name: string;
-        };
-        /** WatchlistRefreshJobsResponse */
-        WatchlistRefreshJobsResponse: {
-            /** Jobs */
-            jobs: components["schemas"]["WatchlistRefreshJobResponse"][];
-        };
         /** WatchlistResponse */
         WatchlistResponse: {
             /**
@@ -2032,8 +1950,6 @@ export interface components {
             members: components["schemas"]["WatchlistMemberResponse"][];
             /** Name */
             name: string;
-            /** Price Refresh Supported */
-            price_refresh_supported: boolean;
             /** Reference Rate Count */
             reference_rate_count: number;
             /**
@@ -2063,8 +1979,6 @@ export interface components {
             member_count: number;
             /** Name */
             name: string;
-            /** Price Refresh Supported */
-            price_refresh_supported: boolean;
             /** Reference Rate Count */
             reference_rate_count: number;
             /**
@@ -2762,57 +2676,6 @@ export interface operations {
             };
         };
     };
-    listWatchlistRefreshJobs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WatchlistRefreshJobsResponse"];
-                };
-            };
-        };
-    };
-    getWatchlistRefreshJob: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WatchlistRefreshJobResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     getWatchlist: {
         parameters: {
             query?: never;
@@ -2897,37 +2760,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WatchlistDeleteResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refreshWatchlistPrices: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                watchlist_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WatchlistRefreshJobResponse"];
                 };
             };
             /** @description Validation Error */

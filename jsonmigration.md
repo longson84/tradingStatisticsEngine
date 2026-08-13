@@ -225,15 +225,22 @@ last known-good database state when an external constituent source is down.
 
 ## Phase 5: Cut Every Consumer Over to PostgreSQL
 
-Current status:
+Status: complete. Data Operations now resolves every Universe, Watchlist, and
+exact Instrument from PostgreSQL, groups exact IDs by metadata-derived adapter,
+and writes prices or fundamentals by Instrument ID. No execution route depends
+on a fixed Universe name. Mixed Watchlists, exact-Instrument fundamentals, and
+new Universes are supported without a new worker branch.
+
+Completed state:
 
 - Company API reads PostgreSQL: complete.
 - Fundamentals refresh reads PostgreSQL: complete.
-- Price refresh reads JSON/CSV: must be migrated.
+- Price refresh reads PostgreSQL: complete.
 
-Replace the `_symbols()` file read in `scripts/refresh_market_history.py` with a
-repository query against current `universe_memberships`. Price and fundamentals
-refreshes must use the same database membership source and ordering rules.
+`scripts.refresh_universe_prices` is the remaining operator-oriented bulk
+Universe price command; it accepts any persisted Universe code and obtains
+membership and routing from PostgreSQL. Normal API execution uses
+`scripts.run_data_operation` and exact-Instrument refresh functions.
 
 Universe synchronization remains a separate operation so a listing-provider
 failure does not prevent refreshing prices for the last known-good membership.
@@ -263,7 +270,7 @@ Replace JSON-dependent tests in:
 
 - `tests/api/test_company_import.py`
 - `tests/api/test_companies.py`
-- `tests/test_refresh_market_history.py`
+- `tests/test_refresh_universe_prices.py`
 
 The normal test suite must mock provider calls and require no live network.
 

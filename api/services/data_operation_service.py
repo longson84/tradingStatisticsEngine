@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+import os
 from typing import Literal
 
-from api.market_data_config import SUPPORTED_UNIVERSES
 from api.instrument_data_routing import (
     InstrumentDataRoute,
     UnsupportedInstrumentRouteError,
@@ -25,6 +25,7 @@ from api.repositories.instrument_routing_repository import (
 
 DataOperationDataset = Literal["prices", "fundamentals"]
 PriceCoverageStatus = Literal["current", "stale", "missing"]
+FUNDAMENTAL_REUSE_WINDOW = timedelta(hours=12)
 
 
 class UnknownDataOperationScopeError(ValueError):
@@ -45,7 +46,26 @@ class DataOperationPreview:
     unsupported_count: int
     can_run: bool
     message: str
-    execution_route: str | None
+
+
+@dataclass(frozen=True)
+class DataOperationWorkGroup:
+    adapter: str
+    instrument_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class DataOperationPlan:
+    scope_type: DataOperationScopeType
+    scope_id: str
+    scope_name: str
+    dataset: DataOperationDataset
+    instrument_count: int
+    eligible_count: int
+    unsupported_count: int
+    groups: tuple[DataOperationWorkGroup, ...]
+    can_run: bool
+    message: str
 
 
 @dataclass(frozen=True)
@@ -104,28 +124,31 @@ class DataOperationService:
         *,
         now: datetime | None = None,
     ) -> DataOperationPreview:
-        scope = self._repository.get_scope(scope_type, scope_id)
-        if scope is None:
-            raise UnknownDataOperationScopeError(
-                f"Unknown {scope_type}: {scope_id}"
-            )
-        routes = self._routes(scope)
+        plan, scope, routes = self._plan(scope_type, scope_id, dataset)
         eligible = tuple(
             row
             for row in scope.instruments
             if _eligible(row, routes.get(row.id), dataset)
         )
         current = now or datetime.now(UTC)
-        current_count = sum(
-            row.last_date is not None
-            and row.last_date >= _expected_session(routes[row.id], current)
-            for row in eligible
-        )
-        missing_count = sum(row.last_date is None for row in eligible)
+        if dataset == "fundamentals":
+            current_count = sum(
+                row.fundamental_fetched_at is not None
+                and current - _as_utc(row.fundamental_fetched_at)
+                <= FUNDAMENTAL_REUSE_WINDOW
+                for row in eligible
+            )
+            missing_count = sum(
+                row.fundamental_fetched_at is None for row in eligible
+            )
+        else:
+            current_count = sum(
+                row.last_date is not None
+                and row.last_date >= _expected_session(routes[row.id], current)
+                for row in eligible
+            )
+            missing_count = sum(row.last_date is None for row in eligible)
         stale_count = len(eligible) - current_count - missing_count
-        can_run, message, execution_route = _execution(
-            scope, dataset, eligible, routes
-        )
         return DataOperationPreview(
             scope_type=scope.scope_type,
             scope_id=scope.scope_id,
@@ -137,10 +160,61 @@ class DataOperationService:
             stale_count=stale_count,
             missing_count=missing_count,
             unsupported_count=len(scope.instruments) - len(eligible),
+            can_run=plan.can_run,
+            message=plan.message,
+        )
+
+    def plan(
+        self,
+        scope_type: DataOperationScopeType,
+        scope_id: str,
+        dataset: DataOperationDataset,
+    ) -> DataOperationPlan:
+        plan, _, _ = self._plan(scope_type, scope_id, dataset)
+        return plan
+
+    def _plan(
+        self,
+        scope_type: DataOperationScopeType,
+        scope_id: str,
+        dataset: DataOperationDataset,
+    ) -> tuple[
+        DataOperationPlan,
+        DataOperationScopeRecord,
+        dict[int, InstrumentDataRoute],
+    ]:
+        scope = self._repository.get_scope(scope_type, scope_id)
+        if scope is None:
+            raise UnknownDataOperationScopeError(
+                f"Unknown {scope_type}: {scope_id}"
+            )
+        routes = self._routes(scope)
+        grouped: dict[str, list[int]] = {}
+        for instrument in scope.instruments:
+            route = routes.get(instrument.id)
+            adapter = _dataset_adapter(route, dataset)
+            if adapter is not None:
+                grouped.setdefault(adapter, []).append(instrument.id)
+        groups = tuple(
+            DataOperationWorkGroup(adapter, tuple(instrument_ids))
+            for adapter, instrument_ids in sorted(grouped.items())
+        )
+        eligible_count = sum(len(group.instrument_ids) for group in groups)
+        can_run, message = _execution(
+            scope, dataset, groups, eligible_count
+        )
+        return DataOperationPlan(
+            scope_type=scope.scope_type,
+            scope_id=scope.scope_id,
+            scope_name=scope.name,
+            dataset=dataset,
+            instrument_count=len(scope.instruments),
+            eligible_count=eligible_count,
+            unsupported_count=len(scope.instruments) - eligible_count,
+            groups=groups,
             can_run=can_run,
             message=message,
-            execution_route=execution_route,
-        )
+        ), scope, routes
 
     def price_coverage(
         self,
@@ -213,6 +287,10 @@ def _expected_session(
     return latest_completed_venue_session(now, route.schedule)
 
 
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 def _price_coverage(
     instrument: DataOperationInstrumentRecord,
     route: InstrumentDataRoute | None,
@@ -280,39 +358,64 @@ def _expected_sessions_between(
     return count
 
 
+def _dataset_adapter(
+    route: InstrumentDataRoute | None,
+    dataset: DataOperationDataset,
+) -> str | None:
+    if route is None:
+        return None
+    return (
+        route.fundamental_adapter
+        if dataset == "fundamentals"
+        else route.price_adapter
+    )
+
+
 def _execution(
     scope: DataOperationScopeRecord,
     dataset: DataOperationDataset,
-    eligible: tuple[DataOperationInstrumentRecord, ...],
-    routes: dict[int, InstrumentDataRoute],
-) -> tuple[bool, str, str | None]:
+    groups: tuple[DataOperationWorkGroup, ...],
+    eligible_count: int,
+) -> tuple[bool, str]:
     if not scope.instruments:
-        return False, "This collection has no active instruments.", None
-    if not eligible:
-        return False, f"No instruments support {dataset} updates.", None
-    adapters = {routes[row.id].price_adapter for row in eligible}
-    all_equities = all(
-        routes[row.id].fundamental_adapter is not None for row in eligible
+        return False, "This scope has no active instruments."
+    if not eligible_count:
+        return False, f"No instruments support {dataset} updates."
+    oversized = tuple(
+        (group.adapter, len(group.instrument_ids), _bulk_limit(dataset, group.adapter))
+        for group in groups
+        if len(group.instrument_ids) > _bulk_limit(dataset, group.adapter)
     )
-    execution_route = next(iter(adapters)) if len(adapters) == 1 else None
-    if scope.scope_type == "universe":
-        if scope.scope_id not in SUPPORTED_UNIVERSES or not all_equities:
-            return (
-                False,
-                "Bulk updates are not enabled for this universe; select an exact instrument.",
-                None,
-            )
-        return True, f"Ready to update {len(eligible)} eligible instruments.", execution_route
-    if scope.scope_type == "watchlist":
-        if dataset == "fundamentals":
-            return False, "Watchlist fundamentals updates are not enabled yet.", None
-        if not all_equities or execution_route not in {"yfinance", "vnstock_data"}:
-            return (
-                False,
-                "Bulk watchlist updates currently require only US equities or only VN equities.",
-                None,
-            )
-        return True, f"Ready to update {len(eligible)} watchlist instruments.", execution_route
-    if dataset == "fundamentals":
-        return False, "Single-instrument fundamentals updates are not enabled yet.", None
-    return True, "Ready to update this instrument's canonical price history.", execution_route
+    if oversized:
+        details = ", ".join(
+            f"{adapter} {count}/{limit}"
+            for adapter, count, limit in oversized
+        )
+        return False, f"This operation exceeds configured adapter limits: {details}."
+    unsupported = len(scope.instruments) - eligible_count
+    adapters = ", ".join(group.adapter for group in groups)
+    suffix = (
+        f" {unsupported} unsupported instruments will be skipped."
+        if unsupported else ""
+    )
+    return (
+        True,
+        f"Ready to update {eligible_count} instruments via {adapters}.{suffix}",
+    )
+
+
+def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
+    defaults = {
+        ("prices", "yfinance"): 5_000,
+        ("prices", "vnstock_data"): 1_000,
+        ("prices", "binance_spot"): 100,
+        ("fundamentals", "yfinance"): 5_000,
+        ("fundamentals", "vnstock_data"): 1_000,
+    }
+    default = defaults.get((dataset, adapter), 1)
+    key = f"DATA_OPERATION_{dataset}_{adapter}_MAX_INSTRUMENTS".upper()
+    try:
+        value = int(os.getenv(key, str(default)))
+    except ValueError:
+        return default
+    return value if value > 0 else default

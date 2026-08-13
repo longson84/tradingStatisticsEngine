@@ -26,7 +26,7 @@ from api.repositories.sqlalchemy_data_operation_repository import (
 from api.services.data_operation_service import DataOperationService
 from api.instrument_data_routing import InstrumentRoutingMetadata, ProviderSymbol
 from api.venue_calendars import venue_calendar
-from scripts.refresh_market_history import _symbols
+from scripts.refresh_universe_prices import _symbols
 
 
 class FakeRepository:
@@ -97,6 +97,7 @@ def instrument(
     row_count: int = 0,
     refresh_outcome: str | None = None,
     attempted_through: date | None = None,
+    fundamental_fetched_at: datetime | None = None,
 ) -> DataOperationInstrumentRecord:
     if venue_code is None and company_id is not None:
         venue_code = "NASDAQ" if country_code == "US" else "HOSE"
@@ -129,6 +130,7 @@ def instrument(
             datetime(2026, 8, 11, 17, tzinfo=UTC)
             if refresh_outcome is not None else None
         ),
+        fundamental_fetched_at=fundamental_fetched_at,
     )
 
 
@@ -157,10 +159,10 @@ def test_equity_universe_preview_reports_coverage_and_can_run():
     assert preview.missing_count == 1
     assert preview.stale_count == 0
     assert preview.can_run is True
-    assert preview.execution_route == "yfinance"
+    assert preview.message.startswith("Ready to update 2 instruments via yfinance")
 
 
-def test_binance_universe_requires_exact_instrument_selection():
+def test_binance_universe_is_planned_from_metadata():
     scope = DataOperationScopeRecord(
         scope_type="universe",
         scope_id="BINANCE_SPOT",
@@ -179,8 +181,36 @@ def test_binance_universe_requires_exact_instrument_selection():
     )
 
     assert preview.eligible_count == 1
+    assert preview.can_run is True
+    assert "binance_spot" in preview.message
+
+
+def test_binance_bulk_limit_is_configurable(monkeypatch):
+    monkeypatch.setenv(
+        "DATA_OPERATION_PRICES_BINANCE_SPOT_MAX_INSTRUMENTS", "1"
+    )
+    scope = DataOperationScopeRecord(
+        scope_type="universe",
+        scope_id="CRYPTO_CUSTOM",
+        name="Crypto Custom",
+        instruments=tuple(
+            instrument(
+                instrument_id,
+                symbol,
+                instrument_type="spot",
+                company_id=None,
+                venue_code="BINANCE_SPOT",
+            )
+            for instrument_id, symbol in ((10, "BTCUSDT"), (11, "ETHUSDT"))
+        ),
+    )
+
+    preview = data_operation_service(scope).preview(
+        "universe", "CRYPTO_CUSTOM", "prices"
+    )
+
     assert preview.can_run is False
-    assert "exact instrument" in preview.message
+    assert "binance_spot 2/1" in preview.message
 
 
 def test_reference_rate_instrument_price_update_is_supported():
@@ -205,7 +235,7 @@ def test_reference_rate_instrument_price_update_is_supported():
     assert preview.unsupported_count == 0
 
 
-def test_watchlist_fundamentals_are_explicitly_not_runnable():
+def test_watchlist_fundamentals_are_planned_by_eligible_instrument():
     scope = DataOperationScopeRecord(
         scope_type="watchlist",
         scope_id="7",
@@ -218,8 +248,92 @@ def test_watchlist_fundamentals_are_explicitly_not_runnable():
     )
 
     assert preview.eligible_count == 1
-    assert preview.can_run is False
-    assert "not enabled" in preview.message
+    assert preview.can_run is True
+    assert "yfinance" in preview.message
+
+
+def test_fundamental_preview_uses_fundamental_fetch_state_not_price_dates():
+    now = datetime(2026, 8, 11, 18, tzinfo=UTC)
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="1",
+        name="MSFT",
+        instruments=(instrument(
+            1,
+            "MSFT",
+            last_date=date(2099, 1, 1),
+            fundamental_fetched_at=now,
+        ),),
+    )
+
+    preview = data_operation_service(scope).preview(
+        "instrument", "1", "fundamentals", now=now
+    )
+
+    assert preview.current_count == 1
+    assert preview.stale_count == 0
+    assert preview.missing_count == 0
+
+
+def test_mixed_watchlist_groups_exact_instruments_by_adapter():
+    scope = DataOperationScopeRecord(
+        scope_type="watchlist",
+        scope_id="8",
+        name="Mixed",
+        instruments=(
+            instrument(1, "MSFT"),
+            instrument(
+                2,
+                "BTCUSDT",
+                instrument_type="spot",
+                company_id=None,
+                venue_code="BINANCE_SPOT",
+            ),
+        ),
+    )
+
+    plan = data_operation_service(scope).plan("watchlist", "8", "prices")
+
+    assert plan.can_run is True
+    assert [(group.adapter, group.instrument_ids) for group in plan.groups] == [
+        ("binance_spot", (2,)),
+        ("yfinance", (1,)),
+    ]
+
+
+def test_new_universe_name_requires_no_routing_code_change():
+    scope = DataOperationScopeRecord(
+        scope_type="universe",
+        scope_id="CUSTOM_GROWTH",
+        name="Custom Growth",
+        instruments=(instrument(1, "MSFT"),),
+    )
+
+    plan = data_operation_service(scope).plan(
+        "universe", "CUSTOM_GROWTH", "fundamentals"
+    )
+
+    assert plan.can_run is True
+    assert plan.groups[0].instrument_ids == (1,)
+
+
+def test_same_symbol_on_different_venues_keeps_independent_ids():
+    scope = DataOperationScopeRecord(
+        scope_type="watchlist",
+        scope_id="9",
+        name="Venue identities",
+        instruments=(
+            instrument(11, "ABC", venue_code="NASDAQ"),
+            instrument(22, "ABC", country_code="VN", venue_code="HOSE"),
+        ),
+    )
+
+    plan = data_operation_service(scope).plan("watchlist", "9", "prices")
+
+    assert [(group.adapter, group.instrument_ids) for group in plan.groups] == [
+        ("vnstock_data", (22,)),
+        ("yfinance", (11,)),
+    ]
 
 
 def test_price_coverage_is_instrument_grained_and_collection_counts_are_derived():

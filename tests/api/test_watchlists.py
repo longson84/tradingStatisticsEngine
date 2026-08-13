@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from datetime import time
 
-from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 import pytest
 
 from api.db.models import Asset, Base, Company, Instrument, Venue
 from api.main import app
-from api.routes.watchlists import refresh_watchlist_prices
 from api.repositories.sqlalchemy_watchlist_repository import (
     SqlAlchemyWatchlistRepository,
 )
@@ -19,7 +17,6 @@ from api.services.watchlist_service import (
     UnknownWatchlistError,
     WatchlistService,
 )
-from api.watchlist_refresh_jobs import WatchlistRefreshJob
 
 
 def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
@@ -98,7 +95,6 @@ def test_watchlist_crud_preserves_exact_instrument_order_across_markets():
         ]
         assert created.members[0].company_name is None
         assert created.members[0].venue_code == "BINANCE"
-        assert created.equity_refresh_adapter is None
 
         updated = service.update_watchlist(
             created.id,
@@ -108,7 +104,6 @@ def test_watchlist_crud_preserves_exact_instrument_order_across_markets():
         )
         assert updated.description == "Updated"
         assert [row.symbol for row in updated.members] == ["MSFT"]
-        assert updated.equity_refresh_adapter == "yfinance"
         assert service.list_watchlists()[0].member_count == 1
 
         service.delete_watchlist(created.id)
@@ -147,51 +142,9 @@ def test_openapi_exposes_instrument_id_watchlist_contract():
     assert paths["/watchlists"]["post"]["operationId"] == "createWatchlist"
     assert paths["/watchlists/{watchlist_id}"]["put"]["operationId"] == "updateWatchlist"
     assert paths["/watchlists/{watchlist_id}"]["delete"]["operationId"] == "deleteWatchlist"
-    assert paths["/watchlists/{watchlist_id}/refresh"]["post"]["operationId"] == "refreshWatchlistPrices"
-    assert paths["/watchlists/refresh-jobs"]["get"]["operationId"] == "listWatchlistRefreshJobs"
+    assert "/watchlists/{watchlist_id}/refresh" not in paths
+    assert "/watchlists/refresh-jobs" not in paths
     request = schema["components"]["schemas"]["WatchlistCreateRequest"]
     assert "instrument_ids" in request["properties"]
     assert "market" not in request["properties"]
     assert "tickers" not in request["properties"]
-
-
-def test_refresh_endpoint_starts_job_for_homogeneous_equity_watchlist(monkeypatch):
-    service, session, ids = _service()
-    try:
-        created = service.create_watchlist(
-            name="Leaders", instrument_ids=[ids["MSFT"], ids["AAPL"]]
-        )
-        calls = []
-
-        def start(watchlist_id, watchlist_name, routing_adapter):
-            calls.append((watchlist_id, watchlist_name, routing_adapter))
-            return WatchlistRefreshJob(
-                id="job-1",
-                watchlist_id=watchlist_id,
-                watchlist_name=watchlist_name,
-                routing_adapter=routing_adapter,
-            )
-
-        monkeypatch.setattr("api.routes.watchlists.start_refresh_job", start)
-
-        response = refresh_watchlist_prices(created.id, service)
-
-        assert calls == [(created.id, "Leaders", "yfinance")]
-        assert response.id == "job-1"
-        assert response.status == "queued"
-    finally:
-        session.close()
-
-
-def test_refresh_endpoint_rejects_mixed_instrument_watchlist():
-    service, session, ids = _service()
-    try:
-        created = service.create_watchlist(
-            name="Mixed", instrument_ids=[ids["MSFT"], ids["BTCUSDT"]]
-        )
-        with pytest.raises(HTTPException) as exc_info:
-            refresh_watchlist_prices(created.id, service)
-        assert exc_info.value.status_code == 422
-        assert "only US equities or only VN equities" in exc_info.value.detail
-    finally:
-        session.close()

@@ -48,18 +48,6 @@ class WatchlistRecord:
     def reference_rate_count(self) -> int:
         return sum(member.instrument_type == "reference_rate" for member in self.members)
 
-    @property
-    def equity_refresh_adapter(self) -> str | None:
-        if not self.members or self.equity_count != len(self.members):
-            return None
-        venues = {member.venue_code for member in self.members}
-        if venues <= {"NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX"}:
-            return "yfinance"
-        if venues <= {"HOSE", "HNX", "UPCOM"}:
-            return "vnstock_data"
-        return None
-
-
 @dataclass(frozen=True)
 class WatchlistSummaryRecord:
     id: int
@@ -70,7 +58,6 @@ class WatchlistSummaryRecord:
     equity_count: int
     crypto_spot_count: int
     reference_rate_count: int
-    price_refresh_supported: bool
     created_at: datetime
     updated_at: datetime
 

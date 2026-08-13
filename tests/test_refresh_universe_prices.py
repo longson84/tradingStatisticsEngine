@@ -15,7 +15,7 @@ from api.providers.vietnam_market import (
     VietnamProviderMetadata,
     VietnamProviderResult,
 )
-from scripts import refresh_market_history
+from scripts import refresh_universe_prices as refresh_market_history
 
 
 def _rows(symbol: str, dates: list[str], closes: list[float]) -> pd.DataFrame:
@@ -312,7 +312,7 @@ def test_vn30_benchmark_parity_blocks_changed_history():
         refresh_market_history._assert_benchmark_parity(existing, changed)
 
 
-def test_all_refresh_runs_overlap_sources_in_reuse_order(monkeypatch):
+def test_arbitrary_universe_code_routes_by_instrument_metadata(monkeypatch):
     engine = object()
     calls: list[tuple] = []
     completed_vn_session = date(2026, 8, 4)
@@ -358,74 +358,25 @@ def test_all_refresh_runs_overlap_sources_in_reuse_order(monkeypatch):
 
     def refresh_us(received_engine, universe, start, end, mode, **kwargs):
         assert received_engine is engine
-        already_refreshed = kwargs.get("already_refreshed")
-        calls.append((
-            universe,
-            mode,
-            set(already_refreshed) if already_refreshed is not None else None,
-        ))
-        return {
-            "US2000": {"RUT_ONLY", "OVERLAP"},
-            "US500": {"SP500_ONLY", "OVERLAP"},
-            "US100": {"NASDAQ_ONLY", "OVERLAP"},
-        }[universe]
-
-    def refresh_vn(received_engine, universe, start, end, delay, mode, **kwargs):
-        assert received_engine is engine
-        assert end == completed_vn_session
-        already_refreshed = kwargs.get("already_refreshed")
-        calls.append((
-            universe,
-            mode,
-            set(already_refreshed) if already_refreshed is not None else None,
-        ))
-        return {
-            "VNALL": {"VN30_MEMBER", "VNMID_MEMBER", "VNSML_MEMBER"},
-            "VN100": {"VN30_MEMBER", "VNMID_MEMBER"},
-            "VN30": {"VN30_MEMBER"},
-            "VNMID": {"VNMID_MEMBER"},
-            "VNSML": {"VNSML_MEMBER"},
-        }[universe]
+        calls.append((universe, mode))
+        return {"CUSTOM_MEMBER"}
 
     monkeypatch.setattr(refresh_market_history, "refresh_us_market", refresh_us)
-    monkeypatch.setattr(refresh_market_history, "refresh_vn_market", refresh_vn)
     monkeypatch.setattr(
         sys,
         "argv",
-        ["refresh_market_history", "--universe", "all", "--mode", "incremental"],
+        [
+            "refresh_universe_prices",
+            "--universe",
+            "custom_growth",
+            "--mode",
+            "incremental",
+        ],
     )
 
     refresh_market_history.main()
 
     assert calls == [
         ("benchmark", "SPX", "incremental"),
-        ("US2000", "incremental", set()),
-        ("US500", "incremental", {"RUT_ONLY", "OVERLAP"}),
-        (
-            "US100",
-            "incremental",
-            {"RUT_ONLY", "SP500_ONLY", "OVERLAP"},
-        ),
-        ("benchmark", "VN30", "incremental"),
-        ("VNALL", "incremental", set()),
-        (
-            "VN100",
-            "incremental",
-            {"VN30_MEMBER", "VNMID_MEMBER", "VNSML_MEMBER"},
-        ),
-        (
-            "VN30",
-            "incremental",
-            {"VN30_MEMBER", "VNMID_MEMBER", "VNSML_MEMBER"},
-        ),
-        (
-            "VNMID",
-            "incremental",
-            {"VN30_MEMBER", "VNMID_MEMBER", "VNSML_MEMBER"},
-        ),
-        (
-            "VNSML",
-            "incremental",
-            {"VN30_MEMBER", "VNMID_MEMBER", "VNSML_MEMBER"},
-        ),
+        ("CUSTOM_GROWTH", "incremental"),
     ]

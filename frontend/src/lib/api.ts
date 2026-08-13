@@ -124,8 +124,6 @@ export type WatchlistListResponse = components["schemas"]["WatchlistListResponse
 export type WatchlistCreateRequest = components["schemas"]["WatchlistCreateRequest"]
 export type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateRequest"]
 export type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
-export type WatchlistRefreshJob = components["schemas"]["WatchlistRefreshJobResponse"]
-export type WatchlistRefreshJobsResponse = components["schemas"]["WatchlistRefreshJobsResponse"]
 
 export interface SymbolPricePoint {
   date: string
@@ -399,14 +397,6 @@ export function updateWatchlistApi(
 
 export function deleteWatchlistApi(id: number): Promise<WatchlistDeleteResponse> {
   return del(`/watchlists/${id}`)
-}
-
-export function refreshWatchlistPricesApi(id: number): Promise<WatchlistRefreshJob> {
-  return post(`/watchlists/${id}/refresh`, {})
-}
-
-export function watchlistRefreshJobsApi(): Promise<WatchlistRefreshJobsResponse> {
-  return get("/watchlists/refresh-jobs")
 }
 
 export function dataOperationPreviewApi(params: {

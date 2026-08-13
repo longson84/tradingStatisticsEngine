@@ -97,7 +97,7 @@ export function DataOperationsPage() {
       offset: coverageOffset,
       limit: COVERAGE_PAGE_SIZE,
     }),
-    enabled: scopeId.length > 0,
+    enabled: scopeId.length > 0 && dataset === "prices",
   })
   const start = useMutation({
     mutationFn: startDataOperationApi,
@@ -128,7 +128,6 @@ export function DataOperationsPage() {
     setSelectedInstrument(null)
     setStartedJob(null)
     setCoverageOffset(0)
-    if (value === "watchlist") setMode("incremental")
   }
   const run = () => {
     if (!preview.data?.can_run) return
@@ -258,7 +257,6 @@ export function DataOperationsPage() {
                 ]}
                 value={mode}
                 onChange={value => setMode(value as DataOperationMode)}
-                disabledValues={scopeType === "watchlist" ? ["full"] : []}
               />
             </div>
 
@@ -284,18 +282,20 @@ export function DataOperationsPage() {
         </div>
 
         <section className="mt-5 rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
-          Universe membership is read-only here. A data update resolves the current members and updates
-          observations by exact instrument ID; it never edits the Universe or Watchlist itself. Bulk Binance
-          updates remain intentionally disabled—select exact spot instruments to control backfill size.
+          Universe membership is read-only here. A data update resolves the current members, groups them by
+          metadata-derived adapter, and updates observations by exact instrument ID; it never edits the
+          Universe or Watchlist itself. Adapter-specific bulk limits protect provider capacity.
         </section>
 
-        <InstrumentCoverageTable
-          coverage={coverage.data}
-          loading={coverage.isFetching}
-          error={coverage.error?.message}
-          offset={coverageOffset}
-          onOffsetChange={setCoverageOffset}
-        />
+        {dataset === "prices" && (
+          <InstrumentCoverageTable
+            coverage={coverage.data}
+            loading={coverage.isFetching}
+            error={coverage.error?.message}
+            offset={coverageOffset}
+            onOffsetChange={setCoverageOffset}
+          />
+        )}
 
       </main>
     </div>

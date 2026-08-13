@@ -1,11 +1,12 @@
 """SQLAlchemy scope projection for data-operation planning."""
 from __future__ import annotations
 
-from sqlalchemy import case, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from api.db.models import (
     Instrument,
+    FundamentalReport,
     PriceBarCoverage,
     PriceRefreshState,
     Universe,
@@ -110,6 +111,16 @@ class SqlAlchemyDataOperationRepository:
             ),
             else_=DEFAULT_CANONICAL_PRICE_BASIS,
         )
+        fundamental_coverage = (
+            select(
+                FundamentalReport.instrument_id,
+                func.max(FundamentalReport.fetched_at).label(
+                    "fundamental_fetched_at"
+                ),
+            )
+            .group_by(FundamentalReport.instrument_id)
+            .subquery()
+        )
         return (
             select(
                 Instrument.id,
@@ -130,6 +141,7 @@ class SqlAlchemyDataOperationRepository:
                 PriceRefreshState.selected_source,
                 PriceRefreshState.detail.label("refresh_detail"),
                 PriceRefreshState.attempted_at,
+                fundamental_coverage.c.fundamental_fetched_at,
             )
             .select_from(Instrument)
             .outerjoin(Venue, Venue.id == Instrument.venue_id)
@@ -142,6 +154,10 @@ class SqlAlchemyDataOperationRepository:
                 PriceRefreshState,
                 (PriceRefreshState.instrument_id == Instrument.id)
                 & (PriceRefreshState.price_basis == canonical_basis),
+            )
+            .outerjoin(
+                fundamental_coverage,
+                fundamental_coverage.c.instrument_id == Instrument.id,
             )
         )
 
@@ -166,6 +182,7 @@ class SqlAlchemyDataOperationRepository:
                 selected_source=row.selected_source,
                 refresh_detail=row.refresh_detail,
                 attempted_at=row.attempted_at,
+                fundamental_fetched_at=row.fundamental_fetched_at,
             )
             for row in self._session.execute(statement)
         )
