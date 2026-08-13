@@ -4,7 +4,6 @@ import pytest
 
 from api.price_refresh_coordination import (
     acquire_price_refresh,
-    get_active_price_refresh,
     release_price_refresh,
 )
 
@@ -12,7 +11,6 @@ from api.price_refresh_coordination import (
 def test_refresh_lease_blocks_same_adapter_but_not_other_adapter():
     acquire_price_refresh("yfinance", "us-owner", "US500")
     try:
-        assert get_active_price_refresh("yfinance").label == "US500"
         with pytest.raises(RuntimeError, match="US500"):
             acquire_price_refresh("yfinance", "other-us-owner", "watchlist Leaders")
 

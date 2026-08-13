@@ -27,7 +27,6 @@ from api.repositories.watchlist_repository import (
 )
 from api.services.watchlist_service import UnknownWatchlistError
 from trading_engine.factors import (
-    AHR999,
     BollingerBands,
     DistanceFromMovingAverage,
     DonchianChannel,
@@ -38,10 +37,6 @@ from trading_engine.types import PriceFrame
 
 
 class TestBuildFactor:
-    def test_ahr999_is_registered(self):
-        factor = _build_factor("ahr999", 200, "sma")
-        assert isinstance(factor, AHR999)
-
     def test_existing_factors_unaffected(self):
         assert isinstance(_build_factor("moving_average", 50, "ema"), MovingAverageRatio)
         assert isinstance(_build_factor("distance_from_ma", 50, "ema"), DistanceFromMovingAverage)

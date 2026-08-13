@@ -34,12 +34,6 @@ def release_price_refresh(adapter: str, owner_id: str) -> None:
             _active.pop(normalized, None)
 
 
-def get_active_price_refresh(adapter: str) -> PriceRefreshLease | None:
-    normalized = _adapter(adapter)
-    with _lock:
-        return _active.get(normalized)
-
-
 def _adapter(value: str) -> str:
     normalized = value.lower().strip()
     if normalized not in {"yfinance", "vnstock_data", "binance_spot"}:

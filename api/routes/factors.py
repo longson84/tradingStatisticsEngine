@@ -11,7 +11,6 @@ from trading_engine.factors.bollinger import BollingerBands
 from trading_engine.factors.distance_from_peak import DistanceFromPeak
 from trading_engine.factors.donchian import DonchianChannel
 from trading_engine.factors.moving_average import DistanceFromMovingAverage, MovingAverageRatio
-from trading_engine.factors.ahr999 import AHR999
 from trading_engine.types import Factor
 
 from api.deps import (
@@ -80,8 +79,6 @@ def _build_factor(factor_type: str, period: int, ma_type: str, std_dev: float = 
         return DonchianChannel(entry_length=period, exit_length=max(1, period // 2))
     if factor_type == "distance_from_peak":
         return DistanceFromPeak(window=period)
-    if factor_type == "ahr999":
-        return AHR999()
     raise HTTPException(status_code=400, detail=f"Unknown factor type: {factor_type!r}")
 
 

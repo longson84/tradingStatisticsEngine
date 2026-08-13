@@ -45,7 +45,6 @@ from api.repositories.sqlalchemy_venue_repository import SqlAlchemyVenueReposito
 from api.repositories.sqlalchemy_universe_stats_repository import (
     SqlAlchemyUniverseStatsRepository,
 )
-from api.services.binance_spot_service import BinanceSpotService
 from api.services.crypto_instrument_service import CryptoInstrumentService
 from api.services.company_catalog_service import CompanyCatalogService
 from api.services.fundamental_service import FundamentalService
@@ -90,12 +89,6 @@ def get_company_catalog_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> CompanyCatalogService:
     return CompanyCatalogService(SqlAlchemyCompanyCatalogRepository(session))
-
-
-def get_binance_spot_service(
-    session: Annotated[Session, Depends(get_db_session)],
-) -> BinanceSpotService:
-    return BinanceSpotService(SqlAlchemyCryptoInstrumentRepository(session))
 
 
 def get_crypto_instrument_service(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
@@ -15,6 +15,7 @@ from api.db.models import (
     Instrument,
     ProviderValuationObservation,
 )
+from api.fundamental_metrics import calculation_version, snapshot_key
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
@@ -98,6 +99,17 @@ def test_writer_upserts_existing_snapshot_and_preserves_older_history():
         assert session.scalar(
             select(func.count(ProviderValuationObservation.id))
         ) == 2
+        reports = session.scalars(
+            select(FundamentalReport).order_by(FundamentalReport.period_label)
+        ).all()
+        assert reports[0].report_key == snapshot_key(
+            date(2025, 5, 1), date(2025, 3, 31), "2025-Q1"
+        )
+        assert {
+            fact.calculation_version
+            for report in reports
+            for fact in report.facts
+        } == {calculation_version("yfinance", "test method")}
         q1_eps = session.scalar(
             select(FundamentalFact.value)
             .join(FundamentalReport)
@@ -126,3 +138,18 @@ def test_writer_rejects_empty_provider_result():
                 fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
                 frame=pd.DataFrame(),
             )
+
+
+def test_calculation_version_is_stable_normalized_and_bounded():
+    first = calculation_version("VNStock VCI", "one methodology")
+    second = calculation_version("vnstock-vci", "one methodology")
+
+    assert first == second
+    assert first.startswith("provider:vnstock-vci:")
+    assert len(first) <= 64
+    assert calculation_version("vci", "changed methodology") != first
+    assert calculation_version(
+        "vci", "point-in-time alignment; acquired via vnstock-data 3.2.7"
+    ) == calculation_version(
+        "vci", "point-in-time alignment; acquired via vnstock-data 4.0.5"
+    )

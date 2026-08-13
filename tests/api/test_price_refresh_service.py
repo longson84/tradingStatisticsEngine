@@ -5,7 +5,6 @@ from datetime import UTC, date, datetime
 import pandas as pd
 
 from api.repositories.price_bar_repository import (
-    PriceBarCoverageRecord,
     PriceBarWriteRecord,
     SymbolPriceCoverageRecord,
     PriceRefreshStateRecord,
@@ -17,17 +16,23 @@ from api.services.price_refresh_service import PriceRefreshTarget
 class FakePriceRefreshRepository:
     def __init__(self):
         self.coverage = (
-            PriceBarCoverageRecord(
+            SymbolPriceCoverageRecord(
                 instrument_id=1,
                 ticker="CURRENT",
                 first_date=date(2021, 1, 4),
                 last_date=date(2026, 8, 3),
+                row_count=1,
+                source="test",
+                fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
             ),
-            PriceBarCoverageRecord(
+            SymbolPriceCoverageRecord(
                 instrument_id=2,
                 ticker="STALE",
                 first_date=date(2021, 1, 4),
                 last_date=date(2026, 7, 24),
+                row_count=1,
+                source="test",
+                fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
             ),
         )
         self.writes: tuple[PriceBarWriteRecord, ...] = ()
@@ -35,19 +40,7 @@ class FakePriceRefreshRepository:
         self.state_writes = ()
 
     def list_instrument_coverages(self, instrument_ids, price_basis):
-        return tuple(
-            SymbolPriceCoverageRecord(
-                instrument_id=row.instrument_id,
-                ticker=row.ticker,
-                first_date=row.first_date,
-                last_date=row.last_date,
-                row_count=1,
-                source="test",
-                fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
-            )
-            for row in self.coverage
-            if row.instrument_id in instrument_ids
-        )
+        return tuple(row for row in self.coverage if row.instrument_id in instrument_ids)
 
     def upsert_bars(self, records):
         self.writes = tuple(records)

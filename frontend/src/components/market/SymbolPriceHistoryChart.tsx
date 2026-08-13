@@ -11,7 +11,7 @@ import {
   type Time,
 } from "lightweight-charts"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import type { SymbolPricePoint } from "@/lib/api"
+import type { InstrumentPricePoint } from "@/lib/api"
 import {
   exponentialMovingAverage,
   simpleMovingAverage,
@@ -55,7 +55,7 @@ export function SymbolPriceHistoryChart({
   symbol: string
   instrumentType: string
   relativeStrengthBenchmark: "VN30" | "SPX" | null
-  prices: SymbolPricePoint[]
+  prices: InstrumentPricePoint[]
   smaLengths: number[]
   emaLengths: number[]
   onCursorSnapshotChange: (snapshot: PriceHistoryCursorSnapshot | null) => void
@@ -644,12 +644,12 @@ function formatSignedPaneValue(value: number | null): string {
 
 
 function resamplePrices(
-  prices: SymbolPricePoint[],
+  prices: InstrumentPricePoint[],
   interval: ChartInterval,
-): SymbolPricePoint[] {
+): InstrumentPricePoint[] {
   if (interval === "daily") return prices
 
-  const groups = new Map<string, SymbolPricePoint>()
+  const groups = new Map<string, InstrumentPricePoint>()
   for (const point of prices) {
     const key = interval === "weekly" ? isoWeekKey(point.date) : point.date.slice(0, 7)
     const existing = groups.get(key)

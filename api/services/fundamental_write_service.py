@@ -9,6 +9,7 @@ import pandas as pd
 from api.fundamental_metrics import (
     FACT_SPECS,
     VALUATION_SPECS,
+    calculation_version,
     period_identity,
     snapshot_key,
 )
@@ -67,9 +68,7 @@ class FundamentalWriteService:
                     period_basis=spec.period_basis,
                     fact_kind=spec.fact_kind,
                     source_field=column,
-                    # Preserve the imported fact identity so a live refresh
-                    # updates rather than duplicates the migrated snapshot.
-                    calculation_version=f"legacy-{source}",
+                    calculation_version=calculation_version(source, methodology),
                 )
                 for column, spec in FACT_SPECS.items()
                 if (value := _optional_decimal(row.get(column))) is not None

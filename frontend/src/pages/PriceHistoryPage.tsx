@@ -185,6 +185,19 @@ export function PriceHistoryPage() {
                   />
                   <Datum label="Calculated P/E" value={formatMultiple(latestTrailingPe)} />
                   <Datum label="Calculated P/B" value={formatMultiple(latestTrailingPb)} />
+                  {history.data.trailing_pe_source && (
+                    <Datum
+                      label="Fundamentals source"
+                      value={fmtProviderSource(history.data.trailing_pe_source)}
+                      detail={history.data.trailing_pe_method ?? undefined}
+                    />
+                  )}
+                  {history.data.trailing_pe_fetched_at && (
+                    <Datum
+                      label="Fundamentals updated"
+                      value={formatTimestamp(history.data.trailing_pe_fetched_at)}
+                    />
+                  )}
                   {history.data.provider_reported_pe != null && (
                     <Datum
                       label="VCI reported P/E"
@@ -332,6 +345,12 @@ function formatPrice(value: number | null): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
+}
+
+
+function formatTimestamp(value: string): string {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString()
 }
 
 

@@ -838,8 +838,6 @@ export interface components {
             fetched_at: string;
             /** First Date */
             first_date: string;
-            /** Fundamentals Fields */
-            fundamentals_fields?: string[];
             /** Instrument Id */
             instrument_id: number;
             /** Instrument Type */
@@ -853,53 +851,47 @@ export interface components {
             /** Prices */
             prices: components["schemas"]["InstrumentPricePointResponse"][];
             /** Provider Ratio Effective Date */
-            provider_ratio_effective_date?: string | null;
+            provider_ratio_effective_date: string | null;
             /** Provider Ratio Period */
-            provider_ratio_period?: string | null;
+            provider_ratio_period: string | null;
             /** Provider Reported Pb */
-            provider_reported_pb?: number | null;
+            provider_reported_pb: number | null;
             /** Provider Reported Pe */
-            provider_reported_pe?: number | null;
+            provider_reported_pe: number | null;
             /** Relative Strength Benchmark */
-            relative_strength_benchmark?: ("VN30" | "SPX") | null;
+            relative_strength_benchmark: ("VN30" | "SPX") | null;
             /** Row Count */
             row_count: number;
             /** Shares Cagr 5Y Observed Years */
-            shares_cagr_5y_observed_years?: number | null;
+            shares_cagr_5y_observed_years: number | null;
             /** Shares Cagr 5Y Pct */
-            shares_cagr_5y_pct?: number | null;
+            shares_cagr_5y_pct: number | null;
             /** Shares Cagr 5Y Start Date */
-            shares_cagr_5y_start_date?: string | null;
-            /**
-             * Shares Cagr Full 5Y
-             * @default false
-             */
+            shares_cagr_5y_start_date: string | null;
+            /** Shares Cagr Full 5Y */
             shares_cagr_full_5y: boolean;
             /** Shares Growth Cagr Pct */
-            shares_growth_cagr_pct?: number | null;
-            /**
-             * Shares Growth Full 10Y
-             * @default false
-             */
+            shares_growth_cagr_pct: number | null;
+            /** Shares Growth Full 10Y */
             shares_growth_full_10y: boolean;
             /** Shares Growth Observed Years */
-            shares_growth_observed_years?: number | null;
+            shares_growth_observed_years: number | null;
             /** Shares Growth Pct */
-            shares_growth_pct?: number | null;
+            shares_growth_pct: number | null;
             /** Shares Growth Start Date */
-            shares_growth_start_date?: string | null;
+            shares_growth_start_date: string | null;
             /** Source */
             source: string;
             /** Symbol */
             symbol: string;
             /** Trailing Pe Fetched At */
-            trailing_pe_fetched_at?: string | null;
+            trailing_pe_fetched_at: string | null;
             /** Trailing Pe Method */
-            trailing_pe_method?: string | null;
+            trailing_pe_method: string | null;
             /** Trailing Pe Source */
-            trailing_pe_source?: string | null;
+            trailing_pe_source: string | null;
             /** Venue Code */
-            venue_code?: string | null;
+            venue_code: string | null;
         };
         /** InstrumentPricePointResponse */
         InstrumentPricePointResponse: {
@@ -908,7 +900,7 @@ export interface components {
             /** Date */
             date: string;
             /** Eps Ttm */
-            eps_ttm?: number | null;
+            eps_ttm: number | null;
             /** High */
             high: number;
             /** Low */
@@ -916,15 +908,15 @@ export interface components {
             /** Open */
             open: number;
             /** Relative Strength */
-            relative_strength?: number | null;
+            relative_strength: number | null;
             /** Shares Outstanding */
-            shares_outstanding?: number | null;
+            shares_outstanding: number | null;
             /** Trailing Pb */
-            trailing_pb?: number | null;
+            trailing_pb: number | null;
             /** Trailing Pe */
-            trailing_pe?: number | null;
+            trailing_pe: number | null;
             /** Volume */
-            volume?: number | null;
+            volume: number | null;
         };
         /** MonthlyStatRowResponse */
         MonthlyStatRowResponse: {

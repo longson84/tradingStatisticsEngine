@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+import hashlib
 import re
 
 
@@ -64,8 +65,21 @@ VALUATION_SPECS = {
 def snapshot_key(
     effective_date: date, period_end: date | None, period: str
 ) -> str:
-    """Return the stable key used by both legacy imports and live refreshes."""
-    return f"legacy:{effective_date}:{period_end or '-'}:{period or '-'}"
+    """Return the provider-neutral identity for one effective snapshot."""
+    normalized_period = period.strip() or "-"
+    return f"snapshot:{effective_date}:{period_end or '-'}:{normalized_period}"
+
+
+def calculation_version(source: str, methodology: str) -> str:
+    """Version provider-derived facts without embedding transient prose."""
+    normalized_source = re.sub(r"[^a-z0-9]+", "-", source.lower()).strip("-")
+    if not normalized_source:
+        raise ValueError("Fundamental source must contain an alphanumeric character")
+    analytical_method = methodology.split("; acquired via ", 1)[0].strip()
+    fingerprint = hashlib.md5(
+        analytical_method.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()[:12]
+    return f"provider:{normalized_source[:32]}:{fingerprint}"
 
 
 def period_identity(

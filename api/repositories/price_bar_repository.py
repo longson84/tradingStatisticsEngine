@@ -23,14 +23,6 @@ class PriceBarRecord:
 
 
 @dataclass(frozen=True)
-class PriceBarCoverageRecord:
-    instrument_id: int
-    ticker: str
-    first_date: date
-    last_date: date
-
-
-@dataclass(frozen=True)
 class SymbolPriceCoverageRecord:
     instrument_id: int
     ticker: str

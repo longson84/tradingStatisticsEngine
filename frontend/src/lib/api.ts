@@ -125,54 +125,8 @@ export type WatchlistCreateRequest = components["schemas"]["WatchlistCreateReque
 export type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateRequest"]
 export type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
 
-export interface SymbolPricePoint {
-  date: string
-  open: number
-  high: number
-  low: number
-  close: number
-  volume: number | null
-  eps_ttm: number | null
-  shares_outstanding: number | null
-  trailing_pe: number | null
-  trailing_pb: number | null
-  relative_strength: number | null
-}
-
-export interface InstrumentPriceHistoryResponse {
-  instrument_id: number
-  symbol: string
-  instrument_type: string
-  venue_code: string | null
-  currency: string
-  source: string
-  price_basis: string
-  fetched_at: string
-  first_date: string
-  last_date: string
-  expected_last_session: string
-  is_stale: boolean
-  row_count: number
-  relative_strength_benchmark: "VN30" | "SPX" | null
-  trailing_pe_source: string | null
-  trailing_pe_method: string | null
-  trailing_pe_fetched_at: string | null
-  fundamentals_fields: string[]
-  provider_reported_pe: number | null
-  provider_reported_pb: number | null
-  provider_ratio_effective_date: string | null
-  provider_ratio_period: string | null
-  shares_growth_pct: number | null
-  shares_growth_cagr_pct: number | null
-  shares_growth_observed_years: number | null
-  shares_growth_start_date: string | null
-  shares_growth_full_10y: boolean
-  shares_cagr_5y_pct: number | null
-  shares_cagr_5y_observed_years: number | null
-  shares_cagr_5y_start_date: string | null
-  shares_cagr_full_5y: boolean
-  prices: SymbolPricePoint[]
-}
+export type InstrumentPricePoint = components["schemas"]["InstrumentPricePointResponse"]
+export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPriceHistoryResponse"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -294,7 +248,6 @@ export function rarityAnalysisApi(params: {
   period: number
   ma_type?: MaType
   std_dev?: number
-  exit_length?: number
   quick_recovery_days?: number
   recovery_mode?: RarityRecoveryMode
   zones?: number[]

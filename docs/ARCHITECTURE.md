@@ -1947,3 +1947,33 @@ fundamentals analysis surface or company-named observation writer. PostgreSQL
 remains the sole business-data store; generated OpenAPI JSON remains a build
 contract rather than application data. This cleanup does not change analytical
 formulas, persistence keys, provider routing, or the database schema.
+
+### 2026-08-13 — Fundamental identity and API contract cleanup
+
+Context: the canonical fundamental tables still carried migration-era
+`legacy:` report and valuation keys, and live provider writes continued to
+create the same prefix. Fact calculation versions likewise used a `legacy-`
+label that described neither the current provider nor the analytical method.
+Price History also maintained a handwritten TypeScript copy of its generated
+OpenAPI response and returned unused fundamental-field inventory metadata.
+
+Decision: fundamental snapshot identity is provider-neutral and begins with
+`snapshot:` followed by effective date, period end, and provider period label.
+Provider-derived fact versions begin with `provider:`, include the normalized
+stable source, and fingerprint the analytical methodology after removing the
+acquisition-package suffix. Package upgrades therefore update provenance and
+fetch timestamps without producing duplicate fact identities when the method
+has not changed. Migration `0023` converts existing report keys, valuation
+observation keys, and only migration-era fact versions in place.
+
+Price History now consumes generated OpenAPI types directly. Nullable response
+values remain required keys, the unused `fundamentals_fields` projection is
+removed, and the UI displays the stored fundamental source, methodology, and
+fetch time. AHR999 remains an engine-level Factor but is not registered in the
+general Rarity API because that request taxonomy deliberately excludes it.
+
+Consequences: repeat provider refreshes upsert the same reports, facts, and
+valuation observations across package-version changes while preserving source,
+methodology, and fetch provenance. The generated frontend contract is the sole
+response-type definition for Price History, so API drift is detected by the
+existing contract check.

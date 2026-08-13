@@ -1608,13 +1608,6 @@
             "title": "First Date",
             "type": "string"
           },
-          "fundamentals_fields": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Fundamentals Fields",
-            "type": "array"
-          },
           "instrument_id": {
             "title": "Instrument Id",
             "type": "integer"
@@ -1739,7 +1732,6 @@
             "title": "Shares Cagr 5Y Start Date"
           },
           "shares_cagr_full_5y": {
-            "default": false,
             "title": "Shares Cagr Full 5Y",
             "type": "boolean"
           },
@@ -1755,7 +1747,6 @@
             "title": "Shares Growth Cagr Pct"
           },
           "shares_growth_full_10y": {
-            "default": false,
             "title": "Shares Growth Full 10Y",
             "type": "boolean"
           },
@@ -1849,6 +1840,7 @@
           "instrument_id",
           "symbol",
           "instrument_type",
+          "venue_code",
           "currency",
           "source",
           "price_basis",
@@ -1858,6 +1850,23 @@
           "expected_last_session",
           "is_stale",
           "row_count",
+          "relative_strength_benchmark",
+          "trailing_pe_source",
+          "trailing_pe_method",
+          "trailing_pe_fetched_at",
+          "provider_reported_pe",
+          "provider_reported_pb",
+          "provider_ratio_effective_date",
+          "provider_ratio_period",
+          "shares_growth_pct",
+          "shares_growth_cagr_pct",
+          "shares_growth_observed_years",
+          "shares_growth_start_date",
+          "shares_growth_full_10y",
+          "shares_cagr_5y_pct",
+          "shares_cagr_5y_observed_years",
+          "shares_cagr_5y_start_date",
+          "shares_cagr_full_5y",
           "prices"
         ],
         "title": "InstrumentPriceHistoryResponse",
@@ -1957,7 +1966,13 @@
           "open",
           "high",
           "low",
-          "close"
+          "close",
+          "volume",
+          "eps_ttm",
+          "shares_outstanding",
+          "trailing_pe",
+          "trailing_pb",
+          "relative_strength"
         ],
         "title": "InstrumentPricePointResponse",
         "type": "object"

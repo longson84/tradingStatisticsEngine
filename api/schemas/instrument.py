@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 InstrumentScope = Literal[
@@ -57,19 +57,19 @@ class InstrumentPricePointResponse(BaseModel):
     high: float
     low: float
     close: float
-    volume: float | None = None
-    eps_ttm: float | None = None
-    shares_outstanding: float | None = None
-    trailing_pe: float | None = None
-    trailing_pb: float | None = None
-    relative_strength: float | None = None
+    volume: float | None
+    eps_ttm: float | None
+    shares_outstanding: float | None
+    trailing_pe: float | None
+    trailing_pb: float | None
+    relative_strength: float | None
 
 
 class InstrumentPriceHistoryResponse(BaseModel):
     instrument_id: int
     symbol: str
     instrument_type: str
-    venue_code: str | None = None
+    venue_code: str | None
     currency: str
     source: str
     price_basis: str
@@ -79,22 +79,21 @@ class InstrumentPriceHistoryResponse(BaseModel):
     expected_last_session: date
     is_stale: bool
     row_count: int
-    relative_strength_benchmark: Literal["VN30", "SPX"] | None = None
-    trailing_pe_source: str | None = None
-    trailing_pe_method: str | None = None
-    trailing_pe_fetched_at: str | None = None
-    fundamentals_fields: list[str] = Field(default_factory=list)
-    provider_reported_pe: float | None = None
-    provider_reported_pb: float | None = None
-    provider_ratio_effective_date: str | None = None
-    provider_ratio_period: str | None = None
-    shares_growth_pct: float | None = None
-    shares_growth_cagr_pct: float | None = None
-    shares_growth_observed_years: float | None = None
-    shares_growth_start_date: str | None = None
-    shares_growth_full_10y: bool = False
-    shares_cagr_5y_pct: float | None = None
-    shares_cagr_5y_observed_years: float | None = None
-    shares_cagr_5y_start_date: str | None = None
-    shares_cagr_full_5y: bool = False
+    relative_strength_benchmark: Literal["VN30", "SPX"] | None
+    trailing_pe_source: str | None
+    trailing_pe_method: str | None
+    trailing_pe_fetched_at: str | None
+    provider_reported_pe: float | None
+    provider_reported_pb: float | None
+    provider_ratio_effective_date: str | None
+    provider_ratio_period: str | None
+    shares_growth_pct: float | None
+    shares_growth_cagr_pct: float | None
+    shares_growth_observed_years: float | None
+    shares_growth_start_date: str | None
+    shares_growth_full_10y: bool
+    shares_cagr_5y_pct: float | None
+    shares_cagr_5y_observed_years: float | None
+    shares_cagr_5y_start_date: str | None
+    shares_cagr_full_5y: bool
     prices: list[InstrumentPricePointResponse]

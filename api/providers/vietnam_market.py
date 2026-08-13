@@ -228,22 +228,6 @@ def provider_source_label(metadata: VietnamProviderMetadata) -> str:
     return f"{package}-{metadata.package_version}-{upstream}"
 
 
-def provider_runtime_label(provider: VietnamMarketProvider) -> str:
-    """Describe a configured provider before its first successful request."""
-    package = str(getattr(provider, "package", type(provider).__name__))
-    source = str(getattr(provider, "source", "unified"))
-    return provider_source_label(VietnamProviderMetadata(
-        package=package,
-        package_version=_package_version(package),
-        access_mode=getattr(provider, "access_mode", "community"),
-        upstream_source=source,
-        method="ohlcv",
-        symbol="*",
-        requested_start=date.min,
-        requested_end=date.min,
-    ))
-
-
 def normalize_ohlcv_result(result: VietnamProviderResult) -> pd.DataFrame:
     """Normalize a provider OHLCV result for canonical price persistence."""
     frame = result.frame.copy()

@@ -164,7 +164,6 @@ def instrument_price_history(
         trailing_pe_fetched_at=(
             fundamentals.metadata.fetched_at.isoformat() if fundamentals else None
         ),
-        fundamentals_fields=list(fundamentals.metadata.fields) if fundamentals else [],
         provider_reported_pe=reported_pe,
         provider_reported_pb=reported_pb,
         provider_ratio_effective_date=ratio_date,
