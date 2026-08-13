@@ -4,23 +4,6 @@
  */
 
 export interface paths {
-    "/backtest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run Backtest */
-        post: operations["run_backtest_backtest_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/backtest/analyze": {
         parameters: {
             query?: never;
@@ -194,23 +177,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/factors/analyze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Analyze Factor Endpoint */
-        post: operations["analyze_factor_endpoint_factors_analyze_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/factors/predefined-rarity": {
         parameters: {
             query?: never;
@@ -239,40 +205,6 @@ export interface paths {
         put?: never;
         /** Rarity Analysis Endpoint */
         post: operations["rarity_analysis_endpoint_factors_rarity_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/factors/regime": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Detect Regime Endpoint */
-        post: operations["detect_regime_endpoint_factors_regime_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/factors/universe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Analyze Universe Endpoint */
-        post: operations["analyze_universe_endpoint_factors_universe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -341,23 +273,6 @@ export interface paths {
         get: operations["listReferenceRates"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sweep": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run Sweep */
-        post: operations["run_sweep_sweep_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -567,30 +482,6 @@ export interface components {
             /** Strategy */
             strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
         };
-        /** BacktestRequest */
-        BacktestRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
-             * Initial Capital
-             * @default 10000
-             */
-            initial_capital: number;
-            /**
-             * Max Leverage
-             * @default 1
-             */
-            max_leverage: number;
-            /** Strategy */
-            strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
-            /** Symbols */
-            symbols: string[];
-        };
         /** BuyAndHoldConfig */
         BuyAndHoldConfig: {
             /**
@@ -768,58 +659,6 @@ export interface components {
         CompanyUniversesResponse: {
             /** Universes */
             universes: components["schemas"]["CompanyUniverseResponse"][];
-        };
-        /** CrossSectionalRequest */
-        CrossSectionalRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
-             * Factor Type
-             * @enum {string}
-             */
-            factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak";
-            /**
-             * Ma Type
-             * @default sma
-             * @enum {string}
-             */
-            ma_type: "sma" | "ema" | "wma";
-            /**
-             * Period
-             * @default 20
-             */
-            period: number;
-            /** Symbols */
-            symbols: string[];
-            /**
-             * Threshold
-             * @default 0
-             */
-            threshold: number;
-        };
-        /** CrossSectionalResponse */
-        CrossSectionalResponse: {
-            /** Breadth */
-            breadth: {
-                [key: string]: number;
-            };
-            /** Factor Name */
-            factor_name: string;
-            /** Pct Above */
-            pct_above: {
-                [key: string]: number;
-            };
-            /** Universe */
-            universe: string[];
-            /** Universe Median */
-            universe_median: {
-                [key: string]: number;
-            };
         };
         /** CryptoMarketFacetCountResponse */
         CryptoMarketFacetCountResponse: {
@@ -1022,19 +861,6 @@ export interface components {
              */
             scope_type: "universe" | "watchlist" | "instrument";
         };
-        /** DateRange */
-        DateRange: {
-            /**
-             * End
-             * Format: date
-             */
-            end: string;
-            /**
-             * Start
-             * Format: date
-             */
-            start: string;
-        };
         /** DistributionRowResponse */
         DistributionRowResponse: {
             /** Cumulative Count */
@@ -1050,54 +876,6 @@ export interface components {
             count: number;
             /** Value */
             value: string;
-        };
-        /** FactorAnalysisResponse */
-        FactorAnalysisResponse: {
-            /** Current Percentile */
-            current_percentile: number;
-            /** Current Value */
-            current_value: number;
-            /** Factor Name */
-            factor_name: string;
-            /** History Length Days */
-            history_length_days: number;
-            /** Percentiles */
-            percentiles: {
-                [key: string]: number;
-            };
-        };
-        /** FactorRequest */
-        FactorRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
-             * Factor Type
-             * @enum {string}
-             */
-            factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak";
-            /**
-             * Ma Type
-             * @default sma
-             * @enum {string}
-             */
-            ma_type: "sma" | "ema" | "wma";
-            /**
-             * Period
-             * @default 20
-             */
-            period: number;
-            /**
-             * Std Dev
-             * @default 2
-             */
-            std_dev: number;
-            /** Symbol */
-            symbol: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1601,25 +1379,6 @@ export interface components {
             /** Worst Trade Pct */
             worst_trade_pct: number;
         };
-        /** PortfolioResultResponse */
-        PortfolioResultResponse: {
-            /** Equity Curve */
-            equity_curve: {
-                [key: string]: number;
-            };
-            /** Final Nav */
-            final_nav: number;
-            /** Total Return Pct */
-            total_return_pct: number;
-            /** Trades */
-            trades: components["schemas"]["TradeSchema"][];
-            /** Weights */
-            weights: {
-                [key: string]: {
-                    [key: string]: number;
-                };
-            };
-        };
         /** PredefinedRarityInstrumentStatus */
         PredefinedRarityInstrumentStatus: {
             /** Available */
@@ -1982,60 +1741,6 @@ export interface components {
             /** With History Count */
             with_history_count: number;
         };
-        /** RegimeRequest */
-        RegimeRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
-             * Factor Type
-             * @enum {string}
-             */
-            factor_type: "moving_average" | "distance_from_ma" | "bollinger" | "donchian" | "distance_from_peak";
-            /**
-             * Lower Threshold
-             * @default 0.4
-             */
-            lower_threshold: number;
-            /**
-             * Ma Type
-             * @default sma
-             * @enum {string}
-             */
-            ma_type: "sma" | "ema" | "wma";
-            /**
-             * Period
-             * @default 20
-             */
-            period: number;
-            /** Symbols */
-            symbols: string[];
-            /**
-             * Threshold
-             * @default 0
-             */
-            threshold: number;
-            /**
-             * Upper Threshold
-             * @default 0.6
-             */
-            upper_threshold: number;
-        };
-        /** RegimeResponse */
-        RegimeResponse: {
-            /** Breadth */
-            breadth: {
-                [key: string]: number;
-            };
-            /** Labels */
-            labels: {
-                [key: string]: string;
-            };
-        };
         /** SingleTickerAnalysisResponse */
         SingleTickerAnalysisResponse: {
             bah: components["schemas"]["PerformanceSummaryResponse"];
@@ -2118,64 +1823,6 @@ export interface components {
             /** Venue Code */
             venue_code?: string | null;
         };
-        /** SweepErrorItem */
-        SweepErrorItem: {
-            /** Error */
-            error: string;
-            /** Strategy Type */
-            strategy_type: string;
-        };
-        /** SweepRequest */
-        SweepRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /**
-             * Initial Capital
-             * @default 10000
-             */
-            initial_capital: number;
-            /**
-             * Max Leverage
-             * @default 1
-             */
-            max_leverage: number;
-            /**
-             * Max Workers
-             * @default 4
-             */
-            max_workers: number;
-            /** Strategies */
-            strategies: (components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"])[];
-            /** Symbols */
-            symbols: string[];
-        };
-        /** SweepResponse */
-        SweepResponse: {
-            /** Errors */
-            errors: components["schemas"]["SweepErrorItem"][];
-            /** Results */
-            results: components["schemas"]["SweepResultItem"][];
-        };
-        /** SweepResultItem */
-        SweepResultItem: {
-            /** Equity Curve */
-            equity_curve: {
-                [key: string]: number;
-            };
-            /** Final Nav */
-            final_nav: number;
-            /** Strategy Type */
-            strategy_type: string;
-            /** Total Return Pct */
-            total_return_pct: number;
-            /** Trade Count */
-            trade_count: number;
-        };
         /** TimeSeriesPoint */
         TimeSeriesPoint: {
             /** Date */
@@ -2220,39 +1867,6 @@ export interface components {
             return_pct: number | null;
             /** Symbol */
             symbol: string;
-        };
-        /** TradeSchema */
-        TradeSchema: {
-            /**
-             * Direction
-             * @enum {string}
-             */
-            direction: "long" | "short";
-            /**
-             * Entry Date
-             * Format: date
-             */
-            entry_date: string;
-            /** Entry Price */
-            entry_price: number;
-            /** Entry Weight */
-            entry_weight: number;
-            /** Exit Date */
-            exit_date: string | null;
-            /** Exit Price */
-            exit_price: number | null;
-            /** Holding Days */
-            holding_days: number | null;
-            /** Mae Pct */
-            mae_pct: number | null;
-            /** Mfe Pct */
-            mfe_pct: number | null;
-            /** Return Pct */
-            return_pct: number | null;
-            /** Symbol */
-            symbol: string;
-            /** Weight History */
-            weight_history: components["schemas"]["WeightEventSchema"][];
         };
         /** UndercutDistributionRowResponse */
         UndercutDistributionRowResponse: {
@@ -2580,18 +2194,6 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** WeightEventSchema */
-        WeightEventSchema: {
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /** Price */
-            price: number;
-            /** Weight */
-            weight: number;
-        };
         /** ZoneEntrySchema */
         ZoneEntrySchema: {
             /** Bars Elapsed */
@@ -2681,39 +2283,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    run_backtest_backtest_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BacktestRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PortfolioResultResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     analyze_single_ticker_backtest_analyze_post: {
         parameters: {
             query?: never;
@@ -3039,39 +2608,6 @@ export interface operations {
             };
         };
     };
-    analyze_factor_endpoint_factors_analyze_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FactorRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FactorAnalysisResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     predefined_rarity_endpoint_factors_predefined_rarity_post: {
         parameters: {
             query?: never;
@@ -3125,72 +2661,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RarityAnalysisResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    detect_regime_endpoint_factors_regime_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RegimeRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RegimeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analyze_universe_endpoint_factors_universe_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CrossSectionalRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CrossSectionalResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3316,39 +2786,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferenceRateListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    run_sweep_sweep_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SweepRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SweepResponse"];
                 };
             };
             /** @description Validation Error */

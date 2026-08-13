@@ -1625,3 +1625,28 @@ Consequences: no visible analysis page can submit arbitrary symbol text plus a
 provider through these retired workflows. Reintroducing multi-instrument new-low
 comparison or dedicated fundamental analysis requires a new contract based on
 exact instrument IDs or canonical Collections and stored observations.
+
+### 2026-08-13 — Retire symbol/provider analytical API ingress
+
+Context: after the visible analysis pages moved to canonical Instrument,
+Watchlist, and Universe identity, five unused public endpoints still accepted
+arbitrary `symbol` or `symbols` values plus a caller-selected `data_source`.
+They fetched provider data directly during the analytical request and therefore
+preserved a second identity and observation path outside canonical PostgreSQL.
+
+Decision: retire `POST /backtest`, `POST /sweep`, `POST /factors/analyze`,
+`POST /factors/universe`, and `POST /factors/regime`, together with their request
+and response schemas. Remove the FastAPI `fetch_prices` and provider-loader
+selection helpers that existed only for those contracts. Keep portfolio,
+comparison, factor, regime, and CSV-loader capabilities inside the standalone
+`trading_engine` library; retiring an application endpoint does not narrow the
+library API. The supported application analysis contracts are now exact
+Instrument, Watchlist, or Universe workflows.
+
+Consequences: no registered analysis endpoint accepts provider choice or a
+free-form symbol as identity. `POST /backtest/analyze`, Factor Rarity,
+Predefined Rarity, Universe Stats, and New-Low Deep remain available. A contract
+test enumerates both the retired paths and the canonical request schemas so the
+legacy ingress cannot be accidentally restored. Making every remaining analysis
+read stored observations without an implicit refresh is a separate subsequent
+cutover.

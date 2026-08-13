@@ -1,9 +1,4 @@
-"""Factor analysis endpoints.
-
-POST /factors/analyze   — time-series percentile breakdown for one symbol
-POST /factors/universe  — cross-sectional breadth across N symbols
-POST /factors/regime    — regime labels derived from cross-sectional breadth
-"""
+"""Canonical instrument and Watchlist factor-analysis endpoints."""
 from __future__ import annotations
 
 from typing import Annotated
@@ -11,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from trading_engine.types import FactorComputeError, InsufficientDataError, PriceFrame
 
-from trading_engine import analyze_factor, analyze_universe, detect_regime, zone_rarity_analysis
+from trading_engine import zone_rarity_analysis
 from trading_engine.factors.bollinger import BollingerBands
 from trading_engine.factors.distance_from_peak import DistanceFromPeak
 from trading_engine.factors.donchian import DonchianChannel
@@ -20,7 +15,6 @@ from trading_engine.factors.ahr999 import AHR999
 from trading_engine.types import Factor
 
 from api.deps import (
-    fetch_prices,
     get_instrument_analysis_service,
     get_watchlist_service,
 )
@@ -33,10 +27,6 @@ from api.services.watchlist_service import UnknownWatchlistError, WatchlistServi
 import pandas as pd
 
 from api.schemas.factor import (
-    CrossSectionalRequest,
-    CrossSectionalResponse,
-    FactorRequest,
-    FactorAnalysisResponse,
     RarityRequest,
     RarityAnalysisResponse,
     PredefinedRarityRequest,
@@ -47,10 +37,7 @@ from api.schemas.factor import (
     ZoneStatsSchema,
     ZoneEntrySchema,
     TimeSeriesPoint,
-    RegimeRequest,
-    RegimeResponse,
 )
-from api.utils import date_key
 
 router = APIRouter(prefix="/factors", tags=["factors"])
 
@@ -129,33 +116,6 @@ def _predefined_row(
             f"p{p}": float(percentile_values.loc[p / 100] * 100)
             for p in _PREDEFINED_PERCENTILES
         },
-    )
-
-
-@router.post("/analyze", response_model=FactorAnalysisResponse)
-def analyze_factor_endpoint(req: FactorRequest) -> FactorAnalysisResponse:
-    prices = fetch_prices(
-        [req.symbol],
-        req.date_range.start,
-        req.date_range.end,
-        req.data_source,
-    )
-    if req.symbol not in prices:
-        raise HTTPException(status_code=422, detail=f"No data for symbol {req.symbol!r}")
-
-    try:
-        factor = _build_factor(req.factor_type, req.period, req.ma_type, req.std_dev)
-        factor_series = factor.compute(prices[req.symbol])
-        result = analyze_factor(factor_series)
-    except (FactorComputeError, InsufficientDataError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    return FactorAnalysisResponse(
-        factor_name=result.factor_name,
-        current_value=result.current_value,
-        current_percentile=result.current_percentile,
-        history_length_days=result.history_length_days,
-        percentiles={f"p{k}": v for k, v in result.percentiles.items()},
     )
 
 
@@ -259,63 +219,6 @@ def predefined_rarity_endpoint(
         percentile_columns=[f"p{p}" for p in _PREDEFINED_PERCENTILES],
         tables=tables,
         errors=errors,
-    )
-
-
-@router.post("/universe", response_model=CrossSectionalResponse)
-def analyze_universe_endpoint(req: CrossSectionalRequest) -> CrossSectionalResponse:
-    prices = fetch_prices(
-        req.symbols,
-        req.date_range.start,
-        req.date_range.end,
-        req.data_source,
-    )
-    try:
-        factor = _build_factor(req.factor_type, req.period, req.ma_type)
-        result = analyze_universe(
-            factor=factor,
-            universe=req.symbols,
-            prices=prices,
-            threshold=req.threshold,
-        )
-    except (FactorComputeError, InsufficientDataError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    return CrossSectionalResponse(
-        factor_name=result.factor_name,
-        universe=result.universe,
-        breadth={date_key(ts): float(v) for ts, v in result.breadth.items()},
-        pct_above={date_key(ts): float(v) for ts, v in result.pct_above.items()},
-        universe_median={date_key(ts): float(v) for ts, v in result.universe_median.items()},
-    )
-
-
-@router.post("/regime", response_model=RegimeResponse)
-def detect_regime_endpoint(req: RegimeRequest) -> RegimeResponse:
-    prices = fetch_prices(
-        req.symbols,
-        req.date_range.start,
-        req.date_range.end,
-        req.data_source,
-    )
-    try:
-        factor = _build_factor(req.factor_type, req.period, req.ma_type)
-        cross = analyze_universe(
-            factor=factor,
-            universe=req.symbols,
-            prices=prices,
-            threshold=req.threshold,
-        )
-        regime = detect_regime(
-            breadth=cross.breadth,
-            thresholds=(req.lower_threshold, req.upper_threshold),
-        )
-    except (FactorComputeError, InsufficientDataError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    return RegimeResponse(
-        labels={date_key(ts): str(v) for ts, v in regime.labels.items()},
-        breadth={date_key(ts): float(v) for ts, v in regime.breadth.items()},
     )
 
 

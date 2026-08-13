@@ -21,7 +21,6 @@ from api.routes import (
     instruments,
     instrument_history,
     reference_rates,
-    sweep,
     universes,
     universe_stats,
     venues,
@@ -42,7 +41,6 @@ app.add_middleware(
 )
 
 app.include_router(backtest.router)
-app.include_router(sweep.router)
 app.include_router(factors.router)
 app.include_router(events.router)
 app.include_router(companies.router)
