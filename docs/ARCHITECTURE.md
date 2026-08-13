@@ -172,6 +172,10 @@ explicit migration and a source capable of providing reliable membership dates.
   transaction upserts assets, the `BINANCE_SPOT` venue, spot instruments,
   exchange symbol mappings, scalar trading rules, and the current
   `BINANCE_SPOT` instrument universe.
+- Canonical trading constraints are the exchange filters used to validate or
+  construct orders: price tick size, quantity step size, minimum quantity, and
+  minimum notional. Provider display-precision hints are not persisted because
+  they neither define Instrument identity nor replace those execution filters.
 - Missing instruments are retained and marked inactive. A provider outage,
   empty response, duplicate symbol, or malformed identity aborts the catalog
   update rather than replacing the last known-good universe.
@@ -2013,3 +2017,26 @@ valuation observations across package-version changes while preserving source,
 methodology, and fetch provenance. The generated frontend contract is the sole
 response-type definition for Price History, so API drift is detected by the
 existing contract check.
+
+### 2026-08-13 — Dormant Instrument-field and response cleanup
+
+Context: the Binance catalog pipeline persisted `base_precision` and
+`quote_precision` even though no route, calculation, or UI consumed them. The
+same Instrument rows already persist the exchange filter values that govern
+valid price and quantity increments. Price History also returned top-level
+`price_basis` and `fetched_at` fields that no frontend consumer used; their
+authoritative values remain attached to canonical observations and coverage.
+
+Decision: migration `0025` drops the two provider display-precision columns and
+the Binance provider-to-repository contract no longer carries them. Keep price
+tick size, quantity step size, minimum quantity, and minimum notional as the
+canonical venue constraints. Remove the two unused fields only from the Price
+History projection; Data Operations continues to expose basis, source,
+coverage, last successful fetch, and latest refresh attempt per exact
+Instrument.
+
+Consequences: the relational model no longer stores unconsumed precision hints
+that could be mistaken for execution constraints, and the Price History API is
+smaller without losing persisted provenance, freshness planning, or analytical
+identity. A downgrade recreates nullable compatibility columns but cannot
+reconstruct their historical provider values without another catalog fetch.

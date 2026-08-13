@@ -60,6 +60,7 @@ def test_single_instrument_analysis_responses_do_not_claim_implicit_refresh():
     assert {"expected_last_session", "is_stale"} <= history.keys()
     assert {"trailing_pe_source", "trailing_pe_fetched_at"} <= history.keys()
     assert "fundamentals_fields" not in history
+    assert {"price_basis", "fetched_at"}.isdisjoint(history)
 
 
 def test_openapi_has_no_legacy_company_or_market_identity_contracts():

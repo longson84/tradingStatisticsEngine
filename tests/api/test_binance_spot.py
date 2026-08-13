@@ -52,8 +52,6 @@ def _symbol(
         status=status,
         base_asset=base,
         quote_asset=quote,
-        base_precision=8,
-        quote_precision=8,
         price_tick_size=Decimal("0.01"),
         quantity_step_size=Decimal("0.00001"),
         minimum_quantity=Decimal("0.00001"),

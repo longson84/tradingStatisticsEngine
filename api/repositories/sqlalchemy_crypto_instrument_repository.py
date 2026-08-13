@@ -115,8 +115,6 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                 base_asset.id,
                 quote_asset.id,
                 value.is_active,
-                value.base_precision,
-                value.quote_precision,
                 value.price_tick_size,
                 value.quantity_step_size,
                 value.minimum_quantity,
@@ -133,8 +131,6 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                     settlement_asset_id=quote_asset.id,
                     instrument_type="spot",
                     currency=value.quote_asset,
-                    base_precision=value.base_precision,
-                    quote_precision=value.quote_precision,
                     price_tick_size=value.price_tick_size,
                     quantity_step_size=value.quantity_step_size,
                     minimum_quantity=value.minimum_quantity,
@@ -157,8 +153,6 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                     instrument.base_asset_id,
                     instrument.quote_asset_id,
                     instrument.is_active,
-                    instrument.base_precision,
-                    instrument.quote_precision,
                     instrument.price_tick_size,
                     instrument.quantity_step_size,
                     instrument.minimum_quantity,
@@ -172,8 +166,6 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                 instrument.settlement_asset_id = quote_asset.id
                 instrument.instrument_type = "spot"
                 instrument.currency = value.quote_asset
-                instrument.base_precision = value.base_precision
-                instrument.quote_precision = value.quote_precision
                 instrument.price_tick_size = value.price_tick_size
                 instrument.quantity_step_size = value.quantity_step_size
                 instrument.minimum_quantity = value.minimum_quantity

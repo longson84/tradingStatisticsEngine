@@ -851,8 +851,6 @@ export interface components {
              * Format: date
              */
             expected_last_session: string;
-            /** Fetched At */
-            fetched_at: string;
             /** First Date */
             first_date: string;
             /** Instrument Id */
@@ -863,8 +861,6 @@ export interface components {
             is_stale: boolean;
             /** Last Date */
             last_date: string;
-            /** Price Basis */
-            price_basis: string;
             /** Prices */
             prices: components["schemas"]["InstrumentPricePointResponse"][];
             /** Provider Ratio Effective Date */

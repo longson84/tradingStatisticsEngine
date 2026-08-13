@@ -20,8 +20,6 @@ class SpotInstrumentWrite:
     base_asset: str
     quote_asset: str
     is_active: bool
-    base_precision: int | None
-    quote_precision: int | None
     price_tick_size: Decimal | None
     quantity_step_size: Decimal | None
     minimum_quantity: Decimal | None

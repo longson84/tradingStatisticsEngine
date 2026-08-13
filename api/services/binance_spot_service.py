@@ -98,8 +98,6 @@ class BinanceSpotService:
                     is_active=(
                         row.status == "TRADING" and row.is_spot_trading_allowed
                     ),
-                    base_precision=row.base_precision,
-                    quote_precision=row.quote_precision,
                     price_tick_size=row.price_tick_size,
                     quantity_step_size=row.quantity_step_size,
                     minimum_quantity=row.minimum_quantity,

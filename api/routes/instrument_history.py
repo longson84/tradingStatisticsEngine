@@ -146,8 +146,6 @@ def instrument_price_history(
         venue_code=instrument.venue_code,
         currency=instrument.currency,
         source=stored.price_source,
-        price_basis=_display_price_basis(stored.price_basis),
-        fetched_at=stored.fetched_at.isoformat(),
         first_date=prices.data.index.min().date().isoformat(),
         last_date=prices.data.index.max().date().isoformat(),
         expected_last_session=stored.expected_last_session,
@@ -221,10 +219,3 @@ def _growth(value, key: str) -> float | None:
 
 def _metadata_source(sources: tuple[str, ...]) -> str:
     return sources[0] if len(sources) == 1 else ", ".join(sources)
-
-
-def _display_price_basis(price_basis: str) -> str:
-    return {
-        "adjusted": "auto-adjusted OHLC",
-        "provider_unspecified": "provider OHLC (adjustment unspecified)",
-    }.get(price_basis, price_basis)

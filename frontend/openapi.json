@@ -1600,10 +1600,6 @@
             "title": "Expected Last Session",
             "type": "string"
           },
-          "fetched_at": {
-            "title": "Fetched At",
-            "type": "string"
-          },
           "first_date": {
             "title": "First Date",
             "type": "string"
@@ -1622,10 +1618,6 @@
           },
           "last_date": {
             "title": "Last Date",
-            "type": "string"
-          },
-          "price_basis": {
-            "title": "Price Basis",
             "type": "string"
           },
           "prices": {
@@ -1843,8 +1835,6 @@
           "venue_code",
           "currency",
           "source",
-          "price_basis",
-          "fetched_at",
           "first_date",
           "last_date",
           "expected_last_session",

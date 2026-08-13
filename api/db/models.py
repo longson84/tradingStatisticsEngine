@@ -259,8 +259,6 @@ class Instrument(Base):
     )
     share_class: Mapped[str | None] = mapped_column(String(64))
     currency: Mapped[str] = mapped_column(String(16), nullable=False)
-    base_precision: Mapped[int | None] = mapped_column(Integer)
-    quote_precision: Mapped[int | None] = mapped_column(Integer)
     price_tick_size: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
     quantity_step_size: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
     minimum_quantity: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))

@@ -72,8 +72,6 @@ class InstrumentPriceHistoryResponse(BaseModel):
     venue_code: str | None
     currency: str
     source: str
-    price_basis: str
-    fetched_at: str
     first_date: str
     last_date: str
     expected_last_session: date

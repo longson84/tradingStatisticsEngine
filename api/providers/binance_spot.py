@@ -27,8 +27,6 @@ class BinanceSpotSymbol:
     status: str
     base_asset: str
     quote_asset: str
-    base_precision: int | None
-    quote_precision: int | None
     price_tick_size: Decimal | None
     quantity_step_size: Decimal | None
     minimum_quantity: Decimal | None
@@ -327,8 +325,6 @@ def _parse_spot_symbol(raw: object) -> BinanceSpotSymbol:
         status=status,
         base_asset=base_asset,
         quote_asset=quote_asset,
-        base_precision=_optional_int(raw.get("baseAssetPrecision")),
-        quote_precision=_optional_int(raw.get("quoteAssetPrecision")),
         price_tick_size=_optional_decimal(price.get("tickSize")),
         quantity_step_size=_optional_decimal(lot.get("stepSize")),
         minimum_quantity=_optional_decimal(lot.get("minQty")),
@@ -385,15 +381,6 @@ def _optional_decimal(value: object) -> Decimal | None:
         return Decimal(str(value))
     except InvalidOperation as exc:
         raise BinanceSpotProviderError(f"Invalid Binance decimal value: {value}") from exc
-
-
-def _optional_int(value: object) -> int | None:
-    if value is None:
-        return None
-    try:
-        return int(str(value))
-    except ValueError as exc:
-        raise BinanceSpotProviderError(f"Invalid Binance integer value: {value}") from exc
 
 
 def _symbol(value: object) -> str:
