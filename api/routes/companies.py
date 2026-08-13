@@ -13,7 +13,7 @@ from api.schemas.company import (
     CompanyIdentifierResponse,
     CompanyInstrumentResponse,
     FacetCountResponse,
-    MarketCode,
+    CompanyCountryCode,
 )
 from api.services.company_catalog_service import CompanyCatalogService
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 )
 def list_companies(
     service: Annotated[CompanyCatalogService, Depends(get_company_catalog_service)],
-    country: MarketCode | None = Query(default=None),
+    country: CompanyCountryCode | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100),
     sector: str | None = Query(default=None, max_length=255),
     offset: int = Query(default=0, ge=0),

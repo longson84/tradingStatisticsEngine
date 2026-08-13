@@ -44,7 +44,7 @@ def test_canonical_analysis_requests_do_not_accept_symbol_or_data_source_identit
 def test_single_instrument_analysis_responses_do_not_claim_implicit_refresh():
     schema = app.openapi()["components"]["schemas"]
 
-    for name in ("SingleTickerAnalysisResponse", "RarityAnalysisResponse"):
+    for name in ("SingleInstrumentAnalysisResponse", "RarityAnalysisResponse"):
         properties = schema[name]["properties"]
         assert "refreshed" not in properties, name
         assert "refresh_warning" not in properties, name
@@ -58,3 +58,22 @@ def test_single_instrument_analysis_responses_do_not_claim_implicit_refresh():
 
     history = schema["InstrumentPriceHistoryResponse"]["properties"]
     assert {"expected_last_session", "is_stale"} <= history.keys()
+
+
+def test_openapi_has_no_legacy_company_or_market_identity_contracts():
+    schema = app.openapi()
+    paths = set(schema["paths"])
+
+    assert {
+        "/company/lists",
+        "/company/watchlists",
+        "/company/price-history",
+        "/build/venues",
+    }.isdisjoint(paths)
+    assert "/crypto/markets" not in paths
+    assert "/crypto/instruments" in paths
+    assert "SingleTickerAnalysisResponse" not in schema["components"]["schemas"]
+
+    response = schema["components"]["schemas"]["SingleInstrumentAnalysisResponse"]
+    assert "instrument_prices" in response["properties"]
+    assert "ticker_prices" not in response["properties"]

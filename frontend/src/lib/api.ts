@@ -87,10 +87,10 @@ export type CompanyCatalogResponse = components["schemas"]["CompanyCatalogRespon
 export type CompanyCatalogQuery = NonNullable<
   operations["listCompanies"]["parameters"]["query"]
 >
-export type CryptoMarketInstrument = components["schemas"]["CryptoMarketInstrumentResponse"]
-export type CryptoMarketListResponse = components["schemas"]["CryptoMarketListResponse"]
-export type CryptoMarketQuery = NonNullable<
-  operations["listCryptoMarkets"]["parameters"]["query"]
+export type CryptoInstrument = components["schemas"]["CryptoInstrumentResponse"]
+export type CryptoInstrumentListResponse = components["schemas"]["CryptoInstrumentListResponse"]
+export type CryptoInstrumentQuery = NonNullable<
+  operations["listCryptoInstruments"]["parameters"]["query"]
 >
 export type ReferenceRateInstrument = components["schemas"]["ReferenceRateInstrumentResponse"]
 export type ReferenceRateListResponse = components["schemas"]["ReferenceRateListResponse"]
@@ -261,7 +261,7 @@ export type DistributionRow = components["schemas"]["DistributionRowResponse"]
 export type MonthlyStatRow = components["schemas"]["MonthlyStatRowResponse"]
 export type HealthRow = components["schemas"]["HealthRowResponse"]
 export type UndercutDistributionRow = components["schemas"]["UndercutDistributionRowResponse"]
-export type SingleTickerAnalysis = components["schemas"]["SingleTickerAnalysisResponse"]
+export type SingleInstrumentAnalysis = components["schemas"]["SingleInstrumentAnalysisResponse"]
 
 export function smaStrategyAnalysisApi(params: {
   instrument_id: number
@@ -272,7 +272,7 @@ export function smaStrategyAnalysisApi(params: {
   initial_capital: number
   start?: string
   end?: string
-}): Promise<SingleTickerAnalysis> {
+}): Promise<SingleInstrumentAnalysis> {
   return post("/backtest/analyze", {
     instrument_id: params.instrument_id,
     strategy: {
@@ -351,15 +351,15 @@ export function companiesApi(
   return get(`/companies${suffix}`)
 }
 
-export function cryptoMarketsApi(
-  params: CryptoMarketQuery = {},
-): Promise<CryptoMarketListResponse> {
+export function cryptoInstrumentsApi(
+  params: CryptoInstrumentQuery = {},
+): Promise<CryptoInstrumentListResponse> {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value != null) query.set(key, String(value))
   }
   const suffix = query.size > 0 ? `?${query}` : ""
-  return get(`/crypto/markets${suffix}`)
+  return get(`/crypto/instruments${suffix}`)
 }
 
 export function referenceRatesApi(

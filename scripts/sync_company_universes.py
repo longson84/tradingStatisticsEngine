@@ -2,7 +2,7 @@
 
 Examples:
     uv run python -m scripts.sync_company_universes --all
-    uv run python -m scripts.sync_company_universes --market vn --dry-run
+    uv run python -m scripts.sync_company_universes --country vn --dry-run
     uv run python -m scripts.sync_company_universes --universe US500 --force
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument("--all", action="store_true")
-    selection.add_argument("--market", choices=("us", "vn"))
+    selection.add_argument("--country", choices=("us", "vn"))
     selection.add_argument(
         "--universe",
         action="append",
@@ -49,9 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
 def selected_universes(args: argparse.Namespace) -> tuple[str, ...]:
     if args.all:
         return ALL_UNIVERSE_ORDER
-    if args.market == "us":
+    if args.country == "us":
         return US_UNIVERSE_ORDER
-    if args.market == "vn":
+    if args.country == "vn":
         return VN_UNIVERSE_FAMILY
     return tuple(args.universe or ())
 

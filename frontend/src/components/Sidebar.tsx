@@ -39,7 +39,7 @@ const sections = [
     links: [
       { to: "/companies", label: "Companies", icon: Building2 },
       { to: "/instruments", label: "Instruments", icon: ListTree },
-      { to: "/company/price-history", label: "Price History", icon: ChartNoAxesCombined },
+      { to: "/price-history", label: "Price History", icon: ChartNoAxesCombined },
     ],
   },
   {

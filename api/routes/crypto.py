@@ -1,4 +1,4 @@
-"""Read-only crypto market catalog endpoints."""
+"""Read-only crypto instrument catalog endpoints."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, Query
 
 from api.deps import get_crypto_instrument_service
 from api.schemas.crypto import (
-    CryptoMarketFacetCountResponse,
-    CryptoMarketFacetsResponse,
-    CryptoMarketInstrumentResponse,
-    CryptoMarketListResponse,
-    CryptoMarketSummaryResponse,
+    CryptoInstrumentFacetCountResponse,
+    CryptoInstrumentFacetsResponse,
+    CryptoInstrumentResponse,
+    CryptoInstrumentListResponse,
+    CryptoInstrumentSummaryResponse,
     CryptoVenueFacetResponse,
 )
 from api.services.crypto_instrument_service import CryptoInstrumentService
@@ -22,11 +22,11 @@ router = APIRouter(prefix="/crypto", tags=["crypto"])
 
 
 @router.get(
-    "/markets",
-    response_model=CryptoMarketListResponse,
-    operation_id="listCryptoMarkets",
+    "/instruments",
+    response_model=CryptoInstrumentListResponse,
+    operation_id="listCryptoInstruments",
 )
-def list_crypto_markets(
+def list_crypto_instruments(
     service: Annotated[
         CryptoInstrumentService,
         Depends(get_crypto_instrument_service),
@@ -37,7 +37,7 @@ def list_crypto_markets(
     status: Literal["active", "inactive", "all"] = Query(default="active"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=500),
-) -> CryptoMarketListResponse:
+) -> CryptoInstrumentListResponse:
     normalized_venue = venue_code.upper().strip() if venue_code else None
     result = service.list_instruments(
         venue_code=normalized_venue,
@@ -51,14 +51,14 @@ def list_crypto_markets(
         (row for row in result.facets.venues if row.code == normalized_venue),
         None,
     ) if normalized_venue else None
-    return CryptoMarketListResponse(
+    return CryptoInstrumentListResponse(
         venue_code=normalized_venue,
         venue_name=selected_venue.name if selected_venue else None,
         total=result.total,
         offset=offset,
         limit=limit,
         instruments=[
-            CryptoMarketInstrumentResponse(
+            CryptoInstrumentResponse(
                 id=row.id,
                 venue_code=row.venue_code,
                 venue_name=row.venue_name,
@@ -77,7 +77,7 @@ def list_crypto_markets(
             )
             for row in result.rows
         ],
-        facets=CryptoMarketFacetsResponse(
+        facets=CryptoInstrumentFacetsResponse(
             venues=[
                 CryptoVenueFacetResponse(
                     code=row.code,
@@ -87,13 +87,13 @@ def list_crypto_markets(
                 for row in result.facets.venues
             ],
             quote_assets=[
-                CryptoMarketFacetCountResponse(value=row.value, count=row.count)
+                CryptoInstrumentFacetCountResponse(value=row.value, count=row.count)
                 for row in result.facets.quote_assets
             ],
             active_count=result.facets.active_count,
             inactive_count=result.facets.inactive_count,
         ),
-        summary=CryptoMarketSummaryResponse(
+        summary=CryptoInstrumentSummaryResponse(
             instrument_count=result.summary.instrument_count,
             active_count=result.summary.active_count,
             inactive_count=result.summary.inactive_count,

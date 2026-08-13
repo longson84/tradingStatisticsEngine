@@ -10,7 +10,6 @@ from api.db.models import (
     Base,
     Company,
     FundamentalFact,
-    FundamentalRefreshRun,
     FundamentalReport,
     Instrument,
     ProviderValuationObservation,
@@ -151,39 +150,3 @@ def test_repository_aggregates_universe_status():
         assert status.valuation_count == 1
         assert status.sources == ("vnstock-vci-4.0.5",)
         assert repository.get_universe_status("VN30") is None
-
-
-def test_repository_records_durable_refresh_run():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    with Session(engine) as session:
-        _seed(session)
-        repository = SqlAlchemyFundamentalRepository(session)
-        repository.create_refresh_run(
-            job_id="job-1",
-            universe="VN100",
-            source="vnstock-vci-4.0.5",
-            provider_version="4.0.5",
-            requested_count=100,
-            reused_count=30,
-            started_at=FETCHED_AT,
-        )
-        session.commit()
-        repository.finish_refresh_run(
-            job_id="job-1",
-            status="completed",
-            succeeded_count=68,
-            failed_count=2,
-            finished_at=datetime(2026, 8, 3, 1, tzinfo=UTC),
-            error_summary={"errors": [{"symbol": "AAA"}]},
-        )
-        session.commit()
-
-        run = session.scalar(select(FundamentalRefreshRun))
-        assert run is not None
-        assert run.status == "completed"
-        assert run.requested_count == 100
-        assert run.reused_count == 30
-        assert run.succeeded_count == 68
-        assert run.failed_count == 2
-        assert run.error_summary == {"errors": [{"symbol": "AAA"}]}

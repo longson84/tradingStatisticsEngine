@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
-import { CryptoMarketTable } from "@/components/crypto/CryptoMarketTable"
+import { CryptoInstrumentTable } from "@/components/crypto/CryptoInstrumentTable"
 import { Sidebar } from "@/components/Sidebar"
 import { Pagination } from "@/components/ui/Pagination"
-import { cryptoMarketsApi } from "@/lib/api"
+import { cryptoInstrumentsApi } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
@@ -13,19 +13,19 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue"
 const ALL_QUOTES = "ALL"
 const ALL_VENUES = "ALL"
 const PAGE_SIZE = 50
-type MarketStatus = "active" | "inactive" | "all"
+type InstrumentStatus = "active" | "inactive" | "all"
 
 
-export function CryptoMarketsPage() {
-  const [status, setStatus] = useState<MarketStatus>("active")
+export function CryptoInstrumentsPage() {
+  const [status, setStatus] = useState<InstrumentStatus>("active")
   const [venueCode, setVenueCode] = useState(ALL_VENUES)
   const [quoteAsset, setQuoteAsset] = useState(ALL_QUOTES)
   const [query, setQuery] = useState("")
   const [offset, setOffset] = useState(0)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
-  const markets = useQuery({
-    queryKey: ["crypto-markets", status, venueCode, quoteAsset, debouncedQuery, offset],
-    queryFn: () => cryptoMarketsApi({
+  const instruments = useQuery({
+    queryKey: ["crypto-instruments", status, venueCode, quoteAsset, debouncedQuery, offset],
+    queryFn: () => cryptoInstrumentsApi({
       status,
       venue_code: venueCode === ALL_VENUES ? undefined : venueCode,
       quote_asset: quoteAsset === ALL_QUOTES ? undefined : quoteAsset,
@@ -37,7 +37,7 @@ export function CryptoMarketsPage() {
     refetchOnMount: "always",
     retry: false,
   })
-  const data = markets.data
+  const data = instruments.data
   const venueOptions = useMemo(() => {
     const options = data?.facets.venues ?? []
     if (
@@ -67,14 +67,14 @@ export function CryptoMarketsPage() {
               </p>
             </div>
             <div className="text-right text-xs text-muted-foreground">
-              <div>{fmtInt(data?.summary.instrument_count ?? 0)} catalog markets</div>
+              <div>{fmtInt(data?.summary.instrument_count ?? 0)} catalog instruments</div>
               <div>{catalogDate(data?.summary.catalog_fetched_at)}</div>
             </div>
           </div>
 
           {data && (
             <div className="mt-5 grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCell label="All markets" value={data.summary.instrument_count} />
+              <SummaryCell label="All instruments" value={data.summary.instrument_count} />
               <SummaryCell label="Trading now" value={data.summary.active_count} />
               <SummaryCell label="Inactive" value={data.summary.inactive_count} />
               <SummaryCell label="With stored history" value={data.summary.with_history_count} />
@@ -82,7 +82,7 @@ export function CryptoMarketsPage() {
           )}
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_260px_260px]">
-            <FilterGroup label="Market status">
+            <FilterGroup label="Instrument status">
               <FilterButton
                 active={status === "active"}
                 onClick={() => changeStatus("active")}
@@ -170,20 +170,20 @@ export function CryptoMarketsPage() {
             </label>
           </div>
 
-          {markets.isFetching && (
+          {instruments.isFetching && (
             <div className="h-1 overflow-hidden rounded-full bg-muted">
               <div className="h-full w-1/3 animate-pulse bg-primary" />
             </div>
           )}
-          {markets.error && !markets.isFetching && (
+          {instruments.error && !instruments.isFetching && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {markets.error.message}
+              {instruments.error.message}
             </div>
           )}
-          {data && !markets.isFetching && (
-            <CryptoMarketTable instruments={data.instruments} />
+          {data && !instruments.isFetching && (
+            <CryptoInstrumentTable instruments={data.instruments} />
           )}
-          {data && !markets.isFetching && (
+          {data && !instruments.isFetching && (
             <Pagination
               total={data.total}
               offset={data.offset}
@@ -196,7 +196,7 @@ export function CryptoMarketsPage() {
     </div>
   )
 
-  function changeStatus(next: MarketStatus) {
+  function changeStatus(next: InstrumentStatus) {
     setStatus(next)
     setOffset(0)
   }

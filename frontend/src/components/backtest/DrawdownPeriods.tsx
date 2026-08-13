@@ -5,7 +5,7 @@ const DD_MIN_THRESHOLD = 5   // minimum depth % to count as a drawdown period
 
 interface Props {
   equityStrategy: Record<string, number>
-  tickerPrices: Record<string, number>
+  instrumentPrices: Record<string, number>
   label?: string
 }
 
@@ -36,7 +36,7 @@ function todayIsoLocal(): string {
 
 function computeDrawdowns(
   curve: Record<string, number>,
-  tickerPrices: Record<string, number>,
+  instrumentPrices: Record<string, number>,
   top = 10
 ): Period[] {
   const sorted = Object.entries(curve).sort(([a], [b]) => a.localeCompare(b))
@@ -56,11 +56,11 @@ function computeDrawdowns(
       if (inDD) {
         periods.push({
           startDate,
-          startPx:     tickerPrices[startDate]    ?? null,
+          startPx:     instrumentPrices[startDate]    ?? null,
           troughDate,
-          troughPx:    tickerPrices[troughDate]   ?? null,
+          troughPx:    instrumentPrices[troughDate]   ?? null,
           recoveryDate: date,
-          recoveryPx:  tickerPrices[date]         ?? null,
+          recoveryPx:  instrumentPrices[date]         ?? null,
           depthPct: (troughVal / startPeak - 1) * 100,
           daysToTrough: daysBetween(startDate, troughDate),
           recoveryDays: daysBetween(troughDate, date),
@@ -86,9 +86,9 @@ function computeDrawdowns(
   if (inDD) {
     periods.push({
       startDate,
-      startPx:     tickerPrices[startDate]  ?? null,
+      startPx:     instrumentPrices[startDate]  ?? null,
       troughDate,
-      troughPx:    tickerPrices[troughDate] ?? null,
+      troughPx:    instrumentPrices[troughDate] ?? null,
       recoveryDate: null,
       recoveryPx:  null,
       depthPct: (troughVal / startPeak - 1) * 100,
@@ -111,8 +111,8 @@ function stripeColor(pct: number): string {
   return "rgba(249,115,22,0.50)"
 }
 
-export function DrawdownPeriods({ equityStrategy, tickerPrices, label = "Strategy" }: Props) {
-  const periods = computeDrawdowns(equityStrategy, tickerPrices)
+export function DrawdownPeriods({ equityStrategy, instrumentPrices, label = "Strategy" }: Props) {
+  const periods = computeDrawdowns(equityStrategy, instrumentPrices)
 
   return (
     <div>

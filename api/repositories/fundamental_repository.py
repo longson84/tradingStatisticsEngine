@@ -148,26 +148,3 @@ class FundamentalRepository(Protocol):
     def upsert_fundamentals(
         self, batch: FundamentalWriteBatch
     ) -> FundamentalWriteResult: ...
-
-    def create_refresh_run(
-        self,
-        *,
-        job_id: str,
-        universe: str,
-        source: str,
-        provider_version: str | None,
-        requested_count: int,
-        reused_count: int,
-        started_at: datetime,
-    ) -> None: ...
-
-    def finish_refresh_run(
-        self,
-        *,
-        job_id: str,
-        status: str,
-        succeeded_count: int,
-        failed_count: int,
-        finished_at: datetime,
-        error_summary: dict[str, object] | None,
-    ) -> None: ...

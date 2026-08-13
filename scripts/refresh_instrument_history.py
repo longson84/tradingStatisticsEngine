@@ -19,8 +19,8 @@ from api.providers.binance_spot import (
     BinanceSpotHistoryLoader,
 )
 from api.providers.vietnam_price_loader import VietnamPriceLoader
-from api.repositories.sqlalchemy_crypto_market_repository import (
-    SqlAlchemyCryptoMarketRepository,
+from api.repositories.sqlalchemy_crypto_instrument_repository import (
+    SqlAlchemyCryptoInstrumentRepository,
 )
 from api.repositories.sqlalchemy_instrument_analysis_repository import (
     SqlAlchemyInstrumentAnalysisRepository,
@@ -196,7 +196,7 @@ def _refresh_binance_spot(
 ) -> str:
     with Session(engine) as session:
         records = BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).list_instruments(symbols=(route.provider_symbol,))
     if len(records) != 1:
         raise RuntimeError(f"Unknown Binance Spot instrument: {instrument.symbol}")
@@ -213,7 +213,7 @@ def _refresh_binance_spot(
         )
     with session_scope(engine) as session:
         BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session),
+            SqlAlchemyCryptoInstrumentRepository(session),
             SqlAlchemyPriceBarRepository(session),
         ).store_history(record, klines, fetched_at=datetime.now(UTC))
     return klines[-1].source if klines else route.price_adapter

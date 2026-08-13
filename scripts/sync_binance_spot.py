@@ -24,8 +24,8 @@ from api.providers.binance_spot import (
     BinanceSpotClient,
     BinanceSpotHistoryLoader,
 )
-from api.repositories.sqlalchemy_crypto_market_repository import (
-    SqlAlchemyCryptoMarketRepository,
+from api.repositories.sqlalchemy_crypto_instrument_repository import (
+    SqlAlchemyCryptoInstrumentRepository,
 )
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
@@ -45,7 +45,7 @@ def main() -> None:
         catalog = rest_client.fetch_catalog()
         with session_scope(engine) as session:
             result = BinanceSpotService(
-                SqlAlchemyCryptoMarketRepository(session)
+                SqlAlchemyCryptoInstrumentRepository(session)
             ).sync_catalog(catalog)
         print(
             "Binance Spot catalog synchronized: "
@@ -68,7 +68,7 @@ def main() -> None:
             )
         with Session(engine) as session:
             instruments = BinanceSpotService(
-                SqlAlchemyCryptoMarketRepository(session)
+                SqlAlchemyCryptoInstrumentRepository(session)
             ).list_instruments(symbols=symbols, quote_assets=quote_assets)
         if symbols:
             missing = sorted(set(symbols) - {row.symbol for row in instruments})
@@ -105,7 +105,7 @@ def main() -> None:
                 fetched_at = datetime.now(UTC)
                 with session_scope(engine) as session:
                     service = BinanceSpotService(
-                        SqlAlchemyCryptoMarketRepository(session),
+                        SqlAlchemyCryptoInstrumentRepository(session),
                         SqlAlchemyPriceBarRepository(session),
                     )
                     write = service.store_history(

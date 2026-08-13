@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from fastapi import HTTPException
 
-from api.routes.backtest import analyze_single_ticker
+from api.routes.backtest import analyze_single_instrument
 from api.schemas.backtest import AnalyzeRequest, PriceVsMAConfig
 from api.repositories.instrument_analysis_repository import AnalysisInstrumentRecord
 from api.services.instrument_analysis_service import (
@@ -99,7 +99,7 @@ def test_analyze_maps_company_price_errors(error: Exception, status: int):
     service = StubInstrumentAnalysisService(error)
 
     with pytest.raises(HTTPException) as raised:
-        analyze_single_ticker(_request(), service)
+        analyze_single_instrument(_request(), service)
 
     assert raised.value.status_code == status
     assert service.calls == [42]
@@ -108,7 +108,7 @@ def test_analyze_maps_company_price_errors(error: Exception, status: int):
 def test_analyze_uses_stored_history_and_preserves_coverage_metadata():
     service = StubInstrumentAnalysisService(_stored_prices())
 
-    result = analyze_single_ticker(
+    result = analyze_single_instrument(
         _request(start=date(2024, 6, 3)),
         service,
     )

@@ -186,7 +186,7 @@ explicit migration and a source capable of providing reliable membership dates.
 - The safe operational default synchronizes only the catalog. History loading
   requires an explicit symbol or quote-asset selector and enforces a maximum
   selection size unless the operator deliberately raises it.
-- `GET /crypto/markets` is the read projection for the Crypto Instruments UI. It
+- `GET /crypto/instruments` is the read projection for the Crypto Instruments UI. It
   pages venue instruments in PostgreSQL, applies search, venue, quote-asset,
   and active-state filters server-side, and returns trading rules plus derived
   price coverage. Venue is an explicit row and filter dimension so Binance Spot
@@ -644,8 +644,8 @@ Sparse P/E, P/B, P/S, or EV/EBITDA values explicitly reported by a provider are
 stored separately in `provider_valuation_observations` for comparison and audit.
 They are not forward-filled as the canonical daily series. Daily valuation is
 calculated from the daily PostgreSQL close and the latest eligible point-in-time
-fundamental. `fundamental_refresh_runs` durably records provider version, counts,
-status, and errors for one universe refresh.
+Operational refresh history was originally recorded per Universe; that model
+was later retired in favor of per-Instrument observation and refresh state.
 
 Consequences: the schema supports revisions, new metrics, different currencies,
 reported versus derived values, and reproducible calculation versions without
@@ -859,10 +859,9 @@ not duplicate migrated history. Incremental mode reuses recently refreshed
 symbols. Full mode bypasses data from before that run while still reusing an
 overlapping ticker refreshed earlier in the same ordered all-universe run.
 
-Every universe run is recorded in `fundamental_refresh_runs` with requested,
-reused, succeeded, and failed counts plus a bounded error summary. A failure for
-one symbol rolls back only that symbol and preserves all previously stored
-facts. The API and UI now describe both price and fundamental storage as
+The worker originally recorded a Universe-scoped refresh run. A failure for one
+symbol rolls back only that symbol and preserves all previously stored facts.
+The API and UI now describe both price and fundamental storage as
 PostgreSQL; file-size and cache-directory fields were removed from the typed
 contract.
 
@@ -941,8 +940,8 @@ the exact `year`, `quarter`, and `ratioType` fields. Normalization remains in
 the day after `publicDate`, preventing same-day and historical look-ahead.
 
 Fundamental persistence uses stable source identity `vci`; package name and
-runtime version belong in methodology and `fundamental_refresh_runs`, not in a
-report uniqueness key. Migration 0010 relabels existing VN VCI reports and
+runtime version belong in observation methodology, not in a report uniqueness
+key. Migration 0010 relabels existing VN VCI reports and
 valuations and moves their fact calculation identity to `legacy-vci`. This
 allows sponsored refreshes to update the same report, fact, and valuation rows
 instead of duplicating the full history whenever the client package changes.
@@ -1085,8 +1084,8 @@ price coverage, exchange, and universe membership. `/companies` is a separate
 issuer catalog backed by `GET /companies/catalog`; it returns one company row
 with nested identifiers and instruments. The established `GET /companies`
 instrument contract remains temporarily available to avoid a simultaneous
-cross-application API rename. The legacy frontend `/company/lists` URL redirects
-to `/instruments` and preserves its query string.
+cross-application API rename. The obsolete `/company/lists` product URL was
+removed after the new catalog routes became canonical.
 
 Consequences: company counts and instrument counts are no longer conflated in
 the UI. Alphabet can appear once in the company catalog with GOOG and GOOGL,
@@ -1265,8 +1264,8 @@ as-of and synchronization metadata, active and total membership counts,
 instrument types, and venues. Its membership table reuses the canonical
 instrument discovery endpoint with an exact universe filter and 50-row
 server-side pagination. The Watchlists tab retains user-managed ordered
-membership. `/company/watchlists` is retired as a product URL and redirects to
-the new watchlist collection URL for bookmark compatibility.
+membership. `/company/watchlists` was removed after the collection URL became
+the canonical navigation and bookmark target.
 
 Universes and watchlists remain separate persistence models. A universe is a
 provider- or system-synchronized collection with provenance and unordered
@@ -1832,10 +1831,8 @@ equity observation schedule and VN30 the Vietnam equity schedule without
 inventing an execution Venue. Price History reads both from PostgreSQL and
 never refreshes during the request.
 
-The one-time `scripts.migrate_legacy_benchmark_cache` command validates cache
-identity, row counts, dates, and source metadata before importing the existing
-rows and can delete the four source files only after both series commit and
-verify. Future acquisition uses `scripts.sync_market_indices` or an exact-
+The one-time benchmark-cache importer was removed after the cutover completed.
+Future acquisition uses `scripts.sync_market_indices` or an exact-
 Instrument Data Operation. The Universe price command no longer has a hidden
 benchmark side effect, and the runtime cache reader/writer is removed.
 
@@ -1896,3 +1893,35 @@ operations without being mistaken for companies, venues, assets, or providers.
 Future index families reuse the same identity and observation model; any new
 benchmark association must be added as explicit analytical policy rather than
 inferred from a non-Vietnam currency or symbol.
+
+### 2026-08-13 — Final legacy identity and workflow retirement
+
+Context: canonical Instrument IDs already owned all analysis and observation
+writes, but several obsolete names and workflows survived after the cutover.
+Universe-provider snapshots called issuer/listing country a `market`; the live
+frontend still registered `/company/*` and `/build/venues` aliases; strategy
+analysis exposed `SingleTickerAnalysis` and `ticker_prices`; and an unused
+Universe-scoped fundamental run table plus duplicate Universe price and one-time
+benchmark import scripts remained in the codebase.
+
+Decision: Universe ingestion now names its provider boundary `country_code` and
+the bootstrap selector `--country`; this is source metadata for validating
+Companies and Venues, not canonical Instrument identity or adapter routing.
+Price History moves to `/price-history`, and obsolete compatibility URLs are no
+longer registered. Single-instrument strategy analysis and its price series use
+Instrument terminology throughout the engine, API schema, generated client, and
+frontend. The Crypto Instruments projection is `/crypto/instruments`, and its
+schemas, repositories, services, and UI use Instrument rather than Market names.
+
+Migration `0022` drops `fundamental_refresh_runs`. Data Operations does not keep
+collection-scoped run history: durable operational truth remains the exact
+Instrument's price coverage, refresh-state attempt metadata, fundamental report
+fetch timestamps, and observation provenance. The unused bulk Universe price
+script and completed one-time benchmark-cache importer are removed; all ongoing
+updates use metadata-planned Data Operations or exact-Instrument refresh tools.
+
+Consequences: no live API request identifies an analytical target as
+`market + ticker`, no application route is nested under legacy Company URLs,
+and no operational write is keyed to a synthetic market or collection history
+row. Words such as market index, market benchmark, or external market data
+remain valid domain language and do not imply a legacy identity boundary.

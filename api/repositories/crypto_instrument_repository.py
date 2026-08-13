@@ -61,7 +61,7 @@ class SpotInstrumentRecord:
 
 
 @dataclass(frozen=True)
-class SpotMarketListQuery:
+class SpotInstrumentListQuery:
     venue_code: str | None = None
     search: str | None = None
     quote_asset: str | None = None
@@ -71,7 +71,7 @@ class SpotMarketListQuery:
 
 
 @dataclass(frozen=True)
-class SpotMarketListRecord:
+class SpotInstrumentListRecord:
     id: int
     venue_code: str
     venue_name: str
@@ -90,28 +90,28 @@ class SpotMarketListRecord:
 
 
 @dataclass(frozen=True)
-class SpotMarketFacetCount:
+class SpotInstrumentFacetCount:
     value: str
     count: int
 
 
 @dataclass(frozen=True)
-class SpotMarketVenueFacet:
+class SpotInstrumentVenueFacet:
     code: str
     name: str
     count: int
 
 
 @dataclass(frozen=True)
-class SpotMarketListFacets:
-    venues: tuple[SpotMarketVenueFacet, ...]
-    quote_assets: tuple[SpotMarketFacetCount, ...]
+class SpotInstrumentListFacets:
+    venues: tuple[SpotInstrumentVenueFacet, ...]
+    quote_assets: tuple[SpotInstrumentFacetCount, ...]
     active_count: int
     inactive_count: int
 
 
 @dataclass(frozen=True)
-class SpotMarketSummary:
+class SpotInstrumentSummary:
     instrument_count: int
     active_count: int
     inactive_count: int
@@ -120,14 +120,14 @@ class SpotMarketSummary:
 
 
 @dataclass(frozen=True)
-class SpotMarketListResult:
+class SpotInstrumentListResult:
     total: int
-    rows: tuple[SpotMarketListRecord, ...]
-    facets: SpotMarketListFacets
-    summary: SpotMarketSummary
+    rows: tuple[SpotInstrumentListRecord, ...]
+    facets: SpotInstrumentListFacets
+    summary: SpotInstrumentSummary
 
 
-class CryptoMarketRepository(Protocol):
+class CryptoInstrumentRepository(Protocol):
     def sync_spot_catalog(self, catalog: SpotCatalogWrite) -> SpotCatalogSyncResult: ...
 
     def list_spot_instruments(
@@ -138,7 +138,7 @@ class CryptoMarketRepository(Protocol):
         quote_assets: tuple[str, ...] = (),
     ) -> tuple[SpotInstrumentRecord, ...]: ...
 
-    def list_spot_markets(
+    def list_spot_catalog(
         self,
-        query: SpotMarketListQuery,
-    ) -> SpotMarketListResult: ...
+        query: SpotInstrumentListQuery,
+    ) -> SpotInstrumentListResult: ...

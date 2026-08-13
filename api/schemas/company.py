@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 
-MarketCode = Literal["US", "VN"]
+CompanyCountryCode = Literal["US", "VN"]
 class FacetCountResponse(BaseModel):
     value: str
     count: int
@@ -32,7 +32,7 @@ class CompanyCatalogItemResponse(BaseModel):
     id: int
     display_name: str
     legal_name: str | None = None
-    country_code: MarketCode
+    country_code: CompanyCountryCode
     sector: str | None = None
     industry: str | None = None
     is_active: bool

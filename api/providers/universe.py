@@ -7,7 +7,7 @@ import re
 from typing import Literal, Protocol
 
 
-Market = Literal["US", "VN"]
+CountryCode = Literal["US", "VN"]
 _US_TICKER = re.compile(r"^[A-Z0-9][A-Z0-9-]{0,31}$")
 _VN_TICKER = re.compile(r"^[A-Z0-9][A-Z0-9]{0,31}$")
 
@@ -49,7 +49,7 @@ class UniverseConstituent:
 class UniverseSnapshot:
     code: str
     name: str
-    market: Market
+    country_code: CountryCode
     description: str
     effective_date: date | None
     fetched_at: datetime
@@ -88,17 +88,17 @@ class UniverseProviderRegistry:
         return provider.fetch(code)
 
 
-def normalize_ticker(value: object, market: Market) -> str:
+def normalize_ticker(value: object, country_code: CountryCode) -> str:
     """Normalize a provider symbol to the application's price-loader ticker."""
     ticker = str(value).upper().strip()
-    if market == "US":
+    if country_code == "US":
         ticker = ticker.replace(".", "-").replace("/", "-")
         pattern = _US_TICKER
     else:
         pattern = _VN_TICKER
     if not ticker or not pattern.fullmatch(ticker):
         raise UniverseProviderDataError(
-            f"Invalid {market} universe ticker: {value!r}"
+            f"Invalid {country_code} universe ticker: {value!r}"
         )
     return ticker
 
@@ -113,7 +113,7 @@ def optional_text(value: object) -> str | None:
 def make_constituent(
     *,
     ticker: object,
-    market: Market,
+    country_code: CountryCode,
     company_name: object = None,
     sector: object = None,
     industry: object = None,
@@ -121,7 +121,7 @@ def make_constituent(
     company_identifiers: tuple[UniverseCompanyIdentifier, ...] = (),
 ) -> UniverseConstituent:
     listing_symbol = str(ticker).upper().strip()
-    canonical = normalize_ticker(ticker, market)
+    canonical = normalize_ticker(ticker, country_code)
     return UniverseConstituent(
         canonical_ticker=canonical,
         listing_symbol=listing_symbol,

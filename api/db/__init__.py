@@ -7,7 +7,6 @@ layer imports this package.
 from api.db.models import (
     Base,
     FundamentalFact,
-    FundamentalRefreshRun,
     FundamentalReport,
     Instrument,
     PriceBar,
@@ -24,7 +23,6 @@ from api.db.session import create_db_engine, session_scope
 __all__ = [
     "Base",
     "FundamentalFact",
-    "FundamentalRefreshRun",
     "FundamentalReport",
     "Instrument",
     "PriceBar",

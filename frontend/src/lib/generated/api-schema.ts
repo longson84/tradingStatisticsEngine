@@ -14,10 +14,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Analyze Single Ticker
-         * @description Full analytics for a single-ticker strategy: performance, trades, heatmaps, health.
+         * Analyze Single Instrument
+         * @description Full analytics for one exact canonical Instrument strategy.
          */
-        post: operations["analyze_single_ticker_backtest_analyze_post"];
+        post: operations["analyzeSingleInstrumentStrategy"];
         delete?: never;
         options?: never;
         head?: never;
@@ -41,15 +41,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/crypto/markets": {
+    "/crypto/instruments": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Crypto Markets */
-        get: operations["listCryptoMarkets"];
+        /** List Crypto Instruments */
+        get: operations["listCryptoInstruments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -436,26 +436,43 @@ export interface components {
             /** Venue Code */
             venue_code?: string | null;
         };
-        /** CryptoMarketFacetCountResponse */
-        CryptoMarketFacetCountResponse: {
+        /** CryptoInstrumentFacetCountResponse */
+        CryptoInstrumentFacetCountResponse: {
             /** Count */
             count: number;
             /** Value */
             value: string;
         };
-        /** CryptoMarketFacetsResponse */
-        CryptoMarketFacetsResponse: {
+        /** CryptoInstrumentFacetsResponse */
+        CryptoInstrumentFacetsResponse: {
             /** Active Count */
             active_count: number;
             /** Inactive Count */
             inactive_count: number;
             /** Quote Assets */
-            quote_assets: components["schemas"]["CryptoMarketFacetCountResponse"][];
+            quote_assets: components["schemas"]["CryptoInstrumentFacetCountResponse"][];
             /** Venues */
             venues: components["schemas"]["CryptoVenueFacetResponse"][];
         };
-        /** CryptoMarketInstrumentResponse */
-        CryptoMarketInstrumentResponse: {
+        /** CryptoInstrumentListResponse */
+        CryptoInstrumentListResponse: {
+            facets: components["schemas"]["CryptoInstrumentFacetsResponse"];
+            /** Instruments */
+            instruments: components["schemas"]["CryptoInstrumentResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            summary: components["schemas"]["CryptoInstrumentSummaryResponse"];
+            /** Total */
+            total: number;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
+        /** CryptoInstrumentResponse */
+        CryptoInstrumentResponse: {
             /** Base Asset */
             base_asset: string;
             /** First Session */
@@ -487,25 +504,8 @@ export interface components {
             /** Venue Name */
             venue_name: string;
         };
-        /** CryptoMarketListResponse */
-        CryptoMarketListResponse: {
-            facets: components["schemas"]["CryptoMarketFacetsResponse"];
-            /** Instruments */
-            instruments: components["schemas"]["CryptoMarketInstrumentResponse"][];
-            /** Limit */
-            limit: number;
-            /** Offset */
-            offset: number;
-            summary: components["schemas"]["CryptoMarketSummaryResponse"];
-            /** Total */
-            total: number;
-            /** Venue Code */
-            venue_code?: string | null;
-            /** Venue Name */
-            venue_name?: string | null;
-        };
-        /** CryptoMarketSummaryResponse */
-        CryptoMarketSummaryResponse: {
+        /** CryptoInstrumentSummaryResponse */
+        CryptoInstrumentSummaryResponse: {
             /** Active Count */
             active_count: number;
             /** Catalog Fetched At */
@@ -1584,8 +1584,8 @@ export interface components {
             /** With History Count */
             with_history_count: number;
         };
-        /** SingleTickerAnalysisResponse */
-        SingleTickerAnalysisResponse: {
+        /** SingleInstrumentAnalysisResponse */
+        SingleInstrumentAnalysisResponse: {
             bah: components["schemas"]["PerformanceSummaryResponse"];
             current_position: components["schemas"]["CurrentPositionResponse"] | null;
             /**
@@ -1612,6 +1612,10 @@ export interface components {
             health_by_year: components["schemas"]["HealthRowResponse"][];
             /** Instrument Id */
             instrument_id: number;
+            /** Instrument Prices */
+            instrument_prices: {
+                [key: string]: number;
+            };
             /** Is Stale */
             is_stale: boolean;
             /** Mae Percentiles Winners */
@@ -1647,10 +1651,6 @@ export interface components {
             strategy_label: string;
             /** Symbol */
             symbol: string;
-            /** Ticker Prices */
-            ticker_prices: {
-                [key: string]: number;
-            };
             /** To Date */
             to_date: string;
             /** Total Bars */
@@ -2091,7 +2091,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    analyze_single_ticker_backtest_analyze_post: {
+    analyzeSingleInstrumentStrategy: {
         parameters: {
             query?: never;
             header?: never;
@@ -2110,7 +2110,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SingleTickerAnalysisResponse"];
+                    "application/json": components["schemas"]["SingleInstrumentAnalysisResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2159,7 +2159,7 @@ export interface operations {
             };
         };
     };
-    listCryptoMarkets: {
+    listCryptoInstruments: {
         parameters: {
             query?: {
                 venue_code?: string | null;
@@ -2181,7 +2181,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CryptoMarketListResponse"];
+                    "application/json": components["schemas"]["CryptoInstrumentListResponse"];
                 };
             };
             /** @description Validation Error */

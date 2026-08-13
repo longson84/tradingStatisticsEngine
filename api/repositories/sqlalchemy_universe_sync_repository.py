@@ -195,9 +195,9 @@ class SqlAlchemyUniverseSyncRepository:
                 )
             for member in snapshot.members:
                 venue = EQUITY_VENUES_BY_CODE.get(member.venue_code)
-                if venue is None or venue.country_code != snapshot.market:
+                if venue is None or venue.country_code != snapshot.country_code:
                     raise UniverseSyncRejectedError(
-                        f"{snapshot.code} member {member.ticker} has cross-market "
+                        f"{snapshot.code} member {member.ticker} has a cross-country "
                         f"or unknown Venue {member.venue_code!r}"
                     )
             previous_count = result.removed_count + result.unchanged_count
@@ -273,7 +273,9 @@ class SqlAlchemyUniverseSyncRepository:
             for member in snapshot.members:
                 instrument = exact.get((member.venue_code, member.ticker))
                 if instrument is None:
-                    candidates = unvenued.get((snapshot.market, member.ticker), ())
+                    candidates = unvenued.get(
+                        (snapshot.country_code, member.ticker), ()
+                    )
                     if len(candidates) == 1:
                         instrument = candidates[0]
                 identifier_companies = {
@@ -294,7 +296,7 @@ class SqlAlchemyUniverseSyncRepository:
                     company = Company(
                         display_name=member.company_name,
                         legal_name=member.company_name,
-                        country_code=snapshot.market,
+                        country_code=snapshot.country_code,
                         source=snapshot.source,
                     )
                     session.add(company)
@@ -322,7 +324,9 @@ class SqlAlchemyUniverseSyncRepository:
                         venue=venues[member.venue_code],
                         ticker=member.ticker,
                         instrument_type="common_stock",
-                        currency="VND" if snapshot.market == "VN" else "USD",
+                        currency=(
+                            "VND" if snapshot.country_code == "VN" else "USD"
+                        ),
                         source=snapshot.source,
                     )
                     session.add(instrument)
@@ -332,7 +336,9 @@ class SqlAlchemyUniverseSyncRepository:
                     instrument.company = company
                     instrument.venue = venues[member.venue_code]
                     instrument.ticker = member.ticker
-                instrument.currency = "VND" if snapshot.market == "VN" else "USD"
+                instrument.currency = (
+                    "VND" if snapshot.country_code == "VN" else "USD"
+                )
                 instrument.quote_asset = quote_assets[instrument.currency]
                 instrument.settlement_asset = quote_assets[instrument.currency]
                 instrument.is_active = True
@@ -434,7 +440,7 @@ class SqlAlchemyUniverseSyncRepository:
             member.company_name,
         )
         company.legal_name = company.legal_name or member.company_name
-        company.country_code = snapshot.market
+        company.country_code = snapshot.country_code
         company.sector = member.sector or company.sector
         company.industry = member.industry or company.industry
         company.is_active = True
@@ -451,7 +457,9 @@ class SqlAlchemyUniverseSyncRepository:
         asset = instrument.base_asset
         if asset is None:
             asset = Asset(
-                canonical_code=f"EQUITY:{snapshot.market}:{instrument.id}",
+                canonical_code=(
+                    f"EQUITY:{snapshot.country_code}:{instrument.id}"
+                ),
                 name=member_name(company, instrument),
                 asset_type="equity",
                 source=snapshot.source,
@@ -585,7 +593,7 @@ class SqlAlchemyUniverseSyncRepository:
             return
         lock_keys = {
             "universe-sync:VN-family"
-            if snapshot.market == "VN"
+            if snapshot.country_code == "VN"
             else f"universe-sync:{snapshot.code}"
             for snapshot in snapshots
         }

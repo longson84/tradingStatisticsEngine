@@ -118,7 +118,7 @@ class VnstockUniverseProvider:
             )
             constituents.append(make_constituent(
                 ticker=symbol,
-                market="VN",
+                country_code="VN",
                 company_name=name,
                 sector=_SECTOR_BY_INDUSTRY_CODE.get(industry_code),
                 industry=industry_name,
@@ -134,7 +134,7 @@ class VnstockUniverseProvider:
         return UniverseSnapshot(
             code=code,
             name=_UNIVERSE_NAMES[code],
-            market="VN",
+            country_code="VN",
             description=f"Current {code} constituents from VNStock KBS.",
             effective_date=None,
             fetched_at=datetime.now(timezone.utc),
@@ -152,7 +152,7 @@ class VnstockUniverseProvider:
         return UniverseSnapshot(
             code=code,
             name=_UNIVERSE_NAMES[code],
-            market="VN",
+            country_code="VN",
             description=f"Derived current {code} constituents from VNStock KBS.",
             effective_date=None,
             fetched_at=max(snapshot.fetched_at for snapshot in bases),

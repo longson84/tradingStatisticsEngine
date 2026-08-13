@@ -32,7 +32,7 @@ StrategyConfig = BuyAndHoldConfig | PriceVsMAConfig
 
 
 # ---------------------------------------------------------------------------
-# Single-ticker analysis request/response
+# Single-instrument analysis request/response
 # ---------------------------------------------------------------------------
 
 class AnalyzeRequest(BaseModel):
@@ -136,7 +136,7 @@ class UndercutDistributionRowResponse(BaseModel):
     pct_of_winners: float
 
 
-class SingleTickerAnalysisResponse(BaseModel):
+class SingleInstrumentAnalysisResponse(BaseModel):
     symbol: str
     strategy_label: str
     from_date: str
@@ -157,7 +157,7 @@ class SingleTickerAnalysisResponse(BaseModel):
     health_by_year: list[HealthRowResponse]
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
-    ticker_prices: dict[str, float]
+    instrument_prices: dict[str, float]
     undercut_distribution: list[UndercutDistributionRowResponse] | None = None
     instrument_id: int
     venue_code: str | None = None

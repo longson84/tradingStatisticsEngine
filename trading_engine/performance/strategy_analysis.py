@@ -1,7 +1,7 @@
 """Rich single-ticker strategy analytics — all computation lives here.
 
-Entry point: run_single_ticker_analysis()
-Returns a SingleTickerAnalysis dataclass that the API route serialises to JSON.
+Entry point: run_single_instrument_analysis()
+Returns a SingleInstrumentAnalysis dataclass that the API route serialises to JSON.
 """
 from __future__ import annotations
 
@@ -131,7 +131,7 @@ class UndercutDistributionRow:
 
 
 @dataclass
-class SingleTickerAnalysis:
+class SingleInstrumentAnalysis:
     symbol: str
     strategy_label: str
     from_date: str
@@ -152,7 +152,7 @@ class SingleTickerAnalysis:
     health_by_year: list[HealthRow]
     equity_curve_strategy: dict[str, float]
     equity_curve_bah: dict[str, float]
-    ticker_prices: dict[str, float]
+    instrument_prices: dict[str, float]
     undercut_distribution: list[UndercutDistributionRow] | None = None
 
 
@@ -160,13 +160,13 @@ class SingleTickerAnalysis:
 # Main entry point
 # =============================================================================
 
-def run_single_ticker_analysis(
+def run_single_instrument_analysis(
     strategy: Strategy,
     symbol: str,
     prices: dict[str, PriceFrame],
     initial_capital: float = 10_000.0,
     strategy_label: str = "Strategy",
-) -> SingleTickerAnalysis:
+) -> SingleInstrumentAnalysis:
     """Run a full single-ticker backtest and return rich analytics.
 
     Runs both the supplied strategy and a Buy-and-Hold benchmark so the caller
@@ -221,7 +221,7 @@ def run_single_ticker_analysis(
 
     undercut_distribution = _compute_undercut_distribution(strategy, winners, price_frame)
 
-    return SingleTickerAnalysis(
+    return SingleInstrumentAnalysis(
         symbol=symbol,
         strategy_label=strategy_label,
         from_date=from_date,
@@ -242,7 +242,10 @@ def run_single_ticker_analysis(
         health_by_year=_compute_health_by_year(closed_trades, result.equity_curve),
         equity_curve_strategy={str(ts.date()): float(v) for ts, v in result.equity_curve.items()},
         equity_curve_bah={str(ts.date()): float(v) for ts, v in bah_result.equity_curve.items()},
-        ticker_prices={str(ts.date()): float(v) for ts, v in price_frame.data["close"].items()},
+        instrument_prices={
+            str(ts.date()): float(v)
+            for ts, v in price_frame.data["close"].items()
+        },
         undercut_distribution=undercut_distribution,
     )
 

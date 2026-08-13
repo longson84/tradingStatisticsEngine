@@ -4,15 +4,15 @@ from __future__ import annotations
 from datetime import datetime
 
 from api.providers.binance_spot import BinanceDailyKline, BinanceSpotCatalog
-from api.repositories.crypto_market_repository import (
+from api.repositories.crypto_instrument_repository import (
     CryptoAssetWrite,
-    CryptoMarketRepository,
+    CryptoInstrumentRepository,
     SpotCatalogSyncResult,
     SpotCatalogWrite,
     SpotInstrumentRecord,
     SpotInstrumentWrite,
-    SpotMarketListQuery,
-    SpotMarketListResult,
+    SpotInstrumentListQuery,
+    SpotInstrumentListResult,
 )
 from api.repositories.price_bar_repository import (
     PriceBarRefreshRepository,
@@ -63,7 +63,7 @@ class BinanceSpotSyncError(ValueError):
 class BinanceSpotService:
     def __init__(
         self,
-        catalog_repository: CryptoMarketRepository,
+        catalog_repository: CryptoInstrumentRepository,
         price_repository: PriceBarRefreshRepository | None = None,
     ) -> None:
         self._catalog_repository = catalog_repository
@@ -145,9 +145,9 @@ class BinanceSpotService:
         is_active: bool | None = True,
         offset: int = 0,
         limit: int = 50,
-    ) -> SpotMarketListResult:
-        return self._catalog_repository.list_spot_markets(
-            SpotMarketListQuery(
+    ) -> SpotInstrumentListResult:
+        return self._catalog_repository.list_spot_catalog(
+            SpotInstrumentListQuery(
                 venue_code=BINANCE_SPOT_VENUE,
                 search=search.strip() if search else None,
                 quote_asset=quote_asset.upper().strip() if quote_asset else None,

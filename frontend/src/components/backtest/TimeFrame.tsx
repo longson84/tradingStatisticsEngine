@@ -1,9 +1,9 @@
-import type { SingleTickerAnalysis } from "@/lib/api"
+import type { SingleInstrumentAnalysis } from "@/lib/api"
 import { fmtDate, fmtInt } from "@/lib/format"
 import { SectionTitle } from "./SectionTitle"
 
 interface Props {
-  data: SingleTickerAnalysis
+  data: SingleInstrumentAnalysis
 }
 
 export function TimeFrame({ data }: Props) {

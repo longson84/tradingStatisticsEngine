@@ -1,19 +1,19 @@
-import type { CryptoMarketInstrument } from "@/lib/api"
+import type { CryptoInstrument } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 
-export function CryptoMarketTable({
+export function CryptoInstrumentTable({
   instruments,
 }: {
-  instruments: CryptoMarketInstrument[]
+  instruments: CryptoInstrument[]
 }) {
   if (instruments.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card px-6 py-12 text-center">
-        <div className="text-sm font-medium">No spot markets found</div>
+        <div className="text-sm font-medium">No spot instruments found</div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Try another search, venue, quote asset, or market status.
+          Try another search, venue, quote asset, or instrument status.
         </p>
       </div>
     )

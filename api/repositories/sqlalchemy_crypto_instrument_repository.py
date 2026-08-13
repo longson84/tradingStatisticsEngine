@@ -1,4 +1,4 @@
-"""SQLAlchemy persistence for canonical crypto assets and venue spot markets."""
+"""SQLAlchemy persistence for canonical crypto assets and spot instruments."""
 from __future__ import annotations
 
 from sqlalchemy import case, delete, func, or_, select
@@ -13,18 +13,18 @@ from api.db.models import (
     UniverseMembership,
     Venue,
 )
-from api.repositories.crypto_market_repository import (
-    CryptoMarketRepository,
+from api.repositories.crypto_instrument_repository import (
+    CryptoInstrumentRepository,
     SpotCatalogSyncResult,
     SpotCatalogWrite,
     SpotInstrumentRecord,
-    SpotMarketFacetCount,
-    SpotMarketListFacets,
-    SpotMarketListQuery,
-    SpotMarketListRecord,
-    SpotMarketListResult,
-    SpotMarketSummary,
-    SpotMarketVenueFacet,
+    SpotInstrumentFacetCount,
+    SpotInstrumentListFacets,
+    SpotInstrumentListQuery,
+    SpotInstrumentListRecord,
+    SpotInstrumentListResult,
+    SpotInstrumentSummary,
+    SpotInstrumentVenueFacet,
 )
 from api.venue_calendars import venue_calendar
 
@@ -32,7 +32,7 @@ from api.venue_calendars import venue_calendar
 SPOT_PRICE_BASIS = "venue_unadjusted"
 
 
-class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
+class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
     def __init__(self, session: Session):
         self._session = session
 
@@ -283,10 +283,10 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             ) in self._session.execute(statement)
         )
 
-    def list_spot_markets(
+    def list_spot_catalog(
         self,
-        query: SpotMarketListQuery,
-    ) -> SpotMarketListResult:
+        query: SpotInstrumentListQuery,
+    ) -> SpotInstrumentListResult:
         base = Asset.__table__.alias("market_base_asset")
         quote = Asset.__table__.alias("market_quote_asset")
         base_filters = [Instrument.instrument_type == "spot"]
@@ -355,7 +355,7 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             .limit(query.limit)
         )
         rows = tuple(
-            SpotMarketListRecord(
+            SpotInstrumentListRecord(
                 id=instrument_id,
                 venue_code=venue_code,
                 venue_name=venue_name,
@@ -470,22 +470,22 @@ class SqlAlchemyCryptoMarketRepository(CryptoMarketRepository):
             )
         catalog_fetched_at = self._session.scalar(catalog_query)
         instrument_count, summary_active, summary_inactive, with_history = summary_counts
-        return SpotMarketListResult(
+        return SpotInstrumentListResult(
             total=total,
             rows=rows,
-            facets=SpotMarketListFacets(
+            facets=SpotInstrumentListFacets(
                 venues=tuple(
-                    SpotMarketVenueFacet(code=code, name=name, count=int(count))
+                    SpotInstrumentVenueFacet(code=code, name=name, count=int(count))
                     for code, name, count in venue_rows
                 ),
                 quote_assets=tuple(
-                    SpotMarketFacetCount(value=value, count=int(count))
+                    SpotInstrumentFacetCount(value=value, count=int(count))
                     for value, count in quote_rows
                 ),
                 active_count=int(active_count or 0),
                 inactive_count=int(inactive_count or 0),
             ),
-            summary=SpotMarketSummary(
+            summary=SpotInstrumentSummary(
                 instrument_count=int(instrument_count or 0),
                 active_count=int(summary_active or 0),
                 inactive_count=int(summary_inactive or 0),

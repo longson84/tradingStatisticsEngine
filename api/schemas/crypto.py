@@ -1,4 +1,4 @@
-"""Public contracts for venue-specific crypto spot markets."""
+"""Public contracts for venue-specific crypto spot instruments."""
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -6,7 +6,7 @@ from datetime import date, datetime
 from pydantic import BaseModel
 
 
-class CryptoMarketInstrumentResponse(BaseModel):
+class CryptoInstrumentResponse(BaseModel):
     id: int
     venue_code: str
     venue_name: str
@@ -24,7 +24,7 @@ class CryptoMarketInstrumentResponse(BaseModel):
     price_source: str | None = None
 
 
-class CryptoMarketFacetCountResponse(BaseModel):
+class CryptoInstrumentFacetCountResponse(BaseModel):
     value: str
     count: int
 
@@ -35,14 +35,14 @@ class CryptoVenueFacetResponse(BaseModel):
     count: int
 
 
-class CryptoMarketFacetsResponse(BaseModel):
+class CryptoInstrumentFacetsResponse(BaseModel):
     venues: list[CryptoVenueFacetResponse]
-    quote_assets: list[CryptoMarketFacetCountResponse]
+    quote_assets: list[CryptoInstrumentFacetCountResponse]
     active_count: int
     inactive_count: int
 
 
-class CryptoMarketSummaryResponse(BaseModel):
+class CryptoInstrumentSummaryResponse(BaseModel):
     instrument_count: int
     active_count: int
     inactive_count: int
@@ -50,12 +50,12 @@ class CryptoMarketSummaryResponse(BaseModel):
     catalog_fetched_at: datetime | None = None
 
 
-class CryptoMarketListResponse(BaseModel):
+class CryptoInstrumentListResponse(BaseModel):
     venue_code: str | None = None
     venue_name: str | None = None
     total: int
     offset: int
     limit: int
-    instruments: list[CryptoMarketInstrumentResponse]
-    facets: CryptoMarketFacetsResponse
-    summary: CryptoMarketSummaryResponse
+    instruments: list[CryptoInstrumentResponse]
+    facets: CryptoInstrumentFacetsResponse
+    summary: CryptoInstrumentSummaryResponse

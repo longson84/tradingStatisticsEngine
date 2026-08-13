@@ -20,8 +20,8 @@ from api.repositories.sqlalchemy_company_catalog_repository import (
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
-from api.repositories.sqlalchemy_crypto_market_repository import (
-    SqlAlchemyCryptoMarketRepository,
+from api.repositories.sqlalchemy_crypto_instrument_repository import (
+    SqlAlchemyCryptoInstrumentRepository,
 )
 from api.repositories.sqlalchemy_instrument_analysis_repository import (
     SqlAlchemyInstrumentAnalysisRepository,
@@ -95,13 +95,13 @@ def get_company_catalog_service(
 def get_binance_spot_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> BinanceSpotService:
-    return BinanceSpotService(SqlAlchemyCryptoMarketRepository(session))
+    return BinanceSpotService(SqlAlchemyCryptoInstrumentRepository(session))
 
 
 def get_crypto_instrument_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> CryptoInstrumentService:
-    return CryptoInstrumentService(SqlAlchemyCryptoMarketRepository(session))
+    return CryptoInstrumentService(SqlAlchemyCryptoInstrumentRepository(session))
 
 
 def get_reference_rate_service(

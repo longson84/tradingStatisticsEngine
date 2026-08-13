@@ -32,8 +32,8 @@ def test_normalize_ticker_uses_price_loader_class_share_notation():
 
 def test_validated_constituents_rejects_normalized_duplicates():
     values = [
-        make_constituent(ticker="BRK.B", market="US"),
-        make_constituent(ticker="BRK-B", market="US"),
+        make_constituent(ticker="BRK.B", country_code="US"),
+        make_constituent(ticker="BRK-B", country_code="US"),
     ]
 
     with pytest.raises(UniverseProviderDataError, match="duplicate tickers"):

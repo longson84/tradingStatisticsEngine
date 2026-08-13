@@ -26,7 +26,6 @@ from api.repositories.sqlalchemy_data_operation_repository import (
 from api.services.data_operation_service import DataOperationService
 from api.instrument_data_routing import InstrumentRoutingMetadata, ProviderSymbol
 from api.venue_calendars import venue_calendar
-from scripts.refresh_universe_prices import _symbols
 
 
 class FakeRepository:
@@ -448,50 +447,6 @@ def test_data_operations_openapi_exposes_preview_and_jobs():
     assert schema["paths"]["/data-operations/coverage"]["get"]["operationId"] == (
         "getDataOperationPriceCoverage"
     )
-
-
-def test_universe_refresh_resolves_only_active_postgresql_members():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    with Session(engine) as session, session.begin():
-        company = Company(
-            display_name="Example Issuer",
-            country_code="US",
-            source="test",
-        )
-        active = Instrument(
-            company=company,
-            ticker="ACTIVE",
-            currency="USD",
-            is_active=True,
-            source="test",
-        )
-        inactive = Instrument(
-            company=company,
-            ticker="INACTIVE",
-            currency="USD",
-            is_active=False,
-            source="test",
-        )
-        universe = Universe(
-            code="TEST",
-            name="Test Universe",
-            source="test",
-        )
-        session.add_all([
-            UniverseMembership(
-                universe=universe,
-                instrument=active,
-                source="test",
-            ),
-            UniverseMembership(
-                universe=universe,
-                instrument=inactive,
-                source="test",
-            ),
-        ])
-
-    assert _symbols(engine, "TEST") == ["ACTIVE"]
 
 
 def test_sqlalchemy_scope_projects_instrument_coverage_and_refresh_state():

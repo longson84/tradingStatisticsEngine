@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from api.db.models import Base
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -40,6 +42,14 @@ def test_application_has_no_legacy_fundamentals_cache_module():
     for root in (PROJECT_ROOT / "api", PROJECT_ROOT / "scripts"):
         for path in root.rglob("*.py"):
             assert "api.fundamentals_cache" not in _imports(path)
+
+
+def test_retired_collection_history_and_bulk_scripts_are_absent():
+    assert not (PROJECT_ROOT / "scripts" / "refresh_universe_prices.py").exists()
+    assert not (
+        PROJECT_ROOT / "scripts" / "migrate_legacy_benchmark_cache.py"
+    ).exists()
+    assert "fundamental_refresh_runs" not in Base.metadata.tables
 
 
 def test_sqlalchemy_repositories_are_not_imported_outside_dependency_wiring():

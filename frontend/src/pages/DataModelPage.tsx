@@ -339,6 +339,22 @@ export function DataModelPage() {
             </div>
           </section>
 
+          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Database size={17} className="mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-sm font-semibold">Operational state belongs to each Instrument</h2>
+                <p className="mt-2 max-w-5xl text-sm leading-6 text-muted-foreground">
+                  Price coverage, expected session, last refresh attempt, returned session,
+                  outcome, source, and fetch time are stored or derived for an exact Instrument.
+                  Universe and Watchlist status is only a projection of their current members.
+                  There is no canonical Market entity and no collection-scoped Data Operation
+                  history table.
+                </p>
+              </div>
+            </div>
+          </section>
+
           <section className="space-y-3">
             <SectionHeading
               eyebrow="Worked examples"
@@ -425,6 +441,7 @@ export function DataModelPage() {
                 <Rule>Company with instrument</Rule>
                 <Rule>Asset code with permanent identity</Rule>
                 <Rule>Data provider with trading venue</Rule>
+                <Rule>Country code with Instrument identity or adapter routing</Rule>
                 <Rule>BTC/USD reference rate with BTC/USDT spot</Rule>
                 <Rule>One venue&apos;s bars with a global crypto price</Rule>
               </ul>

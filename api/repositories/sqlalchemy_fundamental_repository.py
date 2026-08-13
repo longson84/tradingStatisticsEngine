@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from api.db.models import (
     Company,
     FundamentalFact,
-    FundamentalRefreshRun,
     FundamentalReport,
     Instrument,
     ProviderValuationObservation,
@@ -404,55 +403,3 @@ class SqlAlchemyFundamentalRepository:
         if dialect == "sqlite":
             return sqlite_insert(model)
         raise ValueError(f"Unsupported fundamentals dialect: {dialect}")
-
-    def create_refresh_run(
-        self,
-        *,
-        job_id: str,
-        universe: str,
-        source: str,
-        provider_version: str | None,
-        requested_count: int,
-        reused_count: int,
-        started_at,
-    ) -> None:
-        universe_id = self._session.scalar(
-            select(Universe.id).where(Universe.code == universe)
-        )
-        if universe_id is None:
-            raise ValueError(f"Unknown universe: {universe}")
-        self._session.add(FundamentalRefreshRun(
-            job_id=job_id,
-            universe_id=universe_id,
-            source=source,
-            provider_version=provider_version,
-            status="running",
-            requested_count=requested_count,
-            reused_count=reused_count,
-            succeeded_count=0,
-            failed_count=0,
-            started_at=started_at,
-        ))
-
-    def finish_refresh_run(
-        self,
-        *,
-        job_id: str,
-        status: str,
-        succeeded_count: int,
-        failed_count: int,
-        finished_at,
-        error_summary: dict[str, object] | None,
-    ) -> None:
-        refresh_run = self._session.scalar(
-            select(FundamentalRefreshRun).where(
-                FundamentalRefreshRun.job_id == job_id
-            )
-        )
-        if refresh_run is None:
-            raise ValueError(f"Unknown fundamental refresh run: {job_id}")
-        refresh_run.status = status
-        refresh_run.succeeded_count = succeeded_count
-        refresh_run.failed_count = failed_count
-        refresh_run.finished_at = finished_at
-        refresh_run.error_summary = error_summary

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { SingleTickerAnalysis } from "@/lib/api"
+import type { SingleInstrumentAnalysis } from "@/lib/api"
 import { fmtDate, fmtPct, fmtNum } from "@/lib/format"
 import { TimeFrame } from "./TimeFrame"
 import { EquityChart } from "./EquityChart"
@@ -25,7 +25,7 @@ import { EarlyTradeBehavior } from "./EarlyTradeBehavior"
 import { SellLagBelowMA } from "./SellLagBelowMA"
 
 interface Props {
-  data: SingleTickerAnalysis
+  data: SingleInstrumentAnalysis
   sellLag: number
 }
 
@@ -85,8 +85,8 @@ export function StrategyAnalysisResults({ data, sellLag }: Props) {
       <SellLagBelowMA data={data.undercut_distribution ?? null} sellLag={sellLag} />
 
       <BahComparison strategy={data.strategy} bah={data.bah} />
-      <DrawdownPeriods equityStrategy={data.equity_curve_strategy} tickerPrices={data.ticker_prices} label="Strategy" />
-      <DrawdownPeriods equityStrategy={data.equity_curve_bah} tickerPrices={data.ticker_prices} label="Buy &amp; Hold" />
+      <DrawdownPeriods equityStrategy={data.equity_curve_strategy} instrumentPrices={data.instrument_prices} label="Strategy" />
+      <DrawdownPeriods equityStrategy={data.equity_curve_bah} instrumentPrices={data.instrument_prices} label="Buy &amp; Hold" />
       <DrawdownDepthAnalysis
         equityStrategy={data.equity_curve_strategy}
         equityBah={data.equity_curve_bah}

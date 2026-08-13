@@ -104,14 +104,14 @@ class StubRoutingRepository:
 
 
 @pytest.mark.parametrize(
-    ("market", "ticker", "currency", "scale", "basis", "source"),
+    ("country", "ticker", "currency", "scale", "basis", "source"),
     [
         ("US", "MSFT", "USD", 1, "adjusted", "yfinance"),
         ("VN", "FPT", "VND", 1_000, "provider_unspecified", "vnstock-vci"),
     ],
 )
-def test_store_downloaded_histories_uses_canonical_market_metadata(
-    market, ticker, currency, scale, basis, source
+def test_store_downloaded_histories_uses_canonical_instrument_metadata(
+    country, ticker, currency, scale, basis, source
 ):
     repository = StubRepository(None)
     repository.target = PriceInstrumentRecord(
@@ -119,7 +119,7 @@ def test_store_downloaded_histories_uses_canonical_market_metadata(
         ticker=ticker,
         currency=currency,
         instrument_type="common_stock",
-        venue_code="HOSE" if market == "VN" else "NASDAQ",
+        venue_code="HOSE" if country == "VN" else "NASDAQ",
     )
     service = CompanyPriceService(repository, StubRoutingRepository(repository))
     frame = PriceFrame(

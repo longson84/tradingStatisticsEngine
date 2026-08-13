@@ -184,7 +184,7 @@ Required invariants:
 ## Phase 4: Replace the Bootstrap Command
 
 Status: complete. `scripts.sync_company_universes` is now the supported live
-bootstrap with `--all`, `--market`, `--universe`, `--dry-run`, `--force`, and
+bootstrap with `--all`, `--country`, `--universe`, `--dry-run`, `--force`, and
 `--database-url`. It is the only supported company/Universe bootstrap command:
 
 ```bash
@@ -194,7 +194,7 @@ python -m scripts.sync_company_universes --all
 Supported controls should include:
 
 ```text
---market us|vn
+--country us|vn
 --universe US500
 --dry-run
 --force
@@ -228,10 +228,9 @@ Completed state:
 - Fundamentals refresh reads PostgreSQL: complete.
 - Price refresh reads PostgreSQL: complete.
 
-`scripts.refresh_universe_prices` is the remaining operator-oriented bulk
-Universe price command; it accepts any persisted Universe code and obtains
-membership and routing from PostgreSQL. Normal API execution uses
-`scripts.run_data_operation` and exact-Instrument refresh functions.
+The duplicate operator-only Universe price command has been retired. API and
+CLI execution use `scripts.run_data_operation` and exact-Instrument refresh
+functions for Universe, Watchlist, and Instrument scopes.
 
 Universe synchronization remains a separate operation so a listing-provider
 failure does not prevent refreshing prices for the last known-good membership.
@@ -243,11 +242,11 @@ Instruments. Their observations use PostgreSQL `price_bars`, coverage, refresh
 state, and source provenance with the `index_level` price basis. Price History
 and refresh workflows no longer read or write benchmark CSV/JSON caches.
 
-The one-time local cutover command is:
+The completed local cutover used the following command; its one-time importer
+has now been removed:
 
 ```bash
 uv run alembic upgrade head
-uv run python -m scripts.migrate_legacy_benchmark_cache --delete-source
 ```
 
 Future explicit acquisition uses:

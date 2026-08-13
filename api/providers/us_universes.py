@@ -91,7 +91,7 @@ class Nasdaq100UniverseProvider:
         constituents = [
             make_constituent(
                 ticker=row.get("symbol"),
-                market="US",
+                country_code="US",
                 company_name=row.get("companyName"),
                 sector=row.get("sector"),
                 exchange="NASDAQ",
@@ -106,7 +106,7 @@ class Nasdaq100UniverseProvider:
         return UniverseSnapshot(
             code=code,
             name="Nasdaq-100",
-            market="US",
+            country_code="US",
             description="Current Nasdaq-100 constituents from Nasdaq.",
             effective_date=_parse_provider_date(data.get("date")),
             fetched_at=datetime.now(timezone.utc),
@@ -137,7 +137,7 @@ class IsharesRussell2000UniverseProvider:
         return UniverseSnapshot(
             code=code,
             name="Russell 2000",
-            market="US",
+            country_code="US",
             description=(
                 "Current listed-equity holdings of IWM used as a practical "
                 "Russell 2000 constituent proxy."
@@ -180,7 +180,7 @@ class WikipediaUSIndexProvider:
         constituents = [
             make_constituent(
                 ticker=row["Symbol"],
-                market="US",
+                country_code="US",
                 company_name=row[required_name],
                 sector=row.get("GICS Sector"),
                 industry=row.get("GICS Sub-Industry") or row.get("Industry"),
@@ -196,7 +196,7 @@ class WikipediaUSIndexProvider:
         return UniverseSnapshot(
             code=code,
             name=name,
-            market="US",
+            country_code="US",
             description=description,
             effective_date=None,
             fetched_at=datetime.now(timezone.utc),
@@ -253,7 +253,7 @@ def _parse_ishares_csv(
         ticker = _ISHARES_TICKER_OVERRIDES.get(ticker, ticker)
         constituents.append(make_constituent(
             ticker=ticker,
-            market="US",
+            country_code="US",
             company_name=row.get("Name"),
             sector=row.get("Sector"),
             exchange=exchange,

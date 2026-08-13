@@ -12,7 +12,6 @@ from api.db.models import (
     Base,
     Company,
     FundamentalFact,
-    FundamentalRefreshRun,
     FundamentalReport,
     Instrument,
     ProviderValuationObservation,
@@ -185,23 +184,3 @@ def test_provider_valuations_are_sparse_observations_not_daily_facts():
             ("pb", Decimal("1.1400000000")),
             ("pe", Decimal("5.4600000000")),
         ]
-
-
-def test_refresh_run_rejects_negative_counts():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    with Session(engine) as session:
-        _, universe = _seed_identity(session)
-        session.add(FundamentalRefreshRun(
-            job_id="job-1",
-            universe_id=universe.id,
-            source="vnstock-vci-4.0.5",
-            status="failed",
-            requested_count=100,
-            reused_count=0,
-            succeeded_count=0,
-            failed_count=-1,
-            started_at=datetime(2026, 8, 3, tzinfo=UTC),
-        ))
-        with pytest.raises(IntegrityError):
-            session.commit()

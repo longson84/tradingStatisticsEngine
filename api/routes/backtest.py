@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from trading_engine.performance.strategy_analysis import run_single_ticker_analysis
+from trading_engine.performance.strategy_analysis import run_single_instrument_analysis
 from trading_engine.types import PriceFrame
 
 from api.deps import (
@@ -20,20 +20,24 @@ from api.services.instrument_analysis_service import (
 )
 from api.schemas.backtest import (
     AnalyzeRequest,
-    SingleTickerAnalysisResponse,
+    SingleInstrumentAnalysisResponse,
 )
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
 
-@router.post("/analyze", response_model=SingleTickerAnalysisResponse)
-def analyze_single_ticker(
+@router.post(
+    "/analyze",
+    response_model=SingleInstrumentAnalysisResponse,
+    operation_id="analyzeSingleInstrumentStrategy",
+)
+def analyze_single_instrument(
     req: AnalyzeRequest,
     price_service: Annotated[
         InstrumentAnalysisService, Depends(get_instrument_analysis_service)
     ],
-) -> SingleTickerAnalysisResponse:
-    """Full analytics for a single-ticker strategy: performance, trades, heatmaps, health."""
+) -> SingleInstrumentAnalysisResponse:
+    """Full analytics for one exact canonical Instrument strategy."""
     try:
         stored = price_service.get_stored_history(req.instrument_id)
     except UnknownInstrumentError as exc:
@@ -63,7 +67,7 @@ def analyze_single_ticker(
     strategy = build_strategy(req.strategy)
     strategy_label = f"{req.strategy.type.replace('_', ' ').title()} — {symbol}"
 
-    analysis = run_single_ticker_analysis(
+    analysis = run_single_instrument_analysis(
         strategy=strategy,
         symbol=symbol,
         prices=prices,
@@ -71,7 +75,7 @@ def analyze_single_ticker(
         strategy_label=strategy_label,
     )
 
-    return SingleTickerAnalysisResponse(
+    return SingleInstrumentAnalysisResponse(
         **asdict(analysis),
         instrument_id=stored.instrument.id,
         venue_code=stored.instrument.venue_code,

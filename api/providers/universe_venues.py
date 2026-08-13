@@ -22,10 +22,10 @@ def resolve_snapshot_venues(
     resolved = []
     for constituent in snapshot.constituents:
         venue_code = canonical_equity_venue_code(
-            snapshot.market,
+            snapshot.country_code,
             constituent.exchange,
         )
-        if venue_code is None and snapshot.market == "US":
+        if venue_code is None and snapshot.country_code == "US":
             venue_code = directory.get(constituent.canonical_ticker)
         if venue_code is None:
             raise UniverseProviderDataError(
@@ -37,8 +37,8 @@ def resolve_snapshot_venues(
 
 
 def needs_us_listing_catalog(snapshot: UniverseSnapshot) -> bool:
-    return snapshot.market == "US" and any(
-        canonical_equity_venue_code(snapshot.market, row.exchange) is None
+    return snapshot.country_code == "US" and any(
+        canonical_equity_venue_code(snapshot.country_code, row.exchange) is None
         for row in snapshot.constituents
     )
 

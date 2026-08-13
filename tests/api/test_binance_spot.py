@@ -28,15 +28,15 @@ from api.providers.binance_spot import (
     BinanceSpotClient,
     BinanceSpotSymbol,
 )
-from api.repositories.sqlalchemy_crypto_market_repository import (
-    SqlAlchemyCryptoMarketRepository,
+from api.repositories.sqlalchemy_crypto_instrument_repository import (
+    SqlAlchemyCryptoInstrumentRepository,
 )
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
 )
 from api.services.binance_spot_service import BinanceSpotService
 from api.services.crypto_instrument_service import CryptoInstrumentService
-from api.routes.crypto import list_crypto_markets
+from api.routes.crypto import list_crypto_instruments
 from api.main import app
 
 
@@ -151,7 +151,7 @@ def test_catalog_sync_creates_assets_venue_spot_instruments_and_active_universe(
 
     with Session(engine) as session, session.begin():
         result = BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).sync_catalog(_catalog(
             _symbol("BTCUSDT", "BTC", "USDT"),
             _symbol("ETHUSDT", "ETH", "USDT", status="BREAK"),
@@ -187,14 +187,14 @@ def test_catalog_resync_deactivates_missing_market_without_deleting_history():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session, session.begin():
-        service = BinanceSpotService(SqlAlchemyCryptoMarketRepository(session))
+        service = BinanceSpotService(SqlAlchemyCryptoInstrumentRepository(session))
         service.sync_catalog(_catalog(
             _symbol("BTCUSDT", "BTC", "USDT"),
             _symbol("ETHUSDT", "ETH", "USDT"),
         ))
     with Session(engine) as session, session.begin():
         result = BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).sync_catalog(_catalog(_symbol("BTCUSDT", "BTC", "USDT")))
         assert result.deactivated_instruments == 1
     with Session(engine) as session:
@@ -207,11 +207,11 @@ def test_store_history_writes_quote_asset_and_venue_specific_provenance():
     Base.metadata.create_all(engine)
     with Session(engine) as session, session.begin():
         BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).sync_catalog(_catalog(_symbol("BTCUSDT", "BTC", "USDT")))
     with Session(engine) as session:
         instrument = BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).list_instruments(symbols=("BTCUSDT",))[0]
     kline = BinanceDailyKline(
         symbol="BTCUSDT",
@@ -227,7 +227,7 @@ def test_store_history_writes_quote_asset_and_venue_specific_provenance():
     )
     with Session(engine) as session, session.begin():
         result = BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session),
+            SqlAlchemyCryptoInstrumentRepository(session),
             SqlAlchemyPriceBarRepository(session),
         ).store_history(
             instrument,
@@ -243,12 +243,12 @@ def test_store_history_writes_quote_asset_and_venue_specific_provenance():
         assert bar.source == "binance_public_data"
 
 
-def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
+def test_crypto_instrument_route_paginates_filters_and_preserves_decimal_rules():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session, session.begin():
         BinanceSpotService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         ).sync_catalog(_catalog(
             _symbol("BTCUSDT", "BTC", "USDT"),
             _symbol("ETHUSDT", "ETH", "USDT"),
@@ -304,9 +304,9 @@ def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
         ))
     with Session(engine) as session:
         service = CryptoInstrumentService(
-            SqlAlchemyCryptoMarketRepository(session)
+            SqlAlchemyCryptoInstrumentRepository(session)
         )
-        response = list_crypto_markets(
+        response = list_crypto_instruments(
             service,
             venue_code="BINANCE_SPOT",
             search=None,
@@ -315,7 +315,7 @@ def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
             offset=0,
             limit=1,
         )
-        all_venues = list_crypto_markets(
+        all_venues = list_crypto_instruments(
             service,
             venue_code=None,
             search=None,
@@ -348,13 +348,13 @@ def test_crypto_market_route_paginates_filters_and_preserves_decimal_rules():
     }
 
 
-def test_crypto_market_openapi_contract_is_generated_for_frontend():
+def test_crypto_instrument_openapi_contract_is_generated_for_frontend():
     schema = app.openapi()
 
-    operation = schema["paths"]["/crypto/markets"]["get"]
-    assert operation["operationId"] == "listCryptoMarkets"
+    operation = schema["paths"]["/crypto/instruments"]["get"]
+    assert operation["operationId"] == "listCryptoInstruments"
     properties = schema["components"]["schemas"][
-        "CryptoMarketInstrumentResponse"
+        "CryptoInstrumentResponse"
     ]["properties"]
     assert set(properties) == {
         "id", "venue_code", "venue_name", "symbol", "base_asset",

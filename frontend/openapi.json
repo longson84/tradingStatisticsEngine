@@ -293,7 +293,7 @@
         "title": "CompanyInstrumentResponse",
         "type": "object"
       },
-      "CryptoMarketFacetCountResponse": {
+      "CryptoInstrumentFacetCountResponse": {
         "properties": {
           "count": {
             "title": "Count",
@@ -308,10 +308,10 @@
           "value",
           "count"
         ],
-        "title": "CryptoMarketFacetCountResponse",
+        "title": "CryptoInstrumentFacetCountResponse",
         "type": "object"
       },
-      "CryptoMarketFacetsResponse": {
+      "CryptoInstrumentFacetsResponse": {
         "properties": {
           "active_count": {
             "title": "Active Count",
@@ -323,7 +323,7 @@
           },
           "quote_assets": {
             "items": {
-              "$ref": "#/components/schemas/CryptoMarketFacetCountResponse"
+              "$ref": "#/components/schemas/CryptoInstrumentFacetCountResponse"
             },
             "title": "Quote Assets",
             "type": "array"
@@ -342,10 +342,71 @@
           "active_count",
           "inactive_count"
         ],
-        "title": "CryptoMarketFacetsResponse",
+        "title": "CryptoInstrumentFacetsResponse",
         "type": "object"
       },
-      "CryptoMarketInstrumentResponse": {
+      "CryptoInstrumentListResponse": {
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/CryptoInstrumentFacetsResponse"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoInstrumentResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CryptoInstrumentSummaryResponse"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "instruments",
+          "facets",
+          "summary"
+        ],
+        "title": "CryptoInstrumentListResponse",
+        "type": "object"
+      },
+      "CryptoInstrumentResponse": {
         "properties": {
           "base_asset": {
             "title": "Base Asset",
@@ -469,71 +530,10 @@
           "is_active",
           "stored_sessions"
         ],
-        "title": "CryptoMarketInstrumentResponse",
+        "title": "CryptoInstrumentResponse",
         "type": "object"
       },
-      "CryptoMarketListResponse": {
-        "properties": {
-          "facets": {
-            "$ref": "#/components/schemas/CryptoMarketFacetsResponse"
-          },
-          "instruments": {
-            "items": {
-              "$ref": "#/components/schemas/CryptoMarketInstrumentResponse"
-            },
-            "title": "Instruments",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/CryptoMarketSummaryResponse"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          },
-          "venue_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Code"
-          },
-          "venue_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Name"
-          }
-        },
-        "required": [
-          "total",
-          "offset",
-          "limit",
-          "instruments",
-          "facets",
-          "summary"
-        ],
-        "title": "CryptoMarketListResponse",
-        "type": "object"
-      },
-      "CryptoMarketSummaryResponse": {
+      "CryptoInstrumentSummaryResponse": {
         "properties": {
           "active_count": {
             "title": "Active Count",
@@ -570,7 +570,7 @@
           "inactive_count",
           "with_history_count"
         ],
-        "title": "CryptoMarketSummaryResponse",
+        "title": "CryptoInstrumentSummaryResponse",
         "type": "object"
       },
       "CryptoVenueFacetResponse": {
@@ -3700,7 +3700,7 @@
         "title": "ReferenceRateSummaryResponse",
         "type": "object"
       },
-      "SingleTickerAnalysisResponse": {
+      "SingleInstrumentAnalysisResponse": {
         "properties": {
           "bah": {
             "$ref": "#/components/schemas/PerformanceSummaryResponse"
@@ -3753,6 +3753,13 @@
           "instrument_id": {
             "title": "Instrument Id",
             "type": "integer"
+          },
+          "instrument_prices": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Instrument Prices",
+            "type": "object"
           },
           "is_stale": {
             "title": "Is Stale",
@@ -3853,13 +3860,6 @@
             "title": "Symbol",
             "type": "string"
           },
-          "ticker_prices": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Ticker Prices",
-            "type": "object"
-          },
           "to_date": {
             "title": "To Date",
             "type": "string"
@@ -3922,7 +3922,7 @@
           "health_by_year",
           "equity_curve_strategy",
           "equity_curve_bah",
-          "ticker_prices",
+          "instrument_prices",
           "instrument_id",
           "expected_last_session",
           "data_last_session",
@@ -3930,7 +3930,7 @@
           "price_source",
           "price_basis"
         ],
-        "title": "SingleTickerAnalysisResponse",
+        "title": "SingleInstrumentAnalysisResponse",
         "type": "object"
       },
       "TimeSeriesPoint": {
@@ -5146,8 +5146,8 @@
   "paths": {
     "/backtest/analyze": {
       "post": {
-        "description": "Full analytics for a single-ticker strategy: performance, trades, heatmaps, health.",
-        "operationId": "analyze_single_ticker_backtest_analyze_post",
+        "description": "Full analytics for one exact canonical Instrument strategy.",
+        "operationId": "analyzeSingleInstrumentStrategy",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5163,7 +5163,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SingleTickerAnalysisResponse"
+                  "$ref": "#/components/schemas/SingleInstrumentAnalysisResponse"
                 }
               }
             },
@@ -5180,7 +5180,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Analyze Single Ticker",
+        "summary": "Analyze Single Instrument",
         "tags": [
           "backtest"
         ]
@@ -5296,9 +5296,9 @@
         ]
       }
     },
-    "/crypto/markets": {
+    "/crypto/instruments": {
       "get": {
-        "operationId": "listCryptoMarkets",
+        "operationId": "listCryptoInstruments",
         "parameters": [
           {
             "in": "query",
@@ -5395,7 +5395,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CryptoMarketListResponse"
+                  "$ref": "#/components/schemas/CryptoInstrumentListResponse"
                 }
               }
             },
@@ -5412,7 +5412,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Crypto Markets",
+        "summary": "List Crypto Instruments",
         "tags": [
           "crypto"
         ]
