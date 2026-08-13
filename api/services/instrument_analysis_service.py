@@ -139,6 +139,17 @@ class InstrumentAnalysisService:
             fetched_at=max(row.fetched_at for row in records),
         )
 
+    def get_stored_market_index(
+        self,
+        code: str,
+        *,
+        now: datetime | None = None,
+    ) -> InstrumentPriceData:
+        instrument = self._repository.get_market_index(code)
+        if instrument is None:
+            raise UnknownInstrumentError(f"Unknown market index: {code}")
+        return self.get_stored_history(instrument.id, now=now)
+
     def get_stored_histories(
         self,
         instrument_ids: list[int] | tuple[int, ...],

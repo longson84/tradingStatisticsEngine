@@ -235,6 +235,26 @@ def test_reference_rate_instrument_price_update_is_supported():
     assert preview.unsupported_count == 0
 
 
+def test_market_index_is_an_exact_metadata_routed_price_instrument():
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="30",
+        name="SPX",
+        instruments=(instrument(
+            30,
+            "SPX",
+            instrument_type="market_index",
+            company_id=None,
+        ),),
+    )
+
+    plan = data_operation_service(scope).plan("instrument", "30", "prices")
+
+    assert plan.can_run is True
+    assert plan.groups[0].adapter == "yfinance"
+    assert plan.groups[0].instrument_ids == (30,)
+
+
 def test_watchlist_fundamentals_are_planned_by_eligible_instrument():
     scope = DataOperationScopeRecord(
         scope_type="watchlist",

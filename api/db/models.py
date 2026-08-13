@@ -228,6 +228,13 @@ class Instrument(Base):
             "AND base_asset_id IS NOT NULL AND quote_asset_id IS NOT NULL)",
             name="ck_instruments_reference_rate_identity",
         ),
+        CheckConstraint(
+            "instrument_type != 'market_index' OR "
+            "(company_id IS NULL AND venue_id IS NULL "
+            "AND base_asset_id IS NULL AND quote_asset_id IS NULL "
+            "AND settlement_asset_id IS NULL)",
+            name="ck_instruments_market_index_identity",
+        ),
         Index(
             "uq_instruments_ticker_without_venue",
             "ticker",

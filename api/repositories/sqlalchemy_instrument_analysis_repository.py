@@ -22,6 +22,7 @@ from api.repositories.instrument_analysis_repository import (
     AnalysisInstrumentQuery,
     AnalysisInstrumentRecord,
     DEFAULT_CANONICAL_PRICE_BASIS,
+    MARKET_INDEX_PRICE_BASIS,
     SPOT_PRICE_BASIS,
     US_EQUITY_PRICE_BASIS,
 )
@@ -96,6 +97,17 @@ class SqlAlchemyInstrumentAnalysisRepository:
         statement, filters = self._statement(None, None, None)
         row = self._session.execute(
             statement.where(*filters, Instrument.id == instrument_id)
+        ).one_or_none()
+        return self._records((row,))[0] if row is not None else None
+
+    def get_market_index(self, code: str) -> AnalysisInstrumentRecord | None:
+        statement, filters = self._statement(None, None, None)
+        row = self._session.execute(
+            statement.where(
+                *filters,
+                Instrument.instrument_type == "market_index",
+                Instrument.ticker == code.upper().strip(),
+            )
         ).one_or_none()
         return self._records((row,))[0] if row is not None else None
 
@@ -263,6 +275,10 @@ class SqlAlchemyInstrumentAnalysisRepository:
         )))
         return case(
             (Instrument.instrument_type == "spot", SPOT_PRICE_BASIS),
+            (
+                Instrument.instrument_type == "market_index",
+                MARKET_INDEX_PRICE_BASIS,
+            ),
             (Instrument.venue_id.in_(us_venue_ids), US_EQUITY_PRICE_BASIS),
             else_=DEFAULT_CANONICAL_PRICE_BASIS,
         )

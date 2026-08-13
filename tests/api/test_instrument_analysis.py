@@ -6,7 +6,15 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from api.db.company_import import import_company_universes
-from api.db.models import Asset, Base, Instrument, PriceBar, PriceBarCoverage, Venue
+from api.db.models import (
+    Asset,
+    Base,
+    Instrument,
+    InstrumentSymbol,
+    PriceBar,
+    PriceBarCoverage,
+    Venue,
+)
 from api.main import app
 from api.repositories.sqlalchemy_instrument_analysis_repository import (
     SqlAlchemyInstrumentAnalysisRepository,
@@ -15,6 +23,8 @@ from api.repositories.sqlalchemy_instrument_routing_repository import (
     SqlAlchemyInstrumentRoutingRepository,
 )
 from api.routes.instruments import list_instruments
+from api.routes.instrument_history import instrument_price_history
+from api.services.fundamental_service import FundamentalsNotFoundError
 from api.services.instrument_analysis_service import InstrumentAnalysisService
 
 
@@ -105,6 +115,69 @@ def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():
     assert result.prices.symbol == "MSFT"
     assert result.prices.data.index[-1].date() == date(2026, 8, 7)
     assert result.price_basis == "adjusted"
+
+
+def test_price_history_relative_strength_reads_canonical_index_bars():
+    service, session, instrument_id = _service_with_msft_history()
+    try:
+        index = Instrument(
+            ticker="SPX",
+            instrument_type="market_index",
+            currency="USD",
+            source="system",
+            is_active=True,
+        )
+        session.add(index)
+        session.flush()
+        session.add(InstrumentSymbol(
+            instrument=index,
+            namespace="yfinance",
+            symbol="^GSPC",
+            source="test",
+            is_primary=True,
+        ))
+        fetched_at = datetime(2026, 8, 10, tzinfo=UTC)
+        session.add_all([
+            PriceBar(
+                instrument=index,
+                trading_date=date(2026, 8, 7),
+                open=7000,
+                high=7100,
+                low=6900,
+                close=7050,
+                volume=1_000_000,
+                currency="USD",
+                price_scale=1,
+                price_basis="index_level",
+                source="yfinance",
+                fetched_at=fetched_at,
+            ),
+            PriceBarCoverage(
+                instrument=index,
+                price_basis="index_level",
+                first_date=date(2026, 8, 7),
+                last_date=date(2026, 8, 7),
+                row_count=1,
+                source="yfinance",
+                fetched_at=fetched_at,
+            ),
+        ])
+        session.flush()
+
+        class NoFundamentals:
+            def get_instrument_history(self, requested_id):
+                raise FundamentalsNotFoundError(str(requested_id))
+
+        response = instrument_price_history(
+            instrument_id,
+            service,
+            NoFundamentals(),
+        )
+    finally:
+        session.close()
+
+    assert response.relative_strength_benchmark == "SPX"
+    assert response.prices[0].relative_strength == response.prices[0].close
 
 
 def test_instrument_openapi_and_rarity_contracts_use_instrument_identity():

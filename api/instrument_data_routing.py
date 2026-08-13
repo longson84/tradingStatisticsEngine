@@ -7,11 +7,14 @@ from typing import Literal
 
 from api.repositories.instrument_analysis_repository import (
     DEFAULT_CANONICAL_PRICE_BASIS,
+    MARKET_INDEX_PRICE_BASIS,
     SPOT_PRICE_BASIS,
     US_EQUITY_PRICE_BASIS,
 )
 from api.venue_calendars import (
     CONTINUOUS_DAILY_CALENDAR,
+    US_EQUITY_CALENDAR,
+    VN_EQUITY_CALENDAR,
     VenueCalendarMetadata,
 )
 
@@ -72,6 +75,41 @@ def resolve_instrument_data_route(
 ) -> InstrumentDataRoute:
     """Resolve one deterministic adapter without consulting legacy market."""
     venue_code = instrument.venue_code.upper() if instrument.venue_code else None
+    if instrument.instrument_type == "market_index":
+        if venue_code is not None or instrument.company_id is not None:
+            raise UnsupportedInstrumentRouteError(
+                "Market-index instruments must remain venue-less and issuer-less"
+            )
+        definitions = {
+            "SPX": (
+                "yfinance",
+                ("yfinance",),
+                date(1927, 12, 30),
+            ),
+            "VN30": (
+                "vnstock_data",
+                ("vnstock_data", "listing"),
+                date(2012, 2, 6),
+            ),
+        }
+        try:
+            adapter, namespaces, full_start = definitions[
+                instrument.canonical_symbol.upper().strip()
+            ]
+        except KeyError as exc:
+            raise UnsupportedInstrumentRouteError(
+                f"No market-index adapter for {instrument.canonical_symbol}"
+            ) from exc
+        return InstrumentDataRoute(
+            instrument_id=instrument.instrument_id,
+            price_adapter=adapter,
+            provider_symbol=_symbol(instrument, *namespaces),
+            price_basis=MARKET_INDEX_PRICE_BASIS,
+            currency=instrument.currency,
+            price_scale=1,
+            schedule=_market_index_schedule(instrument.canonical_symbol),
+            full_history_start=full_start,
+        )
     if instrument.instrument_type == "spot":
         if venue_code != "BINANCE_SPOT":
             raise UnsupportedInstrumentRouteError(
@@ -174,6 +212,8 @@ def _symbol(
 def instrument_observation_schedule(
     instrument: InstrumentRoutingMetadata,
 ) -> VenueCalendarMetadata:
+    if instrument.instrument_type == "market_index":
+        return _market_index_schedule(instrument.canonical_symbol)
     if instrument.venue_code is None:
         return VenueCalendarMetadata(
             timezone_name="UTC",
@@ -192,4 +232,23 @@ def instrument_observation_schedule(
         timezone_name=str(instrument.timezone_name),
         trading_calendar_code=str(instrument.trading_calendar_code),
         session_cutoff_time=instrument.session_cutoff_time,
+    )
+
+
+def _market_index_schedule(symbol: str) -> VenueCalendarMetadata:
+    normalized = symbol.upper().strip()
+    if normalized == "SPX":
+        return VenueCalendarMetadata(
+            timezone_name="America/New_York",
+            trading_calendar_code=US_EQUITY_CALENDAR,
+            session_cutoff_time=time(16, 15),
+        )
+    if normalized == "VN30":
+        return VenueCalendarMetadata(
+            timezone_name="Asia/Ho_Chi_Minh",
+            trading_calendar_code=VN_EQUITY_CALENDAR,
+            session_cutoff_time=time(15, 15),
+        )
+    raise UnsupportedInstrumentRouteError(
+        f"No observation schedule registered for market index {symbol}"
     )

@@ -253,65 +253,6 @@ def test_vn_fetch_records_failure_when_sponsor_and_fallback_fail():
     assert "vnstock-4.0.5-vci: RuntimeError" in result.detail
 
 
-def test_vn30_benchmark_legacy_cache_is_revalidated_with_sponsored_vci(
-    monkeypatch,
-):
-    existing = _rows(
-        "VN30",
-        ["2026-08-06", "2026-08-07"],
-        [1_850.0, 1_860.0],
-    )
-    calls: list[tuple[str, str]] = []
-    sponsor = FakeProvider(
-        "vnstock_data",
-        "VCI",
-        {"VN30": _provider_rows(
-            ["2026-08-06", "2026-08-07"],
-            [1_850.0, 1_860.0],
-        )},
-        calls,
-    )
-    saved: dict[str, object] = {}
-    monkeypatch.setattr(
-        refresh_market_history, "_existing_benchmark", lambda benchmark: existing
-    )
-    monkeypatch.setattr(
-        refresh_market_history,
-        "_existing_benchmark_manifest",
-        lambda benchmark: {"source": "vnstock-vci"},
-    )
-    monkeypatch.setattr(
-        refresh_market_history,
-        "save_benchmark_history",
-        lambda benchmark, data, manifest: saved.update({
-            "benchmark": benchmark,
-            "data": data,
-            "manifest": manifest,
-        }),
-    )
-
-    refresh_market_history.refresh_benchmark(
-        "VN30",
-        date(2000, 1, 1),
-        date(2026, 8, 7),
-        "incremental",
-        vn_provider=sponsor,
-    )
-
-    assert calls == [("VN30", "VCI")]
-    assert saved["benchmark"] == "VN30"
-    assert len(saved["data"]) == 2
-    assert saved["manifest"]["source"] == "vnstock-data-3.2.7-vci"
-
-
-def test_vn30_benchmark_parity_blocks_changed_history():
-    existing = _rows("VN30", ["2026-08-07"], [1_860.0])
-    changed = _rows("VN30", ["2026-08-07"], [1_861.0])
-
-    with pytest.raises(RuntimeError, match="mismatched_rows=1"):
-        refresh_market_history._assert_benchmark_parity(existing, changed)
-
-
 def test_arbitrary_universe_code_routes_by_instrument_metadata(monkeypatch):
     engine = object()
     calls: list[tuple] = []
@@ -348,14 +289,6 @@ def test_arbitrary_universe_code_routes_by_instrument_metadata(monkeypatch):
             )},
         ),
     )
-    monkeypatch.setattr(
-        refresh_market_history,
-        "refresh_benchmark",
-        lambda benchmark, start, end, mode: calls.append(
-            ("benchmark", benchmark, mode)
-        ),
-    )
-
     def refresh_us(received_engine, universe, start, end, mode, **kwargs):
         assert received_engine is engine
         calls.append((universe, mode))
@@ -376,7 +309,4 @@ def test_arbitrary_universe_code_routes_by_instrument_metadata(monkeypatch):
 
     refresh_market_history.main()
 
-    assert calls == [
-        ("benchmark", "SPX", "incremental"),
-        ("CUSTOM_GROWTH", "incremental"),
-    ]
+    assert calls == [("CUSTOM_GROWTH", "incremental")]

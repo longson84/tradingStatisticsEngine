@@ -90,6 +90,30 @@ def test_spot_and_reference_rate_routes_keep_venue_and_source_distinct():
     assert rate.full_history_start.isoformat() == "2014-09-17"
 
 
+def test_market_indices_are_venue_less_but_use_market_session_schedules():
+    spx = resolve_instrument_data_route(metadata(
+        instrument_type="market_index",
+        company_id=None,
+        venue_code=None,
+        symbol="SPX",
+        provider_symbols=(ProviderSymbol("yfinance", "^GSPC"),),
+    ))
+    vn30 = resolve_instrument_data_route(metadata(
+        instrument_type="market_index",
+        company_id=None,
+        venue_code=None,
+        symbol="VN30",
+        provider_symbols=(ProviderSymbol("vnstock_data", "VN30"),),
+    ))
+
+    assert (spx.price_adapter, spx.provider_symbol, spx.price_basis) == (
+        "yfinance", "^GSPC", "index_level"
+    )
+    assert spx.schedule.trading_calendar_code == "US_EQUITIES"
+    assert vn30.price_adapter == "vnstock_data"
+    assert vn30.schedule.trading_calendar_code == "VN_EQUITIES"
+
+
 def test_missing_equity_venue_is_not_silently_routed_by_market_hint():
     with pytest.raises(UnsupportedInstrumentRouteError, match="venue none"):
         resolve_instrument_data_route(metadata(venue_code=None))

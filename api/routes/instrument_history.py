@@ -6,7 +6,6 @@ from typing import Annotated
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.benchmark_history import load_cached_benchmark
 from api.deps import get_fundamental_service, get_instrument_analysis_service
 from api.schemas.instrument import (
     InstrumentPriceHistoryResponse,
@@ -25,7 +24,6 @@ from trading_engine.fundamentals import (
     point_in_time_price_multiple,
     point_in_time_trailing_pe,
 )
-from trading_engine.types import DataLoadError
 
 
 router = APIRouter(prefix="/instruments", tags=["instruments"])
@@ -59,11 +57,11 @@ def instrument_price_history(
     benchmark = "VN30" if is_vietnam else "SPX"
     relative_strength = pd.Series(index=prices.data.index, dtype=float)
     try:
-        benchmark_prices, _ = load_cached_benchmark(benchmark)
+        benchmark_prices = price_service.get_stored_market_index(benchmark).prices
         relative_strength = normalized_relative_strength(
             prices.data["close"], benchmark_prices.data["close"]
         )
-    except DataLoadError:
+    except (UnknownInstrumentError, InstrumentPriceUnavailableError):
         pass
 
     fundamentals = None

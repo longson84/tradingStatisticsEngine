@@ -107,7 +107,9 @@ history remains file-backed until its separate migration is verified.
   crypto spot instruments have no company and require venue, base, and quote
   assets. Reference-rate instruments have no company or venue and require base
   and quote assets; they represent a provider observation, not an executable
-  market.
+  market. Market-index instruments also have no company or venue, but unlike a
+  reference rate they have no base or quote assets; they represent a calculated
+  index level such as SPX or VN30.
 - `instrument_symbols` stores canonical, source-specific, and historical
   ticker mappings with optional validity dates. `instruments.ticker` remains
   the denormalized current canonical symbol used by existing price and API
@@ -136,9 +138,9 @@ explicit migration and a source capable of providing reliable membership dates.
 
 - `price_bars` stores one canonical daily OHLCV observation per instrument,
   trading date, and price basis.
-- `price_basis` distinguishes adjusted, unadjusted, and provider-unspecified
-  observations. Refresh code must use an explicit stable value; it must not
-  infer adjustment semantics from the provider name.
+- `price_basis` distinguishes adjusted, unadjusted, provider-unspecified, and
+  calculated index-level observations. Refresh code must use an explicit stable
+  value; it must not infer adjustment semantics from the provider name.
 - `source` and `fetched_at` preserve the provenance of the currently selected
   canonical observation. A later refresh may replace that observation
   atomically but must not create a duplicate provider copy for the same key.
@@ -217,6 +219,30 @@ explicit migration and a source capable of providing reliable membership dates.
   for a fresh database, and overlaps seven days on incremental refreshes before
   idempotent upsert. Stored coverage begins on the provider's first returned
   observation, which may be later than the requested start.
+
+### Market-index ingestion
+
+- SPX and VN30 are venue-less canonical Instruments with
+  `instrument_type = market_index`. The index itself is calculated rather than
+  traded, has no issuing Company, and does not receive a synthetic Venue or
+  base/quote Asset relationship.
+- Canonical symbols are SPX and VN30. Provider mappings live in
+  `instrument_symbols`: Yahoo Finance `^GSPC` for SPX and VNStock Data `VN30`
+  for VN30. Their acquisition adapters remain application policy rather than a
+  Provider table.
+- Daily index observations use the normal `price_bars`,
+  `price_bar_coverages`, and `price_refresh_states` tables with
+  `price_basis = index_level`. Source and fetch provenance remain attached to
+  each selected canonical observation.
+- Venue-less does not mean continuously traded. SPX follows the US equity
+  session policy and VN30 follows the Vietnam equity session policy through
+  their registered index routing definitions.
+- Price History resolves its relative-strength benchmark from these stored
+  canonical Instruments. A missing benchmark leaves relative strength empty;
+  it never triggers an implicit provider download during an analytical read.
+- `scripts.sync_market_indices` performs explicit incremental or full provider
+  refresh. Data Operations can also find SPX or VN30 as exact Instruments and
+  uses the same metadata-derived routing and exact-ID write path.
 
 ## Database conventions
 
@@ -1786,3 +1812,32 @@ is always derived from member state. The Watchlists page manages membership
 only; updates are launched centrally through Data Operations. Fundamentals no
 longer create Universe-scoped refresh-run rows when launched through the new
 executor, because no persistent Data Operation run-history model is desired.
+
+### 2026-08-13 — Canonical PostgreSQL market-index benchmarks
+
+Context: Price History calculated relative strength from SPX or VN30, but those
+two histories were the final analytical observations stored in local CSV files
+with JSON manifests. The Universe price command refreshed those files as a side
+effect, while normal Data Operations did not. This split provenance, coverage,
+and recovery behavior from every other canonical daily series.
+
+Decision: migration `0021` registers SPX and VN30 as venue-less
+`market_index` Instruments with provider symbols `^GSPC` and `VN30`. Their
+daily levels use canonical `price_bars` with `price_basis = index_level`, normal
+coverage and refresh-state rows, and exact Instrument IDs. SPX carries the US
+equity observation schedule and VN30 the Vietnam equity schedule without
+inventing an execution Venue. Price History reads both from PostgreSQL and
+never refreshes during the request.
+
+The one-time `scripts.migrate_legacy_benchmark_cache` command validates cache
+identity, row counts, dates, and source metadata before importing the existing
+rows and can delete the four source files only after both series commit and
+verify. Future acquisition uses `scripts.sync_market_indices` or an exact-
+Instrument Data Operation. The Universe price command no longer has a hidden
+benchmark side effect, and the runtime cache reader/writer is removed.
+
+Consequences: benchmark observations now share the same identity, provenance,
+freshness, and PostgreSQL backup model as equity, crypto, and reference-rate
+prices. SPX and VN30 can be refreshed independently, provider failure retains
+stored levels, and relative-strength reads are deterministic with respect to
+the database snapshot.

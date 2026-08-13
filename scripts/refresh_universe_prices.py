@@ -15,10 +15,6 @@ import pandas as pd
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from api.benchmark_history import (
-    DEFAULT_BENCHMARK_DIR,
-    save_benchmark_history,
-)
 from api.config import env_bool, env_float
 from api.db.session import create_db_engine
 from api.market_data_config import DEFAULT_REFRESH_CHECKPOINT_DIR
@@ -52,7 +48,6 @@ US_MAX_HISTORY_START = date(1900, 1, 1)
 VN_MAX_HISTORY_START = date(2000, 1, 1)
 INCREMENTAL_OVERLAP_DAYS = 7
 US_DOWNLOAD_BATCH_SIZE = 100
-BENCHMARK_SYMBOLS = {"SPX": "^GSPC", "VN30": "VN30"}
 DEFAULT_VN_REQUESTS_PER_MINUTE = 30.0
 
 
@@ -264,57 +259,6 @@ def _community_fallbacks(enabled: bool) -> tuple[CommunityVnstockProvider, ...]:
     )
 
 
-def _existing_benchmark(benchmark: str) -> pd.DataFrame:
-    path = DEFAULT_BENCHMARK_DIR / f"{benchmark.lower()}.csv"
-    if not path.exists():
-        return pd.DataFrame()
-    frame = pd.read_csv(path, parse_dates=["date"])
-    frame["symbol"] = BENCHMARK_SYMBOLS[benchmark]
-    return frame
-
-
-def _existing_benchmark_manifest(benchmark: str) -> dict[str, object]:
-    path = DEFAULT_BENCHMARK_DIR / f"{benchmark.lower()}.json"
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def _assert_benchmark_parity(
-    existing: pd.DataFrame,
-    sponsored: pd.DataFrame,
-) -> None:
-    """Block cache replacement when sponsored history changes stored bars."""
-    if existing.empty:
-        return
-    left = existing.copy()
-    right = sponsored.copy()
-    left["date"] = pd.to_datetime(left["date"]).dt.date
-    right["date"] = pd.to_datetime(right["date"]).dt.date
-    missing_dates = set(left["date"]) - set(right["date"])
-    overlap = left.merge(right, on="date", suffixes=("_stored", "_sponsored"))
-    mismatched = pd.Series(False, index=overlap.index)
-    for column in ("open", "high", "low", "close", "volume"):
-        if column not in left or column not in right:
-            continue
-        stored = pd.to_numeric(overlap[f"{column}_stored"], errors="coerce")
-        candidate = pd.to_numeric(
-            overlap[f"{column}_sponsored"], errors="coerce"
-        )
-        mismatched |= ~stored.fillna(-1).round(6).eq(
-            candidate.fillna(-1).round(6)
-        )
-    if missing_dates or mismatched.any():
-        raise RuntimeError(
-            "Sponsored VN30 benchmark comparison failed: "
-            f"missing_dates={len(missing_dates)} "
-            f"mismatched_rows={int(mismatched.sum())}"
-        )
-
-
 def _latest_expected_session(end: date) -> date:
     expected = end
     while expected.weekday() >= 5:
@@ -365,22 +309,6 @@ def _market_download_plan(
     return grouped
 
 
-def _merge_cache(
-    existing: pd.DataFrame,
-    fetched: list[pd.DataFrame],
-    symbols: list[str],
-) -> pd.DataFrame:
-    frames = ([existing] if not existing.empty else []) + fetched
-    if not frames:
-        raise RuntimeError("Refresh returned no price history")
-    data = pd.concat(frames, ignore_index=True)
-    data = data[data["symbol"].astype(str).isin(symbols)]
-    return data.sort_values(["symbol", "date"]).drop_duplicates(
-        ["symbol", "date"],
-        keep="last",
-    )
-
-
 def _download_us_batch(
     universe: str,
     symbols: list[str],
@@ -419,85 +347,6 @@ def _download_us_batch(
         if completed % 10 == 0 or index == len(symbols):
             print(f"{universe}: {completed}/{total} errors={len(errors)}", flush=True)
     return frames, errors
-
-
-def refresh_benchmark(
-    benchmark: str,
-    full_start: date,
-    end: date,
-    mode: str,
-    *,
-    vn_provider: VietnamMarketProvider | None = None,
-) -> None:
-    """Refresh one shared index cache used by the relative-strength overlay."""
-    provider_symbol = BENCHMARK_SYMBOLS[benchmark]
-    existing = _existing_benchmark(benchmark)
-    existing_manifest = _existing_benchmark_manifest(benchmark)
-    plan = _market_download_plan(
-        existing,
-        [provider_symbol],
-        full_start,
-        end,
-        mode,
-        end_is_exclusive=benchmark == "SPX",
-    )
-    frames: list[pd.DataFrame] = []
-    sponsored_provider: VietnamMarketProvider | None = None
-    sponsored_source: str | None = None
-    if benchmark == "VN30":
-        sponsored_provider = vn_provider or create_vietnam_market_provider(
-            require_sponsored=True
-        )
-        sponsored_source = _provider_name(sponsored_provider)
-        if not existing.empty and existing_manifest.get("source") != sponsored_source:
-            plan = {full_start: [provider_symbol]}
-    if plan:
-        start = next(iter(plan))
-        if benchmark == "SPX":
-            frames, errors = _download_us_batch(
-                "SPX benchmark", [provider_symbol], start, end
-            )
-            if errors:
-                raise RuntimeError(f"SPX benchmark refresh failed: {errors}")
-            source = "yfinance"
-            price_basis = "auto-adjusted OHLC"
-        else:
-            assert sponsored_provider is not None
-            result = sponsored_provider.ohlcv(
-                provider_symbol,
-                start,
-                end,
-                interval="1D",
-            )
-            normalized = normalize_ohlcv_result(result).drop(
-                columns=["provider_source"]
-            )
-            _assert_benchmark_parity(existing, normalized)
-            frames = [normalized]
-            source = provider_source_label(result.metadata)
-            price_basis = "provider OHLC (adjustment unspecified)"
-    else:
-        source = "yfinance" if benchmark == "SPX" else str(sponsored_source)
-        price_basis = (
-            "auto-adjusted OHLC"
-            if benchmark == "SPX"
-            else "provider OHLC (adjustment unspecified)"
-        )
-
-    data = _merge_cache(existing, frames, [provider_symbol])
-    cached = data.drop(columns=["symbol"])
-    manifest = {
-        "benchmark": benchmark,
-        "provider_symbol": provider_symbol,
-        "fetched_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "first_date": str(pd.to_datetime(cached["date"]).min().date()),
-        "last_date": str(pd.to_datetime(cached["date"]).max().date()),
-        "row_count": len(cached),
-        "source": source,
-        "price_basis": price_basis,
-    }
-    save_benchmark_history(benchmark, cached, manifest)
-    print(f"{benchmark} benchmark: cached {len(cached)} rows", flush=True)
 
 
 def refresh_us_market(
@@ -854,7 +703,6 @@ def main() -> None:
 
     universes = (args.universe.upper(),)
     refreshed_by_adapter: dict[str, set[int]] = {}
-    benchmarked_adapters: set[str] = set()
     for universe in universes:
         instruments = _scope_instruments(engine, universe)
         targets, routes = _refresh_targets(engine, instruments)
@@ -871,8 +719,6 @@ def main() -> None:
         )
         already_refreshed = refreshed_by_adapter.setdefault(adapter, set())
         if adapter == "yfinance":
-            if adapter not in benchmarked_adapters:
-                refresh_benchmark("SPX", full_start, end, args.mode)
             already_refreshed |= refresh_us_market(
                 engine,
                 universe,
@@ -882,8 +728,6 @@ def main() -> None:
                 already_refreshed=already_refreshed,
             )
         elif adapter == "vnstock_data":
-            if adapter not in benchmarked_adapters:
-                refresh_benchmark("VN30", full_start, end, args.mode)
             already_refreshed |= refresh_vn_market(
                 engine,
                 universe,
@@ -898,7 +742,6 @@ def main() -> None:
             raise RuntimeError(
                 f"Bulk equity refresh does not support adapter {adapter}"
             )
-        benchmarked_adapters.add(adapter)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from api.repositories.price_bar_repository import PriceBarRecord
 US_EQUITY_PRICE_BASIS = "adjusted"
 DEFAULT_CANONICAL_PRICE_BASIS = "provider_unspecified"
 SPOT_PRICE_BASIS = "venue_unadjusted"
+MARKET_INDEX_PRICE_BASIS = "index_level"
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,8 @@ class InstrumentAnalysisRepository(Protocol):
     ) -> AnalysisInstrumentListResult: ...
 
     def get_instrument(self, instrument_id: int) -> AnalysisInstrumentRecord | None: ...
+
+    def get_market_index(self, code: str) -> AnalysisInstrumentRecord | None: ...
 
     def get_instruments(
         self, instrument_ids: tuple[int, ...]

@@ -22,6 +22,7 @@ from api.repositories.data_operation_repository import (
 )
 from api.repositories.instrument_analysis_repository import (
     DEFAULT_CANONICAL_PRICE_BASIS,
+    MARKET_INDEX_PRICE_BASIS,
     SPOT_PRICE_BASIS,
     US_EQUITY_PRICE_BASIS,
 )
@@ -103,6 +104,10 @@ class SqlAlchemyDataOperationRepository:
     def _instrument_rows():
         canonical_basis = case(
             (Instrument.instrument_type == "spot", SPOT_PRICE_BASIS),
+            (
+                Instrument.instrument_type == "market_index",
+                MARKET_INDEX_PRICE_BASIS,
+            ),
             (
                 Venue.code.in_((
                     "NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX",

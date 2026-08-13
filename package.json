@@ -25,6 +25,7 @@
     "sync:binance": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_binance_spot",
     "sync:equity-venues": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_equity_venues",
     "sync:reference-rates": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_reference_rates",
+    "sync:market-indices": "UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_market_indices --all --mode incremental",
     "test": "UV_CACHE_DIR=.cache/uv uv run --no-sync pytest",
     "test:watch": "UV_CACHE_DIR=.cache/uv uv run --no-sync pytest -w",
     "start": "pnpm run dev",

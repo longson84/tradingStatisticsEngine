@@ -36,8 +36,8 @@ const entities = [
   {
     name: "Instrument",
     icon: Blocks,
-    definition: "A specific tradable product or observable market relationship.",
-    examples: "NASDAQ GOOGL, Binance BTC/USDT, Yahoo BTC-USD or ETH-USD",
+    definition: "A specific tradable product or observable market relationship or index.",
+    examples: "NASDAQ GOOGL, Binance BTC/USDT, Yahoo BTC-USD, SPX",
     stores: "Type, asset roles, venue, currency, trading rules, active state",
   },
   {
@@ -88,6 +88,7 @@ const instrumentTypes = [
   ["common_stock", "Tradable equity security", "NASDAQ GOOGL"],
   ["spot", "Venue-specific exchange of base for quote", "Binance BTC/USDT"],
   ["reference_rate", "Provider-defined observation without an execution venue", "Yahoo BTC-USD, ETH-USD"],
+  ["market_index", "Calculated market-level series without an execution venue", "SPX, VN30"],
 ]
 
 const collectionTypes = [
@@ -178,7 +179,7 @@ export function DataModelPage() {
               </div>
               <div className="mt-4 flex min-w-[900px] items-center justify-center gap-2 text-xs text-muted-foreground">
                 <MapPin size={13} />
-                Venue is optional for reference rates. Company is optional for decentralized assets.
+                Venue is absent for reference rates and calculated market indices. Company is optional for decentralized assets.
               </div>
             </div>
           </section>
@@ -241,8 +242,8 @@ export function DataModelPage() {
                 <p className="mt-2 max-w-5xl text-sm leading-6 text-muted-foreground">
                   The database stores a calendar code string on <code className="text-xs text-foreground">venues</code>.
                   Python maps that code to expected-session behavior. There is no calendar table, calendar foreign key,
-                  or holiday-row table yet, and reference rates remain venue-less because their observation schedule
-                  belongs to the provider rather than an execution venue.
+                  or holiday-row table yet. Reference rates and market indices remain venue-less; their observation
+                  schedules come from their canonical acquisition policy rather than an execution venue.
                 </p>
               </div>
             </div>
@@ -254,7 +255,7 @@ export function DataModelPage() {
               title="Three paths through the same model"
               description="The structure stays stable even when companies, venues, and providers differ."
             />
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid gap-4 xl:grid-cols-2">
               <ExampleCard
                 number="01"
                 title="Listed equity"
@@ -266,6 +267,19 @@ export function DataModelPage() {
                   ["Symbol", "GOOGL · canonical/yfinance"],
                   ["Venue", "NASDAQ"],
                   ["Observation", "Adjusted or unadjusted daily bars"],
+                ]}
+              />
+              <ExampleCard
+                number="04"
+                title="Market index"
+                subtitle="S&P 500 calculated index level"
+                lines={[
+                  ["Company", "None"],
+                  ["Assets", "None; this is a calculated index"],
+                  ["Instrument", "SPX · market_index"],
+                  ["Symbol", "^GSPC · Yahoo namespace"],
+                  ["Venue", "None; the index itself is not traded"],
+                  ["Observation", "Canonical index-level bars"],
                 ]}
               />
               <ExampleCard

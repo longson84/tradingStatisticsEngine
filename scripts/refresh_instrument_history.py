@@ -36,6 +36,7 @@ from api.repositories.sqlalchemy_reference_rate_repository import (
 )
 from api.services.binance_spot_service import BinanceSpotService
 from api.services.company_price_service import CompanyPriceService
+from api.services.instrument_price_write_service import InstrumentPriceWriteService
 from api.services.reference_rate_service import ReferenceRateService
 from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
 from trading_engine.data.yfinance_loader import YFinanceLoader
@@ -90,6 +91,10 @@ def refresh_instrument(
             )
         elif instrument.instrument_type == "reference_rate":
             selected_source = _refresh_reference_rate(
+                db_engine, instrument, route, mode
+            )
+        elif instrument.instrument_type == "market_index":
+            selected_source = _refresh_market_index(
                 db_engine, instrument, route, mode
             )
         else:
@@ -212,6 +217,33 @@ def _refresh_binance_spot(
             SqlAlchemyPriceBarRepository(session),
         ).store_history(record, klines, fetched_at=datetime.now(UTC))
     return klines[-1].source if klines else route.price_adapter
+
+
+def _refresh_market_index(
+    engine: Engine,
+    instrument,
+    route: InstrumentDataRoute,
+    mode: str,
+) -> str:
+    now = datetime.now(UTC)
+    end = latest_completed_venue_session(now, route.schedule)
+    start = (
+        route.full_history_start
+        if mode == "full" or instrument.last_date is None
+        else instrument.last_date - timedelta(days=OVERLAP_DAYS)
+    )
+    loader = (
+        YFinanceLoader()
+        if route.price_adapter == "yfinance"
+        else VietnamPriceLoader()
+    )
+    prices = loader.load(route.provider_symbol, start, end + timedelta(days=1))
+    with session_scope(engine) as session:
+        InstrumentPriceWriteService(
+            SqlAlchemyPriceBarRepository(session),
+            SqlAlchemyInstrumentRoutingRepository(session),
+        ).store_history(instrument.id, prices, fetched_at=now)
+    return prices.source
 
 
 def _last_stored_date(

@@ -245,7 +245,25 @@ membership and routing from PostgreSQL. Normal API execution uses
 Universe synchronization remains a separate operation so a listing-provider
 failure does not prevent refreshing prices for the last known-good membership.
 
-## Phase 6: Test the Migration
+## Phase 6: Migrate Benchmarks and Test the Migration
+
+Status: complete. SPX and VN30 are canonical venue-less `market_index`
+Instruments. Their observations use PostgreSQL `price_bars`, coverage, refresh
+state, and source provenance with the `index_level` price basis. Price History
+and refresh workflows no longer read or write benchmark CSV/JSON caches.
+
+The one-time local cutover command is:
+
+```bash
+uv run alembic upgrade head
+uv run python -m scripts.migrate_legacy_benchmark_cache --delete-source
+```
+
+Future explicit acquisition uses:
+
+```bash
+uv run python -m scripts.sync_market_indices --all --mode incremental
+```
 
 Add unit coverage for:
 
