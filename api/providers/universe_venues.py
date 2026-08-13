@@ -8,7 +8,7 @@ from api.providers.nasdaq_symbol_directory import USListingVenueCatalog
 from api.providers.universe import (
     UniverseProviderDataError,
     UniverseSnapshot,
-    normalize_ticker,
+    normalize_symbol,
 )
 
 
@@ -26,11 +26,11 @@ def resolve_snapshot_venues(
             constituent.exchange,
         )
         if venue_code is None and snapshot.country_code == "US":
-            venue_code = directory.get(constituent.canonical_ticker)
+            venue_code = directory.get(constituent.canonical_symbol)
         if venue_code is None:
             raise UniverseProviderDataError(
                 f"{snapshot.code} has no canonical Venue for "
-                f"{constituent.canonical_ticker}"
+                f"{constituent.canonical_symbol}"
             )
         resolved.append(replace(constituent, exchange=venue_code))
     return replace(snapshot, constituents=tuple(resolved))
@@ -53,7 +53,7 @@ def _directory_by_symbol(
     for listing in catalog.listings:
         for raw_symbol in (*listing.primary_symbols, *listing.alternate_symbols):
             try:
-                symbol = normalize_ticker(raw_symbol, "US")
+                symbol = normalize_symbol(raw_symbol, "US")
             except UniverseProviderDataError:
                 continue
             previous = values.get(symbol)

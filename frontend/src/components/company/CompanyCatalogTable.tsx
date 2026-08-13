@@ -62,7 +62,7 @@ export function CompanyCatalogTable({ companies }: { companies: CompanyCatalogIt
                             : "bg-muted text-muted-foreground line-through",
                         )}
                       >
-                        {instrument.ticker}
+                        {instrument.symbol}
                       </span>
                     ))}
                   </div>

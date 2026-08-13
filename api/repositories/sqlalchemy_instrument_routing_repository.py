@@ -79,7 +79,7 @@ class SqlAlchemyInstrumentRoutingRepository:
         return tuple(
             InstrumentRoutingMetadata(
                 instrument_id=row.id,
-                canonical_symbol=row.ticker,
+                canonical_symbol=row.symbol,
                 instrument_type=row.instrument_type,
                 company_id=row.company_id,
                 venue_code=row.venue_code,

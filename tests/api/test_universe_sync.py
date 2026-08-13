@@ -62,7 +62,7 @@ class MutableUS30Provider:
             source="test-live-provider",
             constituents=tuple(
                 make_constituent(
-                    ticker=ticker,
+                    symbol=ticker,
                     country_code="US",
                     company_name=(
                         "Same Provider Name" if index in (2, 3)
@@ -106,17 +106,17 @@ def test_live_sync_is_idempotent_and_reconciles_companies_by_identifier(sync_set
     assert second[0].unchanged_count == 30
     with Session(engine) as session:
         first_instrument = session.scalar(
-            select(Instrument).where(Instrument.ticker == "T000")
+            select(Instrument).where(Instrument.symbol == "T000")
         )
         second_instrument = session.scalar(
-            select(Instrument).where(Instrument.ticker == "T001")
+            select(Instrument).where(Instrument.symbol == "T001")
         )
         assert first_instrument is not None and second_instrument is not None
         assert first_instrument.company_id == second_instrument.company_id
         same_name = session.scalars(
             select(Instrument)
-            .where(Instrument.ticker.in_(("T002", "T003")))
-            .order_by(Instrument.ticker)
+            .where(Instrument.symbol.in_(("T002", "T003")))
+            .order_by(Instrument.symbol)
         ).all()
         assert len(same_name) == 2
         assert same_name[0].company_id != same_name[1].company_id
@@ -140,7 +140,7 @@ def test_sync_does_not_erase_non_null_company_metadata(sync_setup):
         company = session.scalar(
             select(Company)
             .join(Instrument)
-            .where(Instrument.ticker == "T010")
+            .where(Instrument.symbol == "T010")
         )
         assert company is not None and company.sector == "Industrials"
 
@@ -150,7 +150,7 @@ def test_membership_replacement_preserves_observations_and_watchlists(sync_setup
     service.synchronize(("US30",))
     with Session(engine) as session, session.begin():
         removed = session.scalar(
-            select(Instrument).where(Instrument.ticker == "T000")
+            select(Instrument).where(Instrument.symbol == "T000")
         )
         assert removed is not None
         watchlist = Watchlist(name="Keep", name_key="keep", description="")
@@ -320,7 +320,7 @@ def test_missing_us_exchange_is_resolved_from_nasdaq_trader_catalog():
         source="test",
         constituents=(
             make_constituent(
-                ticker="BRK.B",
+                symbol="BRK.B",
                 country_code="US",
                 company_name="Berkshire Hathaway",
             ),
@@ -337,6 +337,6 @@ def test_missing_us_exchange_is_resolved_from_nasdaq_trader_catalog():
 
     resolved = resolve_snapshot_venues(snapshot, us_catalog=catalog)
 
-    assert resolved.constituents[0].canonical_ticker == "BRK-B"
+    assert resolved.constituents[0].canonical_symbol == "BRK-B"
     assert resolved.constituents[0].listing_symbol == "BRK.B"
     assert resolved.constituents[0].exchange == "NYSE"

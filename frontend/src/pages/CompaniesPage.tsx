@@ -134,7 +134,7 @@ export function CompaniesPage() {
                   setQuery(event.target.value)
                   setOffset(0)
                 }}
-                placeholder="Search company, ticker, sector, identifier..."
+                placeholder="Search company, symbol, sector, identifier..."
                 className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm focus:border-ring focus:outline-none"
               />
             </label>

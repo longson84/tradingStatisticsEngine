@@ -31,11 +31,11 @@ def _seed(session: Session) -> None:
     )
     fpt = Instrument(
         company=Company(display_name="FPT", country_code="VN", source="test"),
-        venue=venue, ticker="FPT", currency="VND", source="test"
+        venue=venue, symbol="FPT", currency="VND", source="test"
     )
     acb = Instrument(
         company=Company(display_name="ACB", country_code="VN", source="test"),
-        venue=venue, ticker="ACB", currency="VND", source="test"
+        venue=venue, symbol="ACB", currency="VND", source="test"
     )
     universe = Universe(
         code="VN100", name="VN100", description="", source="test"
@@ -86,7 +86,7 @@ def test_repository_upsert_updates_existing_bar_without_duplication():
         repository = SqlAlchemyPriceBarRepository(session)
         fetched_at = datetime(2026, 8, 3, tzinfo=UTC)
         fpt_id = session.scalar(
-            select(Instrument.id).where(Instrument.ticker == "FPT")
+            select(Instrument.id).where(Instrument.symbol == "FPT")
         )
         affected = repository.upsert_bars((
             PriceBarWriteRecord(
@@ -166,7 +166,7 @@ def test_repository_writes_equal_tickers_to_the_exact_instrument_id():
             Instrument(
                 company=company,
                 venue=venue,
-                ticker="DUAL",
+                symbol="DUAL",
                 currency="USD",
                 source="test",
             )

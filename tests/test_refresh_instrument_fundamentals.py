@@ -30,7 +30,7 @@ def test_exact_instrument_fundamentals_write_and_incremental_reuse(monkeypatch):
                 session_cutoff_time=time(16, 15),
                 source="test",
             ),
-            ticker="MSFT",
+            symbol="MSFT",
             instrument_type="common_stock",
             currency="USD",
             source="test",

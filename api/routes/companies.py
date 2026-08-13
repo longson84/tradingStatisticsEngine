@@ -64,7 +64,7 @@ def list_companies(
                 instruments=[
                     CompanyInstrumentResponse(
                         id=instrument.id,
-                        ticker=instrument.ticker,
+                        symbol=instrument.symbol,
                         instrument_type=instrument.instrument_type,
                         share_class=instrument.share_class,
                         venue_code=instrument.venue_code,

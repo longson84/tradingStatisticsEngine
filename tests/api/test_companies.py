@@ -53,7 +53,7 @@ def test_root_company_catalog_groups_alphabet_share_classes_under_one_issuer():
     assert response.total == 1
     alphabet = response.companies[0]
     assert alphabet.display_name == "Alphabet Inc."
-    assert {instrument.ticker for instrument in alphabet.instruments} == {
+    assert {instrument.symbol for instrument in alphabet.instruments} == {
         "GOOG",
         "GOOGL",
     }
@@ -154,5 +154,8 @@ def test_openapi_exposes_three_precise_catalogs_without_company_compatibility_pa
 
     company_fields = components["CompanyCatalogItemResponse"]["properties"]
     assert {"id", "display_name", "identifiers", "instruments"} <= company_fields.keys()
+    company_instrument_fields = components["CompanyInstrumentResponse"]["properties"]
+    assert "symbol" in company_instrument_fields
+    assert "ticker" not in company_instrument_fields
     instrument_fields = components["InstrumentCatalogItemResponse"]["properties"]
     assert {"id", "symbol", "sector", "industry", "universes"} <= instrument_fields.keys()

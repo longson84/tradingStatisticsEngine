@@ -446,8 +446,8 @@ export interface components {
             is_active: boolean;
             /** Share Class */
             share_class?: string | null;
-            /** Ticker */
-            ticker: string;
+            /** Symbol */
+            symbol: string;
             /** Universes */
             universes: string[];
             /** Venue Code */

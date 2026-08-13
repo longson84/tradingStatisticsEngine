@@ -472,7 +472,7 @@ def test_sqlalchemy_scope_projects_instrument_coverage_and_refresh_state():
         instrument_row = Instrument(
             company=company,
             venue=venue,
-            ticker="EXAMPLE",
+            symbol="EXAMPLE",
             currency="USD",
             is_active=True,
             source="test",

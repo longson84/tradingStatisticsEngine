@@ -52,7 +52,7 @@ class SqlAlchemyPriceBarRepository:
             return None
         return PriceInstrumentRecord(
             instrument_id=row.id,
-            ticker=row.ticker,
+            symbol=row.symbol,
             currency=row.currency,
             instrument_type=row.instrument_type,
             venue_code=row.venue_code,
@@ -82,14 +82,14 @@ class SqlAlchemyPriceBarRepository:
         return tuple(
             SymbolPriceCoverageRecord(
                 instrument_id=instrument_id,
-                ticker=ticker,
+                symbol=symbol,
                 first_date=coverage.first_date,
                 last_date=coverage.last_date,
                 row_count=int(coverage.row_count),
                 source=coverage.source,
                 fetched_at=coverage.fetched_at,
             )
-            for instrument_id, ticker, coverage in rows
+            for instrument_id, symbol, coverage in rows
         )
 
     def list_instrument_refresh_states(
@@ -110,7 +110,7 @@ class SqlAlchemyPriceBarRepository:
         return tuple(
             PriceRefreshStateRecord(
                 instrument_id=instrument_id,
-                ticker=ticker,
+                symbol=symbol,
                 price_basis=state.price_basis,
                 attempted_through=state.attempted_through,
                 returned_through=state.returned_through,
@@ -120,7 +120,7 @@ class SqlAlchemyPriceBarRepository:
                 detail=state.detail,
                 attempted_at=state.attempted_at,
             )
-            for instrument_id, ticker, state in rows
+            for instrument_id, symbol, state in rows
         )
 
     def upsert_bars(self, records: Iterable[PriceBarWriteRecord]) -> int:
@@ -325,7 +325,7 @@ class SqlAlchemyPriceBarRepository:
         )
         for row in self._session.execute(statement):
             yield PriceBarRecord(
-                ticker=row.ticker,
+                symbol=row.symbol,
                 trading_date=row.trading_date,
                 open=float(row.open),
                 high=float(row.high),
@@ -375,7 +375,7 @@ class SqlAlchemyPriceBarRepository:
         )
         for row in self._session.execute(statement):
             yield PriceBarRecord(
-                ticker=row.ticker,
+                symbol=row.symbol,
                 trading_date=row.trading_date,
                 open=float(row.open),
                 high=float(row.high),

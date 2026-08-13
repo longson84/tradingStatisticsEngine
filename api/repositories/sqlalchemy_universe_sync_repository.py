@@ -144,20 +144,20 @@ class SqlAlchemyUniverseSyncRepository:
         current = self._current_members(session, tuple(row.code for row in snapshots))
         results = []
         for snapshot in snapshots:
-            target = {member.ticker: member for member in snapshot.members}
+            target = {member.symbol: member for member in snapshot.members}
             stored = current.get(snapshot.code, {})
-            target_tickers = set(target)
-            stored_tickers = set(stored)
-            shared = target_tickers & stored_tickers
+            target_symbols = set(target)
+            stored_symbols = set(stored)
+            shared = target_symbols & stored_symbols
             metadata_changes = sum(
-                self._metadata_changed(stored[ticker], target[ticker])
-                for ticker in shared
+                self._metadata_changed(stored[symbol], target[symbol])
+                for symbol in shared
             )
             results.append(UniverseSyncResult(
                 universe_code=snapshot.code,
                 received_count=len(target),
-                added_count=len(target_tickers - stored_tickers),
-                removed_count=len(stored_tickers - target_tickers),
+                added_count=len(target_symbols - stored_symbols),
+                removed_count=len(stored_symbols - target_symbols),
                 unchanged_count=len(shared),
                 metadata_change_count=metadata_changes,
             ))
@@ -186,8 +186,8 @@ class SqlAlchemyUniverseSyncRepository:
         values: dict[
             str, dict[str, tuple[str, str | None, str | None, str | None]]
         ] = defaultdict(dict)
-        for code, ticker, name, sector, industry, venue_code in rows:
-            values[code][ticker] = (name, sector, industry, venue_code)
+        for code, symbol, name, sector, industry, venue_code in rows:
+            values[code][symbol] = (name, sector, industry, venue_code)
         return dict(values)
 
     @staticmethod
@@ -223,7 +223,7 @@ class SqlAlchemyUniverseSyncRepository:
                 venue = EQUITY_VENUES_BY_CODE.get(member.venue_code)
                 if venue is None or venue.country_code != snapshot.country_code:
                     raise UniverseSyncRejectedError(
-                        f"{snapshot.code} member {member.ticker} has a cross-country "
+                        f"{snapshot.code} member {member.symbol} has a cross-country "
                         f"or unknown Venue {member.venue_code!r}"
                     )
             previous_count = result.removed_count + result.unchanged_count
@@ -297,10 +297,10 @@ class SqlAlchemyUniverseSyncRepository:
 
             member_ids: set[int] = set()
             for member in snapshot.members:
-                instrument = exact.get((member.venue_code, member.ticker))
+                instrument = exact.get((member.venue_code, member.symbol))
                 if instrument is None:
                     candidates = unvenued.get(
-                        (snapshot.country_code, member.ticker), ()
+                        (snapshot.country_code, member.symbol), ()
                     )
                     if len(candidates) == 1:
                         instrument = candidates[0]
@@ -311,7 +311,7 @@ class SqlAlchemyUniverseSyncRepository:
                 }
                 if len(identifier_companies) > 1:
                     raise UniverseSyncRejectedError(
-                        f"Stable identifiers for {member.ticker} resolve to "
+                        f"Stable identifiers for {member.symbol} resolve to "
                         "different Companies"
                     )
                 identified_company = next(iter(identifier_companies), None)
@@ -346,7 +346,7 @@ class SqlAlchemyUniverseSyncRepository:
 
                 if instrument is None:
                     instrument = new_instrument(
-                        member.ticker,
+                        member.symbol,
                         source=snapshot.source,
                         company=company,
                         venue=venues[member.venue_code],
@@ -357,7 +357,7 @@ class SqlAlchemyUniverseSyncRepository:
                     )
                     session.add(instrument)
                     session.flush()
-                    exact[(member.venue_code, member.ticker)] = instrument
+                    exact[(member.venue_code, member.symbol)] = instrument
                 else:
                     instrument.company = company
                     instrument.venue = venues[member.venue_code]
@@ -379,7 +379,7 @@ class SqlAlchemyUniverseSyncRepository:
                     session,
                     instrument,
                     namespace="canonical",
-                    symbol=member.ticker,
+                    symbol=member.symbol,
                     snapshot=snapshot,
                 )
                 self._upsert_symbol(

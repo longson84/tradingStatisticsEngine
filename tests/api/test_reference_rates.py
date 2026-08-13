@@ -41,9 +41,9 @@ def test_reference_rate_catalog_creates_assets_without_company_or_venue():
         assert session.scalar(select(func.count(Venue.id))) == 0
         assert session.scalar(select(func.count(Asset.id))) == 3
         instruments = session.scalars(
-            select(Instrument).order_by(Instrument.ticker)
+            select(Instrument).order_by(Instrument.symbol)
         ).all()
-        assert [row.ticker for row in instruments] == ["BTC-USD", "ETH-USD"]
+        assert [row.symbol for row in instruments] == ["BTC-USD", "ETH-USD"]
         assert {row.instrument_type for row in instruments} == {"reference_rate"}
         assert all(row.company_id is None for row in instruments)
         assert all(row.venue_id is None for row in instruments)
@@ -104,7 +104,7 @@ def test_reference_rate_identity_constraint_rejects_a_venue():
             base_asset_id=btc.id,
             quote_asset_id=usd.id,
             settlement_asset_id=usd.id,
-            ticker="BTC-USD",
+            symbol="BTC-USD",
             instrument_type="reference_rate",
             currency="USD",
             is_active=True,

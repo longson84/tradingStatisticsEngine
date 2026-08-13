@@ -165,7 +165,7 @@ def test_catalog_sync_creates_assets_venue_spot_instruments_and_active_universe(
         assert usdt is not None and usdt.asset_type == "stablecoin"
         venue = session.scalar(select(Venue).where(Venue.code == "BINANCE_SPOT"))
         assert venue is not None
-        btc = session.scalar(select(Instrument).where(Instrument.ticker == "BTCUSDT"))
+        btc = session.scalar(select(Instrument).where(Instrument.symbol == "BTCUSDT"))
         assert btc is not None
         assert btc.company_id is None
         assert btc.instrument_type == "spot"
@@ -178,7 +178,7 @@ def test_catalog_sync_creates_assets_venue_spot_instruments_and_active_universe(
             .join(UniverseMembership)
             .where(UniverseMembership.universe_id == universe.id)
         ).all()
-        assert [row.ticker for row in members] == ["BTCUSDT"]
+        assert [row.symbol for row in members] == ["BTCUSDT"]
 
 
 def test_catalog_resync_deactivates_missing_market_without_deleting_history():
@@ -196,7 +196,7 @@ def test_catalog_resync_deactivates_missing_market_without_deleting_history():
         ).sync_catalog(_catalog(_symbol("BTCUSDT", "BTC", "USDT")))
         assert result.deactivated_instruments == 1
     with Session(engine) as session:
-        eth = session.scalar(select(Instrument).where(Instrument.ticker == "ETHUSDT"))
+        eth = session.scalar(select(Instrument).where(Instrument.symbol == "ETHUSDT"))
         assert eth is not None and eth.is_active is False
 
 
@@ -277,7 +277,7 @@ def test_crypto_instrument_route_paginates_filters_and_preserves_decimal_rules()
             base_asset_id=btc_asset.id,
             quote_asset_id=usdt_asset.id,
             settlement_asset_id=usdt_asset.id,
-            ticker="BTC-USDT",
+            symbol="BTC-USDT",
             instrument_type="spot",
             currency="USDT",
             price_tick_size=Decimal("0.1"),
@@ -288,7 +288,7 @@ def test_crypto_instrument_route_paginates_filters_and_preserves_decimal_rules()
             source="test",
         ))
         btc = session.scalar(
-            select(Instrument).where(Instrument.ticker == "BTCUSDT")
+            select(Instrument).where(Instrument.symbol == "BTCUSDT")
         )
         assert btc is not None
         session.add(PriceBarCoverage(

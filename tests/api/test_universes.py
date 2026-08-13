@@ -37,7 +37,7 @@ def _services():
     fetched_at = datetime(2026, 8, 10, tzinfo=UTC)
     msft = Instrument(
         company=Company(display_name="Microsoft", country_code="US", source="test"),
-        ticker="MSFT",
+        symbol="MSFT",
         instrument_type="common_stock",
         currency="USD",
         source="test",
@@ -59,7 +59,7 @@ def _services():
         base_asset=btc,
         quote_asset=usdt,
         settlement_asset=usdt,
-        ticker="BTCUSDT",
+        symbol="BTCUSDT",
         instrument_type="spot",
         currency="USDT",
         source="test",
@@ -70,7 +70,7 @@ def _services():
         base_asset=btc,
         quote_asset=usdt,
         settlement_asset=usdt,
-        ticker="OLDUSDT",
+        symbol="OLDUSDT",
         instrument_type="spot",
         currency="USDT",
         source="test",

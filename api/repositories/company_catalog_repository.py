@@ -23,7 +23,7 @@ class CompanyIdentifierRecord:
 @dataclass(frozen=True)
 class CompanyInstrumentRecord:
     id: int
-    ticker: str
+    symbol: str
     instrument_type: str
     share_class: str | None
     venue_code: str | None

@@ -30,7 +30,7 @@ def test_failed_exact_price_refresh_records_instrument_state(monkeypatch):
                 session_cutoff_time=time(16, 15),
                 source="test",
             ),
-            ticker="MSFT",
+            symbol="MSFT",
             instrument_type="common_stock",
             currency="USD",
             source="test",

@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 from api.db.models import Base, Company, Instrument, InstrumentSymbol
 
 
-def test_instrument_model_has_no_legacy_note_column():
+def test_instrument_model_has_no_legacy_identity_compatibility_fields():
     assert "note" not in Instrument.__table__.columns
     assert "notes" not in Instrument.__table__.columns
     assert "ticker" not in Instrument.__table__.columns
+    assert not hasattr(Instrument, "ticker")
+    assert hasattr(Instrument, "symbol")
 
 
 def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
@@ -24,7 +26,7 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
                 country_code="US",
                 source="sec",
             ),
-            ticker="CNR",
+            symbol="CNR",
             currency="USD",
             source="exchange",
         )
@@ -47,7 +49,7 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
         session.add(instrument)
         session.commit()
 
-        stored = session.scalar(select(Instrument).where(Instrument.ticker == "CNR"))
+        stored = session.scalar(select(Instrument).where(Instrument.symbol == "CNR"))
         assert stored is not None
         assert {symbol.symbol for symbol in stored.symbols} == {"CEIX", "CNR"}
         assert "providers" not in Base.metadata.tables

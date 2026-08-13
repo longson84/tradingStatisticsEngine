@@ -314,8 +314,8 @@ class Instrument(Base):
     )
 
     @hybrid_property
-    def ticker(self) -> str:
-        """Python-level alias for the current canonical symbol."""
+    def symbol(self) -> str:
+        """Return the current canonical symbol from effective-dated mappings."""
         values = {
             row.symbol
             for row in self.symbols
@@ -329,8 +329,8 @@ class Instrument(Base):
             )
         return next(iter(values))
 
-    @ticker.setter
-    def ticker(self, value: str) -> None:
+    @symbol.setter
+    def symbol(self, value: str) -> None:
         """Attach an initial canonical row for object construction only."""
         normalized = value.upper().strip()
         current = [
@@ -352,9 +352,9 @@ class Instrument(Base):
                 "Canonical symbol changes require effective-dated symbol rows"
             )
 
-    @ticker.inplace.expression
+    @symbol.inplace.expression
     @classmethod
-    def _ticker_expression(cls):
+    def _symbol_expression(cls):
         return (
             select(InstrumentSymbol.symbol)
             .where(

@@ -10,7 +10,7 @@ from api.providers.universe import (
     UniverseProviderRegistry,
     UniverseProviderDataError,
     make_constituent,
-    normalize_ticker,
+    normalize_symbol,
     validated_constituents,
 )
 from api.providers.universe_catalog import create_universe_provider_registry
@@ -22,21 +22,21 @@ from api.providers.us_universes import (
 from api.providers.vietnam_universes import VnstockUniverseProvider
 
 
-def test_normalize_ticker_uses_price_loader_class_share_notation():
-    assert normalize_ticker(" brk.b ", "US") == "BRK-B"
-    assert normalize_ticker("fpt", "VN") == "FPT"
+def test_normalize_symbol_uses_canonical_class_share_notation():
+    assert normalize_symbol(" brk.b ", "US") == "BRK-B"
+    assert normalize_symbol("fpt", "VN") == "FPT"
 
     with pytest.raises(UniverseProviderDataError, match="Invalid VN"):
-        normalize_ticker("VN 30", "VN")
+        normalize_symbol("VN 30", "VN")
 
 
 def test_validated_constituents_rejects_normalized_duplicates():
     values = [
-        make_constituent(ticker="BRK.B", country_code="US"),
-        make_constituent(ticker="BRK-B", country_code="US"),
+        make_constituent(symbol="BRK.B", country_code="US"),
+        make_constituent(symbol="BRK-B", country_code="US"),
     ]
 
-    with pytest.raises(UniverseProviderDataError, match="duplicate tickers"):
+    with pytest.raises(UniverseProviderDataError, match="duplicate symbols"):
         validated_constituents(values, universe="US500")
 
 
@@ -85,7 +85,7 @@ def test_nasdaq_provider_parses_current_quote_list_shape():
     assert snapshot.code == "US100"
     assert snapshot.effective_date == date(2026, 8, 8)
     assert snapshot.source == "nasdaq-quote-list"
-    assert [row.canonical_ticker for row in snapshot.constituents] == [
+    assert [row.canonical_symbol for row in snapshot.constituents] == [
         "AAPL", "GOOG",
     ]
     assert snapshot.constituents[0].exchange == "NASDAQ"
@@ -108,7 +108,7 @@ FOLD,AMICUS THERAPEUTICS INC,Health Care,Equity,NASDAQ
     snapshot = provider.fetch("US2000")
 
     assert snapshot.effective_date == date(2026, 8, 7)
-    assert [row.canonical_ticker for row in snapshot.constituents] == [
+    assert [row.canonical_symbol for row in snapshot.constituents] == [
         "FOLD", "MOG-A",
     ]
 
@@ -151,7 +151,7 @@ def test_wikipedia_provider_selects_the_named_constituent_table(
 
     snapshot = provider.fetch(code)
 
-    assert [row.canonical_ticker for row in snapshot.constituents] == [expected]
+    assert [row.canonical_symbol for row in snapshot.constituents] == [expected]
 
 
 class _FakeListing:
@@ -191,17 +191,17 @@ def test_vnstock_provider_derives_composite_universes_and_caches_source_calls():
     vnall = provider.fetch("VNALL")
     vn30 = provider.fetch("VN30")
 
-    assert {row.canonical_ticker for row in vn100.constituents} == {
+    assert {row.canonical_symbol for row in vn100.constituents} == {
         "ACB", "ANV", "FPT",
     }
-    assert {row.canonical_ticker for row in vnall.constituents} == {
+    assert {row.canonical_symbol for row in vnall.constituents} == {
         "AAA", "AAM", "ACB", "ANV", "FPT",
     }
-    assert {row.canonical_ticker for row in vn30.constituents} <= {
-        row.canonical_ticker for row in vn100.constituents
+    assert {row.canonical_symbol for row in vn30.constituents} <= {
+        row.canonical_symbol for row in vn100.constituents
     }
     assert listing.group_calls == ["VN30", "VNMidCap", "VNSmallCap"]
     assert listing.metadata_calls == 1
-    fpt = next(row for row in vnall.constituents if row.canonical_ticker == "FPT")
+    fpt = next(row for row in vnall.constituents if row.canonical_symbol == "FPT")
     assert fpt.sector == "Information Technology"
     assert fpt.industry == "Công nghệ và thông tin"

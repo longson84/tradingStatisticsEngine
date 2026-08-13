@@ -29,7 +29,7 @@ def _seed(session: Session) -> FundamentalReport:
         company=Company(
             display_name="FPT Corporation", country_code="VN", source="test"
         ),
-        ticker="FPT",
+        symbol="FPT",
         currency="VND",
         source="test",
     )

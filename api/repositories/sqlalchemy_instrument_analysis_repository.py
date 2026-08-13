@@ -127,10 +127,10 @@ class SqlAlchemyInstrumentAnalysisRepository:
     def iter_price_bars(
         self, instrument_id: int, price_basis: str
     ) -> tuple[PriceBarRecord, ...]:
-        ticker = self._session.scalar(
+        symbol = self._session.scalar(
             select(canonical_symbol_expression()).where(Instrument.id == instrument_id)
         )
-        if ticker is None:
+        if symbol is None:
             return ()
         rows = self._session.scalars(
             select(PriceBar)
@@ -142,7 +142,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         )
         return tuple(
             PriceBarRecord(
-                ticker=ticker,
+                symbol=symbol,
                 trading_date=row.trading_date,
                 open=row.open,
                 high=row.high,
@@ -306,7 +306,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
     def _record(row, universes: tuple[str, ...]) -> AnalysisInstrumentRecord:
         return AnalysisInstrumentRecord(
             id=row.id,
-            symbol=row.ticker,
+            symbol=row.symbol,
             instrument_type=row.instrument_type,
             company_id=row.company_id,
             company_name=row.company_name,

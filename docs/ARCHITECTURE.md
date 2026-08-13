@@ -1808,14 +1808,14 @@ Decision: migration 0024 backfills a current primary `canonical` symbol from
 the compatibility value wherever one is missing, verifies uniqueness through
 the existing partial index, and drops `instruments.ticker` and its Venue-based
 indexes. `instrument_symbols` is now the sole persisted symbol authority. The
-domain-facing `Instrument.ticker` hybrid remains as a transitional Python/query
-name, but reads the current canonical row and has no database column. New
+domain-facing `Instrument.symbol` hybrid reads the current canonical row and
+has no database column. New
 catalog writers explicitly create a canonical row plus any provider or listing
 aliases. Symbol renames close the old row with `valid_to` and create a new
 current row; they never overwrite history.
 
-Consequences: public API fields can continue to use `ticker` or `symbol`
-without duplicating persistence. Exact observation identity remains
+Consequences: public API and repository fields use `symbol`; `ticker` remains
+only source vocabulary at external provider parsing boundaries. Exact observation identity remains
 `instrument_id`; namespace-specific provider routing continues through
 provider symbol rows. A valid database must have exactly one current primary
 canonical symbol for every Instrument.
@@ -2040,3 +2040,28 @@ that could be mistaken for execution constraints, and the Price History API is
 smaller without losing persisted provenance, freshness planning, or analytical
 identity. A downgrade recreates nullable compatibility columns but cannot
 reconstruct their historical provider values without another catalog fetch.
+
+### 2026-08-13 — Final legacy audit and symbol terminology closure
+
+Context: migration `0024` removed the persisted Instrument ticker, but the ORM
+still exposed a queryable `ticker` compatibility hybrid and the Company catalog
+returned nested Instrument symbols under a `ticker` field. Several internal
+price and fundamental repository records retained the same transitional name.
+
+Decision: remove the ORM compatibility alias and expose the current canonical
+row only as `Instrument.symbol`. Company, price, fundamental, routing,
+analysis, and Universe-normalization contracts use `symbol` consistently.
+Provider adapters may still use a local `ticker` name when parsing a source
+whose published column or library object uses that term; it is normalized at
+the provider boundary and never becomes canonical identity.
+
+The release audit confirms that PostgreSQL contains no retired application
+tables, no ticker/market/legacy columns, and no obsolete ticker/market indexes.
+All registered API operations have a current frontend or explicit operational
+consumer. Every frontend page is routed directly or embedded as a Collections
+tab; the two tab panels are not standalone orphan pages.
+
+Consequences: the completed cutover has one application vocabulary and one
+persisted authority: an Instrument has effective-dated symbols, while every
+observation and membership references its Instrument ID. Tests prohibit both a
+persisted ticker column and a future ORM ticker compatibility property.

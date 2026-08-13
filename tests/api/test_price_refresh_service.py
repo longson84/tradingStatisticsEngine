@@ -18,7 +18,7 @@ class FakePriceRefreshRepository:
         self.coverage = (
             SymbolPriceCoverageRecord(
                 instrument_id=1,
-                ticker="CURRENT",
+                symbol="CURRENT",
                 first_date=date(2021, 1, 4),
                 last_date=date(2026, 8, 3),
                 row_count=1,
@@ -27,7 +27,7 @@ class FakePriceRefreshRepository:
             ),
             SymbolPriceCoverageRecord(
                 instrument_id=2,
-                ticker="STALE",
+                symbol="STALE",
                 first_date=date(2021, 1, 4),
                 last_date=date(2026, 7, 24),
                 row_count=1,
@@ -105,7 +105,7 @@ def test_incremental_plan_reuses_symbol_checked_without_new_bar():
     repository.refresh_states = (
         PriceRefreshStateRecord(
             instrument_id=2,
-            ticker="STALE",
+            symbol="STALE",
             price_basis="provider_unspecified",
             attempted_through=date(2026, 8, 3),
             returned_through=date(2026, 7, 24),

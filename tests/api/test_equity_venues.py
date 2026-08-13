@@ -111,7 +111,7 @@ def test_sqlalchemy_repository_creates_registry_and_assigns_exact_instrument():
                 country_code="US",
                 source="test",
             ),
-            ticker="EXAMPLE",
+            symbol="EXAMPLE",
             currency="USD",
             source="test",
         )
@@ -140,7 +140,7 @@ def test_sqlalchemy_repository_creates_registry_and_assigns_exact_instrument():
 
     with Session(engine) as session:
         stored = session.scalar(
-            select(Instrument).where(Instrument.ticker == "EXAMPLE")
+            select(Instrument).where(Instrument.symbol == "EXAMPLE")
         )
         assert stored is not None and stored.venue is not None
         assert stored.venue.code == "NYSE"

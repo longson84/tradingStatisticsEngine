@@ -107,7 +107,7 @@ class UniverseSyncService:
         if not set(VN_UNIVERSE_FAMILY).issubset(by_code):
             return
         members = {
-            code: {row.canonical_ticker for row in by_code[code].constituents}
+            code: {row.canonical_symbol for row in by_code[code].constituents}
             for code in VN_UNIVERSE_FAMILY
         }
         if members["VN100"] != members["VN30"] | members["VNMID"]:
@@ -127,7 +127,7 @@ class UniverseSyncService:
             source=snapshot.source,
             members=tuple(
                 UniverseSyncMember(
-                    ticker=row.canonical_ticker,
+                    symbol=row.canonical_symbol,
                     listing_symbol=row.listing_symbol,
                     company_name=row.company_name,
                     sector=row.sector,

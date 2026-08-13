@@ -36,7 +36,7 @@ class UniverseCompanyIdentifier:
 
 @dataclass(frozen=True)
 class UniverseConstituent:
-    canonical_ticker: str
+    canonical_symbol: str
     listing_symbol: str
     company_name: str
     sector: str | None = None
@@ -88,19 +88,19 @@ class UniverseProviderRegistry:
         return provider.fetch(code)
 
 
-def normalize_ticker(value: object, country_code: CountryCode) -> str:
-    """Normalize a provider symbol to the application's price-loader ticker."""
-    ticker = str(value).upper().strip()
+def normalize_symbol(value: object, country_code: CountryCode) -> str:
+    """Normalize a provider symbol into the canonical Instrument namespace."""
+    symbol = str(value).upper().strip()
     if country_code == "US":
-        ticker = ticker.replace(".", "-").replace("/", "-")
+        symbol = symbol.replace(".", "-").replace("/", "-")
         pattern = _US_TICKER
     else:
         pattern = _VN_TICKER
-    if not ticker or not pattern.fullmatch(ticker):
+    if not symbol or not pattern.fullmatch(symbol):
         raise UniverseProviderDataError(
-            f"Invalid {country_code} universe ticker: {value!r}"
+            f"Invalid {country_code} universe symbol: {value!r}"
         )
-    return ticker
+    return symbol
 
 
 def optional_text(value: object) -> str | None:
@@ -112,7 +112,7 @@ def optional_text(value: object) -> str | None:
 
 def make_constituent(
     *,
-    ticker: object,
+    symbol: object,
     country_code: CountryCode,
     company_name: object = None,
     sector: object = None,
@@ -120,10 +120,10 @@ def make_constituent(
     exchange: object = None,
     company_identifiers: tuple[UniverseCompanyIdentifier, ...] = (),
 ) -> UniverseConstituent:
-    listing_symbol = str(ticker).upper().strip()
-    canonical = normalize_ticker(ticker, country_code)
+    listing_symbol = str(symbol).upper().strip()
+    canonical = normalize_symbol(symbol, country_code)
     return UniverseConstituent(
-        canonical_ticker=canonical,
+        canonical_symbol=canonical,
         listing_symbol=listing_symbol,
         company_name=optional_text(company_name) or canonical,
         sector=optional_text(sector),
@@ -161,12 +161,12 @@ def validated_constituents(
     seen: set[str] = set()
     duplicates: set[str] = set()
     for value in values:
-        if value.canonical_ticker in seen:
-            duplicates.add(value.canonical_ticker)
-        seen.add(value.canonical_ticker)
+        if value.canonical_symbol in seen:
+            duplicates.add(value.canonical_symbol)
+        seen.add(value.canonical_symbol)
     if duplicates:
         raise UniverseProviderDataError(
-            f"{universe} provider returned duplicate tickers: "
+            f"{universe} provider returned duplicate symbols: "
             f"{sorted(duplicates)}"
         )
-    return tuple(sorted(values, key=lambda value: value.canonical_ticker))
+    return tuple(sorted(values, key=lambda value: value.canonical_symbol))

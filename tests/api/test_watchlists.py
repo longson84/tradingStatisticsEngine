@@ -48,13 +48,13 @@ def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
         "MSFT": Instrument(
             venue=nasdaq,
             company=Company(display_name="Microsoft", country_code="US", source="test"),
-            ticker="MSFT", instrument_type="common_stock",
+            symbol="MSFT", instrument_type="common_stock",
             currency="USD", source="test", is_active=True,
         ),
         "AAPL": Instrument(
             venue=nasdaq,
             company=Company(display_name="Apple", country_code="US", source="test"),
-            ticker="AAPL", instrument_type="common_stock",
+            symbol="AAPL", instrument_type="common_stock",
             currency="USD", source="test", is_active=True,
         ),
         "FPT": Instrument(
@@ -62,7 +62,7 @@ def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
             company=Company(
                 display_name="FPT Corporation", country_code="VN", source="test"
             ),
-            ticker="FPT", instrument_type="common_stock",
+            symbol="FPT", instrument_type="common_stock",
             currency="VND", source="test", is_active=True,
         ),
         "BTCUSDT": Instrument(
@@ -70,11 +70,11 @@ def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
             base_asset=btc,
             quote_asset=usdt,
             settlement_asset=usdt,
-            ticker="BTCUSDT", instrument_type="spot",
+            symbol="BTCUSDT", instrument_type="spot",
             currency="USDT", source="test", is_active=True,
         ),
         "SPX": Instrument(
-            ticker="SPX", instrument_type="market_index",
+            symbol="SPX", instrument_type="market_index",
             currency="USD", source="test", is_active=True,
         ),
     }

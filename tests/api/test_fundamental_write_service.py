@@ -42,7 +42,7 @@ def _frame(period: str, effective_date: str, eps: float) -> pd.DataFrame:
 def _seed_instrument(session: Session) -> int:
     instrument = Instrument(
         company=Company(display_name="Apple", country_code="US", source="test"),
-        ticker="AAPL",
+        symbol="AAPL",
         currency="USD",
         source="test",
     )

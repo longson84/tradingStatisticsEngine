@@ -126,7 +126,7 @@ def seed_company_catalog(session: Session) -> dict[str, Instrument]:
             base_asset=asset,
             quote_asset=currencies[currency],
             settlement_asset=currencies[currency],
-            ticker=ticker,
+            symbol=ticker,
             instrument_type="common_stock",
             currency=currency,
             is_active=True,

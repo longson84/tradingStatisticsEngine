@@ -24,7 +24,7 @@ class StubRepository:
         self.writes = []
         self.target = PriceInstrumentRecord(
             instrument_id=42,
-            ticker="MSFT",
+            symbol="MSFT",
             currency="USD",
             instrument_type="common_stock",
             venue_code="NASDAQ",
@@ -40,7 +40,7 @@ class StubRepository:
             return None
         return SymbolPriceCoverageRecord(
             instrument_id=self.target.instrument_id,
-            ticker=self.target.ticker,
+            symbol=self.target.symbol,
             first_date=self.records[0].trading_date,
             last_date=self.last_date,
             row_count=len(self.records),
@@ -63,7 +63,7 @@ class StubRepository:
     @staticmethod
     def _row(day, close):
         return PriceBarRecord(
-            ticker="MSFT",
+            symbol="MSFT",
             trading_date=day,
             open=close,
             high=close,
@@ -89,7 +89,7 @@ class StubRoutingRepository:
         schedule = venue_calendar(target.venue_code)
         return InstrumentRoutingMetadata(
             instrument_id=target.instrument_id,
-            canonical_symbol=target.ticker,
+            canonical_symbol=target.symbol,
             instrument_type=target.instrument_type,
             company_id=1,
             venue_code=target.venue_code,
@@ -114,7 +114,7 @@ def test_store_history_uses_canonical_instrument_metadata(
     repository = StubRepository(None)
     repository.target = PriceInstrumentRecord(
         instrument_id=42,
-        ticker=ticker,
+        symbol=ticker,
         currency=currency,
         instrument_type="common_stock",
         venue_code="HOSE" if country == "VN" else "NASDAQ",

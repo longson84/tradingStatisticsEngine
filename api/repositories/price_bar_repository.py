@@ -8,7 +8,7 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class PriceBarRecord:
-    ticker: str
+    symbol: str
     trading_date: date
     open: float
     high: float
@@ -25,7 +25,7 @@ class PriceBarRecord:
 @dataclass(frozen=True)
 class SymbolPriceCoverageRecord:
     instrument_id: int
-    ticker: str
+    symbol: str
     first_date: date
     last_date: date
     row_count: int
@@ -36,7 +36,7 @@ class SymbolPriceCoverageRecord:
 @dataclass(frozen=True)
 class PriceRefreshStateRecord:
     instrument_id: int
-    ticker: str
+    symbol: str
     price_basis: str
     attempted_through: date
     returned_through: date | None
@@ -79,7 +79,7 @@ class PriceBarWriteRecord:
 @dataclass(frozen=True)
 class PriceInstrumentRecord:
     instrument_id: int
-    ticker: str
+    symbol: str
     currency: str
     instrument_type: str
     venue_code: str | None

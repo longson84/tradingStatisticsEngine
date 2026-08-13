@@ -24,7 +24,7 @@ def canonical_symbol_expression() -> ColumnElement[str]:
         )
         .correlate(Instrument)
         .scalar_subquery()
-        .label("ticker")
+        .label("symbol")
     )
 
 

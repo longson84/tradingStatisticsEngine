@@ -37,7 +37,7 @@ class FakeFundamentalRepository:
             FundamentalReportRecord(
                 id=1,
                 instrument_id=1,
-                ticker="FPT",
+                symbol="FPT",
                 source="vnstock-vci-4.0.5",
                 period_end=date(2025, 3, 31),
                 period_label="2025-Q1",
@@ -49,7 +49,7 @@ class FakeFundamentalRepository:
             FundamentalReportRecord(
                 id=2,
                 instrument_id=1,
-                ticker="FPT",
+                symbol="FPT",
                 source="vnstock-vci-4.0.5",
                 period_end=date(2025, 6, 30),
                 period_label="2025-Q2",
@@ -125,7 +125,7 @@ def test_service_projects_normalized_records_to_existing_wide_contract():
     result = service.get_instrument_history(1)
 
     assert result.instrument_id == 1
-    assert result.ticker == "FPT"
+    assert result.symbol == "FPT"
     assert tuple(result.snapshots.columns) == FUNDAMENTAL_COLUMNS
     assert result.snapshots["effective_date"].tolist() == [
         pd.Timestamp("2025-04-25"),

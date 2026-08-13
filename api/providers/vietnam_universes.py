@@ -117,7 +117,7 @@ class VnstockUniverseProvider:
                 str(symbol).upper().strip(), (None, None, None, None)
             )
             constituents.append(make_constituent(
-                ticker=symbol,
+                symbol=symbol,
                 country_code="VN",
                 company_name=name,
                 sector=_SECTOR_BY_INDUSTRY_CODE.get(industry_code),
@@ -145,7 +145,7 @@ class VnstockUniverseProvider:
     def _combine(self, code: str, members: tuple[str, ...]) -> UniverseSnapshot:
         bases = [self.fetch(member) for member in members]
         combined = {
-            value.canonical_ticker: value
+            value.canonical_symbol: value
             for snapshot in bases
             for value in snapshot.constituents
         }

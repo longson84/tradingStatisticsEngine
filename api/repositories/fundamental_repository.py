@@ -11,7 +11,7 @@ from typing import Protocol
 class FundamentalReportRecord:
     id: int
     instrument_id: int
-    ticker: str
+    symbol: str
     source: str
     period_end: date | None
     period_label: str | None
@@ -100,7 +100,7 @@ class FundamentalWriteResult:
 @dataclass(frozen=True)
 class FundamentalInstrumentRecord:
     instrument_id: int
-    ticker: str
+    symbol: str
     currency: str
 
 

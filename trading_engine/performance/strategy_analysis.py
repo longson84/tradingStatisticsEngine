@@ -1,4 +1,4 @@
-"""Rich single-ticker strategy analytics — all computation lives here.
+"""Rich single-instrument strategy analytics — all computation lives here.
 
 Entry point: run_single_instrument_analysis()
 Returns a SingleInstrumentAnalysis dataclass that the API route serialises to JSON.
@@ -167,7 +167,7 @@ def run_single_instrument_analysis(
     initial_capital: float = 10_000.0,
     strategy_label: str = "Strategy",
 ) -> SingleInstrumentAnalysis:
-    """Run a full single-ticker backtest and return rich analytics.
+    """Run a full single-instrument backtest and return rich analytics.
 
     Runs both the supplied strategy and a Buy-and-Hold benchmark so the caller
     gets comparison data in one call.

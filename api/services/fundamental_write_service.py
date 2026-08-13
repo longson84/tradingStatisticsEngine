@@ -45,7 +45,7 @@ class FundamentalWriteService:
             raise FundamentalWriteError(f"Unknown instrument: {instrument_id}")
         if frame.empty:
             raise FundamentalWriteError(
-                f"No fundamentals returned for instrument {instrument_id} ({instrument.ticker})"
+                f"No fundamentals returned for instrument {instrument_id} ({instrument.symbol})"
             )
         currency = instrument.currency
         reports: list[FundamentalReportWriteRecord] = []

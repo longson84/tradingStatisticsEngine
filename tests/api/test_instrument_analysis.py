@@ -117,7 +117,7 @@ def test_price_history_relative_strength_reads_canonical_index_bars():
     service, session, instrument_id = _service_with_msft_history()
     try:
         index = Instrument(
-            ticker="SPX",
+            symbol="SPX",
             instrument_type="market_index",
             currency="USD",
             source="system",
@@ -181,7 +181,7 @@ def test_market_index_scope_and_history_do_not_apply_equity_semantics():
     service, session, _ = _service_with_msft_history()
     try:
         index = Instrument(
-            ticker="SPX",
+            symbol="SPX",
             instrument_type="market_index",
             currency="USD",
             source="system",
@@ -309,19 +309,19 @@ def test_crypto_scopes_and_exact_id_keep_venues_and_reference_rates_distinct():
     instruments = (
         Instrument(
             venue_id=binance.id, base_asset_id=btc.id, quote_asset_id=usdt.id,
-            settlement_asset_id=usdt.id, ticker="BTCUSDT",
+            settlement_asset_id=usdt.id, symbol="BTCUSDT",
             instrument_type="spot", currency="USDT", is_active=True,
             source="test",
         ),
         Instrument(
             venue_id=okx.id, base_asset_id=btc.id, quote_asset_id=usdt.id,
-            settlement_asset_id=usdt.id, ticker="BTCUSDT",
+            settlement_asset_id=usdt.id, symbol="BTCUSDT",
             instrument_type="spot", currency="USDT", is_active=True,
             source="test",
         ),
         Instrument(
             base_asset_id=btc.id, quote_asset_id=usd.id,
-            settlement_asset_id=usd.id, ticker="BTC-USD",
+            settlement_asset_id=usd.id, symbol="BTC-USD",
             instrument_type="reference_rate", currency="USD", is_active=True,
             source="test",
         ),

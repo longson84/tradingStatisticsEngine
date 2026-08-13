@@ -19,7 +19,7 @@ class CompanyIdentifierResponse(BaseModel):
 
 class CompanyInstrumentResponse(BaseModel):
     id: int
-    ticker: str
+    symbol: str
     instrument_type: str
     share_class: str | None = None
     venue_code: str | None = None

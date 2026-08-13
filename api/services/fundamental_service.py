@@ -89,7 +89,7 @@ class FundamentalHistoryMetadata:
 @dataclass(frozen=True)
 class FundamentalHistory:
     instrument_id: int
-    ticker: str
+    symbol: str
     snapshots: pd.DataFrame
     metadata: FundamentalHistoryMetadata
 
@@ -151,7 +151,7 @@ class FundamentalService:
         )
         return FundamentalHistory(
             instrument_id=instrument_id,
-            ticker=instrument.ticker,
+            symbol=instrument.symbol,
             snapshots=snapshots,
             metadata=FundamentalHistoryMetadata(
                 sources=tuple(sorted(sources)),

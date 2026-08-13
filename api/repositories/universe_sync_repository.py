@@ -18,7 +18,7 @@ class UniverseSyncIdentifier:
 
 @dataclass(frozen=True)
 class UniverseSyncMember:
-    ticker: str
+    symbol: str
     listing_symbol: str
     company_name: str
     sector: str | None

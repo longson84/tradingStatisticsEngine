@@ -49,7 +49,7 @@ class SqlAlchemyFundamentalRepository:
             return None
         return FundamentalInstrumentRecord(
             instrument_id=row.id,
-            ticker=row.ticker,
+            symbol=row.symbol,
             currency=row.currency,
         )
 
@@ -74,7 +74,7 @@ class SqlAlchemyFundamentalRepository:
             FundamentalReportRecord(
                 id=report.id,
                 instrument_id=report.instrument_id,
-                ticker=stored_ticker,
+                symbol=stored_symbol,
                 source=report.source,
                 period_end=report.period_end,
                 period_label=report.period_label,
@@ -83,7 +83,7 @@ class SqlAlchemyFundamentalRepository:
                 reporting_currency=report.reporting_currency,
                 methodology=report.methodology,
             )
-            for report, stored_ticker in rows
+            for report, stored_symbol in rows
         )
 
     def list_facts(

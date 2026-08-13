@@ -19,7 +19,7 @@ def _instrument() -> Instrument:
             industry="Công nghệ và thông tin",
             source="test",
         ),
-        ticker="FPT",
+        symbol="FPT",
         currency="VND",
         source="test",
     )
@@ -57,7 +57,7 @@ def test_price_bar_round_trip_preserves_basis_provenance_and_units():
 
         stored = session.scalar(select(PriceBar))
         assert stored is not None
-        assert stored.instrument.ticker == "FPT"
+        assert stored.instrument.symbol == "FPT"
         assert stored.trading_date == date(2026, 7, 31)
         assert stored.close == 103.25
         assert stored.volume == 2_345_678.0

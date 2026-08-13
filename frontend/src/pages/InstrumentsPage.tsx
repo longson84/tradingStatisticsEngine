@@ -165,7 +165,7 @@ export function InstrumentsPage() {
                   setQuery(e.target.value)
                   setOffset(0)
                 }}
-                placeholder="Search ticker, name, sector..."
+                placeholder="Search symbol, company, sector..."
                 className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground focus:outline-none focus:border-ring"
               />
             </label>

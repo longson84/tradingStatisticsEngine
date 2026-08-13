@@ -122,7 +122,7 @@ class SqlAlchemyCompanyCatalogRepository:
             instruments=tuple(
                 CompanyInstrumentRecord(
                     id=instrument.id,
-                    ticker=canonical_symbol(instrument),
+                    symbol=canonical_symbol(instrument),
                     instrument_type=instrument.instrument_type,
                     share_class=instrument.share_class,
                     venue_code=(instrument.venue.code if instrument.venue else None),

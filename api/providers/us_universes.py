@@ -90,7 +90,7 @@ class Nasdaq100UniverseProvider:
             ) from exc
         constituents = [
             make_constituent(
-                ticker=row.get("symbol"),
+                symbol=row.get("symbol"),
                 country_code="US",
                 company_name=row.get("companyName"),
                 sector=row.get("sector"),
@@ -179,7 +179,7 @@ class WikipediaUSIndexProvider:
         table = _find_constituent_table(html, required_name)
         constituents = [
             make_constituent(
-                ticker=row["Symbol"],
+                symbol=row["Symbol"],
                 country_code="US",
                 company_name=row[required_name],
                 sector=row.get("GICS Sector"),
@@ -252,7 +252,7 @@ def _parse_ishares_csv(
             continue
         ticker = _ISHARES_TICKER_OVERRIDES.get(ticker, ticker)
         constituents.append(make_constituent(
-            ticker=ticker,
+            symbol=ticker,
             country_code="US",
             company_name=row.get("Name"),
             sector=row.get("Sector"),
