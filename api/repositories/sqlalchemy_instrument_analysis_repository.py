@@ -241,6 +241,8 @@ class SqlAlchemyInstrumentAnalysisRepository:
             filters.append(Instrument.instrument_type == "spot")
         elif scope == "reference_rate":
             filters.append(Instrument.instrument_type == "reference_rate")
+        elif scope == "market_index":
+            filters.append(Instrument.instrument_type == "market_index")
         if search:
             pattern = f"%{search.strip()}%"
             filters.append(or_(

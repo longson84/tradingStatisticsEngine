@@ -45,6 +45,7 @@ export interface PriceHistoryCursorSnapshot {
 
 export function SymbolPriceHistoryChart({
   symbol,
+  instrumentType,
   relativeStrengthBenchmark,
   prices,
   smaLengths,
@@ -52,7 +53,8 @@ export function SymbolPriceHistoryChart({
   onCursorSnapshotChange,
 }: {
   symbol: string
-  relativeStrengthBenchmark: "VN30" | "SPX"
+  instrumentType: string
+  relativeStrengthBenchmark: "VN30" | "SPX" | null
   prices: SymbolPricePoint[]
   smaLengths: number[]
   emaLengths: number[]
@@ -72,9 +74,19 @@ export function SymbolPriceHistoryChart({
     const container = containerRef.current
     if (!container || chartPrices.length < 2) return
 
+    const hasRelativeStrength = relativeStrengthBenchmark != null
+    const hasFundamentals = instrumentType === "common_stock"
+    const relativeStrengthPane = hasRelativeStrength ? 1 : null
+    const volumePane = hasRelativeStrength ? 2 : 1
+    const trailingPePane = hasFundamentals ? volumePane + 1 : null
+    const trailingPbPane = hasFundamentals ? volumePane + 2 : null
+    const epsPane = hasFundamentals ? volumePane + 3 : null
+    const sharesPane = hasFundamentals ? volumePane + 4 : null
+    const paneCount = volumePane + (hasFundamentals ? 5 : 1)
+
     const chart = createChart(container, {
       width: container.clientWidth,
-      height: 1220,
+      height: 520 + ((paneCount - 1) * 140),
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#6b7280",
@@ -120,14 +132,16 @@ export function SymbolPriceHistoryChart({
     const priceIndexByDate = new Map(chartPrices.map((point, index) => [point.date, index]))
     const smaSeries = addMovingAverages(chart, "SMA", smaLengths, closeValues, SMA_COLORS)
     const emaSeries = addMovingAverages(chart, "EMA", emaLengths, closeValues, EMA_COLORS)
-    const relativeStrengthSeries = chart.addSeries(LineSeries, {
-      title: "",
-      color: RELATIVE_STRENGTH_COLOR,
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    }, 1)
-    relativeStrengthSeries.setData(chartPrices.flatMap(point => (
+    const relativeStrengthSeries = relativeStrengthPane == null
+      ? null
+      : chart.addSeries(LineSeries, {
+          title: "",
+          color: RELATIVE_STRENGTH_COLOR,
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        }, relativeStrengthPane)
+    relativeStrengthSeries?.setData(chartPrices.flatMap(point => (
       point.relative_strength == null
         ? []
         : [{ time: point.date as Time, value: point.relative_strength }]
@@ -142,7 +156,7 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 2)
+    }, volumePane)
     volumeSeries.setData(chartPrices.flatMap(point => (
       point.volume == null
         ? []
@@ -164,13 +178,13 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 2)
+    }, volumePane)
     volumeMa.setData(simpleMovingAverage(
       chartPrices.map(point => ({ date: point.date, value: point.volume })),
       20,
     ).map(point => ({ time: point.date as Time, value: point.value })))
 
-    const trailingPeSeries = chart.addSeries(LineSeries, {
+    const trailingPeSeries = trailingPePane == null ? null : chart.addSeries(LineSeries, {
       title: "",
       color: "#8b5cf6",
       lineWidth: 2,
@@ -180,14 +194,14 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 3)
-    trailingPeSeries.setData(chartPrices.flatMap(point => (
+    }, trailingPePane)
+    trailingPeSeries?.setData(chartPrices.flatMap(point => (
       point.trailing_pe == null
         ? []
         : [{ time: point.date as Time, value: point.trailing_pe }]
     )))
 
-    const trailingPbSeries = chart.addSeries(LineSeries, {
+    const trailingPbSeries = trailingPbPane == null ? null : chart.addSeries(LineSeries, {
       title: "",
       color: "#0891b2",
       lineWidth: 2,
@@ -197,14 +211,14 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 4)
-    trailingPbSeries.setData(chartPrices.flatMap(point => (
+    }, trailingPbPane)
+    trailingPbSeries?.setData(chartPrices.flatMap(point => (
       point.trailing_pb == null
         ? []
         : [{ time: point.date as Time, value: point.trailing_pb }]
     )))
 
-    const epsSeries = chart.addSeries(LineSeries, {
+    const epsSeries = epsPane == null ? null : chart.addSeries(LineSeries, {
       title: "",
       color: "#db2777",
       lineWidth: 2,
@@ -217,14 +231,14 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 5)
-    epsSeries.setData(chartPrices.flatMap(point => (
+    }, epsPane)
+    epsSeries?.setData(chartPrices.flatMap(point => (
       point.eps_ttm == null
         ? []
         : [{ time: point.date as Time, value: point.eps_ttm }]
     )))
 
-    const sharesSeries = chart.addSeries(HistogramSeries, {
+    const sharesSeries = sharesPane == null ? null : chart.addSeries(HistogramSeries, {
       title: "",
       color: "rgba(14, 165, 233, 0.65)",
       priceFormat: {
@@ -234,8 +248,8 @@ export function SymbolPriceHistoryChart({
       },
       priceLineVisible: false,
       lastValueVisible: true,
-    }, 6)
-    sharesSeries.setData(chartPrices.flatMap(point => (
+    }, sharesPane)
+    sharesSeries?.setData(chartPrices.flatMap(point => (
       point.shares_outstanding == null
         ? []
         : [{
@@ -271,17 +285,21 @@ export function SymbolPriceHistoryChart({
           : null,
         volume: crosshairSeriesValue(param.seriesData.get(volumeSeries), "value"),
         volumeMa20: crosshairSeriesValue(param.seriesData.get(volumeMa), "value"),
-        trailingPe: crosshairSeriesValue(param.seriesData.get(trailingPeSeries), "value"),
-        trailingPb: crosshairSeriesValue(param.seriesData.get(trailingPbSeries), "value"),
-        epsTtm: crosshairSeriesValue(param.seriesData.get(epsSeries), "value"),
-        sharesOutstanding: crosshairSeriesValue(
-          param.seriesData.get(sharesSeries),
-          "value",
-        ),
-        relativeStrength: crosshairSeriesValue(
-          param.seriesData.get(relativeStrengthSeries),
-          "value",
-        ),
+        trailingPe: trailingPeSeries
+          ? crosshairSeriesValue(param.seriesData.get(trailingPeSeries), "value")
+          : null,
+        trailingPb: trailingPbSeries
+          ? crosshairSeriesValue(param.seriesData.get(trailingPbSeries), "value")
+          : null,
+        epsTtm: epsSeries
+          ? crosshairSeriesValue(param.seriesData.get(epsSeries), "value")
+          : null,
+        sharesOutstanding: sharesSeries
+          ? crosshairSeriesValue(param.seriesData.get(sharesSeries), "value")
+          : null,
+        relativeStrength: relativeStrengthSeries
+          ? crosshairSeriesValue(param.seriesData.get(relativeStrengthSeries), "value")
+          : null,
         indicators: [...smaSeries, ...emaSeries].map(indicator => ({
           label: indicator.label,
           value: crosshairSeriesValue(param.seriesData.get(indicator.series), "value"),
@@ -295,34 +313,18 @@ export function SymbolPriceHistoryChart({
     }
     chart.subscribeCrosshairMove(handleCrosshairMove)
 
-    chart.panes()[0]?.setStretchFactor(4)
-    chart.panes()[1]?.setStretchFactor(1)
-    chart.panes()[2]?.setStretchFactor(1)
-    chart.panes()[3]?.setStretchFactor(1)
-    chart.panes()[4]?.setStretchFactor(1)
-    chart.panes()[5]?.setStretchFactor(1)
-    chart.panes()[6]?.setStretchFactor(1)
+    chart.panes().forEach((pane, index) => pane.setStretchFactor(index === 0 ? 4 : 1))
     chart.priceScale("right", 0).applyOptions({
       scaleMargins: { top: 0.05, bottom: 0.12 },
     })
-    chart.priceScale("right", 1).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0.18 },
-    })
-    chart.priceScale("right", 2).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0.18 },
-    })
-    chart.priceScale("right", 3).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0.18 },
-    })
-    chart.priceScale("right", 4).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0.18 },
-    })
-    chart.priceScale("right", 5).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0.18 },
-    })
-    chart.priceScale("right", 6).applyOptions({
-      scaleMargins: { top: 0.15, bottom: 0 },
-    })
+    for (let paneIndex = 1; paneIndex < paneCount; paneIndex += 1) {
+      chart.priceScale("right", paneIndex).applyOptions({
+        scaleMargins: {
+          top: 0.15,
+          bottom: paneIndex === paneCount - 1 ? 0 : 0.18,
+        },
+      })
+    }
     chart.timeScale().fitContent()
 
     const alignPaneLabels = () => {
@@ -387,7 +389,7 @@ export function SymbolPriceHistoryChart({
       observer.disconnect()
       chart.remove()
     }
-  }, [chartPrices, emaLengths, interval, onCursorSnapshotChange, relativeStrengthBenchmark, smaLengths, symbol])
+  }, [chartPrices, emaLengths, instrumentType, interval, onCursorSnapshotChange, relativeStrengthBenchmark, smaLengths, symbol])
 
   return (
     <div>
@@ -446,13 +448,15 @@ export function SymbolPriceHistoryChart({
               )
             })}
           </PaneLabel>
-          <PaneLabel>
-            <PaneValueRow
-              label={`Relative strength vs ${relativeStrengthBenchmark}`}
-              value={paneSnapshot?.relativeStrength ?? null}
-              color={RELATIVE_STRENGTH_COLOR}
-            />
-          </PaneLabel>
+          {relativeStrengthBenchmark && (
+            <PaneLabel>
+              <PaneValueRow
+                label={`Relative strength vs ${relativeStrengthBenchmark}`}
+                value={paneSnapshot?.relativeStrength ?? null}
+                color={RELATIVE_STRENGTH_COLOR}
+              />
+            </PaneLabel>
+          )}
           <PaneLabel>
             <PaneValueRow label="Volume" value={paneSnapshot?.volume ?? null} decimals={0} />
             <PaneValueRow
@@ -462,26 +466,34 @@ export function SymbolPriceHistoryChart({
               decimals={0}
             />
           </PaneLabel>
-          <PaneLabel>
-            <PaneValueRow label="Trailing P/E" value={paneSnapshot?.trailingPe ?? null} color="#8b5cf6" />
-          </PaneLabel>
-          <PaneLabel>
-            <PaneValueRow label="Price / Book" value={paneSnapshot?.trailingPb ?? null} color="#0891b2" />
-          </PaneLabel>
-          <PaneLabel>
-            <PaneValueRow label="EPS TTM" value={paneSnapshot?.epsTtm ?? null} color="#db2777" />
-          </PaneLabel>
-          <PaneLabel>
-            <PaneValueRow
-              label="Outstanding shares"
-              value={paneSnapshot?.sharesOutstanding ?? null}
-              color="#0ea5e9"
-              decimals={0}
-            />
-          </PaneLabel>
+          {instrumentType === "common_stock" && (
+            <>
+              <PaneLabel>
+                <PaneValueRow label="Trailing P/E" value={paneSnapshot?.trailingPe ?? null} color="#8b5cf6" />
+              </PaneLabel>
+              <PaneLabel>
+                <PaneValueRow label="Price / Book" value={paneSnapshot?.trailingPb ?? null} color="#0891b2" />
+              </PaneLabel>
+              <PaneLabel>
+                <PaneValueRow label="EPS TTM" value={paneSnapshot?.epsTtm ?? null} color="#db2777" />
+              </PaneLabel>
+              <PaneLabel>
+                <PaneValueRow
+                  label="Outstanding shares"
+                  value={paneSnapshot?.sharesOutstanding ?? null}
+                  color="#0ea5e9"
+                  decimals={0}
+                />
+              </PaneLabel>
+            </>
+          )}
         </div>
         <div ref={axesRef} className="pointer-events-none absolute inset-0 z-10">
-          {Array.from({ length: 6 }, (_, paneIndex) => (
+          {Array.from({
+            length: (relativeStrengthBenchmark ? 1 : 0)
+              + 1
+              + (instrumentType === "common_stock" ? 4 : 0),
+          }, (_, paneIndex) => (
             <div
               key={paneIndex}
               className="absolute left-0 h-[22px] border-t border-border/70 bg-background/80 text-[10px] text-muted-foreground backdrop-blur-sm"

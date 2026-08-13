@@ -8,6 +8,7 @@ const SCOPE_OPTIONS: Array<{ label: string; value: InstrumentScope }> = [
   { label: "Equities", value: "equity" },
   { label: "Crypto Spot", value: "crypto_spot" },
   { label: "Reference Rates", value: "reference_rate" },
+  { label: "Market Indices", value: "market_index" },
 ]
 
 
@@ -128,7 +129,7 @@ function instrumentOptionLabel(instrument: InstrumentCatalogItem): string {
   const identity = instrument.company_name
     ?? (instrument.base_asset && instrument.quote_asset
       ? `${instrument.base_asset}/${instrument.quote_asset}`
-      : instrument.instrument_type)
+      : instrumentTypeLabel(instrument.instrument_type))
   const location = instrument.venue_name
   return [instrument.symbol, identity, location, instrument.currency]
     .filter(Boolean)
@@ -140,8 +141,17 @@ function instrumentDetailLabel(instrument: InstrumentCatalogItem): string {
   const identity = instrument.company_name
     ?? (instrument.base_asset && instrument.quote_asset
       ? `${instrument.base_asset}/${instrument.quote_asset}`
-      : instrument.instrument_type)
+      : instrumentTypeLabel(instrument.instrument_type))
   return [identity, instrument.venue_name, instrument.currency]
     .filter(Boolean)
     .join(" · ")
+}
+
+
+function instrumentTypeLabel(instrumentType: string): string {
+  if (instrumentType === "common_stock") return "Equity"
+  if (instrumentType === "spot") return "Crypto spot"
+  if (instrumentType === "reference_rate") return "Reference rate"
+  if (instrumentType === "market_index") return "Market index"
+  return instrumentType.replaceAll("_", " ")
 }

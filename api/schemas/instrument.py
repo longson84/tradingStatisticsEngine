@@ -7,7 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-InstrumentScope = Literal["equity", "crypto_spot", "reference_rate"]
+InstrumentScope = Literal[
+    "equity", "crypto_spot", "reference_rate", "market_index"
+]
 
 
 class InstrumentCatalogItemResponse(BaseModel):
@@ -66,6 +68,7 @@ class InstrumentPricePointResponse(BaseModel):
 class InstrumentPriceHistoryResponse(BaseModel):
     instrument_id: int
     symbol: str
+    instrument_type: str
     venue_code: str | None = None
     currency: str
     source: str
@@ -76,7 +79,7 @@ class InstrumentPriceHistoryResponse(BaseModel):
     expected_last_session: date
     is_stale: bool
     row_count: int
-    relative_strength_benchmark: Literal["VN30", "SPX"]
+    relative_strength_benchmark: Literal["VN30", "SPX"] | None = None
     trailing_pe_source: str | None = None
     trailing_pe_method: str | None = None
     trailing_pe_fetched_at: str | None = None

@@ -42,6 +42,7 @@ class WatchlistSummaryResponse(BaseModel):
     equity_count: int
     crypto_spot_count: int
     reference_rate_count: int
+    market_index_count: int
     created_at: datetime
     updated_at: datetime
 

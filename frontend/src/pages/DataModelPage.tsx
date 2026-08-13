@@ -91,6 +91,57 @@ const instrumentTypes = [
   ["market_index", "Calculated market-level series without an execution venue", "SPX, VN30"],
 ]
 
+const instrumentTypeBranches = [
+  {
+    type: "common_stock",
+    title: "Listed equity",
+    example: "NASDAQ · GOOGL",
+    relationships: [
+      ["Company", "Required issuer"],
+      ["Venue", "Required listing venue"],
+      ["Assets", "Equity share + currency"],
+      ["History", "Equity bars + optional fundamentals"],
+      ["Benchmark", "SPX for US · VN30 for VN"],
+    ],
+  },
+  {
+    type: "spot",
+    title: "Crypto spot",
+    example: "Binance · BTC/USDT",
+    relationships: [
+      ["Company", "None for the instrument"],
+      ["Venue", "Required order-book venue"],
+      ["Assets", "Base + quote + settlement"],
+      ["History", "Venue-specific spot bars"],
+      ["Benchmark", "None by default"],
+    ],
+  },
+  {
+    type: "reference_rate",
+    title: "Reference rate",
+    example: "Yahoo · BTC-USD",
+    relationships: [
+      ["Company", "None"],
+      ["Venue", "None; not executable"],
+      ["Assets", "Base + quote"],
+      ["History", "Provider-defined observations"],
+      ["Benchmark", "None by default"],
+    ],
+  },
+  {
+    type: "market_index",
+    title: "Market index",
+    example: "SPX · VN30",
+    relationships: [
+      ["Company", "None; no issuer"],
+      ["Venue", "None; calculated level"],
+      ["Assets", "None in the current model"],
+      ["History", "Canonical index-level bars"],
+      ["Benchmark", "It is the benchmark"],
+    ],
+  },
+]
+
 const collectionTypes = [
   ["Universe", "Read-only provider/system-defined instrument membership", "S&P 500, VN30, Binance Spot"],
   ["Watchlist", "User-defined ordered analysis selection", "GOOGL, Binance BTC/USDT, BTC/USD"],
@@ -138,6 +189,45 @@ export function DataModelPage() {
               a symbol names that instrument in one namespace; a venue says where it trades;
               and provenance says where each observation came from.
             </p>
+          </section>
+
+          <section className="space-y-3">
+            <SectionHeading
+              eyebrow="Instrument type map"
+              title="One Instrument table, four semantic branches"
+              description="The type determines which relationships are meaningful. Empty links below are deliberate domain rules, not incomplete data."
+            />
+            <div className="overflow-hidden rounded-xl border border-border bg-card p-5">
+              <div className="mx-auto flex w-fit items-center gap-2 rounded-lg border-2 border-primary bg-primary/5 px-5 py-3">
+                <Blocks size={17} className="text-primary" />
+                <div>
+                  <div className="text-sm font-semibold">Instrument</div>
+                  <div className="text-[10px] text-muted-foreground">canonical identity and type discriminator</div>
+                </div>
+              </div>
+              <div className="mx-auto h-6 w-px bg-border" />
+              <div className="mx-auto hidden h-px w-3/4 bg-border xl:block" />
+              <div className="grid gap-3 xl:grid-cols-4">
+                {instrumentTypeBranches.map(branch => (
+                  <div key={branch.type} className="relative rounded-lg border border-border bg-background p-4">
+                    <div className="absolute -top-6 left-1/2 hidden h-6 w-px bg-border xl:block" />
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      {branch.type}
+                    </div>
+                    <div className="mt-1 text-sm font-semibold">{branch.title}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{branch.example}</div>
+                    <dl className="mt-4 space-y-2 border-t border-border pt-3">
+                      {branch.relationships.map(([label, value]) => (
+                        <div key={label} className="grid grid-cols-[72px_minmax(0,1fr)] gap-2 text-xs">
+                          <dt className="font-medium text-foreground">{label}</dt>
+                          <dd className="text-muted-foreground">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
           <section className="space-y-3">

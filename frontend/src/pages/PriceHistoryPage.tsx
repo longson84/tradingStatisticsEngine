@@ -56,6 +56,7 @@ export function PriceHistoryPage() {
   const latestTrailingPe = [...prices].reverse().find(point => point.trailing_pe != null)?.trailing_pe ?? null
   const latestTrailingPb = [...prices].reverse().find(point => point.trailing_pb != null)?.trailing_pb ?? null
   const isVietnam = history.data?.currency === "VND"
+  const isEquity = history.data?.instrument_type === "common_stock"
 
   const viewHistory = () => {
     if (!instrument) return
@@ -169,32 +170,36 @@ export function PriceHistoryPage() {
               <Datum label="Sessions" value={history.data.row_count.toLocaleString()} />
               <Datum label="Latest close" value={formatPrice(latest.close)} />
               <Datum label="Close range" value={`${formatPrice(lowest)} – ${formatPrice(highest)}`} />
-              <Datum label="EPS TTM" value={formatPerShareValue(latestEpsTtm, isVietnam)} />
-              <Datum
-                label={shareGrowthLabel(history.data)}
-                value={formatPercent(history.data.shares_growth_pct)}
-                detail={shareGrowthDetail(history.data)}
-              />
-              <Datum
-                label={shareCagr5yLabel(history.data)}
-                value={formatPercent(history.data.shares_cagr_5y_pct)}
-                detail={shareCagr5yDetail(history.data)}
-              />
-              <Datum label="Calculated P/E" value={formatMultiple(latestTrailingPe)} />
-              <Datum label="Calculated P/B" value={formatMultiple(latestTrailingPb)} />
-              {history.data.provider_reported_pe != null && (
-                <Datum
-                  label="VCI reported P/E"
-                  value={formatMultiple(history.data.provider_reported_pe)}
-                  detail={providerRatioDetail(history.data)}
-                />
-              )}
-              {history.data.provider_reported_pb != null && (
-                <Datum
-                  label="VCI reported P/B"
-                  value={formatMultiple(history.data.provider_reported_pb)}
-                  detail={providerRatioDetail(history.data)}
-                />
+              {isEquity && (
+                <>
+                  <Datum label="EPS TTM" value={formatPerShareValue(latestEpsTtm, isVietnam)} />
+                  <Datum
+                    label={shareGrowthLabel(history.data)}
+                    value={formatPercent(history.data.shares_growth_pct)}
+                    detail={shareGrowthDetail(history.data)}
+                  />
+                  <Datum
+                    label={shareCagr5yLabel(history.data)}
+                    value={formatPercent(history.data.shares_cagr_5y_pct)}
+                    detail={shareCagr5yDetail(history.data)}
+                  />
+                  <Datum label="Calculated P/E" value={formatMultiple(latestTrailingPe)} />
+                  <Datum label="Calculated P/B" value={formatMultiple(latestTrailingPb)} />
+                  {history.data.provider_reported_pe != null && (
+                    <Datum
+                      label="VCI reported P/E"
+                      value={formatMultiple(history.data.provider_reported_pe)}
+                      detail={providerRatioDetail(history.data)}
+                    />
+                  )}
+                  {history.data.provider_reported_pb != null && (
+                    <Datum
+                      label="VCI reported P/B"
+                      value={formatMultiple(history.data.provider_reported_pb)}
+                      detail={providerRatioDetail(history.data)}
+                    />
+                  )}
+                </>
               )}
             </div>
 
@@ -202,12 +207,15 @@ export function PriceHistoryPage() {
               snapshot={cursorSnapshot}
               smaLengths={selection.smaLengths}
               emaLengths={selection.emaLengths}
+              showFundamentals={isEquity}
+              showRelativeStrength={history.data.relative_strength_benchmark != null}
             />
 
             <section className="rounded-lg border border-border bg-card p-5">
               <SymbolPriceHistoryChart
                 key={history.data.instrument_id}
                 symbol={history.data.symbol}
+                instrumentType={history.data.instrument_type}
                 relativeStrengthBenchmark={history.data.relative_strength_benchmark}
                 prices={prices}
                 smaLengths={selection.smaLengths}
@@ -217,12 +225,7 @@ export function PriceHistoryPage() {
             </section>
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-              {history.data.trailing_pe_method
-                ? `Fundamentals: ${history.data.trailing_pe_method}. Stored history changes only through Data Operations. `
-                : "Fundamentals are not stored for this instrument. Update them through Data Operations to display P/E and P/B. "}
-              {isVietnam
-                ? "VCI does not expose an adjustment switch or adjusted-close column. The chart shows the stored provider closing series; its corporate-action adjustment methodology is unspecified."
-                : "Yahoo Finance history is stored with auto-adjustment enabled, so historical OHLC values reflect splits and distributions according to Yahoo Finance's adjustment data."}
+              {historyFootnote(history.data)}
             </p>
           </>
         )}
@@ -247,10 +250,14 @@ function CursorMetricCards({
   snapshot,
   smaLengths,
   emaLengths,
+  showFundamentals,
+  showRelativeStrength,
 }: {
   snapshot: PriceHistoryCursorSnapshot | null
   smaLengths: number[]
   emaLengths: number[]
+  showFundamentals: boolean
+  showRelativeStrength: boolean
 }) {
   const selectedIndicators = [
     ...smaLengths.map(length => `SMA ${length}`),
@@ -267,18 +274,22 @@ function CursorMetricCards({
     { label: "Close", value: formatExactValue(snapshot?.close ?? null) },
     { label: "Volume", value: formatExactValue(snapshot?.volume ?? null, 0) },
     { label: "Volume MA20", value: formatExactValue(snapshot?.volumeMa20 ?? null, 0) },
-    { label: "Relative strength", value: formatExactValue(snapshot?.relativeStrength ?? null) },
+    ...(showRelativeStrength
+      ? [{ label: "Relative strength", value: formatExactValue(snapshot?.relativeStrength ?? null) }]
+      : []),
     ...selectedIndicators.map(label => ({
       label,
       value: formatExactValue(indicatorValues.get(label) ?? null),
     })),
-    { label: "P/E", value: formatExactValue(snapshot?.trailingPe ?? null) },
-    { label: "P/B", value: formatExactValue(snapshot?.trailingPb ?? null) },
-    { label: "EPS TTM", value: formatExactValue(snapshot?.epsTtm ?? null) },
-    {
-      label: "Outstanding shares",
-      value: formatExactValue(snapshot?.sharesOutstanding ?? null, 0),
-    },
+    ...(showFundamentals ? [
+      { label: "P/E", value: formatExactValue(snapshot?.trailingPe ?? null) },
+      { label: "P/B", value: formatExactValue(snapshot?.trailingPb ?? null) },
+      { label: "EPS TTM", value: formatExactValue(snapshot?.epsTtm ?? null) },
+      {
+        label: "Outstanding shares",
+        value: formatExactValue(snapshot?.sharesOutstanding ?? null, 0),
+      },
+    ] : []),
   ]
 
   return (
@@ -293,6 +304,26 @@ function providerRatioDetail(history: InstrumentPriceHistoryResponse): string {
   return [history.provider_ratio_period, history.provider_ratio_effective_date]
     .filter(Boolean)
     .join(" · ")
+}
+
+
+function historyFootnote(history: InstrumentPriceHistoryResponse): string {
+  if (history.instrument_type === "market_index") {
+    return "This is a calculated index-level series, not a traded venue instrument. It has no company fundamentals and is not compared with another benchmark."
+  }
+  if (history.instrument_type === "spot") {
+    return "These are venue-specific, unadjusted spot observations for the selected base/quote instrument. Company fundamentals and an equity benchmark do not apply."
+  }
+  if (history.instrument_type === "reference_rate") {
+    return "These are provider-defined reference observations without an execution venue. Company fundamentals and an equity benchmark do not apply."
+  }
+  const fundamentals = history.trailing_pe_method
+    ? `Fundamentals: ${history.trailing_pe_method}. Stored history changes only through Data Operations. `
+    : "Fundamentals are not stored for this instrument. Update them through Data Operations to display P/E and P/B. "
+  const adjustment = history.currency === "VND"
+    ? "VCI does not expose an adjustment switch or adjusted-close column. The chart shows the stored provider closing series; its corporate-action adjustment methodology is unspecified."
+    : "Yahoo Finance history is stored with auto-adjustment enabled, so historical OHLC values reflect splits and distributions according to Yahoo Finance's adjustment data."
+  return fundamentals + adjustment
 }
 
 

@@ -142,6 +142,7 @@ export interface SymbolPricePoint {
 export interface InstrumentPriceHistoryResponse {
   instrument_id: number
   symbol: string
+  instrument_type: string
   venue_code: string | null
   currency: string
   source: string
@@ -152,7 +153,7 @@ export interface InstrumentPriceHistoryResponse {
   expected_last_session: string
   is_stale: boolean
   row_count: number
-  relative_strength_benchmark: "VN30" | "SPX"
+  relative_strength_benchmark: "VN30" | "SPX" | null
   trailing_pe_source: string | null
   trailing_pe_method: string | null
   trailing_pe_fetched_at: string | null

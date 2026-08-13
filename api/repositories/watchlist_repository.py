@@ -48,6 +48,10 @@ class WatchlistRecord:
     def reference_rate_count(self) -> int:
         return sum(member.instrument_type == "reference_rate" for member in self.members)
 
+    @property
+    def market_index_count(self) -> int:
+        return sum(member.instrument_type == "market_index" for member in self.members)
+
 @dataclass(frozen=True)
 class WatchlistSummaryRecord:
     id: int
@@ -58,6 +62,7 @@ class WatchlistSummaryRecord:
     equity_count: int
     crypto_spot_count: int
     reference_rate_count: int
+    market_index_count: int
     created_at: datetime
     updated_at: datetime
 

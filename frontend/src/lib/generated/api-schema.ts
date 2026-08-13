@@ -842,6 +842,8 @@ export interface components {
             fundamentals_fields?: string[];
             /** Instrument Id */
             instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
             /** Is Stale */
             is_stale: boolean;
             /** Last Date */
@@ -858,11 +860,8 @@ export interface components {
             provider_reported_pb?: number | null;
             /** Provider Reported Pe */
             provider_reported_pe?: number | null;
-            /**
-             * Relative Strength Benchmark
-             * @enum {string}
-             */
-            relative_strength_benchmark: "VN30" | "SPX";
+            /** Relative Strength Benchmark */
+            relative_strength_benchmark?: ("VN30" | "SPX") | null;
             /** Row Count */
             row_count: number;
             /** Shares Cagr 5Y Observed Years */
@@ -1944,6 +1943,8 @@ export interface components {
             id: number;
             /** Instrument Types */
             instrument_types: string[];
+            /** Market Index Count */
+            market_index_count: number;
             /** Member Count */
             member_count: number;
             /** Members */
@@ -1975,6 +1976,8 @@ export interface components {
             id: number;
             /** Instrument Types */
             instrument_types: string[];
+            /** Market Index Count */
+            market_index_count: number;
             /** Member Count */
             member_count: number;
             /** Name */
@@ -2447,7 +2450,7 @@ export interface operations {
     listInstruments: {
         parameters: {
             query?: {
-                scope?: ("equity" | "crypto_spot" | "reference_rate") | null;
+                scope?: ("equity" | "crypto_spot" | "reference_rate" | "market_index") | null;
                 universe?: string | null;
                 search?: string | null;
                 sector?: string | null;

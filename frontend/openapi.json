@@ -1619,6 +1619,10 @@
             "title": "Instrument Id",
             "type": "integer"
           },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
           "is_stale": {
             "title": "Is Stale",
             "type": "boolean"
@@ -1683,12 +1687,19 @@
             "title": "Provider Reported Pe"
           },
           "relative_strength_benchmark": {
-            "enum": [
-              "VN30",
-              "SPX"
+            "anyOf": [
+              {
+                "enum": [
+                  "VN30",
+                  "SPX"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Relative Strength Benchmark",
-            "type": "string"
+            "title": "Relative Strength Benchmark"
           },
           "row_count": {
             "title": "Row Count",
@@ -1837,6 +1848,7 @@
         "required": [
           "instrument_id",
           "symbol",
+          "instrument_type",
           "currency",
           "source",
           "price_basis",
@@ -1846,7 +1858,6 @@
           "expected_last_session",
           "is_stale",
           "row_count",
-          "relative_strength_benchmark",
           "prices"
         ],
         "title": "InstrumentPriceHistoryResponse",
@@ -4753,6 +4764,10 @@
             "title": "Instrument Types",
             "type": "array"
           },
+          "market_index_count": {
+            "title": "Market Index Count",
+            "type": "integer"
+          },
           "member_count": {
             "title": "Member Count",
             "type": "integer"
@@ -4787,6 +4802,7 @@
           "equity_count",
           "crypto_spot_count",
           "reference_rate_count",
+          "market_index_count",
           "created_at",
           "updated_at",
           "members"
@@ -4824,6 +4840,10 @@
             "title": "Instrument Types",
             "type": "array"
           },
+          "market_index_count": {
+            "title": "Market Index Count",
+            "type": "integer"
+          },
           "member_count": {
             "title": "Member Count",
             "type": "integer"
@@ -4851,6 +4871,7 @@
           "equity_count",
           "crypto_spot_count",
           "reference_rate_count",
+          "market_index_count",
           "created_at",
           "updated_at"
         ],
@@ -5790,7 +5811,8 @@
                   "enum": [
                     "equity",
                     "crypto_spot",
-                    "reference_rate"
+                    "reference_rate",
+                    "market_index"
                   ],
                   "type": "string"
                 },

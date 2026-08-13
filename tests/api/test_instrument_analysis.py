@@ -173,7 +173,88 @@ def test_price_history_relative_strength_reads_canonical_index_bars():
         session.close()
 
     assert response.relative_strength_benchmark == "SPX"
+    assert response.instrument_type == "common_stock"
     assert response.prices[0].relative_strength == response.prices[0].close
+
+
+def test_market_index_scope_and_history_do_not_apply_equity_semantics():
+    service, session, _ = _service_with_msft_history()
+    try:
+        index = Instrument(
+            ticker="SPX",
+            instrument_type="market_index",
+            currency="USD",
+            source="system",
+            is_active=True,
+        )
+        session.add(index)
+        session.flush()
+        session.add(InstrumentSymbol(
+            instrument=index,
+            namespace="yfinance",
+            symbol="^GSPC",
+            source="test",
+            is_primary=True,
+        ))
+        fetched_at = datetime(2026, 8, 10, tzinfo=UTC)
+        session.add_all([
+            PriceBar(
+                instrument=index,
+                trading_date=date(2026, 8, 7),
+                open=7000,
+                high=7100,
+                low=6900,
+                close=7050,
+                volume=1_000_000,
+                currency="USD",
+                price_scale=1,
+                price_basis="index_level",
+                source="yfinance",
+                fetched_at=fetched_at,
+            ),
+            PriceBarCoverage(
+                instrument=index,
+                price_basis="index_level",
+                first_date=date(2026, 8, 7),
+                last_date=date(2026, 8, 7),
+                row_count=1,
+                source="yfinance",
+                fetched_at=fetched_at,
+            ),
+        ])
+        session.flush()
+
+        discovery = list_instruments(
+            service,
+            scope="market_index",
+            universe=None,
+            search="SPX",
+            sector=None,
+            industry=None,
+            venue=None,
+            has_price_history=True,
+            offset=0,
+            limit=20,
+        )
+
+        class FundamentalsMustNotBeCalled:
+            def get_instrument_history(self, requested_id):
+                raise AssertionError(f"fundamentals requested for index {requested_id}")
+
+        history = instrument_price_history(
+            index.id,
+            service,
+            FundamentalsMustNotBeCalled(),
+        )
+    finally:
+        session.close()
+
+    assert discovery.total == 1
+    assert discovery.instruments[0].instrument_type == "market_index"
+    assert discovery.instruments[0].price_basis == "index_level"
+    assert history.instrument_type == "market_index"
+    assert history.relative_strength_benchmark is None
+    assert history.prices[0].relative_strength is None
 
 
 def test_instrument_openapi_and_rarity_contracts_use_instrument_identity():
@@ -181,6 +262,9 @@ def test_instrument_openapi_and_rarity_contracts_use_instrument_identity():
 
     operation = schema["paths"]["/instruments"]["get"]
     assert operation["operationId"] == "listInstruments"
+    scope = next(parameter for parameter in operation["parameters"] if parameter["name"] == "scope")
+    scope_enum = next(item["enum"] for item in scope["schema"]["anyOf"] if "enum" in item)
+    assert "market_index" in scope_enum
     request = schema["components"]["schemas"]["RarityRequest"]["properties"]
     assert "instrument_id" in request
     assert "market" not in request

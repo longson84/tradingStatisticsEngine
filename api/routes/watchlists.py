@@ -132,6 +132,7 @@ def _response(row) -> WatchlistResponse:
         equity_count=row.equity_count,
         crypto_spot_count=row.crypto_spot_count,
         reference_rate_count=row.reference_rate_count,
+        market_index_count=row.market_index_count,
         created_at=row.created_at,
         updated_at=row.updated_at,
         members=[WatchlistMemberResponse(**member.__dict__) for member in row.members],

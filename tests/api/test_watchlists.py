@@ -73,6 +73,10 @@ def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
             ticker="BTCUSDT", instrument_type="spot",
             currency="USDT", source="test", is_active=True,
         ),
+        "SPX": Instrument(
+            ticker="SPX", instrument_type="market_index",
+            currency="USD", source="test", is_active=True,
+        ),
     }
     session.add_all(instruments.values())
     session.flush()
@@ -86,15 +90,20 @@ def test_watchlist_crud_preserves_exact_instrument_order_across_markets():
         created = service.create_watchlist(
             name="  Multi   Asset ",
             description="Candidates",
-            instrument_ids=[ids["BTCUSDT"], ids["MSFT"], ids["BTCUSDT"], ids["FPT"]],
+            instrument_ids=[
+                ids["BTCUSDT"], ids["MSFT"], ids["SPX"],
+                ids["BTCUSDT"], ids["FPT"],
+            ],
         )
         assert created.name == "Multi Asset"
-        assert created.instrument_types == ("common_stock", "spot")
+        assert created.instrument_types == ("common_stock", "market_index", "spot")
         assert [row.instrument_id for row in created.members] == [
-            ids["BTCUSDT"], ids["MSFT"], ids["FPT"]
+            ids["BTCUSDT"], ids["MSFT"], ids["SPX"], ids["FPT"]
         ]
         assert created.members[0].company_name is None
         assert created.members[0].venue_code == "BINANCE"
+        assert created.market_index_count == 1
+        assert created.members[2].venue_code is None
 
         updated = service.update_watchlist(
             created.id,
@@ -148,3 +157,5 @@ def test_openapi_exposes_instrument_id_watchlist_contract():
     assert "instrument_ids" in request["properties"]
     assert "market" not in request["properties"]
     assert "tickers" not in request["properties"]
+    summary = schema["components"]["schemas"]["WatchlistSummaryResponse"]
+    assert "market_index_count" in summary["properties"]

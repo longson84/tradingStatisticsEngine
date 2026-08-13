@@ -33,6 +33,7 @@ class SqlAlchemyWatchlistRepository:
                 equity_count=record.equity_count,
                 crypto_spot_count=record.crypto_spot_count,
                 reference_rate_count=record.reference_rate_count,
+                market_index_count=record.market_index_count,
                 created_at=record.created_at,
                 updated_at=record.updated_at,
             )

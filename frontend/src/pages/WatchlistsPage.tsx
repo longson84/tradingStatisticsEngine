@@ -188,7 +188,7 @@ function WatchlistEditor({
         <div>
           <h2 className="text-lg font-semibold">{initial ? initial.name : "New watchlist"}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Add equities, crypto spot instruments, and reference rates by stable instrument identity.
+            Add equities, crypto spot instruments, reference rates, and market indices by stable instrument identity.
           </p>
         </div>
         {initial && (
@@ -260,7 +260,7 @@ function WatchlistEditor({
 
       <div className="mt-4 overflow-x-auto rounded-md border border-border">
         <div className="grid min-w-[900px] grid-cols-[60px_110px_minmax(0,1fr)_150px_150px_120px] bg-muted/50 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-          <span>Order</span><span>Symbol</span><span>Identity</span><span>Type</span><span>Market / Venue</span><span />
+          <span>Order</span><span>Symbol</span><span>Identity</span><span>Type</span><span>Venue</span><span />
         </div>
         {members.map((member, index) => (
           <div
@@ -335,6 +335,7 @@ function identityLabel(instrument: EditorInstrument): string {
 function typeLabel(instrument: EditorInstrument): string {
   if (instrument.instrumentType === "spot") return "Crypto spot"
   if (instrument.instrumentType === "reference_rate") return "Reference rate"
+  if (instrument.instrumentType === "market_index") return "Market index"
   return "Equity"
 }
 
@@ -343,11 +344,13 @@ function compositionLabel(row: {
   equity_count: number
   crypto_spot_count: number
   reference_rate_count: number
+  market_index_count: number
 }): string {
   const parts = [
     row.equity_count ? `${row.equity_count} equities` : null,
     row.crypto_spot_count ? `${row.crypto_spot_count} crypto spot` : null,
     row.reference_rate_count ? `${row.reference_rate_count} rates` : null,
+    row.market_index_count ? `${row.market_index_count} indices` : null,
   ].filter(Boolean)
   return parts.join(" · ") || "empty"
 }

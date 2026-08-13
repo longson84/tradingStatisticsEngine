@@ -1196,8 +1196,9 @@ venue-less reference rates.
 Decision: Factor Rarity now accepts only a positive canonical `instrument_id`.
 `GET /instruments` is the server-side discovery boundary for analysis-ready
 instruments and can search equities by issuer or symbol, spot instruments by
-asset or venue, and reference rates by their asset pair. The selector stores the
-ID while symbol, company, venue, base/quote assets, currency, coverage, price
+asset or venue, reference rates by their asset pair, and market indices by
+canonical or provider symbol. The selector stores the ID while symbol, company,
+venue, base/quote assets, currency, coverage, price
 basis, and source remain display or provenance metadata. Discovery defaults to
 instruments with canonical PostgreSQL price coverage.
 
@@ -1227,7 +1228,8 @@ reference rates, and potentially colliding symbols.
 Decision: migration `0015` removes market from `watchlists` and
 `watchlist_memberships`. A watchlist is now a globally named, user-managed,
 ordered set of active canonical `instrument_id` values. It may contain equities,
-venue-specific crypto spot products, and venue-less reference rates together.
+venue-specific crypto spot products, venue-less reference rates, and venue-less
+market indices together.
 Universes remain provider or system-defined sourced collections; watchlists are
 personal selections and do not carry source provenance. Predefined Rarity loads
 canonical PostgreSQL price bars in bulk by exact instrument IDs and reports
@@ -1618,8 +1620,8 @@ instrument ID and analytical parameters. Its response carries instrument
 identity, Venue or venue-less asset identity, currency, price source, canonical
 price basis, stored range, expected latest session, row count, and stale status.
 The UI uses the shared three-character instrument search across equities, crypto
-spot products, and reference rates and displays storage provenance before the
-analysis results.
+spot products, reference rates, and market indices and displays storage
+provenance before the analysis results.
 
 Formula version `new-low-episodes-v1` preserves the existing engine behavior:
 a strict trigger is a close below the prior configurable session-window low;
@@ -1865,3 +1867,32 @@ database backups and a new validated synchronization rather than checked-in
 membership snapshots. Current Universe membership remains a current snapshot
 and therefore carries survivorship bias until a separately designed,
 effective-dated membership-history source and schema are introduced.
+
+### 2026-08-13 — Market-index product-surface completion
+
+Context: SPX and VN30 already existed as canonical `market_index` Instruments
+and their observations were stored in PostgreSQL, but shared Instrument search
+did not expose their type. Watchlists could persist their IDs but did not report
+index composition, and Price History treated every non-Vietnam Instrument as a
+US equity by assigning SPX relative strength and attempting fundamentals.
+
+Decision: `market_index` is a first-class discovery scope in `GET /instruments`
+and every shared searchable Instrument selector. Watchlists accept exact index
+Instrument IDs and summarize their count alongside equities, crypto spot, and
+reference rates. No new index table is introduced: index identity remains an
+Instrument type, symbols remain namespace mappings, and observations remain
+canonical `price_bars` with `price_basis = index_level`.
+
+Price History now applies equity-only semantics explicitly. A Vietnam common
+stock uses VN30, a supported US common stock uses SPX, and other equity venues
+have no implicit benchmark. Crypto spot, reference-rate, and market-index
+histories have no default relative-strength benchmark and never request company
+fundamentals. The UI omits inapplicable benchmark and fundamental panes rather
+than rendering empty equity concepts. Build / Data Model visualizes these four
+Instrument branches and their required or deliberately absent relationships.
+
+Consequences: index Instruments participate in generic collections and exact-ID
+operations without being mistaken for companies, venues, assets, or providers.
+Future index families reuse the same identity and observation model; any new
+benchmark association must be added as explicit analytical policy rather than
+inferred from a non-Vietnam currency or symbol.

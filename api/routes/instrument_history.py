@@ -28,6 +28,7 @@ from trading_engine.fundamentals import (
 
 router = APIRouter(prefix="/instruments", tags=["instruments"])
 _VN_VENUES = {"HOSE", "HNX", "UPCOM"}
+_US_VENUES = {"NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX"}
 
 
 @router.get(
@@ -53,16 +54,20 @@ def instrument_price_history(
 
     instrument = stored.instrument
     prices = stored.prices
-    is_vietnam = instrument.venue_code in _VN_VENUES
-    benchmark = "VN30" if is_vietnam else "SPX"
+    is_equity = instrument.instrument_type == "common_stock"
+    is_vietnam = is_equity and instrument.venue_code in _VN_VENUES
+    benchmark = _relative_strength_benchmark(
+        instrument.instrument_type, instrument.venue_code
+    )
     relative_strength = pd.Series(index=prices.data.index, dtype=float)
-    try:
-        benchmark_prices = price_service.get_stored_market_index(benchmark).prices
-        relative_strength = normalized_relative_strength(
-            prices.data["close"], benchmark_prices.data["close"]
-        )
-    except (UnknownInstrumentError, InstrumentPriceUnavailableError):
-        pass
+    if benchmark is not None:
+        try:
+            benchmark_prices = price_service.get_stored_market_index(benchmark).prices
+            relative_strength = normalized_relative_strength(
+                prices.data["close"], benchmark_prices.data["close"]
+            )
+        except (UnknownInstrumentError, InstrumentPriceUnavailableError):
+            pass
 
     fundamentals = None
     eps_ttm = pd.Series(index=prices.data.index, dtype=float)
@@ -72,50 +77,51 @@ def instrument_price_history(
     reported_pe = reported_pb = None
     ratio_date = ratio_period = None
     shares_growth = shares_growth_5y = None
-    try:
-        fundamentals = fundamental_service.get_instrument_history(instrument_id)
-        snapshots = fundamentals.snapshots
-        multiplier = 1000.0 if is_vietnam else 1.0
-        eps_ttm = point_in_time_fundamental(
-            prices.data.index, snapshots, value_column="eps_ttm", name="eps_ttm"
-        )
-        shares = point_in_time_fundamental(
-            prices.data.index,
-            snapshots,
-            value_column="shares_outstanding",
-            name="shares_outstanding",
-        )
-        trailing_pe = point_in_time_trailing_pe(
-            prices.data["close"], snapshots, price_multiplier=multiplier
-        )
-        trailing_pb = point_in_time_price_multiple(
-            prices.data["close"],
-            snapshots,
-            value_column="book_value_per_share",
-            name="trailing_pb",
-            price_multiplier=multiplier,
-        )
-        as_of = prices.data.index.max()
-        shares_growth = fundamental_growth_over_years(
-            snapshots, value_column="shares_outstanding", as_of=as_of, years=10
-        )
-        shares_growth_5y = fundamental_growth_over_years(
-            snapshots, value_column="shares_outstanding", as_of=as_of, years=5
-        )
-        if is_vietnam:
-            eligible = snapshots.loc[
-                pd.to_datetime(snapshots["effective_date"], errors="coerce") <= as_of
-            ].sort_values("effective_date")
-            if not eligible.empty:
-                latest = eligible.iloc[-1]
-                reported_pe = _optional_float(latest.get("reported_pe"))
-                reported_pb = _optional_float(latest.get("reported_pb"))
-                effective = pd.to_datetime(latest.get("effective_date"), errors="coerce")
-                ratio_date = effective.date().isoformat() if not pd.isna(effective) else None
-                period = latest.get("period")
-                ratio_period = str(period) if not pd.isna(period) else None
-    except FundamentalsNotFoundError:
-        pass
+    if is_equity:
+        try:
+            fundamentals = fundamental_service.get_instrument_history(instrument_id)
+            snapshots = fundamentals.snapshots
+            multiplier = 1000.0 if is_vietnam else 1.0
+            eps_ttm = point_in_time_fundamental(
+                prices.data.index, snapshots, value_column="eps_ttm", name="eps_ttm"
+            )
+            shares = point_in_time_fundamental(
+                prices.data.index,
+                snapshots,
+                value_column="shares_outstanding",
+                name="shares_outstanding",
+            )
+            trailing_pe = point_in_time_trailing_pe(
+                prices.data["close"], snapshots, price_multiplier=multiplier
+            )
+            trailing_pb = point_in_time_price_multiple(
+                prices.data["close"],
+                snapshots,
+                value_column="book_value_per_share",
+                name="trailing_pb",
+                price_multiplier=multiplier,
+            )
+            as_of = prices.data.index.max()
+            shares_growth = fundamental_growth_over_years(
+                snapshots, value_column="shares_outstanding", as_of=as_of, years=10
+            )
+            shares_growth_5y = fundamental_growth_over_years(
+                snapshots, value_column="shares_outstanding", as_of=as_of, years=5
+            )
+            if is_vietnam:
+                eligible = snapshots.loc[
+                    pd.to_datetime(snapshots["effective_date"], errors="coerce") <= as_of
+                ].sort_values("effective_date")
+                if not eligible.empty:
+                    latest = eligible.iloc[-1]
+                    reported_pe = _optional_float(latest.get("reported_pe"))
+                    reported_pb = _optional_float(latest.get("reported_pb"))
+                    effective = pd.to_datetime(latest.get("effective_date"), errors="coerce")
+                    ratio_date = effective.date().isoformat() if not pd.isna(effective) else None
+                    period = latest.get("period")
+                    ratio_period = str(period) if not pd.isna(period) else None
+        except FundamentalsNotFoundError:
+            pass
 
     points = [
         InstrumentPricePointResponse(
@@ -136,6 +142,7 @@ def instrument_price_history(
     return InstrumentPriceHistoryResponse(
         instrument_id=instrument.id,
         symbol=instrument.symbol,
+        instrument_type=instrument.instrument_type,
         venue_code=instrument.venue_code,
         currency=instrument.currency,
         source=stored.price_source,
@@ -177,6 +184,18 @@ def instrument_price_history(
         ),
         prices=points,
     )
+
+
+def _relative_strength_benchmark(
+    instrument_type: str, venue_code: str | None
+) -> str | None:
+    if instrument_type != "common_stock":
+        return None
+    if venue_code in _VN_VENUES:
+        return "VN30"
+    if venue_code in _US_VENUES:
+        return "SPX"
+    return None
 
 
 def _at(series: pd.Series, timestamp) -> float | None:
