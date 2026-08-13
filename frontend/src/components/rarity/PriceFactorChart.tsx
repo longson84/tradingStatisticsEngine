@@ -4,6 +4,7 @@ import {
   LineStyle,
   LineSeries,
   createSeriesMarkers,
+  type Time,
 } from "lightweight-charts"
 import { useEffect, useRef } from "react"
 import type { TimeSeriesPoint, ZoneStat, ZoneEntry } from "@/lib/api"
@@ -50,8 +51,8 @@ export function PriceFactorChart({ timeSeries, zoneStats, entries }: Props) {
   useEffect(() => {
     if (!priceRef.current || !factorRef.current || timeSeries.length < 2) return
 
-    const priceData  = timeSeries.map(p => ({ time: p.date as any, value: p.price }))
-    const factorData = timeSeries.map(p => ({ time: p.date as any, value: p.factor }))
+    const priceData  = timeSeries.map(p => ({ time: p.date as Time, value: p.price }))
+    const factorData = timeSeries.map(p => ({ time: p.date as Time, value: p.factor }))
     const first = priceData[0].time
     const last  = priceData[priceData.length - 1].time
 
@@ -132,7 +133,7 @@ export function PriceFactorChart({ timeSeries, zoneStats, entries }: Props) {
     const priceMarkers = entries
       .filter(e => e.zone_pct <= 30)
       .map(e => ({
-        time: e.start_date as any,
+        time: e.start_date as Time,
         position: "belowBar" as const,
         color: zoneColor(e.zone_pct),
         shape: "circle" as const,

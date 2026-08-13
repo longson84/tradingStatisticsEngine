@@ -41,10 +41,6 @@ function niceTicks(min: number, max: number, n = 8): number[] {
   return ticks
 }
 
-function fmt(n: number, prefix = ""): string {
-  return prefix + n.toFixed(2) + "%"
-}
-
 export function MaeMfeScatter({ trades }: Props) {
   const [logScale, setLogScale] = useState(false)
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)

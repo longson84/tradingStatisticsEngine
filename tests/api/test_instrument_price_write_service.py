@@ -12,9 +12,7 @@ from api.repositories.price_bar_repository import (
 )
 from api.instrument_data_routing import InstrumentRoutingMetadata
 from api.venue_calendars import venue_calendar
-from api.services.company_price_service import (
-    CompanyPriceService,
-)
+from api.services.instrument_price_write_service import InstrumentPriceWriteService
 from trading_engine.types import PriceFrame
 
 
@@ -110,7 +108,7 @@ class StubRoutingRepository:
         ("VN", "FPT", "VND", 1_000, "provider_unspecified", "vnstock-vci"),
     ],
 )
-def test_store_downloaded_histories_uses_canonical_instrument_metadata(
+def test_store_history_uses_canonical_instrument_metadata(
     country, ticker, currency, scale, basis, source
 ):
     repository = StubRepository(None)
@@ -121,7 +119,9 @@ def test_store_downloaded_histories_uses_canonical_instrument_metadata(
         instrument_type="common_stock",
         venue_code="HOSE" if country == "VN" else "NASDAQ",
     )
-    service = CompanyPriceService(repository, StubRoutingRepository(repository))
+    service = InstrumentPriceWriteService(
+        repository, StubRoutingRepository(repository)
+    )
     frame = PriceFrame(
         symbol=ticker,
         data=pd.DataFrame(
@@ -138,8 +138,8 @@ def test_store_downloaded_histories_uses_canonical_instrument_metadata(
     )
     fetched_at = datetime(2026, 8, 4, tzinfo=UTC)
 
-    stored = service.store_downloaded_histories(
-        {repository.target.instrument_id: frame}, fetched_at=fetched_at
+    stored = service.store_history(
+        repository.target.instrument_id, frame, fetched_at=fetched_at
     )
 
     assert stored == 1

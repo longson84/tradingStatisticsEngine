@@ -94,11 +94,10 @@ function bahHeat(val: number): React.CSSProperties {
 }
 
 function DepthTable({
-  stratPeriods, bahPeriods, strategyLabel, currentDepth,
+  stratPeriods, bahPeriods, currentDepth,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
-  strategyLabel: string
   currentDepth: number | null
 }) {
   const stratDepths = stratPeriods.map(p => Math.abs(p.depthPct))
@@ -209,11 +208,10 @@ interface HistTooltip {
 }
 
 function DepthHistogram({
-  stratPeriods, bahPeriods, strategyLabel, currentDepth,
+  stratPeriods, bahPeriods, currentDepth,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
-  strategyLabel: string
   currentDepth: number | null
 }) {
   const [tooltip, setTooltip] = useState<HistTooltip | null>(null)
@@ -581,9 +579,9 @@ export function DrawdownDepthAnalysis({ equityStrategy, equityBah, strategyLabel
     <div className="space-y-4">
       <SectionTitle>Drawdown Depth — Strategy vs Buy &amp; Hold</SectionTitle>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <DepthTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDepth={currentDepth} />
-        <DepthHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDepth={currentDepth} />
-        <DepthVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
+        <DepthTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} currentDepth={currentDepth} />
+        <DepthHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} currentDepth={currentDepth} />
+        <DepthVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel={strategyLabel} />
       </div>
     </div>
   )

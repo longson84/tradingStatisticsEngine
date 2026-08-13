@@ -52,6 +52,22 @@ def test_retired_collection_history_and_bulk_scripts_are_absent():
     assert "fundamental_refresh_runs" not in Base.metadata.tables
 
 
+def test_retired_growth_dashboard_modules_are_absent():
+    retired = (
+        "ai_assessment.py",
+        "growth.py",
+        "sec_edgar.py",
+    )
+    root = PROJECT_ROOT / "trading_engine" / "fundamentals"
+    assert all(not (root / filename).exists() for filename in retired)
+
+
+def test_company_named_price_writer_is_absent():
+    assert not (
+        PROJECT_ROOT / "api" / "services" / "company_price_service.py"
+    ).exists()
+
+
 def test_sqlalchemy_repositories_are_not_imported_outside_dependency_wiring():
     allowed = PROJECT_ROOT / "api" / "deps.py"
     violations = []

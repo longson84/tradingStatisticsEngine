@@ -35,7 +35,6 @@ from api.repositories.sqlalchemy_reference_rate_repository import (
     SqlAlchemyReferenceRateRepository,
 )
 from api.services.binance_spot_service import BinanceSpotService
-from api.services.company_price_service import CompanyPriceService
 from api.services.instrument_price_write_service import InstrumentPriceWriteService
 from api.services.reference_rate_service import ReferenceRateService
 from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
@@ -155,13 +154,10 @@ def _refresh_equity(
     )
     prices = loader.load(route.provider_symbol, start, end + timedelta(days=1))
     with session_scope(engine) as session:
-        CompanyPriceService(
+        InstrumentPriceWriteService(
             SqlAlchemyPriceBarRepository(session),
             SqlAlchemyInstrumentRoutingRepository(session),
-        ).store_downloaded_histories(
-            {instrument.id: prices},
-            fetched_at=now,
-        )
+        ).store_history(instrument.id, prices, fetched_at=now)
     return prices.source
 
 

@@ -1,4 +1,4 @@
-export type Theme = "dark" | "light" | "system"
+import type { Theme } from "./theme-context"
 
 export function getSystemTheme(): "dark" | "light" {
   if (typeof window === "undefined") return "light"

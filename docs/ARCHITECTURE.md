@@ -1925,3 +1925,25 @@ Consequences: no live API request identifies an analytical target as
 and no operational write is keyed to a synthetic market or collection history
 row. Words such as market index, market benchmark, or external market data
 remain valid domain language and do not imply a legacy identity boundary.
+
+### 2026-08-13 — Post-cutover dead-code and terminology cleanup
+
+Context: a repository-wide audit confirmed that the PostgreSQL schema and live
+HTTP contracts had completed the canonical Instrument cutover, but several
+retired implementation artifacts remained. The removed Growth Dashboard still
+left standalone SEC extraction, growth aggregation, and AI assessment modules;
+equity price persistence still used `CompanyPriceService` despite accepting
+only exact Instrument IDs; and a generated duplication report was checked in.
+
+Decision: remove the retired SEC/Growth/AI modules and their environment
+settings while retaining the point-in-time fundamental calculations consumed
+by Price History. All equity, market-index, reference-rate, and crypto refresh
+paths now persist through Instrument-oriented write services. Generated code
+duplication reports are ignored rather than versioned, and the navigation group
+containing Companies, Instruments, and Price History is named Catalog.
+
+Consequences: the active application no longer exposes a second direct-fetch
+fundamentals analysis surface or company-named observation writer. PostgreSQL
+remains the sole business-data store; generated OpenAPI JSON remains a build
+contract rather than application data. This cleanup does not change analytical
+formulas, persistence keys, provider routing, or the database schema.

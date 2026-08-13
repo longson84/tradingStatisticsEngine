@@ -35,7 +35,7 @@ const sections = [
     ],
   },
   {
-    label: "Company Analysis",
+    label: "Catalog",
     links: [
       { to: "/companies", label: "Companies", icon: Building2 },
       { to: "/instruments", label: "Instruments", icon: ListTree },

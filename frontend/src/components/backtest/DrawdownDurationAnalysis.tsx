@@ -96,11 +96,10 @@ function bahHeat(val: number): React.CSSProperties {
 }
 
 function DurationTable({
-  stratPeriods, bahPeriods, strategyLabel, currentDuration,
+  stratPeriods, bahPeriods, currentDuration,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
-  strategyLabel: string
   currentDuration: number | null
 }) {
   const stratDays = stratPeriods.map(p => p.daysToTrough)
@@ -212,11 +211,10 @@ interface HistTooltip {
 }
 
 function DurationHistogram({
-  stratPeriods, bahPeriods, strategyLabel, currentDuration,
+  stratPeriods, bahPeriods, currentDuration,
 }: {
   stratPeriods: DDPeriod[]
   bahPeriods: DDPeriod[]
-  strategyLabel: string
   currentDuration: number | null
 }) {
   const [tooltip, setTooltip] = useState<HistTooltip | null>(null)
@@ -597,9 +595,9 @@ export function DrawdownDurationAnalysis({ equityStrategy, equityBah, strategyLa
     <div className="space-y-4">
       <SectionTitle>Duration of Drawdown — Strategy vs Buy &amp; Hold</SectionTitle>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <DurationTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDuration={currentDuration} />
-        <DurationHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" currentDuration={currentDuration} />
-        <DurationVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel="Strategy" />
+        <DurationTable stratPeriods={stratPeriods} bahPeriods={bahPeriods} currentDuration={currentDuration} />
+        <DurationHistogram stratPeriods={stratPeriods} bahPeriods={bahPeriods} currentDuration={currentDuration} />
+        <DurationVsRecovery stratPeriods={stratPeriods} bahPeriods={bahPeriods} strategyLabel={strategyLabel} />
       </div>
     </div>
   )
