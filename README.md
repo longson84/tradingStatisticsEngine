@@ -35,16 +35,16 @@ Neither the API key nor the private temporary package path is committed.
 
 ## Local PostgreSQL
 
-Start PostgreSQL, apply migrations, and import the saved company universes:
+Start PostgreSQL, apply migrations, and synchronize the live company universes:
 
 ```bash
 docker compose up -d postgres
 UV_CACHE_DIR=.cache/uv uv run --no-sync alembic upgrade head
-UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.import_companies
+UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_company_universes --all
 ```
 
-The importer is idempotent. Verify database parity without writing:
+Preview provider changes without writing:
 
 ```bash
-UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.import_companies --verify-only
+UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_company_universes --all --dry-run
 ```

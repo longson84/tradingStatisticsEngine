@@ -14,6 +14,7 @@ from api.providers.universe import (
     UniverseProviderUnavailableError,
     UniverseSnapshot,
     make_constituent,
+    make_identifier,
     validated_constituents,
 )
 
@@ -80,7 +81,9 @@ class VnstockUniverseProvider:
     def __init__(self, listing_factory: ListingFactory = _default_listing_factory) -> None:
         self._listing_factory = listing_factory
         self._listing: object | None = None
-        self._metadata: dict[str, tuple[str | None, int | None, str | None]] | None = None
+        self._metadata: dict[
+            str, tuple[str | None, int | None, str | None, str | None]
+        ] | None = None
         self._snapshots: dict[str, UniverseSnapshot] = {}
 
     def fetch(self, universe: str) -> UniverseSnapshot:
@@ -110,8 +113,8 @@ class VnstockUniverseProvider:
         metadata = self._get_metadata()
         constituents = []
         for symbol in symbols:
-            name, industry_code, industry_name = metadata.get(
-                str(symbol).upper().strip(), (None, None, None)
+            name, industry_code, industry_name, organ_code = metadata.get(
+                str(symbol).upper().strip(), (None, None, None, None)
             )
             constituents.append(make_constituent(
                 ticker=symbol,
@@ -120,6 +123,13 @@ class VnstockUniverseProvider:
                 sector=_SECTOR_BY_INDUSTRY_CODE.get(industry_code),
                 industry=industry_name,
                 exchange="HOSE",
+                company_identifiers=tuple(
+                    identifier
+                    for identifier in (
+                        make_identifier("vnstock_organ_code", organ_code),
+                    )
+                    if identifier is not None
+                ),
             ))
         return UniverseSnapshot(
             code=code,
@@ -159,7 +169,7 @@ class VnstockUniverseProvider:
 
     def _get_metadata(
         self,
-    ) -> dict[str, tuple[str | None, int | None, str | None]]:
+    ) -> dict[str, tuple[str | None, int | None, str | None, str | None]]:
         if self._metadata is not None:
             return self._metadata
         listing = self._get_listing()
@@ -175,8 +185,9 @@ class VnstockUniverseProvider:
                 "VNStock all_symbols response is missing symbol metadata"
             )
         name_by_symbol = {
-            str(row["symbol"]).upper().strip(): _optional_frame_value(
-                row.get("organ_name")
+            str(row["symbol"]).upper().strip(): (
+                _optional_frame_value(row.get("organ_name")),
+                _optional_frame_value(row.get("organ_code")),
             )
             for row in names.to_dict("records")
         }
@@ -194,11 +205,12 @@ class VnstockUniverseProvider:
                 )
         self._metadata = {
             symbol: (
-                name,
+                name_and_code[0],
                 industry_by_symbol.get(symbol, (None, None))[0],
                 industry_by_symbol.get(symbol, (None, None))[1],
+                name_and_code[1],
             )
-            for symbol, name in name_by_symbol.items()
+            for symbol, name_and_code in name_by_symbol.items()
         }
         return self._metadata
 

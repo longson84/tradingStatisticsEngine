@@ -17,6 +17,7 @@ from api.providers.universe import (
     UniverseProviderUnavailableError,
     UniverseSnapshot,
     make_constituent,
+    make_identifier,
     validated_constituents,
 )
 
@@ -25,7 +26,8 @@ HttpFetcher = Callable[[str, Mapping[str, str] | None], bytes]
 NASDAQ_100_URL = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
 ISHARES_IWM_URL = (
     "https://www.blackrock.com/us/individual/products/239710/"
-    "ishares-russell-2000-etf/latest-holdings.csv"
+    "ishares-russell-2000-etf/1464253357814.ajax"
+    "?fileType=csv&fileName=IWM_holdings&dataType=fund"
 )
 WIKIPEDIA_SP500_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 WIKIPEDIA_DOW_URL = "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average"
@@ -93,6 +95,11 @@ class Nasdaq100UniverseProvider:
                 company_name=row.get("companyName"),
                 sector=row.get("sector"),
                 exchange="NASDAQ",
+                company_identifiers=tuple(
+                    identifier
+                    for identifier in (make_identifier("sec_cik", row.get("cik")),)
+                    if identifier is not None
+                ),
             )
             for row in rows
         ]
@@ -178,6 +185,11 @@ class WikipediaUSIndexProvider:
                 sector=row.get("GICS Sector"),
                 industry=row.get("GICS Sub-Industry") or row.get("Industry"),
                 exchange=row.get("Exchange"),
+                company_identifiers=tuple(
+                    identifier
+                    for identifier in (make_identifier("sec_cik", row.get("CIK")),)
+                    if identifier is not None
+                ),
             )
             for row in table.to_dict("records")
         ]

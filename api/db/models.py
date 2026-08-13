@@ -402,6 +402,40 @@ class Universe(Base):
     )
 
 
+class UniverseSyncRun(Base):
+    """Scalar audit record for one attempted live Universe synchronization."""
+
+    __tablename__ = "universe_sync_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('succeeded', 'failed')",
+            name="ck_universe_sync_runs_status",
+        ),
+        Index(
+            "ix_universe_sync_runs_universe_started",
+            "universe_code",
+            "started_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    universe_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    finished_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    received_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    added_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    removed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unchanged_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(String(2000))
+
+
 class UniverseMembership(Base):
     """Current membership of one instrument in one universe snapshot."""
 

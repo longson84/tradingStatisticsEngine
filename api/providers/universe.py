@@ -29,12 +29,20 @@ class UnsupportedUniverseError(UniverseProviderError):
 
 
 @dataclass(frozen=True)
+class UniverseCompanyIdentifier:
+    namespace: str
+    value: str
+
+
+@dataclass(frozen=True)
 class UniverseConstituent:
     canonical_ticker: str
+    listing_symbol: str
     company_name: str
     sector: str | None = None
     industry: str | None = None
     exchange: str | None = None
+    company_identifiers: tuple[UniverseCompanyIdentifier, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,15 +118,34 @@ def make_constituent(
     sector: object = None,
     industry: object = None,
     exchange: object = None,
+    company_identifiers: tuple[UniverseCompanyIdentifier, ...] = (),
 ) -> UniverseConstituent:
+    listing_symbol = str(ticker).upper().strip()
     canonical = normalize_ticker(ticker, market)
     return UniverseConstituent(
         canonical_ticker=canonical,
+        listing_symbol=listing_symbol,
         company_name=optional_text(company_name) or canonical,
         sector=optional_text(sector),
         industry=optional_text(industry),
         exchange=optional_text(exchange),
+        company_identifiers=company_identifiers,
     )
+
+
+def make_identifier(namespace: str, value: object) -> UniverseCompanyIdentifier | None:
+    normalized_namespace = str(namespace).lower().strip()
+    normalized_value = optional_text(value)
+    if not normalized_namespace or normalized_value is None:
+        return None
+    if normalized_namespace == "sec_cik":
+        try:
+            normalized_value = str(int(float(normalized_value)))
+        except (TypeError, ValueError):
+            raise UniverseProviderDataError(
+                f"Invalid SEC CIK value: {value!r}"
+            ) from None
+    return UniverseCompanyIdentifier(normalized_namespace, normalized_value)
 
 
 def validated_constituents(

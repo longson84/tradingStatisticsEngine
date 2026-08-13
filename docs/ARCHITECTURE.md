@@ -71,10 +71,11 @@ preventing `localhost` from resolving to a different IPv6 listener. The
 connection is selected through `DATABASE_URL`; committed credentials are
 development-only and must not be reused outside a local machine.
 
-CSV and JSON snapshots remain valid ingestion inputs during migration. Company
-snapshots under `api/data/symbol_lists/` are importer inputs and rollback
-evidence only; all application company reads use PostgreSQL through the Company
-service. Exact-instrument Price History reads canonical daily bars from
+Legacy company snapshots under `api/data/symbol_lists/` remain temporary
+rollback evidence until their final deletion phase, but they are no longer the
+supported bootstrap input. Live Universe adapters validate provider data in
+memory and synchronize PostgreSQL directly. All application company reads use
+PostgreSQL through the Company service. Exact-instrument Price History reads canonical daily bars from
 PostgreSQL, and price refreshes incrementally upsert the same table. Price
 coverage and maintenance operations also use PostgreSQL. Benchmarks and
 fundamentals remain file-backed until their separate migrations are verified.
@@ -1703,3 +1704,50 @@ once in Companies while GOOG and GOOGL remain separate Instruments. Universe
 controls are metadata-driven and can include any persisted equity Universe
 without a frontend code list. “All equities” is a query scope, not a synthetic
 membership set, and no database migration is required for this API cutover.
+
+### 2026-08-13 — Live audited Universe synchronization
+
+Context: canonical Company, Asset, Instrument, Symbol, Venue, and Universe
+tables existed, and live provider adapters could produce normalized snapshots,
+but a clean database still depended on `scripts.import_companies` and the
+checked-in symbol-list files. There was no transactional live writer or durable
+record of successful and failed membership synchronization attempts.
+
+Decision: `scripts.sync_company_universes` is the supported equity-Universe
+bootstrap and maintenance command. It fetches provider data and the Nasdaq
+Trader venue directory before opening a write transaction, normalizes and
+validates the complete snapshots in memory, and then acquires PostgreSQL
+advisory transaction locks. United States Universes lock independently; VN30,
+VNMID, VN100, VNSML, and VNALL share one family lock and are always replaced in
+one transaction. VN100 must equal VN30 union VNMID, and VNALL must equal VN100
+union VNSML.
+
+The writer resolves Instruments from canonical Venue plus a current canonical,
+listing, or provider Symbol. It uses stable Company identifiers such as SEC CIK
+or VNStock organization code before existing Instrument ownership and never
+merges Companies from normalized names alone. Known Companies, equity Assets,
+and Instruments are reused; missing canonical rows are created. During the
+remaining compatibility period, every write updates both `instruments.ticker`
+and current `instrument_symbols` rows. Provider metadata only replaces a value
+when it is non-null, and share-class labels do not replace a neutral issuer
+name.
+
+Membership replacement, Universe provenance, active-state recalculation, and
+one scalar `universe_sync_runs` audit row per Universe commit atomically. The
+audit table deliberately has no JSON payload. Empty, malformed, cross-market,
+implausibly sized, or unexpectedly high-change snapshots are rejected; the
+change threshold can only be bypassed with the explicit `--force` control.
+Fetch or validation failure records a failed audit attempt in a separate
+transaction and leaves the last known-good membership untouched. Removing
+membership never deletes prices, fundamentals, refresh state, or Watchlist
+membership. `--dry-run` reports additions, removals, unchanged members, and
+metadata changes without writing any application or audit row.
+
+Consequences: `alembic upgrade head` followed by
+`python -m scripts.sync_company_universes --all` can populate a clean database
+without the legacy importer and without persisting a downloaded JSON, CSV, or
+provider response. Provider availability is an operational synchronization
+dependency, not an API-startup dependency; synchronization is never run during
+application startup. The checked-in symbol-list files and old importer remain
+only until the later file-layer removal phase confirms every remaining consumer
+has been cut over.

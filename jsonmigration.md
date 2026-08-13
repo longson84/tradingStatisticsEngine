@@ -149,6 +149,10 @@ Extend a persistence-neutral repository boundary with operations to:
 
 ## Phase 3: Implement Safe Synchronization
 
+Status: complete in Phase 4 of the canonical-model migration. Live snapshots
+are validated before persistence, Universe or VN-family advisory locks protect
+transactional replacement, and failures retain last-known-good membership.
+
 Create a `UniverseSyncService` that coordinates providers and persistence.
 
 For each synchronization:
@@ -178,6 +182,11 @@ Required invariants:
 - No network request runs while a database transaction or write lock is held.
 
 ## Phase 4: Replace the Bootstrap Command
+
+Status: complete. `scripts.sync_company_universes` is now the supported live
+bootstrap with `--all`, `--market`, `--universe`, `--dry-run`, `--force`, and
+`--database-url`. The legacy importer remains only for the final file-layer
+retirement phase and is no longer documented as the setup path.
 
 Replace:
 
