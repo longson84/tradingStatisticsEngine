@@ -3,11 +3,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_universe_service
-from api.schemas.universe import UniverseCatalogResponse, UniverseListResponse
-from api.services.universe_service import UniverseService
+from api.schemas.universe import (
+    UniverseCatalogResponse,
+    UniverseListResponse,
+    UniverseSyncRunPageResponse,
+    UniverseSyncRunResponse,
+)
+from api.services.universe_service import UnknownUniverseError, UniverseService
 
 
 router = APIRouter(prefix="/universes", tags=["universes"])
@@ -34,4 +39,29 @@ def list_universes(
             )
             for row in service.list_universes()
         ]
+    )
+
+
+@router.get(
+    "/{universe_id}/sync-runs",
+    response_model=UniverseSyncRunPageResponse,
+    operation_id="listUniverseSyncRuns",
+)
+def list_universe_sync_runs(
+    universe_id: int,
+    service: Annotated[UniverseService, Depends(get_universe_service)],
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> UniverseSyncRunPageResponse:
+    try:
+        page = service.list_sync_runs(universe_id, offset=offset, limit=limit)
+    except UnknownUniverseError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return UniverseSyncRunPageResponse(
+        universe_id=page.universe_id,
+        universe_code=page.universe_code,
+        runs=[UniverseSyncRunResponse(**row.__dict__) for row in page.runs],
+        total=page.total,
+        offset=page.offset,
+        limit=page.limit,
     )

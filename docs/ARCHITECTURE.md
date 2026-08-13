@@ -1772,6 +1772,17 @@ membership never deletes prices, fundamentals, refresh state, or Watchlist
 membership. `--dry-run` reports additions, removals, unchanged members, and
 metadata changes without writing any application or audit row.
 
+`GET /universes/{universe_id}/sync-runs` exposes this synchronization audit as
+a newest-first, paginated read model for the selected canonical Universe. The
+Universes UI shows status, provider source, timing, effective date, received,
+added, removed, unchanged, and failure detail. These rows describe only
+Universe membership synchronization; they are not instrument price or
+fundamental update history. The writer retains the latest 100 attempts per
+Universe code after each recorded success or failure. A failed attempt may be
+recorded before the canonical Universe exists, so the audit deliberately keeps
+the provider-facing `universe_code` rather than a mandatory Universe foreign
+key; the public reader resolves a canonical Universe ID to that code.
+
 Consequences: `alembic upgrade head` followed by
 `python -m scripts.sync_company_universes --all` can populate a clean database
 without the legacy importer and without persisting a downloaded JSON, CSV, or

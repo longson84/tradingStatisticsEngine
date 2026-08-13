@@ -4429,6 +4429,136 @@
         "title": "UniverseStatsResultResponse",
         "type": "object"
       },
+      "UniverseSyncRunPageResponse": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseSyncRunResponse"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "universe_code": {
+            "title": "Universe Code",
+            "type": "string"
+          },
+          "universe_id": {
+            "title": "Universe Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "universe_id",
+          "universe_code",
+          "runs",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "UniverseSyncRunPageResponse",
+        "type": "object"
+      },
+      "UniverseSyncRunResponse": {
+        "properties": {
+          "added_count": {
+            "title": "Added Count",
+            "type": "integer"
+          },
+          "effective_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Date"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "format": "date-time",
+            "title": "Finished At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "received_count": {
+            "title": "Received Count",
+            "type": "integer"
+          },
+          "removed_count": {
+            "title": "Removed Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unchanged_count": {
+            "title": "Unchanged Count",
+            "type": "integer"
+          },
+          "universe_code": {
+            "title": "Universe Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "universe_code",
+          "source",
+          "status",
+          "started_at",
+          "finished_at",
+          "effective_date",
+          "received_count",
+          "added_count",
+          "removed_count",
+          "unchanged_count",
+          "error"
+        ],
+        "title": "UniverseSyncRunResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6206,6 +6336,71 @@
           }
         },
         "summary": "List Universes",
+        "tags": [
+          "universes"
+        ]
+      }
+    },
+    "/universes/{universe_id}/sync-runs": {
+      "get": {
+        "operationId": "listUniverseSyncRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "universe_id",
+            "required": true,
+            "schema": {
+              "title": "Universe Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UniverseSyncRunPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Universe Sync Runs",
         "tags": [
           "universes"
         ]

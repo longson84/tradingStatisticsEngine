@@ -102,6 +102,8 @@ export type VenueListResponse = components["schemas"]["VenueListResponse"]
 export type InstrumentCatalogItem = components["schemas"]["InstrumentCatalogItemResponse"]
 export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
 export type UniverseListResponse = components["schemas"]["UniverseListResponse"]
+export type UniverseSyncRun = components["schemas"]["UniverseSyncRunResponse"]
+export type UniverseSyncRunPage = components["schemas"]["UniverseSyncRunPageResponse"]
 export type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
 export type UniverseStatsResponse = components["schemas"]["UniverseStatsResponse"]
 export type UniverseStatsResult = components["schemas"]["UniverseStatsResultResponse"]
@@ -277,6 +279,17 @@ export function instrumentsApi(
 
 export function universesApi(): Promise<UniverseListResponse> {
   return get("/universes")
+}
+
+export function universeSyncRunsApi(
+  universeId: number,
+  params: { offset?: number; limit?: number } = {},
+): Promise<UniverseSyncRunPage> {
+  const query = new URLSearchParams()
+  if (params.offset != null) query.set("offset", String(params.offset))
+  if (params.limit != null) query.set("limit", String(params.limit))
+  const suffix = query.size > 0 ? `?${query}` : ""
+  return get(`/universes/${universeId}/sync-runs${suffix}`)
 }
 
 export function universeStatsApi(

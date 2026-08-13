@@ -1,11 +1,15 @@
 """SQLAlchemy projection for canonical instrument universes."""
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Instrument, Universe, UniverseMembership
-from api.repositories.universe_repository import UniverseCatalogRecord
+from api.db.models import Instrument, Universe, UniverseMembership, UniverseSyncRun
+from api.repositories.universe_repository import (
+    UniverseCatalogRecord,
+    UniverseSyncRunPage,
+    UniverseSyncRunRecord,
+)
 
 
 class SqlAlchemyUniverseRepository:
@@ -23,6 +27,52 @@ class SqlAlchemyUniverseRepository:
             .order_by(Universe.name, Universe.code)
         ).all()
         return tuple(self._record(universe) for universe in universes)
+
+    def list_sync_runs(
+        self,
+        universe_id: int,
+        *,
+        offset: int,
+        limit: int,
+    ) -> UniverseSyncRunPage | None:
+        universe = self._session.scalar(
+            select(Universe)
+            .where(Universe.id == universe_id)
+        )
+        if universe is None:
+            return None
+        condition = UniverseSyncRun.universe_code == universe.code
+        total = self._session.scalar(
+            select(func.count(UniverseSyncRun.id)).where(condition)
+        ) or 0
+        rows = self._session.scalars(
+            select(UniverseSyncRun)
+            .where(condition)
+            .order_by(UniverseSyncRun.started_at.desc(), UniverseSyncRun.id.desc())
+            .offset(offset)
+            .limit(limit)
+        ).all()
+        return UniverseSyncRunPage(
+            universe_id=universe.id,
+            universe_code=universe.code,
+            runs=tuple(UniverseSyncRunRecord(
+                id=row.id,
+                universe_code=row.universe_code,
+                source=row.source,
+                status=row.status,
+                started_at=row.started_at,
+                finished_at=row.finished_at,
+                effective_date=row.effective_date,
+                received_count=row.received_count,
+                added_count=row.added_count,
+                removed_count=row.removed_count,
+                unchanged_count=row.unchanged_count,
+                error=row.error,
+            ) for row in rows),
+            total=total,
+            offset=offset,
+            limit=limit,
+        )
 
     @staticmethod
     def _record(universe: Universe) -> UniverseCatalogRecord:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -240,6 +240,43 @@ def test_dry_run_reports_diff_without_writing(sync_setup):
     with Session(engine) as session:
         assert session.scalar(select(func.count(Universe.id))) == 0
         assert session.scalar(select(func.count(UniverseSyncRun.id))) == 0
+
+
+def test_sync_audit_retains_latest_100_attempts_per_universe(sync_setup):
+    engine, _provider, service = sync_setup
+    service.synchronize(("US30",))
+    with Session(engine) as session, session.begin():
+        for index in range(100):
+            timestamp = datetime(2026, 8, 14, tzinfo=UTC) + timedelta(seconds=index)
+            session.add(UniverseSyncRun(
+                universe_code="US30",
+                source="seed",
+                status="failed",
+                started_at=timestamp,
+                finished_at=timestamp,
+                received_count=0,
+                added_count=0,
+                removed_count=0,
+                unchanged_count=0,
+                error=f"failure {index}",
+            ))
+
+    service._repository.record_failures(  # type: ignore[attr-defined]
+        universe_codes=("US30",),
+        source="latest",
+        started_at=datetime(2026, 8, 15, tzinfo=UTC),
+        error="latest failure",
+    )
+
+    with Session(engine) as session:
+        rows = session.scalars(
+            select(UniverseSyncRun)
+            .where(UniverseSyncRun.universe_code == "US30")
+            .order_by(UniverseSyncRun.started_at.desc(), UniverseSyncRun.id.desc())
+        ).all()
+        assert len(rows) == 100
+        assert rows[0].error == "latest failure"
+        assert all(row.error != "failure 0" for row in rows)
 
 
 def test_vietnam_selection_expands_to_the_atomic_family(sync_setup):

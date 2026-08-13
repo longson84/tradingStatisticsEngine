@@ -279,6 +279,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/universes/{universe_id}/sync-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Universe Sync Runs */
+        get: operations["listUniverseSyncRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/venues": {
         parameters: {
             query?: never;
@@ -1815,6 +1832,57 @@ export interface components {
             /** Universe Name */
             universe_name: string;
         };
+        /** UniverseSyncRunPageResponse */
+        UniverseSyncRunPageResponse: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Runs */
+            runs: components["schemas"]["UniverseSyncRunResponse"][];
+            /** Total */
+            total: number;
+            /** Universe Code */
+            universe_code: string;
+            /** Universe Id */
+            universe_id: number;
+        };
+        /** UniverseSyncRunResponse */
+        UniverseSyncRunResponse: {
+            /** Added Count */
+            added_count: number;
+            /** Effective Date */
+            effective_date: string | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+            /** Id */
+            id: number;
+            /** Received Count */
+            received_count: number;
+            /** Removed Count */
+            removed_count: number;
+            /** Source */
+            source: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed";
+            /** Unchanged Count */
+            unchanged_count: number;
+            /** Universe Code */
+            universe_code: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2594,6 +2662,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UniverseListResponse"];
+                };
+            };
+        };
+    };
+    listUniverseSyncRuns: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                universe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniverseSyncRunPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

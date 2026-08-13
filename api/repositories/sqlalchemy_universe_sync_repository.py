@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime
 
-from sqlalchemy import Engine, select, text, update
+from sqlalchemy import Engine, delete, select, text, update
 from sqlalchemy.orm import Session, selectinload
 
 from api.db.models import (
@@ -41,6 +41,7 @@ _EXPECTED_MEMBER_RANGES = {
     "VNALL": (200, 500),
 }
 _MAX_MEMBERSHIP_CHANGE_FRACTION = 0.35
+_SYNC_RUN_RETENTION_PER_UNIVERSE = 100
 
 
 class SqlAlchemyUniverseSyncRepository:
@@ -84,6 +85,11 @@ class SqlAlchemyUniverseSyncRepository:
                     removed_count=result.removed_count,
                     unchanged_count=result.unchanged_count,
                 ))
+            session.flush()
+            self._prune_sync_runs(
+                session,
+                tuple(snapshot.code for snapshot in snapshots),
+            )
             return results
 
     def record_failures(
@@ -109,6 +115,25 @@ class SqlAlchemyUniverseSyncRepository:
                     unchanged_count=0,
                     error=error[:2000],
                 ))
+            session.flush()
+            self._prune_sync_runs(session, universe_codes)
+
+    @staticmethod
+    def _prune_sync_runs(session: Session, universe_codes: tuple[str, ...]) -> None:
+        for code in set(universe_codes):
+            expired_ids = tuple(session.scalars(
+                select(UniverseSyncRun.id)
+                .where(UniverseSyncRun.universe_code == code)
+                .order_by(
+                    UniverseSyncRun.started_at.desc(),
+                    UniverseSyncRun.id.desc(),
+                )
+                .offset(_SYNC_RUN_RETENTION_PER_UNIVERSE)
+            ))
+            if expired_ids:
+                session.execute(
+                    delete(UniverseSyncRun).where(UniverseSyncRun.id.in_(expired_ids))
+                )
 
     def _preview_in_session(
         self,

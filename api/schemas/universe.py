@@ -1,7 +1,8 @@
 """Public canonical universe contracts."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -22,3 +23,27 @@ class UniverseCatalogResponse(BaseModel):
 
 class UniverseListResponse(BaseModel):
     universes: list[UniverseCatalogResponse]
+
+
+class UniverseSyncRunResponse(BaseModel):
+    id: int
+    universe_code: str
+    source: str
+    status: Literal["succeeded", "failed"]
+    started_at: datetime
+    finished_at: datetime
+    effective_date: date | None
+    received_count: int
+    added_count: int
+    removed_count: int
+    unchanged_count: int
+    error: str | None
+
+
+class UniverseSyncRunPageResponse(BaseModel):
+    universe_id: int
+    universe_code: str
+    runs: list[UniverseSyncRunResponse]
+    total: int
+    offset: int
+    limit: int

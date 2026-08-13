@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 
@@ -21,5 +21,39 @@ class UniverseCatalogRecord:
     venue_codes: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class UniverseSyncRunRecord:
+    id: int
+    universe_code: str
+    source: str
+    status: str
+    started_at: datetime
+    finished_at: datetime
+    effective_date: date | None
+    received_count: int
+    added_count: int
+    removed_count: int
+    unchanged_count: int
+    error: str | None
+
+
+@dataclass(frozen=True)
+class UniverseSyncRunPage:
+    universe_id: int
+    universe_code: str
+    runs: tuple[UniverseSyncRunRecord, ...]
+    total: int
+    offset: int
+    limit: int
+
+
 class UniverseRepository(Protocol):
     def list_universes(self) -> tuple[UniverseCatalogRecord, ...]: ...
+
+    def list_sync_runs(
+        self,
+        universe_id: int,
+        *,
+        offset: int,
+        limit: int,
+    ) -> UniverseSyncRunPage | None: ...
