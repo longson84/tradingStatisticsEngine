@@ -6,10 +6,7 @@ from datetime import date, datetime
 
 import pandas as pd
 
-from api.repositories.fundamental_repository import (
-    FundamentalRepository,
-    FundamentalStatusRecord,
-)
+from api.repositories.fundamental_repository import FundamentalRepository
 
 
 IDENTITY_COLUMNS = ("effective_date", "period_end", "period")
@@ -163,11 +160,3 @@ class FundamentalService:
                 fields=populated_fields,
             ),
         )
-
-    def get_universe_status(
-        self, universe: str
-    ) -> FundamentalStatusRecord | None:
-        normalized = universe.upper().strip()
-        if not normalized:
-            return None
-        return self._repository.get_universe_status(normalized)

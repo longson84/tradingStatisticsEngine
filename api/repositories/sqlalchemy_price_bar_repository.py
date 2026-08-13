@@ -23,7 +23,6 @@ from api.repositories.price_bar_repository import (
     PriceRefreshStateRecord,
     PriceRefreshStateWriteRecord,
     InstrumentPriceBarQuery,
-    InstrumentSetPriceBarQuery,
     SymbolPriceCoverageRecord,
     PriceBarWriteRecord,
 )
@@ -321,56 +320,6 @@ class SqlAlchemyPriceBarRepository:
             .join(PriceBar, PriceBar.instrument_id == Instrument.id)
             .where(*filters)
             .order_by(PriceBar.trading_date)
-            .execution_options(yield_per=5_000)
-        )
-        for row in self._session.execute(statement):
-            yield PriceBarRecord(
-                symbol=row.symbol,
-                trading_date=row.trading_date,
-                open=float(row.open),
-                high=float(row.high),
-                low=float(row.low),
-                close=float(row.close),
-                volume=float(row.volume) if row.volume is not None else None,
-                currency=row.currency,
-                price_scale=row.price_scale,
-                price_basis=row.price_basis,
-                source=row.source,
-                fetched_at=row.fetched_at,
-            )
-
-    def iter_instrument_set_bars(
-        self, query: InstrumentSetPriceBarQuery
-    ) -> Iterable[PriceBarRecord]:
-        if not query.instrument_ids:
-            return
-        filters = [
-            Instrument.id.in_(query.instrument_ids),
-            Instrument.is_active.is_(True),
-            PriceBar.price_basis == query.price_basis,
-        ]
-        if query.start:
-            filters.append(PriceBar.trading_date >= query.start)
-        if query.end:
-            filters.append(PriceBar.trading_date <= query.end)
-        statement = (
-            select(
-                canonical_symbol_expression(),
-                PriceBar.trading_date,
-                PriceBar.open,
-                PriceBar.high,
-                PriceBar.low,
-                PriceBar.close,
-                PriceBar.volume,
-                PriceBar.currency,
-                PriceBar.price_scale,
-                PriceBar.price_basis,
-                PriceBar.source,
-                PriceBar.fetched_at,
-            )
-            .join(PriceBar, PriceBar.instrument_id == Instrument.id)
-            .where(*filters)
-            .order_by(Instrument.id, PriceBar.trading_date)
             .execution_options(yield_per=5_000)
         )
         for row in self._session.execute(statement):

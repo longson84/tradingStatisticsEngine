@@ -2065,3 +2065,25 @@ Consequences: the completed cutover has one application vocabulary and one
 persisted authority: an Instrument has effective-dated symbols, while every
 observation and membership references its Instrument ID. Tests prohibit both a
 persisted ticker column and a future ORM ticker compatibility property.
+
+### 2026-08-13 — Dead-code closure after the canonical cutover
+
+Context: a second reachability audit found one collection-scoped fundamental
+status query, an unused bulk Instrument-set price reader, and a duplicate
+Binance catalog service method after all live consumers had moved to exact
+Instrument coverage and the canonical crypto catalog. The frontend also kept
+three unreachable UI primitives and a handwritten copy of the generated
+New-Low response contract.
+
+Decision: remove the unused Universe fundamental-status record, service method,
+repository query, and tests. Remove the unused Instrument-set price query and
+the superseded Binance catalog wrapper. New-Low frontend types now alias the
+generated OpenAPI schema, and unreachable UI primitives and unused formatting
+types are deleted. Shared filesystem paths live in `api.project_paths`; the
+former `market_data_config` module name is retired because it did not contain
+market-data configuration.
+
+Consequences: fundamental freshness remains an exact-Instrument concern exposed
+through Data Operations, while Universe and Watchlist coverage is always a
+derived projection of current members. The application has no dormant bulk
+Market Health reader or parallel New-Low response model.

@@ -1,4 +1,4 @@
-"""Shared data-operation paths."""
+"""Shared application paths."""
 from pathlib import Path
 
 

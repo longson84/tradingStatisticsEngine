@@ -10,7 +10,6 @@ from api.repositories.fundamental_repository import (
     FundamentalFactRecord,
     FundamentalInstrumentRecord,
     FundamentalReportRecord,
-    FundamentalStatusRecord,
     ProviderValuationRecord,
 )
 from api.services.fundamental_service import (
@@ -103,21 +102,6 @@ class FakeFundamentalRepository:
             ),
         )
 
-    def get_universe_status(self, universe: str):
-        if universe != "VN100":
-            return None
-        return FundamentalStatusRecord(
-            universe="VN100",
-            fetched_at=FETCHED_AT,
-            first_effective_date=date(2025, 4, 25),
-            last_effective_date=date(2025, 7, 25),
-            symbol_count=1,
-            report_count=2,
-            fact_count=2,
-            valuation_count=1,
-            sources=("vnstock-vci-4.0.5",),
-        )
-
 
 def test_service_projects_normalized_records_to_existing_wide_contract():
     service = FundamentalService(FakeFundamentalRepository())
@@ -151,10 +135,3 @@ def test_service_rejects_invalid_unknown_and_empty_instruments():
         service.get_instrument_history(999)
     with pytest.raises(FundamentalsNotFoundError, match="No stored fundamentals"):
         service.get_instrument_history(2)
-
-
-def test_service_normalizes_universe_status_lookup():
-    service = FundamentalService(FakeFundamentalRepository())
-
-    assert service.get_universe_status(" vn100 ") is not None
-    assert service.get_universe_status(" ") is None

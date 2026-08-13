@@ -43,7 +43,7 @@ export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
       <table className="w-full min-w-[1240px] text-sm">
         <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-3 py-2 text-left font-medium">Ticker</th>
+            <th className="px-3 py-2 text-left font-medium">Symbol</th>
             <th className="px-3 py-2 text-left font-medium">Issuer</th>
             <th className="px-3 py-2 text-left font-medium">Sector</th>
             <th className="px-3 py-2 text-left font-medium">Industry</th>

@@ -34,7 +34,7 @@ def sync_market_indices(
                 Instrument.is_active.is_(True),
             )
         )
-        instrument_ids = {ticker: instrument_id for ticker, instrument_id in rows}
+        instrument_ids = {symbol: instrument_id for symbol, instrument_id in rows}
     missing = sorted(set(normalized) - set(instrument_ids))
     if missing:
         raise RuntimeError(

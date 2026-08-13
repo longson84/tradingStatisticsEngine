@@ -7,21 +7,16 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from api.db.models import (
-    Company,
     FundamentalFact,
     FundamentalReport,
     Instrument,
     ProviderValuationObservation,
-    Universe,
-    UniverseMembership,
-    Venue,
 )
 from api.instrument_symbols import canonical_symbol_expression
 from api.repositories.fundamental_repository import (
     FundamentalFactRecord,
     FundamentalInstrumentRecord,
     FundamentalReportRecord,
-    FundamentalStatusRecord,
     FundamentalWriteBatch,
     FundamentalWriteResult,
     ProviderValuationRecord,
@@ -139,110 +134,6 @@ class SqlAlchemyFundamentalRepository:
                 fetched_at=row.fetched_at,
             )
             for row in rows
-        )
-
-    def get_universe_status(
-        self, universe: str
-    ) -> FundamentalStatusRecord | None:
-        report_filters = (Universe.code == universe,)
-        countries = tuple(self._session.scalars(
-            select(Company.country_code)
-            .select_from(UniverseMembership)
-            .join(Instrument, Instrument.id == UniverseMembership.instrument_id)
-            .join(Company, Company.id == Instrument.company_id)
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(Universe.code == universe)
-            .distinct()
-        ))
-        if len(countries) != 1:
-            return None
-        summary = self._session.execute(
-            select(
-                func.max(FundamentalReport.fetched_at),
-                func.min(FundamentalReport.effective_session_date),
-                func.max(FundamentalReport.effective_session_date),
-                func.count(func.distinct(Instrument.id)),
-                func.count(FundamentalReport.id),
-            )
-            .select_from(FundamentalReport)
-            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*report_filters)
-        ).one_or_none()
-        if summary is None or summary[0] is None:
-            return None
-        fact_count = int(self._session.scalar(
-            select(func.count(FundamentalFact.id))
-            .select_from(FundamentalFact)
-            .join(FundamentalReport)
-            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*report_filters)
-        ) or 0)
-        valuation_count = int(self._session.scalar(
-            select(func.count(ProviderValuationObservation.id))
-            .select_from(ProviderValuationObservation)
-            .join(
-                Instrument,
-                Instrument.id == ProviderValuationObservation.instrument_id,
-            )
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*report_filters)
-        ) or 0)
-        sources = tuple(self._session.scalars(
-            select(FundamentalReport.source)
-            .select_from(FundamentalReport)
-            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*report_filters)
-            .distinct()
-            .order_by(FundamentalReport.source)
-        ))
-        latest_fetch_by_instrument = (
-            select(
-                FundamentalReport.instrument_id,
-                func.max(FundamentalReport.fetched_at).label("latest_fetched_at"),
-            )
-            .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
-            .join(
-                UniverseMembership,
-                UniverseMembership.instrument_id == Instrument.id,
-            )
-            .join(Universe, Universe.id == UniverseMembership.universe_id)
-            .where(*report_filters)
-            .group_by(FundamentalReport.instrument_id)
-            .subquery()
-        )
-        oldest_fetched_at = self._session.scalar(
-            select(func.min(latest_fetch_by_instrument.c.latest_fetched_at))
-        )
-        return FundamentalStatusRecord(
-            universe=universe,
-            fetched_at=summary[0],
-            first_effective_date=summary[1],
-            last_effective_date=summary[2],
-            symbol_count=int(summary[3]),
-            report_count=int(summary[4]),
-            fact_count=fact_count,
-            valuation_count=valuation_count,
-            sources=sources,
-            oldest_fetched_at=oldest_fetched_at,
         )
 
     def get_latest_fetched_at(

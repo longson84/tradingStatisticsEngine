@@ -10,7 +10,7 @@ from threading import Lock, Thread
 from typing import Literal
 from uuid import uuid4
 
-from api.market_data_config import PROJECT_ROOT
+from api.project_paths import PROJECT_ROOT
 from api.price_refresh_coordination import (
     acquire_price_refresh,
     release_price_refresh,

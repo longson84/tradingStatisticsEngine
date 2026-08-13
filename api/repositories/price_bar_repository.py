@@ -93,14 +93,6 @@ class InstrumentPriceBarQuery:
     end: date | None = None
 
 
-@dataclass(frozen=True)
-class InstrumentSetPriceBarQuery:
-    instrument_ids: tuple[int, ...]
-    price_basis: str
-    start: date | None = None
-    end: date | None = None
-
-
 class PriceBarRepository(Protocol):
     def get_instrument(
         self, instrument_id: int
@@ -120,10 +112,6 @@ class PriceBarRepository(Protocol):
 
     def iter_instrument_bars(
         self, query: InstrumentPriceBarQuery
-    ) -> Iterable[PriceBarRecord]: ...
-
-    def iter_instrument_set_bars(
-        self, query: InstrumentSetPriceBarQuery
     ) -> Iterable[PriceBarRecord]: ...
 
     def upsert_bars(self, records: Iterable[PriceBarWriteRecord]) -> int: ...

@@ -5,7 +5,7 @@ from collections.abc import MutableMapping
 import os
 from pathlib import Path
 
-from api.market_data_config import PROJECT_ROOT
+from api.project_paths import PROJECT_ROOT
 
 
 DEFAULT_ENV_PATH = PROJECT_ROOT / ".env"

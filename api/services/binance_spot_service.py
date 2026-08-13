@@ -11,8 +11,6 @@ from api.repositories.crypto_instrument_repository import (
     SpotCatalogWrite,
     SpotInstrumentRecord,
     SpotInstrumentWrite,
-    SpotInstrumentListQuery,
-    SpotInstrumentListResult,
 )
 from api.repositories.price_bar_repository import (
     PriceBarRefreshRepository,
@@ -133,26 +131,6 @@ class BinanceSpotService:
             BINANCE_SPOT_VENUE,
             symbols=tuple(value.upper().strip() for value in symbols),
             quote_assets=tuple(value.upper().strip() for value in quote_assets),
-        )
-
-    def list_markets(
-        self,
-        *,
-        search: str | None = None,
-        quote_asset: str | None = None,
-        is_active: bool | None = True,
-        offset: int = 0,
-        limit: int = 50,
-    ) -> SpotInstrumentListResult:
-        return self._catalog_repository.list_spot_catalog(
-            SpotInstrumentListQuery(
-                venue_code=BINANCE_SPOT_VENUE,
-                search=search.strip() if search else None,
-                quote_asset=quote_asset.upper().strip() if quote_asset else None,
-                is_active=is_active,
-                offset=offset,
-                limit=limit,
-            ),
         )
 
     def store_history(

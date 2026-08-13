@@ -13,8 +13,6 @@ from api.db.models import (
     FundamentalReport,
     Instrument,
     ProviderValuationObservation,
-    Universe,
-    UniverseMembership,
 )
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
@@ -33,19 +31,8 @@ def _seed(session: Session) -> FundamentalReport:
         currency="VND",
         source="test",
     )
-    universe = Universe(
-        code="VN100",
-        name="VN100",
-        description="",
-        source="test",
-    )
-    session.add_all([instrument, universe])
+    session.add(instrument)
     session.flush()
-    session.add(UniverseMembership(
-        universe_id=universe.id,
-        instrument_id=instrument.id,
-        source="test",
-    ))
     report = FundamentalReport(
         instrument_id=instrument.id,
         source="vnstock-vci-4.0.5",
@@ -130,23 +117,3 @@ def test_repository_reads_symbol_fundamentals_in_stable_order():
         assert [(row.metric_code, row.value) for row in valuations] == [
             ("pe", Decimal("11.2000000000")),
         ]
-
-
-def test_repository_aggregates_universe_status():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    with Session(engine) as session:
-        _seed(session)
-        repository = SqlAlchemyFundamentalRepository(session)
-
-        status = repository.get_universe_status("VN100")
-
-        assert status is not None
-        assert status.first_effective_date == date(2025, 4, 25)
-        assert status.last_effective_date == date(2025, 4, 25)
-        assert status.symbol_count == 1
-        assert status.report_count == 1
-        assert status.fact_count == 2
-        assert status.valuation_count == 1
-        assert status.sources == ("vnstock-vci-4.0.5",)
-        assert repository.get_universe_status("VN30") is None

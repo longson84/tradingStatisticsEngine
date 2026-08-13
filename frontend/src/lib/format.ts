@@ -33,11 +33,6 @@ export function fmtFactor(n: number): string {
   return fmtPct(n * 100)
 }
 
-/** Absolute factor value ×100 (for "distance" style display) */
-export function fmtFactorAbs(n: number): string {
-  return fmtPct(Math.abs(n * 100))
-}
-
 /** ISO date string "2026-03-23" → "23/03/26" */
 export function fmtDate(d: string | null | undefined): string {
   if (!d) return "—"
@@ -53,7 +48,7 @@ export function fmtOrdinal(n: number): string {
   return n.toFixed(2) + "th"
 }
 
-/** Human-readable acquisition provenance stored alongside market data. */
+/** Human-readable acquisition provenance stored alongside observations. */
 export function fmtProviderSource(source: string | null | undefined): string {
   if (!source) return "Local cache"
   if (source === "yfinance") return "Yahoo Finance"

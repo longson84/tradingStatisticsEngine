@@ -132,84 +132,15 @@ export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPr
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
-export interface NewLowCurrentEpisode {
-  start_date: string
-  start_price: number
-  recovery_level: number
-  current_date: string
-  current_price: number
-  current_down_pct: number
-  current_return_pct: number
-  max_down_pct: number
-  sessions_elapsed: number
-  ignored_new_lows: number
-  low_date: string
-  low_price: number
-  days_to_low: number
-  recovery_needed_pct: number
-  max_down_percentile: number
-  ignored_lows_percentile: number
-  duration_percentile: number
-}
-
-export interface NewLowForwardStats {
-  horizon: number
-  count: number
-  return_percentiles: Record<string, number>
-  max_down_percentiles: Record<string, number>
-}
-
-export interface NewLowEpisode {
-  start_date: string
-  start_price: number
-  recovery_level: number
-  recovered: boolean
-  recovery_date: string | null
-  recovery_sessions: number | null
-  ignored_new_lows: number
-  low_date: string
-  low_price: number
-  days_to_low: number
-  max_down_pct: number
-  forward_returns: Record<string, number | null>
-  forward_max_down: Record<string, number | null>
-}
-
-export interface NewLowTimeSeriesPoint {
-  date: string
-  close: number
-  is_new_low: boolean
-}
-
-export interface NewLowSymbolResult {
-  symbol: string
-  first_date: string
-  last_date: string
-  total_bars: number
-  latest_price: number
-  lookback_sessions: number
-  quick_recovery_sessions: number
-  raw_new_low_bars: number
-  kept_episodes: number
-  completed_episodes: number
-  active_episodes: number
-  quick_ignored_episodes: number
-  total_ignored_new_lows: number
-  max_down_percentiles: Record<string, number>
-  recovery_session_percentiles: Record<string, number>
-  ignored_new_low_percentiles: Record<string, number>
-  current: NewLowCurrentEpisode | null
-  forward_stats: NewLowForwardStats[]
-  episodes: NewLowEpisode[]
-  time_series: NewLowTimeSeriesPoint[]
-}
+export type NewLowCurrentEpisode = components["schemas"]["NewLowCurrentEpisodeSchema"]
+export type NewLowEpisode = components["schemas"]["NewLowEpisodeSchema"]
+export type NewLowSymbolResult = components["schemas"]["NewLowSymbolResultSchema"]
 
 export type NewLowDeepRequest = components["schemas"]["NewLowDeepRequest"]
 export type NewLowDeepResponse = components["schemas"]["NewLowDeepResponse"]
 
 // ── SMA Strategy Analysis ───────────────────────────────────────────────────
 
-export type StrategyType = "buy_and_hold" | "price_vs_ma"
 export type PerformanceSummary = components["schemas"]["PerformanceSummaryResponse"]
 export type CurrentPosition = components["schemas"]["CurrentPositionResponse"]
 export type TradeRow = components["schemas"]["TradeRowResponse"]

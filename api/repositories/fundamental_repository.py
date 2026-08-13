@@ -104,20 +104,6 @@ class FundamentalInstrumentRecord:
     currency: str
 
 
-@dataclass(frozen=True)
-class FundamentalStatusRecord:
-    universe: str
-    fetched_at: datetime
-    first_effective_date: date
-    last_effective_date: date
-    symbol_count: int
-    report_count: int
-    fact_count: int
-    valuation_count: int
-    sources: tuple[str, ...]
-    oldest_fetched_at: datetime | None = None
-
-
 class FundamentalRepository(Protocol):
     def get_instrument(
         self, instrument_id: int
@@ -136,10 +122,6 @@ class FundamentalRepository(Protocol):
     def list_valuations(
         self, instrument_id: int
     ) -> tuple[ProviderValuationRecord, ...]: ...
-
-    def get_universe_status(
-        self, universe: str
-    ) -> FundamentalStatusRecord | None: ...
 
     def get_latest_fetched_at(
         self, instrument_id: int

@@ -12,7 +12,7 @@ import tempfile
 from urllib.request import urlopen
 
 from api.config import env_value
-from api.market_data_config import PROJECT_ROOT
+from api.project_paths import PROJECT_ROOT
 
 
 INSTALLER_URL = "https://vnstocks.com/files/vnstock-cli-installer.run"
