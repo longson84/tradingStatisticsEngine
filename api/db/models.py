@@ -687,10 +687,6 @@ class FundamentalReport(Base):
             name="ck_fundamental_reports_period_type",
         ),
         CheckConstraint(
-            "scope IN ('consolidated', 'standalone', 'unknown')",
-            name="ck_fundamental_reports_scope",
-        ),
-        CheckConstraint(
             "fiscal_quarter IS NULL OR fiscal_quarter BETWEEN 1 AND 4",
             name="ck_fundamental_reports_quarter",
         ),
@@ -722,22 +718,14 @@ class FundamentalReport(Base):
     )
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     report_key: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_report_id: Mapped[str | None] = mapped_column(String(255))
     period_label: Mapped[str | None] = mapped_column(String(100))
     period_end: Mapped[date | None] = mapped_column(Date)
     fiscal_year: Mapped[int | None] = mapped_column(Integer)
     fiscal_quarter: Mapped[int | None] = mapped_column(Integer)
     period_type: Mapped[str] = mapped_column(String(16), nullable=False)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     effective_session_date: Mapped[date] = mapped_column(Date, nullable=False)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     reporting_currency: Mapped[str | None] = mapped_column(String(3))
-    scope: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="consolidated"
-    )
-    is_restatement: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
     raw_payload_hash: Mapped[str | None] = mapped_column(String(64))
     methodology: Mapped[str | None] = mapped_column(String(1000))
     created_at: Mapped[datetime] = mapped_column(

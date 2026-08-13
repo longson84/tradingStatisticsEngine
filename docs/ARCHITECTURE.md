@@ -2087,3 +2087,25 @@ Consequences: fundamental freshness remains an exact-Instrument concern exposed
 through Data Operations, while Universe and Watchlist coverage is always a
 derived projection of current members. The application has no dormant bulk
 Market Health reader or parallel New-Low response model.
+
+### 2026-08-13 — Dormant fundamental-report metadata retirement
+
+Context: all 145,561 persisted fundamental reports left `provider_report_id`
+and `published_at` null, `scope` as `unknown`, and `is_restatement` false. The
+active provider-to-repository contract did not carry any of those values and
+the application never read them. In contrast, `raw_payload_hash` remains
+populated on 138,866 historical reports and is retained as provenance.
+
+Decision: migration `0026` drops `provider_report_id`, `published_at`, `scope`,
+and `is_restatement` from `fundamental_reports`, including the obsolete scope
+check constraint. Point-in-time ordering continues to use the required
+`effective_session_date`; distinct source report keys continue to preserve
+later snapshots without relying on a dormant Boolean flag. The ORM, write
+repository, and tests no longer manufacture placeholder values for fields the
+ingestion contract does not provide.
+
+Consequences: the live relational model matches the information the canonical
+fundamental pipeline actually knows. Publication timestamps, report scope, or
+explicit restatement metadata must be introduced later as a complete
+provider-contract and ingestion change rather than as perpetually empty schema
+columns. Historical raw-payload hashes remain available for provenance audits.

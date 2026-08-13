@@ -42,12 +42,9 @@ def _seed(session: Session) -> FundamentalReport:
         fiscal_year=2025,
         fiscal_quarter=1,
         period_type="quarterly",
-        published_at=datetime(2025, 4, 25, tzinfo=UTC),
         effective_session_date=date(2025, 4, 25),
         fetched_at=FETCHED_AT,
         reporting_currency="VND",
-        scope="consolidated",
-        is_restatement=False,
         methodology="VCI normalized point-in-time fundamentals",
     )
     session.add(report)

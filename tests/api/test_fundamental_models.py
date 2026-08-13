@@ -44,7 +44,6 @@ def _report(
     *,
     report_key: str,
     effective_date: date,
-    is_restatement: bool = False,
 ) -> FundamentalReport:
     return FundamentalReport(
         instrument_id=instrument_id,
@@ -54,13 +53,19 @@ def _report(
         fiscal_year=2025,
         fiscal_quarter=1,
         period_type="quarterly",
-        published_at=datetime.combine(effective_date, datetime.min.time(), tzinfo=UTC),
         effective_session_date=effective_date,
         fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
         reporting_currency="VND",
-        scope="consolidated",
-        is_restatement=is_restatement,
     )
+
+
+def test_fundamental_report_has_no_dormant_metadata_columns():
+    columns = FundamentalReport.__table__.columns
+    assert "provider_report_id" not in columns
+    assert "published_at" not in columns
+    assert "scope" not in columns
+    assert "is_restatement" not in columns
+    assert "raw_payload_hash" in columns
 
 
 def test_point_in_time_query_preserves_later_restatement():
@@ -77,7 +82,6 @@ def test_point_in_time_query_preserves_later_restatement():
             instrument.id,
             report_key="2025-Q1-restated",
             effective_date=date(2025, 8, 15),
-            is_restatement=True,
         )
         session.add_all([original, restated])
         session.flush()
