@@ -103,8 +103,8 @@ fundamentals also use PostgreSQL.
   calendar table.
 - `instruments` stores venue-specific tradable-product identity: optional
   company, venue, base asset, quote asset, settlement asset, market class,
-  current canonical ticker, product type, trading increments, active state,
-  and source. Existing equity instruments retain their issuer relationship;
+  product type, trading increments, active state, and source. Existing equity
+  instruments retain their issuer relationship;
   crypto spot instruments have no company and require venue, base, and quote
   assets. Reference-rate instruments have no company or venue and require base
   and quote assets; they represent a provider observation, not an executable
@@ -112,9 +112,9 @@ fundamentals also use PostgreSQL.
   reference rate they have no base or quote assets; they represent a calculated
   index level such as SPX or VN30.
 - `instrument_symbols` stores canonical, source-specific, and historical
-  ticker mappings with optional validity dates. `instruments.ticker` remains
-  the denormalized current canonical symbol used by existing price and API
-  consumers and must be updated with its current canonical mapping.
+  ticker mappings with optional validity dates. Every Instrument has exactly
+  one current primary `canonical` row. That row is the authoritative display
+  and lookup symbol; provider and listing namespaces remain independent aliases.
 - `universes` stores system-managed named current snapshots such as US100,
   US500, US2000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
   universe has no market classification; any instrument characteristics needed
@@ -1756,8 +1756,8 @@ listing, or provider Symbol. It uses stable Company identifiers such as SEC CIK
 or VNStock organization code before existing Instrument ownership and never
 merges Companies from normalized names alone. Known Companies, equity Assets,
 and Instruments are reused; missing canonical rows are created. During the
-remaining compatibility period, every write updates both `instruments.ticker`
-and current `instrument_symbols` rows. Provider metadata only replaces a value
+every writer creates or transitions current `instrument_symbols` rows and does
+not persist a parallel ticker field on `instruments`. Provider metadata only replaces a value
 when it is non-null, and share-class labels do not replace a neutral issuer
 name.
 
@@ -1790,6 +1790,31 @@ provider response. Provider availability is an operational synchronization
 dependency, not an API-startup dependency; synchronization is never run during
 application startup. Phase 7 subsequently removed the checked-in symbol-list
 files and old importer after every consumer had been cut over.
+
+### 2026-08-13 — Canonical Instrument symbol cutover
+
+Context: `instruments.ticker` duplicated the current canonical mapping already
+stored in `instrument_symbols`. It was still used broadly by catalog, routing,
+analysis, price, and fundamental readers, and older crypto writers created only
+provider symbols. The live preflight found 3,644 Instruments without a current
+`canonical` symbol, although every existing canonical row agreed with the
+compatibility column.
+
+Decision: migration 0024 backfills a current primary `canonical` symbol from
+the compatibility value wherever one is missing, verifies uniqueness through
+the existing partial index, and drops `instruments.ticker` and its Venue-based
+indexes. `instrument_symbols` is now the sole persisted symbol authority. The
+domain-facing `Instrument.ticker` hybrid remains as a transitional Python/query
+name, but reads the current canonical row and has no database column. New
+catalog writers explicitly create a canonical row plus any provider or listing
+aliases. Symbol renames close the old row with `valid_to` and create a new
+current row; they never overwrite history.
+
+Consequences: public API fields can continue to use `ticker` or `symbol`
+without duplicating persistence. Exact observation identity remains
+`instrument_id`; namespace-specific provider routing continues through
+provider symbol rows. A valid database must have exactly one current primary
+canonical symbol for every Instrument.
 
 ### 2026-08-13 — Metadata-driven Data Operations execution
 

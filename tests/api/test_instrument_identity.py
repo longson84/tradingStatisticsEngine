@@ -11,6 +11,7 @@ from api.db.models import Base, Company, Instrument, InstrumentSymbol
 def test_instrument_model_has_no_legacy_note_column():
     assert "note" not in Instrument.__table__.columns
     assert "notes" not in Instrument.__table__.columns
+    assert "ticker" not in Instrument.__table__.columns
 
 
 def test_symbol_history_preserves_ticker_rename_without_changing_instrument():

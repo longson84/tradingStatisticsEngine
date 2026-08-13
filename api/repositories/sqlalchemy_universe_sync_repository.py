@@ -27,6 +27,7 @@ from api.repositories.universe_sync_repository import (
     UniverseSyncSnapshot,
 )
 from api.venue_calendars import venue_calendar
+from api.instrument_symbols import canonical_symbol, canonical_symbol_expression, new_instrument
 
 
 _EXPECTED_MEMBER_RANGES = {
@@ -170,7 +171,7 @@ class SqlAlchemyUniverseSyncRepository:
         rows = session.execute(
             select(
                 Universe.code,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Company.display_name,
                 Company.sector,
                 Company.industry,
@@ -344,15 +345,15 @@ class SqlAlchemyUniverseSyncRepository:
                         companies_by_identifier[key] = company
 
                 if instrument is None:
-                    instrument = Instrument(
+                    instrument = new_instrument(
+                        member.ticker,
+                        source=snapshot.source,
                         company=company,
                         venue=venues[member.venue_code],
-                        ticker=member.ticker,
                         instrument_type="common_stock",
                         currency=(
                             "VND" if snapshot.country_code == "VN" else "USD"
                         ),
-                        source=snapshot.source,
                     )
                     session.add(instrument)
                     session.flush()
@@ -360,7 +361,6 @@ class SqlAlchemyUniverseSyncRepository:
                 else:
                     instrument.company = company
                     instrument.venue = venues[member.venue_code]
-                    instrument.ticker = member.ticker
                 instrument.currency = (
                     "VND" if snapshot.country_code == "VN" else "USD"
                 )
@@ -439,7 +439,7 @@ class SqlAlchemyUniverseSyncRepository:
         unvenued_lists: dict[tuple[str, str], list[Instrument]] = defaultdict(list)
         for instrument in instruments:
             symbols = {
-                instrument.ticker,
+                canonical_symbol(instrument),
                 *(row.symbol for row in instrument.symbols if row.valid_to is None),
             }
             if instrument.venue is not None:

@@ -27,6 +27,7 @@ from api.repositories.instrument_analysis_repository import (
     US_EQUITY_PRICE_BASIS,
 )
 from api.repositories.price_bar_repository import PriceBarRecord
+from api.instrument_symbols import canonical_symbol_expression
 
 
 class SqlAlchemyInstrumentAnalysisRepository:
@@ -52,7 +53,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         ) or 0)
         rows = tuple(self._session.execute(
             statement.where(*filters)
-            .order_by(Instrument.ticker, Venue.code, Instrument.id)
+            .order_by(canonical_symbol_expression(), Venue.code, Instrument.id)
             .offset(query.offset)
             .limit(query.limit)
         ))
@@ -106,7 +107,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             statement.where(
                 *filters,
                 Instrument.instrument_type == "market_index",
-                Instrument.ticker == code.upper().strip(),
+                canonical_symbol_expression() == code.upper().strip(),
             )
         ).one_or_none()
         return self._records((row,))[0] if row is not None else None
@@ -127,7 +128,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         self, instrument_id: int, price_basis: str
     ) -> tuple[PriceBarRecord, ...]:
         ticker = self._session.scalar(
-            select(Instrument.ticker).where(Instrument.id == instrument_id)
+            select(canonical_symbol_expression()).where(Instrument.id == instrument_id)
         )
         if ticker is None:
             return ()
@@ -164,7 +165,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             return ()
         canonical_basis = self._canonical_basis()
         rows = self._session.execute(
-            select(PriceBar, Instrument.ticker)
+            select(PriceBar, canonical_symbol_expression())
             .join(Instrument, Instrument.id == PriceBar.instrument_id)
             .where(
                 Instrument.id.in_(instrument_ids),
@@ -207,7 +208,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         statement = (
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Instrument.instrument_type,
                 Company.id.label("company_id"),
                 Company.display_name.label("company_name"),
@@ -246,7 +247,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         if search:
             pattern = f"%{search.strip()}%"
             filters.append(or_(
-                Instrument.ticker.ilike(pattern),
+                canonical_symbol_expression().ilike(pattern),
                 Company.display_name.ilike(pattern),
                 Company.legal_name.ilike(pattern),
                 Venue.code.ilike(pattern),

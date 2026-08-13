@@ -19,8 +19,10 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     func,
+    select,
     text,
 )
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -234,21 +236,6 @@ class Instrument(Base):
             "AND settlement_asset_id IS NULL)",
             name="ck_instruments_market_index_identity",
         ),
-        Index(
-            "uq_instruments_ticker_without_venue",
-            "ticker",
-            unique=True,
-            postgresql_where=text("venue_id IS NULL"),
-            sqlite_where=text("venue_id IS NULL"),
-        ),
-        Index(
-            "uq_instruments_venue_ticker",
-            "venue_id",
-            "ticker",
-            unique=True,
-            postgresql_where=text("venue_id IS NOT NULL"),
-            sqlite_where=text("venue_id IS NOT NULL"),
-        ),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
@@ -267,9 +254,6 @@ class Instrument(Base):
     settlement_asset_id: Mapped[int | None] = mapped_column(
         ForeignKey("assets.id", ondelete="RESTRICT"), index=True
     )
-    # Compatibility/current-identity column. Full aliases and history live in
-    # instrument_symbols; existing price and API callers can continue using it.
-    ticker: Mapped[str] = mapped_column(String(64), nullable=False)
     instrument_type: Mapped[str] = mapped_column(
         String(32), nullable=False, default="common_stock"
     )
@@ -331,6 +315,59 @@ class Instrument(Base):
         foreign_keys="WatchlistMembership.instrument_id",
     )
 
+    @hybrid_property
+    def ticker(self) -> str:
+        """Python-level alias for the current canonical symbol."""
+        values = {
+            row.symbol
+            for row in self.symbols
+            if row.namespace == "canonical"
+            and row.valid_to is None
+            and row.is_primary
+        }
+        if len(values) != 1:
+            raise ValueError(
+                f"Instrument {self.id!r} has {len(values)} current canonical symbols"
+            )
+        return next(iter(values))
+
+    @ticker.setter
+    def ticker(self, value: str) -> None:
+        """Attach an initial canonical row for object construction only."""
+        normalized = value.upper().strip()
+        current = [
+            row for row in self.symbols
+            if row.namespace == "canonical"
+            and row.valid_to is None
+            and row.is_primary
+        ]
+        if not current:
+            self.symbols.append(InstrumentSymbol(
+                namespace="canonical",
+                symbol=normalized,
+                is_primary=True,
+                source=self.source if "source" in self.__dict__ else "system",
+            ))
+            return
+        if len(current) != 1 or current[0].symbol != normalized:
+            raise AttributeError(
+                "Canonical symbol changes require effective-dated symbol rows"
+            )
+
+    @ticker.inplace.expression
+    @classmethod
+    def _ticker_expression(cls):
+        return (
+            select(InstrumentSymbol.symbol)
+            .where(
+                InstrumentSymbol.instrument_id == cls.id,
+                InstrumentSymbol.namespace == "canonical",
+                InstrumentSymbol.valid_to.is_(None),
+                InstrumentSymbol.is_primary.is_(True),
+            )
+            .correlate(cls)
+            .scalar_subquery()
+        )
 
 class InstrumentSymbol(Base):
     """A canonical, source-specific, or historical symbol for an instrument."""

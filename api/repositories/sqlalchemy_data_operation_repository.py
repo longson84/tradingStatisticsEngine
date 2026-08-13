@@ -26,6 +26,7 @@ from api.repositories.instrument_analysis_repository import (
     SPOT_PRICE_BASIS,
     US_EQUITY_PRICE_BASIS,
 )
+from api.instrument_symbols import canonical_symbol_expression
 
 
 class SqlAlchemyDataOperationRepository:
@@ -49,7 +50,7 @@ class SqlAlchemyDataOperationRepository:
             ).where(
                 UniverseMembership.universe_id == universe.id,
                 Instrument.is_active.is_(True),
-            ).order_by(Instrument.ticker, Instrument.id)
+            ).order_by(canonical_symbol_expression(), Instrument.id)
             return DataOperationScopeRecord(
                 scope_type="universe",
                 scope_id=universe.code,
@@ -129,7 +130,7 @@ class SqlAlchemyDataOperationRepository:
         return (
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Instrument.instrument_type,
                 Instrument.company_id,
                 Venue.code.label("venue_code"),

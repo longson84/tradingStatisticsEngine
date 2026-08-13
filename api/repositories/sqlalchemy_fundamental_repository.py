@@ -16,6 +16,7 @@ from api.db.models import (
     UniverseMembership,
     Venue,
 )
+from api.instrument_symbols import canonical_symbol_expression
 from api.repositories.fundamental_repository import (
     FundamentalFactRecord,
     FundamentalInstrumentRecord,
@@ -37,7 +38,7 @@ class SqlAlchemyFundamentalRepository:
         row = self._session.execute(
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Instrument.currency,
             ).where(
                 Instrument.id == instrument_id,
@@ -61,7 +62,7 @@ class SqlAlchemyFundamentalRepository:
         self, instrument_id: int
     ) -> tuple[FundamentalReportRecord, ...]:
         rows = self._session.execute(
-            select(FundamentalReport, Instrument.ticker)
+            select(FundamentalReport, canonical_symbol_expression())
             .join(Instrument, Instrument.id == FundamentalReport.instrument_id)
             .where(Instrument.id == instrument_id)
             .order_by(

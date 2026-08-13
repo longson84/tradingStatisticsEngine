@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import Instrument, InstrumentSymbol, Venue
 from api.instrument_data_routing import InstrumentRoutingMetadata, ProviderSymbol
+from api.instrument_symbols import canonical_symbol_expression
 
 
 class SqlAlchemyInstrumentRoutingRepository:
@@ -41,7 +42,7 @@ class SqlAlchemyInstrumentRoutingRepository:
         instruments = tuple(self._session.execute(
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Instrument.instrument_type,
                 Instrument.company_id,
                 Instrument.currency,

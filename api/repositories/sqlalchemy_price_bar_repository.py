@@ -16,6 +16,7 @@ from api.db.models import (
     PriceRefreshState,
     Venue,
 )
+from api.instrument_symbols import canonical_symbol_expression
 from api.repositories.price_bar_repository import (
     PriceBarRecord,
     PriceInstrumentRecord,
@@ -39,7 +40,7 @@ class SqlAlchemyPriceBarRepository:
         row = self._session.execute(
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Instrument.currency,
                 Instrument.instrument_type,
                 Venue.code.label("venue_code"),
@@ -69,7 +70,7 @@ class SqlAlchemyPriceBarRepository:
         if not instrument_ids:
             return ()
         rows = self._session.execute(
-            select(Instrument.id, Instrument.ticker, PriceBarCoverage)
+            select(Instrument.id, canonical_symbol_expression(), PriceBarCoverage)
             .join(PriceBarCoverage, PriceBarCoverage.instrument_id == Instrument.id)
             .where(
                 Instrument.id.in_(instrument_ids),
@@ -97,7 +98,7 @@ class SqlAlchemyPriceBarRepository:
         if not instrument_ids:
             return ()
         rows = self._session.execute(
-            select(Instrument.id, Instrument.ticker, PriceRefreshState)
+            select(Instrument.id, canonical_symbol_expression(), PriceRefreshState)
             .join(PriceRefreshState, PriceRefreshState.instrument_id == Instrument.id)
             .where(
                 Instrument.id.in_(instrument_ids),
@@ -304,7 +305,7 @@ class SqlAlchemyPriceBarRepository:
             filters.append(PriceBar.trading_date <= query.end)
         statement = (
             select(
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 PriceBar.trading_date,
                 PriceBar.open,
                 PriceBar.high,
@@ -354,7 +355,7 @@ class SqlAlchemyPriceBarRepository:
             filters.append(PriceBar.trading_date <= query.end)
         statement = (
             select(
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 PriceBar.trading_date,
                 PriceBar.open,
                 PriceBar.high,

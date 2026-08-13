@@ -10,6 +10,7 @@ from api.db.models import (
     Base,
     Company,
     Instrument,
+    InstrumentSymbol,
     PriceBar,
     Universe,
     UniverseMembership,
@@ -215,10 +216,19 @@ def test_failed_provider_and_rejected_large_change_keep_last_known_membership(sy
 
     with Session(engine) as session:
         tickers = set(session.scalars(
-            select(Instrument.ticker)
-            .join(UniverseMembership)
-            .join(Universe)
-            .where(Universe.code == "US30")
+            select(InstrumentSymbol.symbol)
+            .join(Instrument, Instrument.id == InstrumentSymbol.instrument_id)
+            .join(
+                UniverseMembership,
+                UniverseMembership.instrument_id == Instrument.id,
+            )
+            .join(Universe, Universe.id == UniverseMembership.universe_id)
+            .where(
+                Universe.code == "US30",
+                InstrumentSymbol.namespace == "canonical",
+                InstrumentSymbol.valid_to.is_(None),
+                InstrumentSymbol.is_primary.is_(True),
+            )
         ))
         assert tickers == {f"T{index:03d}" for index in range(30)}
         statuses = list(session.scalars(

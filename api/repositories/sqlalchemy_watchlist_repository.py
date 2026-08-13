@@ -5,6 +5,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from api.db.models import Instrument, Watchlist, WatchlistMembership
+from api.instrument_symbols import canonical_symbol
 from api.repositories.watchlist_repository import (
     WatchlistMemberRecord,
     WatchlistRecord,
@@ -134,6 +135,7 @@ class SqlAlchemyWatchlistRepository:
             instrument.selectinload(Instrument.venue),
             instrument.selectinload(Instrument.base_asset),
             instrument.selectinload(Instrument.quote_asset),
+            instrument.selectinload(Instrument.symbols),
         )
 
     @staticmethod
@@ -151,7 +153,7 @@ class SqlAlchemyWatchlistRepository:
             members=tuple(
                 WatchlistMemberRecord(
                     instrument_id=row.instrument.id,
-                    symbol=row.instrument.ticker,
+                    symbol=canonical_symbol(row.instrument),
                     instrument_type=row.instrument.instrument_type,
                     company_id=row.instrument.company_id,
                     company_name=(

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from sqlalchemy import case, delete, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from api.db.models import (
     Asset,
@@ -27,6 +27,11 @@ from api.repositories.crypto_instrument_repository import (
     SpotInstrumentVenueFacet,
 )
 from api.venue_calendars import venue_calendar
+from api.instrument_symbols import (
+    canonical_symbol,
+    canonical_symbol_expression,
+    new_instrument,
+)
 
 
 SPOT_PRICE_BASIS = "venue_unadjusted"
@@ -89,12 +94,12 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
         self._session.flush()
 
         existing = {
-            row.ticker: row
+            canonical_symbol(row): row
             for row in self._session.scalars(
                 select(Instrument).where(
                     Instrument.venue_id == venue.id,
                     Instrument.instrument_type == "spot",
-                )
+                ).options(selectinload(Instrument.symbols))
             )
         }
         added = 0
@@ -118,13 +123,14 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                 value.minimum_notional,
             )
             if instrument is None:
-                instrument = Instrument(
+                instrument = new_instrument(
+                    value.symbol,
+                    source=catalog.source,
                     company_id=None,
                     venue_id=venue.id,
                     base_asset_id=base_asset.id,
                     quote_asset_id=quote_asset.id,
                     settlement_asset_id=quote_asset.id,
-                    ticker=value.symbol,
                     instrument_type="spot",
                     currency=value.quote_asset,
                     base_precision=value.base_precision,
@@ -134,7 +140,6 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                     minimum_quantity=value.minimum_quantity,
                     minimum_notional=value.minimum_notional,
                     is_active=value.is_active,
-                    source=catalog.source,
                 )
                 self._session.add(instrument)
                 self._session.flush()
@@ -239,7 +244,7 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
         statement = (
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 base.c.canonical_code,
                 quote.c.canonical_code,
                 PriceBarCoverage.first_date,
@@ -258,10 +263,10 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                 Instrument.instrument_type == "spot",
                 Instrument.is_active.is_(True),
             )
-            .order_by(Instrument.ticker)
+            .order_by(canonical_symbol_expression())
         )
         if symbols:
-            statement = statement.where(Instrument.ticker.in_(symbols))
+            statement = statement.where(canonical_symbol_expression().in_(symbols))
         if quote_assets:
             statement = statement.where(quote.c.canonical_code.in_(quote_assets))
         return tuple(
@@ -293,7 +298,7 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
         if query.search:
             pattern = f"%{query.search.strip()}%"
             base_filters.append(or_(
-                Instrument.ticker.ilike(pattern),
+                canonical_symbol_expression().ilike(pattern),
                 base.c.canonical_code.ilike(pattern),
                 quote.c.canonical_code.ilike(pattern),
             ))
@@ -323,7 +328,7 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
                 Instrument.id,
                 Venue.code,
                 Venue.name,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 base.c.canonical_code,
                 quote.c.canonical_code,
                 Instrument.is_active,
@@ -347,7 +352,7 @@ class SqlAlchemyCryptoInstrumentRepository(CryptoInstrumentRepository):
             .where(*row_filters)
             .order_by(
                 Instrument.is_active.desc(),
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 Venue.code,
                 Instrument.id,
             )

@@ -137,10 +137,7 @@ def seed_company_catalog(session: Session) -> dict[str, Instrument]:
             role="issuer",
             source="test:universe-sync",
         ))
-        symbols = {
-            "canonical": ticker,
-            "listing": listing_symbol or ticker,
-        }
+        symbols = {"listing": listing_symbol or ticker}
         if country == "US":
             symbols["yfinance"] = ticker
         instrument.symbols.extend(

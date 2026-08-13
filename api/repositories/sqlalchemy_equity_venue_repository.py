@@ -15,6 +15,7 @@ from api.repositories.equity_venue_repository import (
     EquityVenueRepository,
 )
 from api.venue_calendars import venue_calendar
+from api.instrument_symbols import canonical_symbol, canonical_symbol_expression
 
 
 class SqlAlchemyEquityVenueRepository(EquityVenueRepository):
@@ -59,16 +60,16 @@ class SqlAlchemyEquityVenueRepository(EquityVenueRepository):
                 selectinload(Instrument.symbols),
                 selectinload(Instrument.venue),
             )
-            .order_by(Instrument.ticker, Instrument.id)
+            .order_by(canonical_symbol_expression(), Instrument.id)
         )
         return tuple(
             EquityVenueInstrumentRecord(
                 instrument_id=row.id,
-                symbol=row.ticker,
+                symbol=canonical_symbol(row),
                 symbol_aliases=tuple(
                     symbol.symbol
                     for symbol in row.symbols
-                    if symbol.valid_to is None
+                    if symbol.valid_to is None and symbol.namespace != "canonical"
                 ),
                 venue_code=row.venue.code if row.venue else None,
             )

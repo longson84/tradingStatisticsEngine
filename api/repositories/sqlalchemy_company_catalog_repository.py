@@ -4,7 +4,8 @@ from __future__ import annotations
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Company, Instrument, UniverseMembership
+from api.db.models import Company, Instrument, InstrumentSymbol, UniverseMembership
+from api.instrument_symbols import canonical_symbol
 from api.repositories.company_catalog_repository import (
     CompanyCatalogQuery,
     CompanyCatalogRecord,
@@ -30,7 +31,14 @@ class SqlAlchemyCompanyCatalogRepository:
             search_filter = or_(
                 Company.display_name.ilike(pattern),
                 Company.legal_name.ilike(pattern),
-                Company.instruments.any(Instrument.ticker.ilike(pattern)),
+                Company.instruments.any(
+                    Instrument.symbols.any(
+                        (InstrumentSymbol.namespace == "canonical")
+                        & InstrumentSymbol.valid_to.is_(None)
+                        & InstrumentSymbol.is_primary.is_(True)
+                        & InstrumentSymbol.symbol.ilike(pattern)
+                    )
+                ),
             )
             base_filters.append(search_filter)
         filters = list(base_filters)
@@ -53,6 +61,8 @@ class SqlAlchemyCompanyCatalogRepository:
                 selectinload(Company.identifiers),
                 selectinload(Company.instruments)
                 .selectinload(Instrument.venue),
+                selectinload(Company.instruments)
+                .selectinload(Instrument.symbols),
                 selectinload(Company.instruments)
                 .selectinload(Instrument.memberships)
                 .selectinload(UniverseMembership.universe),
@@ -112,7 +122,7 @@ class SqlAlchemyCompanyCatalogRepository:
             instruments=tuple(
                 CompanyInstrumentRecord(
                     id=instrument.id,
-                    ticker=instrument.ticker,
+                    ticker=canonical_symbol(instrument),
                     instrument_type=instrument.instrument_type,
                     share_class=instrument.share_class,
                     venue_code=(instrument.venue.code if instrument.venue else None),
@@ -127,7 +137,7 @@ class SqlAlchemyCompanyCatalogRepository:
                     company.instruments,
                     key=lambda row: (
                         row.venue.code if row.venue else "",
-                        row.ticker,
+                        canonical_symbol(row),
                     ),
                 )
             ),

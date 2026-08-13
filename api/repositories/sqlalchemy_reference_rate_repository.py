@@ -16,6 +16,7 @@ from api.repositories.reference_rate_repository import (
     ReferenceRateWrite,
     REFERENCE_RATE_PRICE_BASIS,
 )
+from api.instrument_symbols import canonical_symbol_expression, new_instrument
 
 
 class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
@@ -55,23 +56,23 @@ class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
 
         instrument = self._session.scalar(
             select(Instrument).where(
-                Instrument.ticker == value.symbol,
+                canonical_symbol_expression() == value.symbol,
                 Instrument.venue_id.is_(None),
                 Instrument.instrument_type == "reference_rate",
             )
         )
         if instrument is None:
-            instrument = Instrument(
+            instrument = new_instrument(
+                value.symbol,
+                source=value.source,
                 company_id=None,
                 venue_id=None,
                 base_asset_id=assets[value.base_asset].id,
                 quote_asset_id=assets[value.quote_asset].id,
                 settlement_asset_id=assets[value.quote_asset].id,
-                ticker=value.symbol,
                 instrument_type="reference_rate",
                 currency=value.quote_asset,
                 is_active=True,
-                source=value.source,
             )
             self._session.add(instrument)
             self._session.flush()
@@ -118,7 +119,7 @@ class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
         self, symbol: str
     ) -> ReferenceRateInstrumentRecord | None:
         statement = self._row_statement().where(
-            Instrument.ticker == symbol.upper().strip()
+            canonical_symbol_expression() == symbol.upper().strip()
         )
         row = self._session.execute(statement).one_or_none()
         return self._record(row) if row is not None else None
@@ -132,7 +133,7 @@ class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
         if query.search:
             pattern = f"%{query.search.strip()}%"
             common.append(or_(
-                Instrument.ticker.ilike(pattern),
+                canonical_symbol_expression().ilike(pattern),
                 base.c.canonical_code.ilike(pattern),
                 base.c.name.ilike(pattern),
                 quote.c.canonical_code.ilike(pattern),
@@ -159,7 +160,7 @@ class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
             for row in self._session.execute(
                 self._row_statement(base, quote)
                 .where(*row_filters)
-                .order_by(Instrument.ticker, Instrument.id)
+                .order_by(canonical_symbol_expression(), Instrument.id)
                 .offset(query.offset)
                 .limit(query.limit)
             )
@@ -249,7 +250,7 @@ class SqlAlchemyReferenceRateRepository(ReferenceRateRepository):
         return (
             select(
                 Instrument.id,
-                Instrument.ticker,
+                canonical_symbol_expression(),
                 base.c.canonical_code,
                 base.c.name,
                 quote.c.canonical_code,

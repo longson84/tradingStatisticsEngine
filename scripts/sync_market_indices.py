@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from api.db.models import Instrument
 from api.db.session import create_db_engine
+from api.instrument_symbols import canonical_symbol_expression
 from scripts.refresh_instrument_history import refresh_instrument
 
 
@@ -27,9 +28,9 @@ def sync_market_indices(
         raise ValueError(f"Unsupported market indices: {unknown}")
     with Session(engine) as session:
         rows = session.execute(
-            select(Instrument.ticker, Instrument.id).where(
+            select(canonical_symbol_expression(), Instrument.id).where(
                 Instrument.instrument_type == "market_index",
-                Instrument.ticker.in_(normalized),
+                canonical_symbol_expression().in_(normalized),
                 Instrument.is_active.is_(True),
             )
         )
