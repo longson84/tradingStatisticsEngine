@@ -16,6 +16,8 @@ from api.db.models import (
 )
 from api.repositories.instrument_analysis_repository import (
     AnalysisInstrumentListResult,
+    AnalysisInstrumentFacetCount,
+    AnalysisInstrumentFacets,
     AnalysisInstrumentPriceBarRecord,
     AnalysisInstrumentQuery,
     AnalysisInstrumentRecord,
@@ -34,7 +36,12 @@ class SqlAlchemyInstrumentAnalysisRepository:
         self, query: AnalysisInstrumentQuery
     ) -> AnalysisInstrumentListResult:
         statement, filters = self._statement(
-            query.scope, query.search, query.universe
+            query.scope,
+            query.search,
+            query.universe,
+            query.sector,
+            query.industry,
+            query.venue_code,
         )
         if query.has_price_history:
             filters.append(PriceBarCoverage.instrument_id.is_not(None))
@@ -42,15 +49,47 @@ class SqlAlchemyInstrumentAnalysisRepository:
         total = int(self._session.scalar(
             statement.with_only_columns(func.count(Instrument.id)).where(*filters)
         ) or 0)
-        rows = self._session.execute(
+        rows = tuple(self._session.execute(
             statement.where(*filters)
             .order_by(Instrument.ticker, Venue.code, Instrument.id)
             .offset(query.offset)
             .limit(query.limit)
+        ))
+        facet_statement, facet_filters = self._statement(
+            query.scope,
+            query.search,
+            query.universe,
+            None,
+            query.industry,
+            query.venue_code,
+        )
+        if query.has_price_history:
+            facet_filters.append(PriceBarCoverage.instrument_id.is_not(None))
+        all_count = int(self._session.scalar(
+            facet_statement.with_only_columns(func.count(Instrument.id)).where(
+                *facet_filters
+            )
+        ) or 0)
+        sector_value = func.coalesce(Company.sector, "Unknown")
+        sector_rows = self._session.execute(
+            facet_statement.with_only_columns(
+                sector_value,
+                func.count(Instrument.id),
+            )
+            .where(*facet_filters)
+            .group_by(sector_value)
+            .order_by(sector_value)
         )
         return AnalysisInstrumentListResult(
-            rows=tuple(self._record(row) for row in rows),
+            rows=self._records(rows),
             total=total,
+            facets=AnalysisInstrumentFacets(
+                all_count=all_count,
+                sectors=tuple(
+                    AnalysisInstrumentFacetCount(value=value, count=int(count))
+                    for value, count in sector_rows
+                ),
+            ),
         )
 
     def get_instrument(self, instrument_id: int) -> AnalysisInstrumentRecord | None:
@@ -58,7 +97,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         row = self._session.execute(
             statement.where(*filters, Instrument.id == instrument_id)
         ).one_or_none()
-        return self._record(row) if row is not None else None
+        return self._records((row,))[0] if row is not None else None
 
     def get_instruments(
         self, instrument_ids: tuple[int, ...]
@@ -70,7 +109,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             statement.where(*filters, Instrument.id.in_(instrument_ids))
             .order_by(Instrument.id)
         )
-        return tuple(self._record(row) for row in rows)
+        return self._records(tuple(rows))
 
     def iter_price_bars(
         self, instrument_id: int, price_basis: str
@@ -146,6 +185,9 @@ class SqlAlchemyInstrumentAnalysisRepository:
         scope: str | None,
         search: str | None,
         universe: str | None,
+        sector: str | None = None,
+        industry: str | None = None,
+        venue_code: str | None = None,
     ):
         base_asset = aliased(Asset, name="analysis_base_asset")
         quote_asset = aliased(Asset, name="analysis_quote_asset")
@@ -157,6 +199,8 @@ class SqlAlchemyInstrumentAnalysisRepository:
                 Instrument.instrument_type,
                 Company.id.label("company_id"),
                 Company.display_name.label("company_name"),
+                Company.sector,
+                Company.industry,
                 Venue.code.label("venue_code"),
                 Venue.name.label("venue_name"),
                 base_asset.canonical_code.label("base_asset"),
@@ -200,6 +244,16 @@ class SqlAlchemyInstrumentAnalysisRepository:
             filters.append(Instrument.memberships.any(
                 UniverseMembership.universe.has(Universe.code == universe)
             ))
+        if sector:
+            filters.append(
+                or_(Company.sector.is_(None), Company.sector == "Unknown")
+                if sector == "Unknown"
+                else Company.sector == sector
+            )
+        if industry:
+            filters.append(Company.industry == industry)
+        if venue_code:
+            filters.append(Venue.code == venue_code)
         return statement, filters
 
     @staticmethod
@@ -213,14 +267,32 @@ class SqlAlchemyInstrumentAnalysisRepository:
             else_=DEFAULT_CANONICAL_PRICE_BASIS,
         )
 
+    def _records(self, rows: tuple) -> tuple[AnalysisInstrumentRecord, ...]:
+        if not rows:
+            return ()
+        ids = tuple(row.id for row in rows)
+        memberships: dict[int, list[str]] = {instrument_id: [] for instrument_id in ids}
+        for instrument_id, universe_code in self._session.execute(
+            select(UniverseMembership.instrument_id, Universe.code)
+            .join(Universe, Universe.id == UniverseMembership.universe_id)
+            .where(UniverseMembership.instrument_id.in_(ids))
+            .order_by(UniverseMembership.instrument_id, Universe.code)
+        ):
+            memberships[instrument_id].append(universe_code)
+        return tuple(
+            self._record(row, tuple(memberships[row.id])) for row in rows
+        )
+
     @staticmethod
-    def _record(row) -> AnalysisInstrumentRecord:
+    def _record(row, universes: tuple[str, ...]) -> AnalysisInstrumentRecord:
         return AnalysisInstrumentRecord(
             id=row.id,
             symbol=row.ticker,
             instrument_type=row.instrument_type,
             company_id=row.company_id,
             company_name=row.company_name,
+            sector=row.sector,
+            industry=row.industry,
             venue_code=row.venue_code,
             venue_name=row.venue_name,
             base_asset=row.base_asset,
@@ -231,4 +303,5 @@ class SqlAlchemyInstrumentAnalysisRepository:
             first_date=row.first_date,
             last_date=row.last_date,
             stored_sessions=int(row.row_count or 0),
+            universes=universes,
         )

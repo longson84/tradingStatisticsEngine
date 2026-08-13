@@ -13,7 +13,7 @@ import {
   watchlistApi,
   watchlistsApi,
   watchlistRefreshJobsApi,
-  type AnalysisInstrument,
+  type InstrumentCatalogItem,
   type InstrumentScope,
   type Watchlist,
   type WatchlistRefreshJob,
@@ -141,7 +141,7 @@ function WatchlistEditor({
   )
   const [scope, setScope] = useState<InstrumentScope>("equity")
   const [search, setSearch] = useState("")
-  const [candidate, setCandidate] = useState<AnalysisInstrument | null>(null)
+  const [candidate, setCandidate] = useState<InstrumentCatalogItem | null>(null)
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const canSearch = debouncedSearch.length >= 3
   const instruments = useQuery({
@@ -358,7 +358,7 @@ function WatchlistEditor({
 }
 
 
-function fromAnalysisInstrument(instrument: AnalysisInstrument): EditorInstrument {
+function fromAnalysisInstrument(instrument: InstrumentCatalogItem): EditorInstrument {
   return {
     id: instrument.id,
     symbol: instrument.symbol,

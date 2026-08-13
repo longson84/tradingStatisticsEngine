@@ -1676,3 +1676,30 @@ fields `refreshed` and `refresh_warning` are removed because an analysis can no
 longer refresh; `expected_last_session`, `data_last_session`, `is_stale`, source,
 and price basis describe the stored input instead. Instrument Price History now
 exposes the same expected-session and stale status.
+
+### 2026-08-13 — Precise Company, Instrument, and Universe catalogs
+
+Context: the issuer catalog was exposed at `GET /companies/catalog`, while the
+root `GET /companies` path still returned one row per equity Instrument. A
+second `GET /companies/universes` compatibility projection manufactured
+`US_ALL` and `VN_ALL` identities that were not persisted Universes. This kept
+Company and Instrument terminology inverted even after both frontend pages and
+the relational model distinguished them.
+
+Decision: `GET /companies` is now the canonical issuer catalog and returns one
+Company with nested identifiers and Instruments. `GET /instruments` is the
+canonical Instrument catalog and returns issuer classification, Venue, price
+coverage, and actual persisted Universe memberships with server-side search,
+filters, facets, and 50-row pagination in the UI. `GET /universes` remains the
+only Universe catalog. The Instruments UI obtains its Universe controls from
+that endpoint, filters the catalog by exact Universe code, and represents all
+active equities by omitting the Universe filter. Remove
+`GET /companies/catalog`, `GET /companies/universes`, the old Company-list
+schemas and service/repository projection, and the synthetic `US_ALL` and
+`VN_ALL` values.
+
+Consequences: each catalog URL now names the entity it returns. Alphabet appears
+once in Companies while GOOG and GOOGL remain separate Instruments. Universe
+controls are metadata-driven and can include any persisted equity Universe
+without a frontend code list. “All equities” is a query scope, not a synthetic
+membership set, and no database migration is required for this API cutover.

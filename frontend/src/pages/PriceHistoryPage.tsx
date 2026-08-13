@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   instrumentPriceHistoryApi,
   instrumentsApi,
-  type AnalysisInstrument,
+  type InstrumentCatalogItem,
   type InstrumentPriceHistoryResponse,
   type InstrumentScope,
 } from "@/lib/api"
@@ -24,12 +24,12 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue"
 export function PriceHistoryPage() {
   const [scope, setScope] = useState<InstrumentScope>("equity")
   const [search, setSearch] = useState("")
-  const [instrument, setInstrument] = useState<AnalysisInstrument | null>(null)
+  const [instrument, setInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [smaInput, setSmaInput] = useState("")
   const [emaInput, setEmaInput] = useState("")
   const [cursorSnapshot, setCursorSnapshot] = useState<PriceHistoryCursorSnapshot | null>(null)
   const [selection, setSelection] = useState({
-    instrument: null as AnalysisInstrument | null,
+    instrument: null as InstrumentCatalogItem | null,
     smaLengths: [] as number[],
     emaLengths: [] as number[],
   })

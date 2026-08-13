@@ -5,7 +5,7 @@ import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisR
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { FormLabel as Label } from "@/components/forms/FormSelect"
 import { instrumentsApi, smaStrategyAnalysisApi } from "@/lib/api"
-import type { AnalysisInstrument, InstrumentScope, MaType } from "@/lib/api"
+import type { InstrumentCatalogItem, InstrumentScope, MaType } from "@/lib/api"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 function NumberInput({
@@ -31,7 +31,7 @@ function NumberInput({
 export function SmaStrategyPage() {
   const [scope, setScope]                 = useState<InstrumentScope>("equity")
   const [search, setSearch]               = useState("")
-  const [instrument, setInstrument]       = useState<AnalysisInstrument | null>(null)
+  const [instrument, setInstrument]       = useState<InstrumentCatalogItem | null>(null)
   const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)

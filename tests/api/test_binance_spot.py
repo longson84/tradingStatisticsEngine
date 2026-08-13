@@ -31,7 +31,6 @@ from api.providers.binance_spot import (
 from api.repositories.sqlalchemy_crypto_market_repository import (
     SqlAlchemyCryptoMarketRepository,
 )
-from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,
 )
@@ -176,7 +175,6 @@ def test_catalog_sync_creates_assets_venue_spot_instruments_and_active_universe(
         assert btc.quote_asset is not None and btc.quote_asset.canonical_code == "USDT"
         universe = session.scalar(select(Universe).where(Universe.code == "BINANCE_SPOT"))
         assert universe is not None and universe.name == "Binance Spot"
-        assert SqlAlchemyCompanyRepository(session).list_universes() == ()
         members = session.scalars(
             select(Instrument)
             .join(UniverseMembership)

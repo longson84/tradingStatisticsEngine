@@ -13,7 +13,7 @@ import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumen
 import {
   instrumentsApi,
   newLowDeepApi,
-  type AnalysisInstrument,
+  type InstrumentCatalogItem,
   type InstrumentScope,
   type NewLowDeepResponse,
   type NewLowCurrentEpisode,
@@ -54,7 +54,7 @@ function NumberInput({
 export function NewLowDeepPage() {
   const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
   const [instrumentSearch, setInstrumentSearch] = useState("")
-  const [selectedInstrument, setSelectedInstrument] = useState<AnalysisInstrument | null>(null)
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [lookback, setLookback] = useState(50)
   const [quickRecovery, setQuickRecovery] = useState(2)
   const debouncedInstrumentSearch = useDebouncedValue(instrumentSearch.trim(), 300)

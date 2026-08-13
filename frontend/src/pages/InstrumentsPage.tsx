@@ -5,52 +5,52 @@ import { InstrumentTable } from "@/components/instrument/InstrumentTable"
 import { Pagination } from "@/components/ui/Pagination"
 import { Sidebar } from "@/components/Sidebar"
 import {
-  companiesApi,
-  companyUniversesApi,
-  type CompanyUniverseId,
+  instrumentsApi,
+  universesApi,
 } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 const ALL_SECTORS = "ALL"
-const ALL_SOURCES = "ALL"
 const PAGE_SIZE = 50
-const FEATURED_LIST_IDS: CompanyUniverseId[] = ["US_ALL", "VN_ALL"]
-const SOURCE_ORDER = [
-  "US100", "US500", "US2000", "US30",
-  "VNALL", "VN100", "VN30", "VNMID", "VNSML",
-]
 export function InstrumentsPage() {
-  const [selectedListId, setSelectedListId] = useState<CompanyUniverseId>("US_ALL")
-  const activeListId = selectedListId
-  const [activeSource, setActiveSource] = useState(ALL_SOURCES)
+  const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null)
   const [activeSector, setActiveSector] = useState(ALL_SECTORS)
   const [query, setQuery] = useState("")
   const [offset, setOffset] = useState(0)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
-  const requestedUniverse = (
-    activeSource === ALL_SOURCES ? activeListId : activeSource
-  ) as CompanyUniverseId
 
-  const { data: availableLists } = useQuery({
+  const { data: availableUniverses } = useQuery({
     queryKey: ["instrument-universes"],
-    queryFn: companyUniversesApi,
+    queryFn: universesApi,
     retry: false,
   })
+
+  const equityUniverses = useMemo(
+    () => (availableUniverses?.universes ?? []).filter(
+      universe => universe.instrument_types.includes("common_stock"),
+    ),
+    [availableUniverses?.universes],
+  )
+  const activeUniverse = equityUniverses.find(
+    universe => universe.code === selectedUniverse,
+  ) ?? null
 
   const { data: list, isFetching, error } = useQuery({
     queryKey: [
       "instrument-list",
-      requestedUniverse,
+      selectedUniverse,
       activeSector,
       debouncedQuery,
       offset,
     ],
-    queryFn: () => companiesApi({
-      universe: requestedUniverse,
+    queryFn: () => instrumentsApi({
+      scope: "equity",
+      universe: selectedUniverse ?? undefined,
       sector: activeSector === ALL_SECTORS ? undefined : activeSector,
       search: debouncedQuery || undefined,
+      has_price_history: false,
       offset,
       limit: PAGE_SIZE,
     }),
@@ -74,20 +74,6 @@ export function InstrumentsPage() {
     ]
   }, [data])
 
-  const sourceOptions = useMemo(() => {
-    if (!data) return []
-    return [
-      { id: ALL_SOURCES, label: "All", count: data.facets.all_count },
-      ...data.facets.universes
-        .map(facet => ({
-          id: facet.value,
-          label: listBadgeLabel(facet.value),
-          count: facet.count,
-        }))
-        .sort((a, b) => sourceOrder(a.id) - sourceOrder(b.id) || a.id.localeCompare(b.id)),
-    ]
-  }, [data])
-
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar className="w-72" />
@@ -97,55 +83,48 @@ export function InstrumentsPage() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Instruments</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Tradable US and Vietnam securities in synchronized instrument universes.
+                Canonical tradable equity instruments, optionally filtered by Universe.
               </p>
             </div>
             {data && (
               <div className="text-xs text-muted-foreground text-right">
                 <div>{fmtInt(data.total)} instruments</div>
-                <div>{data.as_of ? `As of ${data.as_of}` : "Static list"}</div>
+                <div>
+                  {activeUniverse
+                    ? activeUniverse.as_of
+                      ? `As of ${activeUniverse.as_of}`
+                      : "Persisted Universe"
+                    : "All active equities"}
+                </div>
               </div>
             )}
           </div>
 
-          <FilterGroup label="Saved list">
-            {FEATURED_LIST_IDS.map(listId => {
-              const summary = availableLists?.universes.find(item => item.id === listId)
-              return (
+          <FilterGroup label="Universe">
+            <FilterButton
+              active={selectedUniverse === null}
+              onClick={() => {
+                setSelectedUniverse(null)
+                setActiveSector(ALL_SECTORS)
+                setOffset(0)
+              }}
+            >
+              All Equities
+            </FilterButton>
+            {equityUniverses.map(universe => (
                 <FilterButton
-                  key={listId}
-                  active={activeListId === listId}
+                  key={universe.code}
+                  active={selectedUniverse === universe.code}
                   onClick={() => {
-                    setSelectedListId(listId)
-                    setActiveSource(ALL_SOURCES)
+                    setSelectedUniverse(universe.code)
                     setActiveSector(ALL_SECTORS)
-                    setQuery("")
                     setOffset(0)
                   }}
                 >
-                  {savedListLabel(listId)}{summary ? ` (${fmtInt(summary.company_count)})` : ""}
+                  {universe.name} ({fmtInt(universe.active_instrument_count)})
                 </FilterButton>
-              )
-            })}
+            ))}
           </FilterGroup>
-
-          {sourceOptions.length > 2 && (
-            <FilterGroup label="Index">
-              {sourceOptions.map(option => (
-                <FilterButton
-                  key={option.id}
-                  active={activeSource === option.id}
-                  onClick={() => {
-                    setActiveSource(option.id)
-                    setActiveSector(ALL_SECTORS)
-                    setOffset(0)
-                  }}
-                >
-                  {option.label} ({fmtInt(option.count)})
-                </FilterButton>
-              ))}
-            </FilterGroup>
-          )}
 
           {sectorOptions.length > 0 && (
             <FilterGroup label="Sector">
@@ -169,12 +148,12 @@ export function InstrumentsPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-semibold">
-                {data ? instrumentListName(data.id) : "Instrument List"}
+                {activeUniverse ? `${activeUniverse.name} Instruments` : "All Equity Instruments"}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {data
-                  ? instrumentListDescription(data.id)
-                  : "Choose a universe to view its instruments."}
+                {activeUniverse
+                  ? activeUniverse.description
+                  : "All active equity instruments; no synthetic all-market Universe is required."}
               </p>
             </div>
 
@@ -201,7 +180,7 @@ export function InstrumentsPage() {
           )}
 
           {data && !isFetching && (
-            <InstrumentTable rows={data.companies} />
+            <InstrumentTable rows={data.instruments} />
           )}
           {data && !isFetching && (
             <Pagination
@@ -253,48 +232,6 @@ function FilterButton({
     </button>
   )
 }
-
-function sourceOrder(source: string): number {
-  const index = SOURCE_ORDER.indexOf(source)
-  return index === -1 ? SOURCE_ORDER.length : index
-}
-
-function savedListLabel(listId: CompanyUniverseId): string {
-  if (listId === "US_ALL") return "US Instruments"
-  if (listId === "VN_ALL") return "VN Instruments"
-  return listId
-}
-
-
-function instrumentListName(listId: CompanyUniverseId): string {
-  if (listId === "US_ALL") return "US Instruments"
-  if (listId === "VN_ALL") return "VN Instruments"
-  return `${listBadgeLabel(listId)} Instruments`
-}
-
-
-function instrumentListDescription(listId: CompanyUniverseId): string {
-  if (listId === "US_ALL") {
-    return "All saved US instruments merged without duplicate canonical tickers."
-  }
-  if (listId === "VN_ALL") {
-    return "All saved Vietnam instruments merged without duplicate canonical tickers."
-  }
-  return `Current instruments in the ${listBadgeLabel(listId)} universe.`
-}
-
-
-function listBadgeLabel(list: string): string {
-  if (list === "US100") return "Nasdaq 100"
-  if (list === "US500") return "S&P 500"
-  if (list === "US2000") return "Russell 2000"
-  if (list === "US30") return "Dow Jones"
-  if (list === "VNMID") return "VNMidCap"
-  if (list === "VNSML") return "VNSmallCap"
-  if (list === "VNALL") return "VNAllshare"
-  return list
-}
-
 
 function LoadingBar() {
   return (

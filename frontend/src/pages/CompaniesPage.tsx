@@ -4,7 +4,7 @@ import { Search } from "lucide-react"
 import { CompanyCatalogTable } from "@/components/company/CompanyCatalogTable"
 import { Pagination } from "@/components/ui/Pagination"
 import { Sidebar } from "@/components/Sidebar"
-import { companyCatalogApi } from "@/lib/api"
+import { companiesApi } from "@/lib/api"
 import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
@@ -22,7 +22,7 @@ export function CompaniesPage() {
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
   const catalog = useQuery({
     queryKey: ["company-catalog", country, sector, debouncedQuery, offset],
-    queryFn: () => companyCatalogApi({
+    queryFn: () => companiesApi({
       country: country === ALL_COUNTRIES ? undefined : country as "US" | "VN",
       sector: sector === ALL_SECTORS ? undefined : sector,
       search: debouncedQuery || undefined,

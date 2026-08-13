@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   instrumentsApi,
   universesApi,
-  type AnalysisInstrument,
+  type InstrumentCatalogItem,
 } from "@/lib/api"
 import { fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
@@ -187,7 +187,7 @@ export function UniversesPanel() {
 }
 
 
-function UniverseInstrumentRow({ instrument }: { instrument: AnalysisInstrument }) {
+function UniverseInstrumentRow({ instrument }: { instrument: InstrumentCatalogItem }) {
   const identity = instrument.company_name
     ?? (instrument.base_asset && instrument.quote_asset
       ? `${instrument.base_asset}/${instrument.quote_asset}`

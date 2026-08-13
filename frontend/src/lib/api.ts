@@ -82,14 +82,10 @@ export type PredefinedRarityRow = components["schemas"]["PredefinedRarityRow"]
 export type PredefinedRarityTable = components["schemas"]["PredefinedRarityTable"]
 export type PredefinedRarityResponse = components["schemas"]["PredefinedRarityResponse"]
 
-export type CompanyResponse = components["schemas"]["CompanyResponse"]
-export type CompanyListResponse = components["schemas"]["CompanyListResponse"]
-export type CompanyUniversesResponse = components["schemas"]["CompanyUniversesResponse"]
-export type CompanyUniverseId = CompanyListResponse["id"]
 export type CompanyCatalogItem = components["schemas"]["CompanyCatalogItemResponse"]
 export type CompanyCatalogResponse = components["schemas"]["CompanyCatalogResponse"]
 export type CompanyCatalogQuery = NonNullable<
-  operations["listCompanyCatalog"]["parameters"]["query"]
+  operations["listCompanies"]["parameters"]["query"]
 >
 export type CryptoMarketInstrument = components["schemas"]["CryptoMarketInstrumentResponse"]
 export type CryptoMarketListResponse = components["schemas"]["CryptoMarketListResponse"]
@@ -103,7 +99,7 @@ export type ReferenceRateQuery = NonNullable<
 >
 export type Venue = components["schemas"]["VenueResponse"]
 export type VenueListResponse = components["schemas"]["VenueListResponse"]
-export type AnalysisInstrument = components["schemas"]["AnalysisInstrumentResponse"]
+export type InstrumentCatalogItem = components["schemas"]["InstrumentCatalogItemResponse"]
 export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
 export type UniverseListResponse = components["schemas"]["UniverseListResponse"]
 export type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
@@ -117,14 +113,11 @@ export type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPrice
 export type DataOperationScopeType = DataOperationRequest["scope_type"]
 export type DataOperationDataset = NonNullable<DataOperationRequest["dataset"]>
 export type DataOperationMode = NonNullable<DataOperationRequest["mode"]>
-export type AnalysisInstrumentListResponse = components["schemas"]["AnalysisInstrumentListResponse"]
-export type AnalysisInstrumentQuery = NonNullable<
-  operations["listAnalysisInstruments"]["parameters"]["query"]
+export type InstrumentCatalogResponse = components["schemas"]["InstrumentCatalogResponse"]
+export type InstrumentCatalogQuery = NonNullable<
+  operations["listInstruments"]["parameters"]["query"]
 >
-export type InstrumentScope = NonNullable<AnalysisInstrumentQuery["scope"]>
-export type CompanyListQuery = NonNullable<
-  operations["listCompanies"]["parameters"]["query"]
->
+export type InstrumentScope = NonNullable<InstrumentCatalogQuery["scope"]>
 export type WatchlistSummary = components["schemas"]["WatchlistSummaryResponse"]
 export type Watchlist = components["schemas"]["WatchlistResponse"]
 export type WatchlistListResponse = components["schemas"]["WatchlistListResponse"]
@@ -320,8 +313,8 @@ export function rarityAnalysisApi(params: {
 }
 
 export function instrumentsApi(
-  params: AnalysisInstrumentQuery = {},
-): Promise<AnalysisInstrumentListResponse> {
+  params: InstrumentCatalogQuery = {},
+): Promise<InstrumentCatalogResponse> {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value != null) query.set(key, String(value))
@@ -348,24 +341,9 @@ export function predefinedRarityApi(params: {
   })
 }
 
-export function companyUniversesApi(): Promise<CompanyUniversesResponse> {
-  return get("/companies/universes")
-}
-
-export function companyCatalogApi(
+export function companiesApi(
   params: CompanyCatalogQuery = {},
 ): Promise<CompanyCatalogResponse> {
-  const query = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value != null) query.set(key, String(value))
-  }
-  const suffix = query.size > 0 ? `?${query}` : ""
-  return get(`/companies/catalog${suffix}`)
-}
-
-export function companiesApi(
-  params: CompanyListQuery = {},
-): Promise<CompanyListResponse> {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value != null) query.set(key, String(value))

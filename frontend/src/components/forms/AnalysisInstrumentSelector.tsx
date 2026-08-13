@@ -1,6 +1,6 @@
 import { FormLabel, FormSelect } from "@/components/forms/FormSelect"
 import { useSearchableSelectKeyboard } from "@/components/forms/useSearchableSelectKeyboard"
-import type { AnalysisInstrument, InstrumentScope } from "@/lib/api"
+import type { InstrumentCatalogItem, InstrumentScope } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
@@ -26,13 +26,13 @@ export function AnalysisInstrumentSelector({
 }: {
   scope: InstrumentScope
   search: string
-  instruments: AnalysisInstrument[]
-  selectedInstrument: AnalysisInstrument | null
+  instruments: InstrumentCatalogItem[]
+  selectedInstrument: InstrumentCatalogItem | null
   total?: number
   isPending: boolean
   onScopeChange: (scope: InstrumentScope) => void
   onSearchChange: (search: string) => void
-  onInstrumentChange: (instrument: AnalysisInstrument | null) => void
+  onInstrumentChange: (instrument: InstrumentCatalogItem | null) => void
   onSubmit?: () => void
   helperText?: string
 }) {
@@ -124,7 +124,7 @@ export function AnalysisInstrumentSelector({
 }
 
 
-function instrumentOptionLabel(instrument: AnalysisInstrument): string {
+function instrumentOptionLabel(instrument: InstrumentCatalogItem): string {
   const identity = instrument.company_name
     ?? (instrument.base_asset && instrument.quote_asset
       ? `${instrument.base_asset}/${instrument.quote_asset}`
@@ -136,7 +136,7 @@ function instrumentOptionLabel(instrument: AnalysisInstrument): string {
 }
 
 
-function instrumentDetailLabel(instrument: AnalysisInstrument): string {
+function instrumentDetailLabel(instrument: InstrumentCatalogItem): string {
   const identity = instrument.company_name
     ?? (instrument.base_asset && instrument.quote_asset
       ? `${instrument.base_asset}/${instrument.quote_asset}`

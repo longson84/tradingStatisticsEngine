@@ -8,7 +8,7 @@ import {
 } from "@/components/forms/AnalysisInstrumentSelector"
 import { instrumentsApi, rarityAnalysisApi } from "@/lib/api"
 import type {
-  AnalysisInstrument,
+  InstrumentCatalogItem,
   FactorType,
   InstrumentScope,
   MaType,
@@ -81,7 +81,7 @@ export function FactorsPage() {
   // Form state
   const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
   const [instrumentSearch, setInstrumentSearch] = useState("")
-  const [selectedInstrument, setSelectedInstrument] = useState<AnalysisInstrument | null>(null)
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [factorType, setFactorType] = useState<FactorType>("distance_from_peak")
   const [period, setPeriod]         = useState(200)
   const [maType, setMaType]         = useState<MaType>("sma")

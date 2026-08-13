@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react"
 import { ArrowUpDown } from "lucide-react"
-import type { CompanyResponse } from "@/lib/api"
+import type { InstrumentCatalogItem } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
-export type InstrumentRow = CompanyResponse
+export type InstrumentRow = InstrumentCatalogItem
 type CoverageSortKey = "first_session" | "last_session" | "stored_sessions"
 type SortDirection = "asc" | "desc"
 
@@ -20,7 +20,7 @@ export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
       const leftValue = left[coverageSort.key]
       const rightValue = right[coverageSort.key]
       if (leftValue == null && rightValue == null) {
-        return left.ticker.localeCompare(right.ticker)
+        return left.symbol.localeCompare(right.symbol)
       }
       if (leftValue == null) return 1
       if (rightValue == null) return -1
@@ -71,9 +71,9 @@ export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
         </thead>
         <tbody className="divide-y divide-border">
           {displayRows.map(row => (
-              <tr key={row.instrument_id} className="hover:bg-muted/30">
-                <td className="px-3 py-2 font-semibold tabular-nums">{row.ticker}</td>
-                <td className="min-w-72 px-3 py-2">{row.company_name}</td>
+              <tr key={row.id} className="hover:bg-muted/30">
+                <td className="px-3 py-2 font-semibold tabular-nums">{row.symbol}</td>
+                <td className="min-w-72 px-3 py-2">{row.company_name ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.sector ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.industry ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.venue_code ?? "n/a"}</td>
@@ -88,7 +88,7 @@ export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1.5">
-                    {row.lists.map(list => (
+                    {row.universes.map(list => (
                       <span
                         key={list}
                         className={cn(

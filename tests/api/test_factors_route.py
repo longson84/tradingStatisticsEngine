@@ -178,6 +178,8 @@ class TestPredefinedRarity:
                     instrument_type="common_stock",
                     company_id=11,
                     company_name="Microsoft",
+                    sector="Information Technology",
+                    industry="Software",
                     venue_code=None,
                     venue_name=None,
                     base_asset=None,
@@ -188,6 +190,7 @@ class TestPredefinedRarity:
                     first_date=dates[0].date(),
                     last_date=dates[-1].date(),
                     stored_sessions=len(dates),
+                    universes=("US100", "US500"),
                 )
                 return StoredInstrumentPriceSet(
                     instruments={42: instrument},

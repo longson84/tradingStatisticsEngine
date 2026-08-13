@@ -22,7 +22,7 @@ import {
   startDataOperationApi,
   universesApi,
   watchlistsApi,
-  type AnalysisInstrument,
+  type InstrumentCatalogItem,
   type DataOperationDataset,
   type DataOperationJob,
   type DataOperationMode,
@@ -68,7 +68,7 @@ export function DataOperationsPage() {
   const [dataset, setDataset] = useState<DataOperationDataset>("prices")
   const [mode, setMode] = useState<DataOperationMode>("incremental")
   const [instrumentSearch, setInstrumentSearch] = useState("")
-  const [selectedInstrument, setSelectedInstrument] = useState<AnalysisInstrument | null>(null)
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [startedJob, setStartedJob] = useState<DataOperationJob | null>(null)
   const [coverageOffset, setCoverageOffset] = useState(0)
 
@@ -481,10 +481,10 @@ function InstrumentPicker({
 }: {
   search: string
   onSearch: (value: string) => void
-  selected: AnalysisInstrument | null
-  instruments: AnalysisInstrument[]
+  selected: InstrumentCatalogItem | null
+  instruments: InstrumentCatalogItem[]
   loading: boolean
-  onSelect: (instrument: AnalysisInstrument) => void
+  onSelect: (instrument: InstrumentCatalogItem) => void
 }) {
   const showResults = search.trim().length >= 3 && selected == null
   const keyboard = useSearchableSelectKeyboard({

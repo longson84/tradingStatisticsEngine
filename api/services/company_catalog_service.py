@@ -20,7 +20,7 @@ class CompanyCatalogService:
         search: str | None = None,
         sector: str | None = None,
         offset: int = 0,
-        limit: int = 5000,
+        limit: int = 50,
     ) -> tuple[tuple[CompanyCatalogRecord, ...], int, CompanyCatalogFacets]:
         return self._repository.list_companies(CompanyCatalogQuery(
             country=country,

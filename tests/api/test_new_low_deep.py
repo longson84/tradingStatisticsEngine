@@ -23,6 +23,8 @@ def _instrument(instrument_id: int = 42) -> AnalysisInstrumentRecord:
         instrument_type="common_stock",
         company_id=7,
         company_name="Canonical Company",
+        sector="Industrials",
+        industry="Industrial Products",
         venue_code="NYSE",
         venue_name="New York Stock Exchange",
         base_asset=None,
@@ -33,6 +35,7 @@ def _instrument(instrument_id: int = 42) -> AnalysisInstrumentRecord:
         first_date=date(2024, 1, 1),
         last_date=date(2026, 1, 1),
         stored_sessions=320,
+        universes=("TEST",),
     )
 
 

@@ -41,40 +41,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/companies/catalog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Company Catalog */
-        get: operations["listCompanyCatalog"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/companies/universes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Company Universes */
-        get: operations["listCompanyUniverses"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/crypto/markets": {
         parameters: {
             query?: never;
@@ -235,8 +201,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Analysis Instruments */
-        get: operations["listAnalysisInstruments"];
+        /** List Instruments */
+        get: operations["listInstruments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -422,50 +388,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AnalysisInstrumentListResponse */
-        AnalysisInstrumentListResponse: {
-            /** Instruments */
-            instruments: components["schemas"]["AnalysisInstrumentResponse"][];
-            /** Limit */
-            limit: number;
-            /** Offset */
-            offset: number;
-            /** Total */
-            total: number;
-        };
-        /** AnalysisInstrumentResponse */
-        AnalysisInstrumentResponse: {
-            /** Base Asset */
-            base_asset?: string | null;
-            /** Company Id */
-            company_id?: number | null;
-            /** Company Name */
-            company_name?: string | null;
-            /** Currency */
-            currency: string;
-            /** First Session */
-            first_session?: string | null;
-            /** Id */
-            id: number;
-            /** Instrument Type */
-            instrument_type: string;
-            /** Last Session */
-            last_session?: string | null;
-            /** Price Basis */
-            price_basis: string;
-            /** Price Source */
-            price_source?: string | null;
-            /** Quote Asset */
-            quote_asset?: string | null;
-            /** Stored Sessions */
-            stored_sessions: number;
-            /** Symbol */
-            symbol: string;
-            /** Venue Code */
-            venue_code?: string | null;
-            /** Venue Name */
-            venue_name?: string | null;
-        };
         /** AnalyzeRequest */
         AnalyzeRequest: {
             /** End */
@@ -564,101 +486,6 @@ export interface components {
             universes: string[];
             /** Venue Code */
             venue_code?: string | null;
-        };
-        /** CompanyListFacetsResponse */
-        CompanyListFacetsResponse: {
-            /** All Count */
-            all_count: number;
-            /** Sectors */
-            sectors: components["schemas"]["FacetCountResponse"][];
-            /** Universes */
-            universes: components["schemas"]["FacetCountResponse"][];
-        };
-        /** CompanyListResponse */
-        CompanyListResponse: {
-            /** As Of */
-            as_of?: string | null;
-            /** Companies */
-            companies: components["schemas"]["CompanyResponse"][];
-            /**
-             * Country Code
-             * @enum {string}
-             */
-            country_code: "US" | "VN";
-            /** Description */
-            description: string;
-            facets: components["schemas"]["CompanyListFacetsResponse"];
-            /** Fetched At */
-            fetched_at?: string | null;
-            /**
-             * Id
-             * @enum {string}
-             */
-            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /** Limit */
-            limit: number;
-            /** Name */
-            name: string;
-            /** Offset */
-            offset: number;
-            /** Total */
-            total: number;
-        };
-        /** CompanyResponse */
-        CompanyResponse: {
-            /** Company Name */
-            company_name: string;
-            /**
-             * Country Code
-             * @enum {string}
-             */
-            country_code: "US" | "VN";
-            /** First Session */
-            first_session: string | null;
-            /** Industry */
-            industry?: string | null;
-            /** Instrument Id */
-            instrument_id: number;
-            /** Last Session */
-            last_session: string | null;
-            /** Lists */
-            lists: string[];
-            /** Sector */
-            sector?: string | null;
-            /** Stored Sessions */
-            stored_sessions: number;
-            /** Ticker */
-            ticker: string;
-            /** Venue Code */
-            venue_code?: string | null;
-        };
-        /** CompanyUniverseResponse */
-        CompanyUniverseResponse: {
-            /** As Of */
-            as_of?: string | null;
-            /** Company Count */
-            company_count: number;
-            /**
-             * Country Code
-             * @enum {string}
-             */
-            country_code: "US" | "VN";
-            /** Description */
-            description: string;
-            /** Fetched At */
-            fetched_at?: string | null;
-            /**
-             * Id
-             * @enum {string}
-             */
-            id: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-            /** Name */
-            name: string;
-        };
-        /** CompanyUniversesResponse */
-        CompanyUniversesResponse: {
-            /** Universes */
-            universes: components["schemas"]["CompanyUniverseResponse"][];
         };
         /** CryptoMarketFacetCountResponse */
         CryptoMarketFacetCountResponse: {
@@ -906,6 +733,71 @@ export interface components {
             trades: number;
             /** Year */
             year: number;
+        };
+        /** InstrumentCatalogFacetsResponse */
+        InstrumentCatalogFacetsResponse: {
+            /** All Count */
+            all_count: number;
+            /** Sectors */
+            sectors: components["schemas"]["InstrumentFacetCountResponse"][];
+        };
+        /** InstrumentCatalogItemResponse */
+        InstrumentCatalogItemResponse: {
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Id */
+            company_id?: number | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
+            /** First Session */
+            first_session?: string | null;
+            /** Id */
+            id: number;
+            /** Industry */
+            industry?: string | null;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Last Session */
+            last_session?: string | null;
+            /** Price Basis */
+            price_basis: string;
+            /** Price Source */
+            price_source?: string | null;
+            /** Quote Asset */
+            quote_asset?: string | null;
+            /** Sector */
+            sector?: string | null;
+            /** Stored Sessions */
+            stored_sessions: number;
+            /** Symbol */
+            symbol: string;
+            /** Universes */
+            universes: string[];
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
+        /** InstrumentCatalogResponse */
+        InstrumentCatalogResponse: {
+            facets: components["schemas"]["InstrumentCatalogFacetsResponse"];
+            /** Instruments */
+            instruments: components["schemas"]["InstrumentCatalogItemResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** InstrumentFacetCountResponse */
+        InstrumentFacetCountResponse: {
+            /** Count */
+            count: number;
+            /** Value */
+            value: string;
         };
         /** InstrumentPriceCoveragePageResponse */
         InstrumentPriceCoveragePageResponse: {
@@ -2318,43 +2210,6 @@ export interface operations {
     listCompanies: {
         parameters: {
             query?: {
-                universe?: "US_ALL" | "US100" | "US2000" | "US500" | "US30" | "VN_ALL" | "VNALL" | "VN100" | "VN30" | "VNMID" | "VNSML";
-                search?: string | null;
-                sector?: string | null;
-                industry?: string | null;
-                venue?: string | null;
-                offset?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompanyListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    listCompanyCatalog: {
-        parameters: {
-            query?: {
                 country?: ("US" | "VN") | null;
                 search?: string | null;
                 sector?: string | null;
@@ -2383,26 +2238,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    listCompanyUniverses: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompanyUniversesResponse"];
                 };
             };
         };
@@ -2695,12 +2530,15 @@ export interface operations {
             };
         };
     };
-    listAnalysisInstruments: {
+    listInstruments: {
         parameters: {
             query?: {
                 scope?: ("equity" | "crypto_spot" | "reference_rate") | null;
                 universe?: string | null;
                 search?: string | null;
+                sector?: string | null;
+                industry?: string | null;
+                venue?: string | null;
                 has_price_history?: boolean;
                 offset?: number;
                 limit?: number;
@@ -2717,7 +2555,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisInstrumentListResponse"];
+                    "application/json": components["schemas"]["InstrumentCatalogResponse"];
                 };
             };
             /** @description Validation Error */

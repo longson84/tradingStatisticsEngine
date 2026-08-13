@@ -1,176 +1,6 @@
 {
   "components": {
     "schemas": {
-      "AnalysisInstrumentListResponse": {
-        "properties": {
-          "instruments": {
-            "items": {
-              "$ref": "#/components/schemas/AnalysisInstrumentResponse"
-            },
-            "title": "Instruments",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "total",
-          "offset",
-          "limit",
-          "instruments"
-        ],
-        "title": "AnalysisInstrumentListResponse",
-        "type": "object"
-      },
-      "AnalysisInstrumentResponse": {
-        "properties": {
-          "base_asset": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Asset"
-          },
-          "company_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Id"
-          },
-          "company_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Name"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "first_session": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Session"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "instrument_type": {
-            "title": "Instrument Type",
-            "type": "string"
-          },
-          "last_session": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Session"
-          },
-          "price_basis": {
-            "title": "Price Basis",
-            "type": "string"
-          },
-          "price_source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Source"
-          },
-          "quote_asset": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quote Asset"
-          },
-          "stored_sessions": {
-            "title": "Stored Sessions",
-            "type": "integer"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "venue_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Code"
-          },
-          "venue_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Name"
-          }
-        },
-        "required": [
-          "id",
-          "symbol",
-          "instrument_type",
-          "currency",
-          "price_basis",
-          "stored_sessions"
-        ],
-        "title": "AnalysisInstrumentResponse",
-        "type": "object"
-      },
       "AnalyzeRequest": {
         "properties": {
           "end": {
@@ -461,323 +291,6 @@
           "universes"
         ],
         "title": "CompanyInstrumentResponse",
-        "type": "object"
-      },
-      "CompanyListFacetsResponse": {
-        "properties": {
-          "all_count": {
-            "title": "All Count",
-            "type": "integer"
-          },
-          "sectors": {
-            "items": {
-              "$ref": "#/components/schemas/FacetCountResponse"
-            },
-            "title": "Sectors",
-            "type": "array"
-          },
-          "universes": {
-            "items": {
-              "$ref": "#/components/schemas/FacetCountResponse"
-            },
-            "title": "Universes",
-            "type": "array"
-          }
-        },
-        "required": [
-          "all_count",
-          "sectors",
-          "universes"
-        ],
-        "title": "CompanyListFacetsResponse",
-        "type": "object"
-      },
-      "CompanyListResponse": {
-        "properties": {
-          "as_of": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "As Of"
-          },
-          "companies": {
-            "items": {
-              "$ref": "#/components/schemas/CompanyResponse"
-            },
-            "title": "Companies",
-            "type": "array"
-          },
-          "country_code": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Country Code",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "facets": {
-            "$ref": "#/components/schemas/CompanyListFacetsResponse"
-          },
-          "fetched_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fetched At"
-          },
-          "id": {
-            "enum": [
-              "US_ALL",
-              "US100",
-              "US2000",
-              "US500",
-              "US30",
-              "VN_ALL",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Id",
-            "type": "string"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "country_code",
-          "description",
-          "total",
-          "offset",
-          "limit",
-          "companies",
-          "facets"
-        ],
-        "title": "CompanyListResponse",
-        "type": "object"
-      },
-      "CompanyResponse": {
-        "properties": {
-          "company_name": {
-            "title": "Company Name",
-            "type": "string"
-          },
-          "country_code": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Country Code",
-            "type": "string"
-          },
-          "first_session": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Session"
-          },
-          "industry": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Industry"
-          },
-          "instrument_id": {
-            "title": "Instrument Id",
-            "type": "integer"
-          },
-          "last_session": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Session"
-          },
-          "lists": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Lists",
-            "type": "array"
-          },
-          "sector": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sector"
-          },
-          "stored_sessions": {
-            "title": "Stored Sessions",
-            "type": "integer"
-          },
-          "ticker": {
-            "title": "Ticker",
-            "type": "string"
-          },
-          "venue_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Code"
-          }
-        },
-        "required": [
-          "instrument_id",
-          "ticker",
-          "company_name",
-          "country_code",
-          "lists",
-          "first_session",
-          "last_session",
-          "stored_sessions"
-        ],
-        "title": "CompanyResponse",
-        "type": "object"
-      },
-      "CompanyUniverseResponse": {
-        "properties": {
-          "as_of": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "As Of"
-          },
-          "company_count": {
-            "title": "Company Count",
-            "type": "integer"
-          },
-          "country_code": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Country Code",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "fetched_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fetched At"
-          },
-          "id": {
-            "enum": [
-              "US_ALL",
-              "US100",
-              "US2000",
-              "US500",
-              "US30",
-              "VN_ALL",
-              "VNALL",
-              "VN100",
-              "VN30",
-              "VNMID",
-              "VNSML"
-            ],
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "country_code",
-          "description",
-          "company_count"
-        ],
-        "title": "CompanyUniverseResponse",
-        "type": "object"
-      },
-      "CompanyUniversesResponse": {
-        "properties": {
-          "universes": {
-            "items": {
-              "$ref": "#/components/schemas/CompanyUniverseResponse"
-            },
-            "title": "Universes",
-            "type": "array"
-          }
-        },
-        "required": [
-          "universes"
-        ],
-        "title": "CompanyUniversesResponse",
         "type": "object"
       },
       "CryptoMarketFacetCountResponse": {
@@ -1551,6 +1064,249 @@
           "p95"
         ],
         "title": "HealthRowResponse",
+        "type": "object"
+      },
+      "InstrumentCatalogFacetsResponse": {
+        "properties": {
+          "all_count": {
+            "title": "All Count",
+            "type": "integer"
+          },
+          "sectors": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentFacetCountResponse"
+            },
+            "title": "Sectors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "all_count",
+          "sectors"
+        ],
+        "title": "InstrumentCatalogFacetsResponse",
+        "type": "object"
+      },
+      "InstrumentCatalogItemResponse": {
+        "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "first_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Session"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "universes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Universes",
+            "type": "array"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "instrument_type",
+          "currency",
+          "price_basis",
+          "stored_sessions",
+          "universes"
+        ],
+        "title": "InstrumentCatalogItemResponse",
+        "type": "object"
+      },
+      "InstrumentCatalogResponse": {
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/InstrumentCatalogFacetsResponse"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentCatalogItemResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "instruments",
+          "facets"
+        ],
+        "title": "InstrumentCatalogResponse",
+        "type": "object"
+      },
+      "InstrumentFacetCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "InstrumentFacetCountResponse",
         "type": "object"
       },
       "InstrumentPriceCoveragePageResponse": {
@@ -5526,153 +5282,6 @@
         "parameters": [
           {
             "in": "query",
-            "name": "universe",
-            "required": false,
-            "schema": {
-              "default": "US_ALL",
-              "enum": [
-                "US_ALL",
-                "US100",
-                "US2000",
-                "US500",
-                "US30",
-                "VN_ALL",
-                "VNALL",
-                "VN100",
-                "VN30",
-                "VNMID",
-                "VNSML"
-              ],
-              "title": "Universe",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 100,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Search"
-            }
-          },
-          {
-            "in": "query",
-            "name": "sector",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 255,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Sector"
-            }
-          },
-          {
-            "in": "query",
-            "name": "industry",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 255,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Industry"
-            }
-          },
-          {
-            "in": "query",
-            "name": "venue",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Venue"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 5000,
-              "maximum": 5000,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CompanyListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Companies",
-        "tags": [
-          "companies"
-        ]
-      }
-    },
-    "/companies/catalog": {
-      "get": {
-        "operationId": "listCompanyCatalog",
-        "parameters": [
-          {
-            "in": "query",
             "name": "country",
             "required": false,
             "schema": {
@@ -5741,8 +5350,8 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 5000,
-              "maximum": 5000,
+              "default": 50,
+              "maximum": 100,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
@@ -5771,28 +5380,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Company Catalog",
-        "tags": [
-          "companies"
-        ]
-      }
-    },
-    "/companies/universes": {
-      "get": {
-        "operationId": "listCompanyUniverses",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CompanyUniversesResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Company Universes",
+        "summary": "List Companies",
         "tags": [
           "companies"
         ]
@@ -6301,7 +5889,7 @@
     },
     "/instruments": {
       "get": {
-        "operationId": "listAnalysisInstruments",
+        "operationId": "listInstruments",
         "parameters": [
           {
             "in": "query",
@@ -6360,6 +5948,57 @@
           },
           {
             "in": "query",
+            "name": "sector",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sector"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "venue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Venue"
+            }
+          },
+          {
+            "in": "query",
             "name": "has_price_history",
             "required": false,
             "schema": {
@@ -6397,7 +6036,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AnalysisInstrumentListResponse"
+                  "$ref": "#/components/schemas/InstrumentCatalogResponse"
                 }
               }
             },
@@ -6414,7 +6053,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Analysis Instruments",
+        "summary": "List Instruments",
         "tags": [
           "instruments"
         ]

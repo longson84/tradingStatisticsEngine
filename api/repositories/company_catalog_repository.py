@@ -11,7 +11,7 @@ class CompanyCatalogQuery:
     search: str | None = None
     sector: str | None = None
     offset: int = 0
-    limit: int = 5000
+    limit: int = 50
 
 
 @dataclass(frozen=True)

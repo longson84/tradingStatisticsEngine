@@ -14,7 +14,7 @@ from api.repositories.sqlalchemy_instrument_analysis_repository import (
 from api.repositories.sqlalchemy_instrument_routing_repository import (
     SqlAlchemyInstrumentRoutingRepository,
 )
-from api.routes.instruments import list_analysis_instruments
+from api.routes.instruments import list_instruments
 from api.services.instrument_analysis_service import InstrumentAnalysisService
 
 
@@ -65,11 +65,14 @@ def _service_with_msft_history():
 def test_analysis_instrument_search_returns_stable_id_and_issuer_metadata():
     service, session, instrument_id = _service_with_msft_history()
     try:
-        response = list_analysis_instruments(
+        response = list_instruments(
             service,
             scope="equity",
             universe=None,
             search="Microsoft",
+            sector=None,
+            industry=None,
+            venue=None,
             has_price_history=True,
             offset=0,
             limit=20,
@@ -108,7 +111,7 @@ def test_instrument_openapi_and_rarity_contracts_use_instrument_identity():
     schema = app.openapi()
 
     operation = schema["paths"]["/instruments"]["get"]
-    assert operation["operationId"] == "listAnalysisInstruments"
+    assert operation["operationId"] == "listInstruments"
     request = schema["components"]["schemas"]["RarityRequest"]["properties"]
     assert "instrument_id" in request
     assert "market" not in request

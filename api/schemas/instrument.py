@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 InstrumentScope = Literal["equity", "crypto_spot", "reference_rate"]
 
 
-class AnalysisInstrumentResponse(BaseModel):
+class InstrumentCatalogItemResponse(BaseModel):
     id: int
     symbol: str
     instrument_type: str
     company_id: int | None = None
     company_name: str | None = None
+    sector: str | None = None
+    industry: str | None = None
     venue_code: str | None = None
     venue_name: str | None = None
     base_asset: str | None = None
@@ -26,13 +28,25 @@ class AnalysisInstrumentResponse(BaseModel):
     first_session: date | None = None
     last_session: date | None = None
     stored_sessions: int
+    universes: list[str]
 
 
-class AnalysisInstrumentListResponse(BaseModel):
+class InstrumentFacetCountResponse(BaseModel):
+    value: str
+    count: int
+
+
+class InstrumentCatalogFacetsResponse(BaseModel):
+    all_count: int
+    sectors: list[InstrumentFacetCountResponse]
+
+
+class InstrumentCatalogResponse(BaseModel):
     total: int
     offset: int
     limit: int
-    instruments: list[AnalysisInstrumentResponse]
+    instruments: list[InstrumentCatalogItemResponse]
+    facets: InstrumentCatalogFacetsResponse
 
 
 class InstrumentPricePointResponse(BaseModel):

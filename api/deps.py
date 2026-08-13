@@ -14,7 +14,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
-from api.repositories.sqlalchemy_company_repository import SqlAlchemyCompanyRepository
 from api.repositories.sqlalchemy_company_catalog_repository import (
     SqlAlchemyCompanyCatalogRepository,
 )
@@ -46,7 +45,6 @@ from api.repositories.sqlalchemy_venue_repository import SqlAlchemyVenueReposito
 from api.repositories.sqlalchemy_universe_stats_repository import (
     SqlAlchemyUniverseStatsRepository,
 )
-from api.services.company_service import CompanyService
 from api.services.binance_spot_service import BinanceSpotService
 from api.services.crypto_instrument_service import CryptoInstrumentService
 from api.services.company_catalog_service import CompanyCatalogService
@@ -86,12 +84,6 @@ def get_db_transaction_session() -> Iterator[Session]:
     with Session(get_database_engine()) as session:
         with session.begin():
             yield session
-
-
-def get_company_service(
-    session: Annotated[Session, Depends(get_db_session)],
-) -> CompanyService:
-    return CompanyService(SqlAlchemyCompanyRepository(session))
 
 
 def get_company_catalog_service(

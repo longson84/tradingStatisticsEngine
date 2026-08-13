@@ -18,6 +18,9 @@ class AnalysisInstrumentQuery:
     scope: str | None = None
     universe: str | None = None
     search: str | None = None
+    sector: str | None = None
+    industry: str | None = None
+    venue_code: str | None = None
     has_price_history: bool = True
     offset: int = 0
     limit: int = 20
@@ -30,6 +33,8 @@ class AnalysisInstrumentRecord:
     instrument_type: str
     company_id: int | None
     company_name: str | None
+    sector: str | None
+    industry: str | None
     venue_code: str | None
     venue_name: str | None
     base_asset: str | None
@@ -40,12 +45,26 @@ class AnalysisInstrumentRecord:
     first_date: date | None
     last_date: date | None
     stored_sessions: int
+    universes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AnalysisInstrumentFacetCount:
+    value: str
+    count: int
+
+
+@dataclass(frozen=True)
+class AnalysisInstrumentFacets:
+    all_count: int
+    sectors: tuple[AnalysisInstrumentFacetCount, ...]
 
 
 @dataclass(frozen=True)
 class AnalysisInstrumentListResult:
     rows: tuple[AnalysisInstrumentRecord, ...]
     total: int
+    facets: AnalysisInstrumentFacets
 
 
 @dataclass(frozen=True)
