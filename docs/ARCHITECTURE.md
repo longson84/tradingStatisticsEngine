@@ -36,8 +36,9 @@ log; revise the main sections when the current architecture itself changes.
 
 1. Use stable internal instrument IDs. Ticker text is searchable and displayed,
    but it is not a permanent identity.
-2. Identify instruments by market as well as ticker. The same ticker text can
-   exist in more than one market.
+2. Resolve business operations by stable `instrument_id`. Venue and Symbol are
+   separate descriptive dimensions; equal symbol text may exist on different
+   venues without identifying the same instrument.
 3. Represent universe membership relationally. Never store a single `list`
    string on an instrument because one instrument may belong to many universes.
 4. Preserve missing data as `NULL`; missing financial values are not zero.
@@ -71,14 +72,14 @@ preventing `localhost` from resolving to a different IPv6 listener. The
 connection is selected through `DATABASE_URL`; committed credentials are
 development-only and must not be reused outside a local machine.
 
-Legacy company snapshots under `api/data/symbol_lists/` remain temporary
-rollback evidence until their final deletion phase, but they are no longer the
-supported bootstrap input. Live Universe adapters validate provider data in
-memory and synchronize PostgreSQL directly. All application company reads use
-PostgreSQL through the Company service. Exact-instrument Price History reads canonical daily bars from
-PostgreSQL, and price refreshes incrementally upsert the same table. Price
-coverage, refresh state, and fundamentals also use PostgreSQL. Benchmark
-history remains file-backed until its separate migration is verified.
+PostgreSQL is the sole persisted source for company and Universe business data.
+Live Universe adapters validate provider data in memory and synchronize the
+database directly; downloaded provider responses and normalized membership
+snapshots are not saved as JSON or CSV. All application company and membership
+reads use PostgreSQL services. Exact-instrument Price History and market-index
+benchmarks read canonical daily bars from PostgreSQL, and refreshes
+incrementally upsert the same tables. Price coverage, refresh state, and
+fundamentals also use PostgreSQL.
 
 ### Canonical company, asset, venue, and instrument schema
 
@@ -359,8 +360,9 @@ tests. Retain the saved symbol-list files and `api/symbol_list_data.py` solely a
 inputs to the idempotent PostgreSQL importer.
 
 Consequences: PostgreSQL is the single application read source for company and
-universe membership data. Company metadata no longer has two public contracts,
-while reproducible source snapshots remain available for re-import and audit.
+universe membership data. Company metadata no longer has two public contracts.
+This retained-snapshot recovery approach was later superseded by live audited
+Universe synchronization and PostgreSQL backups.
 
 ### 2026-08-03 — Canonical daily price-bar storage
 
@@ -1774,9 +1776,8 @@ Consequences: `alembic upgrade head` followed by
 without the legacy importer and without persisting a downloaded JSON, CSV, or
 provider response. Provider availability is an operational synchronization
 dependency, not an API-startup dependency; synchronization is never run during
-application startup. The checked-in symbol-list files and old importer remain
-only until the later file-layer removal phase confirms every remaining consumer
-has been cut over.
+application startup. Phase 7 subsequently removed the checked-in symbol-list
+files and old importer after every consumer had been cut over.
 
 ### 2026-08-13 — Metadata-driven Data Operations execution
 
@@ -1841,3 +1842,26 @@ freshness, and PostgreSQL backup model as equity, crypto, and reference-rate
 prices. SPX and VN30 can be refreshed independently, provider failure retains
 stored levels, and relative-strength reads are deterministic with respect to
 the database snapshot.
+
+### 2026-08-13 — Remove static company and Universe snapshots
+
+Context: live audited Universe synchronization, PostgreSQL-only membership
+reads, and exact-Instrument observation workflows had replaced every runtime
+use of the checked-in company-list JSON and CSV snapshots. Keeping the old
+importer and snapshot-count tests left a second, stale bootstrap path that could
+reconstruct different membership and metadata from the supported live sources.
+
+Decision: remove `api/data/symbol_lists`, its JSON/CSV reader, the static
+company importer, and its command. A clean database is populated only by
+Alembic followed by `scripts.sync_company_universes --all`. Tests use compact
+relational fixtures for catalog behavior and mocked provider snapshots for
+synchronization behavior; the normal suite never fetches live constituent
+data. Provider payloads are validated in memory and are not persisted as
+application JSON or CSV artifacts.
+
+Consequences: PostgreSQL is the sole company and Universe business-data store,
+and external sources are replaceable synchronization inputs. Recovery uses
+database backups and a new validated synchronization rather than checked-in
+membership snapshots. Current Universe membership remains a current snapshot
+and therefore carries survivorship bias until a separately designed,
+effective-dated membership-history source and schema are introduced.

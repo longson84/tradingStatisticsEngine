@@ -30,7 +30,8 @@ PostgreSQL
         +--> Companies API
         +--> Price refresh
         +--> Fundamentals refresh
-        +--> Market Health
+        +--> Instrument analysis
+        +--> Universe Stats
 ```
 
 The normalized relational tables are the canonical model:
@@ -110,9 +111,8 @@ remain normalized uppercase tickers.
 Status: issuer/instrument/symbol identity implemented in migration `0011`.
 Company metadata is no longer stored on instruments, stable identifiers can
 reconcile multiple share classes, and historical/source-specific symbols have
-a relational home. Existing API reads now join the company table. The static
-bootstrap importer populates this model only as a temporary bridge until Phase
-7 removes it.
+a relational home. Existing API reads now join the company table. Phase 7
+removed the temporary static bootstrap importer.
 
 Keep `companies`, `company_identifiers`, `instruments`, `instrument_symbols`,
 `universes`, and `universe_memberships`. Add the synchronization audit table in
@@ -185,16 +185,7 @@ Required invariants:
 
 Status: complete. `scripts.sync_company_universes` is now the supported live
 bootstrap with `--all`, `--market`, `--universe`, `--dry-run`, `--force`, and
-`--database-url`. The legacy importer remains only for the final file-layer
-retirement phase and is no longer documented as the setup path.
-
-Replace:
-
-```bash
-python -m scripts.import_companies
-```
-
-with:
+`--database-url`. It is the only supported company/Universe bootstrap command:
 
 ```bash
 python -m scripts.sync_company_universes --all
@@ -284,17 +275,14 @@ Add PostgreSQL integration coverage for:
 - Correct instrument active-state recalculation.
 - Price refresh obtaining symbols only from PostgreSQL.
 
-Replace JSON-dependent tests in:
-
-- `tests/api/test_company_import.py`
-- `tests/api/test_companies.py`
-- `tests/test_refresh_universe_prices.py`
-
-The normal test suite must mock provider calls and require no live network.
+JSON-dependent importer tests have been replaced by small relational catalog
+fixtures and mocked provider synchronization tests. The normal test suite
+requires no live network.
 
 ## Phase 7: Remove the File-Backed Layer
 
-After database parity and consumer-cutover validation, delete:
+Status: complete. Database parity and consumer-cutover validation allowed the
+following file-backed layer to be deleted:
 
 - `api/data/symbol_lists/*.json`
 - `api/data/symbol_lists/us2000_symbols.csv`
@@ -302,10 +290,10 @@ After database parity and consumer-cutover validation, delete:
 - `api/db/company_import.py`
 - `scripts/import_companies.py`
 
-Remove related imports, snapshot-count assertions, setup instructions, and
-obsolete architecture statements.
+Related imports, snapshot-count assertions, setup instructions, and obsolete
+architecture statements have also been removed.
 
-Update `docs/ARCHITECTURE.md` in the same change to declare:
+`docs/ARCHITECTURE.md` now declares:
 
 - PostgreSQL is the sole company and universe store.
 - External providers are synchronization inputs, not application read sources.
@@ -315,7 +303,7 @@ Update `docs/ARCHITECTURE.md` in the same change to declare:
 
 ## Completion Criteria
 
-The migration is complete when:
+Status: complete. The migration satisfies these criteria:
 
 - A clean database can be populated solely through the live synchronization
   command.

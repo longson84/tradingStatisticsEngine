@@ -17,11 +17,11 @@ def _instrument() -> Instrument:
             country_code="VN",
             sector="Information Technology",
             industry="Công nghệ và thông tin",
-            source="company_import",
+            source="test",
         ),
         ticker="FPT",
         currency="VND",
-        source="company_import",
+        source="test",
     )
 
 

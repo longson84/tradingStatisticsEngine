@@ -3,7 +3,6 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from api.db.company_import import import_company_universes
 from api.db.models import Base
 from api.main import app
 from api.repositories.sqlalchemy_company_catalog_repository import (
@@ -19,13 +18,14 @@ from api.routes.companies import list_companies
 from api.routes.instruments import list_instruments
 from api.services.company_catalog_service import CompanyCatalogService
 from api.services.instrument_analysis_service import InstrumentAnalysisService
+from tests.api.catalog_seed import seed_company_catalog
 
 
 def _services() -> tuple[CompanyCatalogService, InstrumentAnalysisService, Session]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
-    import_company_universes(engine)
     session = Session(engine)
+    seed_company_catalog(session)
     return (
         CompanyCatalogService(SqlAlchemyCompanyCatalogRepository(session)),
         InstrumentAnalysisService(
@@ -85,15 +85,14 @@ def test_company_catalog_uses_server_pagination_and_facets():
     finally:
         session.close()
 
-    assert first.total > 2700
+    assert first.total == 65
     assert len(first.companies) == 50
-    assert len(second.companies) == 50
+    assert len(second.companies) == 15
     assert {row.id for row in first.companies}.isdisjoint(
         row.id for row in second.companies
     )
     countries = {row.value: row.count for row in first.facets.countries}
-    assert countries["US"] > 2000
-    assert countries["VN"] > 300
+    assert countries == {"US": 59, "VN": 6}
     assert sum(countries.values()) == first.total
 
 

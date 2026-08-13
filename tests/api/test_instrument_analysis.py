@@ -5,7 +5,6 @@ from datetime import UTC, date, datetime, time
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from api.db.company_import import import_company_universes
 from api.db.models import (
     Asset,
     Base,
@@ -26,17 +25,14 @@ from api.routes.instruments import list_instruments
 from api.routes.instrument_history import instrument_price_history
 from api.services.fundamental_service import FundamentalsNotFoundError
 from api.services.instrument_analysis_service import InstrumentAnalysisService
+from tests.api.catalog_seed import seed_company_catalog
 
 
 def _service_with_msft_history():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
-    import_company_universes(engine)
     session = Session(engine)
-    instrument = session.scalar(select(Instrument).where(
-        Instrument.ticker == "MSFT",
-    ))
-    assert instrument is not None
+    instrument = seed_company_catalog(session)["MSFT"]
     fetched_at = datetime(2026, 8, 10, tzinfo=UTC)
     session.add(PriceBarCoverage(
         instrument_id=instrument.id,
