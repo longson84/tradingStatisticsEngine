@@ -47,6 +47,9 @@ from api.repositories.sqlalchemy_data_operation_repository import (
     SqlAlchemyDataOperationRepository,
 )
 from api.repositories.sqlalchemy_venue_repository import SqlAlchemyVenueRepository
+from api.repositories.sqlalchemy_universe_stats_repository import (
+    SqlAlchemyUniverseStatsRepository,
+)
 from api.services.company_service import CompanyService
 from api.services.binance_spot_service import BinanceSpotService
 from api.services.crypto_instrument_service import CryptoInstrumentService
@@ -59,6 +62,8 @@ from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
 from api.services.data_operation_service import DataOperationService
 from api.services.venue_service import VenueService
+from api.services.universe_stats_service import UniverseStatsService
+from api.services.new_low_analysis_service import NewLowAnalysisService
 from api.providers.vietnam_price_loader import VietnamPriceLoader
 
 from trading_engine.data.yfinance_loader import YFinanceLoader
@@ -183,6 +188,23 @@ def get_venue_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> VenueService:
     return VenueService(SqlAlchemyVenueRepository(session))
+
+
+def get_universe_stats_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> UniverseStatsService:
+    return UniverseStatsService(
+        SqlAlchemyDataOperationRepository(session),
+        SqlAlchemyUniverseStatsRepository(session),
+    )
+
+
+def get_new_low_analysis_service(
+    instrument_service: Annotated[
+        InstrumentAnalysisService, Depends(get_instrument_analysis_service)
+    ],
+) -> NewLowAnalysisService:
+    return NewLowAnalysisService(instrument_service)
 
 
 def get_loader(source: str) -> DataLoader:

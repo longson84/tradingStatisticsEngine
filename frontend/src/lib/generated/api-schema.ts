@@ -177,7 +177,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/events/new-low-episodes": {
+    "/events/new-low-deep": {
         parameters: {
             query?: never;
             header?: never;
@@ -186,8 +186,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** New Low Episodes Endpoint */
-        post: operations["new_low_episodes_endpoint_events_new_low_episodes_post"];
+        /** New Low Deep Endpoint */
+        post: operations["analyzeNewLowDeep"];
         delete?: never;
         options?: never;
         head?: never;
@@ -279,57 +279,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/fundamentals/growth": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Growth Fundamentals Endpoint */
-        post: operations["growth_fundamentals_endpoint_fundamentals_growth_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/fundamentals/growth/assessment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Growth Assessment Endpoint */
-        post: operations["growth_assessment_endpoint_fundamentals_growth_assessment_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/fundamentals/sec": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Sec Fundamentals Endpoint */
-        post: operations["sec_fundamentals_endpoint_fundamentals_sec_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/health": {
         parameters: {
             query?: never;
@@ -409,6 +358,23 @@ export interface paths {
         put?: never;
         /** Run Sweep */
         post: operations["run_sweep_sweep_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universe-stats/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Universe Stats */
+        post: operations["runUniverseStats"];
         delete?: never;
         options?: never;
         head?: never;
@@ -600,31 +566,6 @@ export interface components {
             start?: string | null;
             /** Strategy */
             strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
-        };
-        /** AnnualGrowthRowSchema */
-        AnnualGrowthRowSchema: {
-            /** Eps Yoy Pct */
-            eps_yoy_pct: number | null;
-            /** Fiscal Year */
-            fiscal_year: number;
-            /** Free Cash Flow Margin Pct */
-            free_cash_flow_margin_pct: number | null;
-            /** Free Cash Flow Yoy Pct */
-            free_cash_flow_yoy_pct: number | null;
-            /** Gross Profit Yoy Pct */
-            gross_profit_yoy_pct: number | null;
-            /** Net Income Yoy Pct */
-            net_income_yoy_pct: number | null;
-            /** Operating Income Yoy Pct */
-            operating_income_yoy_pct: number | null;
-            /** Operating Margin Pct */
-            operating_margin_pct: number | null;
-            /** Revenue */
-            revenue: number | null;
-            /** Revenue Yoy Pct */
-            revenue_yoy_pct: number | null;
-            /** Share Count Yoy Pct */
-            share_count_yoy_pct: number | null;
         };
         /** BacktestRequest */
         BacktestRequest: {
@@ -1158,269 +1099,6 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
-        /** FundamentalQuarterRowSchema */
-        FundamentalQuarterRowSchema: {
-            /** Capex */
-            capex: number | null;
-            /** Capex To Revenue Pct */
-            capex_to_revenue_pct: number | null;
-            /** Cash And Short Term Investments */
-            cash_and_short_term_investments: number | null;
-            /** Debt */
-            debt: number | null;
-            /** Diluted Shares */
-            diluted_shares: number | null;
-            /** Eps Diluted */
-            eps_diluted: number | null;
-            /** Eps Yoy Pct */
-            eps_yoy_pct: number | null;
-            /** Filed */
-            filed: string | null;
-            /** Filing Accepted At */
-            filing_accepted_at: string | null;
-            /** Filing Return Pct */
-            filing_return_pct: number | null;
-            /** Filing Timing */
-            filing_timing: string | null;
-            /** Free Cash Flow */
-            free_cash_flow: number | null;
-            /** Free Cash Flow Margin Pct */
-            free_cash_flow_margin_pct: number | null;
-            /** Free Cash Flow Yoy Pct */
-            free_cash_flow_yoy_pct: number | null;
-            /** Net Cash */
-            net_cash: number | null;
-            /** Net Income */
-            net_income: number | null;
-            /** Net Income Yoy Pct */
-            net_income_yoy_pct: number | null;
-            /** Operating Income */
-            operating_income: number | null;
-            /** Operating Income Yoy Pct */
-            operating_income_yoy_pct: number | null;
-            /** Operating Margin Pct */
-            operating_margin_pct: number | null;
-            /**
-             * Period End
-             * Format: date
-             */
-            period_end: string;
-            /** Reaction Session Date */
-            reaction_session_date: string | null;
-            /** Revenue */
-            revenue: number | null;
-            /** Revenue Qoq Pct */
-            revenue_qoq_pct: number | null;
-            /** Revenue Yoy Pct */
-            revenue_yoy_pct: number | null;
-        };
-        /** FundamentalRequest */
-        FundamentalRequest: {
-            /** Current Year */
-            current_year: number;
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock";
-            /** Symbol */
-            symbol: string;
-            /**
-             * Years
-             * @default 20
-             */
-            years: number;
-        };
-        /** FundamentalResponse */
-        FundamentalResponse: {
-            /** Cik */
-            cik: string;
-            /** Entity Name */
-            entity_name: string;
-            /** First Year */
-            first_year: number | null;
-            /** Last Year */
-            last_year: number | null;
-            /** Quarter Rows */
-            quarter_rows: components["schemas"]["FundamentalQuarterRowSchema"][];
-            /** Requested Current Year */
-            requested_current_year: number;
-            /** Rows */
-            rows: components["schemas"]["FundamentalRowSchema"][];
-            summary: components["schemas"]["FundamentalSummarySchema"];
-            /** Symbol */
-            symbol: string;
-        };
-        /** FundamentalRowSchema */
-        FundamentalRowSchema: {
-            /** Capex */
-            capex: number | null;
-            /** Capex To Revenue Pct */
-            capex_to_revenue_pct: number | null;
-            /** Cash And Short Term Investments */
-            cash_and_short_term_investments: number | null;
-            /** Debt */
-            debt: number | null;
-            /** Debt To Fcf */
-            debt_to_fcf: number | null;
-            /** Diluted Shares */
-            diluted_shares: number | null;
-            /** Eps Diluted */
-            eps_diluted: number | null;
-            /** Eps Yoy Pct */
-            eps_yoy_pct: number | null;
-            /** Equity */
-            equity: number | null;
-            /** Filed */
-            filed: string | null;
-            /** Filing Accepted At */
-            filing_accepted_at: string | null;
-            /** Filing Return Pct */
-            filing_return_pct: number | null;
-            /** Filing Timing */
-            filing_timing: string | null;
-            /** Fiscal Year */
-            fiscal_year: number;
-            /** Free Cash Flow */
-            free_cash_flow: number | null;
-            /** Free Cash Flow Margin Pct */
-            free_cash_flow_margin_pct: number | null;
-            /** Free Cash Flow Yoy Pct */
-            free_cash_flow_yoy_pct: number | null;
-            /** Gross Profit */
-            gross_profit: number | null;
-            /** Net Cash */
-            net_cash: number | null;
-            /** Net Income */
-            net_income: number | null;
-            /** Net Income Yoy Pct */
-            net_income_yoy_pct: number | null;
-            /** Operating Income */
-            operating_income: number | null;
-            /** Operating Income Yoy Pct */
-            operating_income_yoy_pct: number | null;
-            /** Operating Margin Pct */
-            operating_margin_pct: number | null;
-            /** Reaction Session Date */
-            reaction_session_date: string | null;
-            /** Revenue */
-            revenue: number | null;
-            /** Revenue Yoy Pct */
-            revenue_yoy_pct: number | null;
-        };
-        /** FundamentalSummarySchema */
-        FundamentalSummarySchema: {
-            /** Eps Cagr Pct */
-            eps_cagr_pct: number | null;
-            /** Free Cash Flow Cagr Pct */
-            free_cash_flow_cagr_pct: number | null;
-            /** Latest Capex To Revenue Pct */
-            latest_capex_to_revenue_pct: number | null;
-            /** Latest Debt To Fcf */
-            latest_debt_to_fcf: number | null;
-            /** Latest Fcf Margin Pct */
-            latest_fcf_margin_pct: number | null;
-            /** Latest Net Cash */
-            latest_net_cash: number | null;
-            /** Latest Operating Margin Pct */
-            latest_operating_margin_pct: number | null;
-            /** Net Income Cagr Pct */
-            net_income_cagr_pct: number | null;
-            /** Operating Income Cagr Pct */
-            operating_income_cagr_pct: number | null;
-            /** Revenue Cagr Pct */
-            revenue_cagr_pct: number | null;
-            /** Share Count Change Pct */
-            share_count_change_pct: number | null;
-        };
-        /** GrowthAnalysisResponse */
-        GrowthAnalysisResponse: {
-            /** Annual Metrics */
-            annual_metrics: components["schemas"]["GrowthMetricSnapshotSchema"][];
-            /** Annual Rows */
-            annual_rows: components["schemas"]["AnnualGrowthRowSchema"][];
-            /** Cik */
-            cik: string;
-            /** Entity Name */
-            entity_name: string;
-            /** First Year */
-            first_year: number | null;
-            /** Last Year */
-            last_year: number | null;
-            /** Quarterly Metrics */
-            quarterly_metrics: components["schemas"]["QuarterlyGrowthSnapshotSchema"][];
-            /** Quarterly Rows */
-            quarterly_rows: components["schemas"]["QuarterlyGrowthRowSchema"][];
-            /** Requested Current Year */
-            requested_current_year: number;
-            summary: components["schemas"]["GrowthQualitySummarySchema"];
-            /** Symbol */
-            symbol: string;
-        };
-        /** GrowthAssessmentRequest */
-        GrowthAssessmentRequest: {
-            growth: components["schemas"]["GrowthAnalysisResponse"];
-        };
-        /** GrowthAssessmentResponse */
-        GrowthAssessmentResponse: {
-            /** Bad Things */
-            bad_things: string[];
-            /** Disclaimer */
-            disclaimer: string;
-            /** Good Things */
-            good_things: string[];
-            /** Investment Considerations */
-            investment_considerations: string[];
-            /** Model */
-            model: string;
-            /** Opportunities */
-            opportunities: string[];
-            /** Prompt */
-            prompt: string;
-            /** Provider */
-            provider: string;
-            /** Risks */
-            risks: string[];
-        };
-        /** GrowthMetricSnapshotSchema */
-        GrowthMetricSnapshotSchema: {
-            /** Cagr 10Y Pct */
-            cagr_10y_pct: number | null;
-            /** Cagr 3Y Pct */
-            cagr_3y_pct: number | null;
-            /** Cagr 5Y Pct */
-            cagr_5y_pct: number | null;
-            /** Latest Margin Pct */
-            latest_margin_pct: number | null;
-            /** Latest Value */
-            latest_value: number | null;
-            /** Latest Yoy Pct */
-            latest_yoy_pct: number | null;
-            /** Metric */
-            metric: string;
-        };
-        /** GrowthQualitySummarySchema */
-        GrowthQualitySummarySchema: {
-            /** Eps Cagr 5Y Pct */
-            eps_cagr_5y_pct: number | null;
-            /** Fcf Margin Change 5Y Pct */
-            fcf_margin_change_5y_pct: number | null;
-            /** Free Cash Flow Cagr 5Y Pct */
-            free_cash_flow_cagr_5y_pct: number | null;
-            /** Latest Fcf Margin Pct */
-            latest_fcf_margin_pct: number | null;
-            /** Latest Operating Margin Pct */
-            latest_operating_margin_pct: number | null;
-            /** Operating Income Cagr 5Y Pct */
-            operating_income_cagr_5y_pct: number | null;
-            /** Operating Margin Change 5Y Pct */
-            operating_margin_change_5y_pct: number | null;
-            /** Revenue Cagr 5Y Pct */
-            revenue_cagr_5y_pct: number | null;
-            /** Share Count Change 5Y Pct */
-            share_count_change_5y_pct: number | null;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1694,6 +1372,31 @@ export interface components {
             /** Start Price */
             start_price: number;
         };
+        /** NewLowDeepRequest */
+        NewLowDeepRequest: {
+            /** Forward Horizons */
+            forward_horizons?: number[];
+            /** Instrument Id */
+            instrument_id: number;
+            /**
+             * Lookback Sessions
+             * @default 50
+             */
+            lookback_sessions: number;
+            /**
+             * Quick Recovery Sessions
+             * @default 2
+             */
+            quick_recovery_sessions: number;
+        };
+        /** NewLowDeepResponse */
+        NewLowDeepResponse: {
+            analysis: components["schemas"]["NewLowSymbolResultSchema"];
+            /** Formula Version */
+            formula_version: string;
+            instrument: components["schemas"]["NewLowInstrumentIdentitySchema"];
+            price_history: components["schemas"]["NewLowPriceHistoryStatusSchema"];
+        };
         /** NewLowEpisodeSchema */
         NewLowEpisodeSchema: {
             /** Days To Low */
@@ -1733,35 +1436,6 @@ export interface components {
             /** Start Price */
             start_price: number;
         };
-        /** NewLowEpisodesRequest */
-        NewLowEpisodesRequest: {
-            /**
-             * Data Source
-             * @default yfinance
-             * @enum {string}
-             */
-            data_source: "yfinance" | "vnstock" | "csv";
-            date_range: components["schemas"]["DateRange"];
-            /** Forward Horizons */
-            forward_horizons?: number[];
-            /**
-             * Lookback Sessions
-             * @default 50
-             */
-            lookback_sessions: number;
-            /**
-             * Quick Recovery Sessions
-             * @default 2
-             */
-            quick_recovery_sessions: number;
-            /** Symbols */
-            symbols: string[];
-        };
-        /** NewLowEpisodesResponse */
-        NewLowEpisodesResponse: {
-            /** Results */
-            results: components["schemas"]["NewLowSymbolResultSchema"][];
-        };
         /** NewLowForwardStatsSchema */
         NewLowForwardStatsSchema: {
             /** Count */
@@ -1776,6 +1450,53 @@ export interface components {
             return_percentiles: {
                 [key: string]: number;
             };
+        };
+        /** NewLowInstrumentIdentitySchema */
+        NewLowInstrumentIdentitySchema: {
+            /** Base Asset */
+            base_asset?: string | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Currency */
+            currency: string;
+            /** Id */
+            id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Quote Asset */
+            quote_asset?: string | null;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
+        /** NewLowPriceHistoryStatusSchema */
+        NewLowPriceHistoryStatusSchema: {
+            /**
+             * Data Last Session
+             * Format: date
+             */
+            data_last_session: string;
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
+            /**
+             * First Session
+             * Format: date
+             */
+            first_session: string;
+            /** Is Stale */
+            is_stale: boolean;
+            /** Price Basis */
+            price_basis: string;
+            /** Source */
+            source: string;
+            /** Stored Sessions */
+            stored_sessions: number;
         };
         /** NewLowSymbolResultSchema */
         NewLowSymbolResultSchema: {
@@ -2040,49 +1761,6 @@ export interface components {
              * @constant
              */
             type: "price_vs_ma";
-        };
-        /** QuarterlyGrowthRowSchema */
-        QuarterlyGrowthRowSchema: {
-            /** Eps Yoy Pct */
-            eps_yoy_pct: number | null;
-            /** Free Cash Flow Margin Pct */
-            free_cash_flow_margin_pct: number | null;
-            /** Free Cash Flow Yoy Pct */
-            free_cash_flow_yoy_pct: number | null;
-            /** Net Income Yoy Pct */
-            net_income_yoy_pct: number | null;
-            /** Operating Income Yoy Pct */
-            operating_income_yoy_pct: number | null;
-            /** Operating Margin Pct */
-            operating_margin_pct: number | null;
-            /**
-             * Period End
-             * Format: date
-             */
-            period_end: string;
-            /** Revenue */
-            revenue: number | null;
-            /** Revenue Qoq Pct */
-            revenue_qoq_pct: number | null;
-            /** Revenue Yoy Pct */
-            revenue_yoy_pct: number | null;
-        };
-        /** QuarterlyGrowthSnapshotSchema */
-        QuarterlyGrowthSnapshotSchema: {
-            /** Average 4Q Yoy Pct */
-            average_4q_yoy_pct: number | null;
-            /** Direction */
-            direction: string | null;
-            /** Latest Qoq Pct */
-            latest_qoq_pct: number | null;
-            /** Latest Value */
-            latest_value: number | null;
-            /** Latest Yoy Pct */
-            latest_yoy_pct: number | null;
-            /** Metric */
-            metric: string;
-            /** Previous Yoy Pct */
-            previous_yoy_pct: number | null;
         };
         /** RarityAnalysisResponse */
         RarityAnalysisResponse: {
@@ -2614,6 +2292,83 @@ export interface components {
         UniverseListResponse: {
             /** Universes */
             universes: components["schemas"]["UniverseCatalogResponse"][];
+        };
+        /** UniverseStatsErrorResponse */
+        UniverseStatsErrorResponse: {
+            /** Message */
+            message: string;
+            /** Universe Code */
+            universe_code: string;
+        };
+        /** UniverseStatsPointResponse */
+        UniverseStatsPointResponse: {
+            /** Coverage Pct */
+            coverage_pct: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Eligible Count */
+            eligible_count: number;
+            /** Median Distance From High */
+            median_distance_from_high: number;
+            /** Median Distance From Low */
+            median_distance_from_low: number;
+        };
+        /** UniverseStatsRequest */
+        UniverseStatsRequest: {
+            /** Universe Codes */
+            universe_codes: string[];
+        };
+        /** UniverseStatsResponse */
+        UniverseStatsResponse: {
+            /** Errors */
+            errors: components["schemas"]["UniverseStatsErrorResponse"][];
+            /** Formula Version */
+            formula_version: string;
+            /** History Years */
+            history_years: number;
+            /** Membership Mode */
+            membership_mode: string;
+            /** Minimum Coverage Pct */
+            minimum_coverage_pct: number;
+            /** Results */
+            results: components["schemas"]["UniverseStatsResultResponse"][];
+            /** Window */
+            window: number;
+        };
+        /** UniverseStatsResultResponse */
+        UniverseStatsResultResponse: {
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /**
+             * First Date
+             * Format: date
+             */
+            first_date: string;
+            /** Instruments With History */
+            instruments_with_history: number;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /** Member Count */
+            member_count: number;
+            /** Missing History Count */
+            missing_history_count: number;
+            /** Points */
+            points: components["schemas"]["UniverseStatsPointResponse"][];
+            /** Sources */
+            sources: string[];
+            /** Universe Code */
+            universe_code: string;
+            /** Universe Name */
+            universe_name: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3251,7 +3006,7 @@ export interface operations {
             };
         };
     };
-    new_low_episodes_endpoint_events_new_low_episodes_post: {
+    analyzeNewLowDeep: {
         parameters: {
             query?: never;
             header?: never;
@@ -3260,7 +3015,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewLowEpisodesRequest"];
+                "application/json": components["schemas"]["NewLowDeepRequest"];
             };
         };
         responses: {
@@ -3270,7 +3025,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NewLowEpisodesResponse"];
+                    "application/json": components["schemas"]["NewLowDeepResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3449,105 +3204,6 @@ export interface operations {
             };
         };
     };
-    growth_fundamentals_endpoint_fundamentals_growth_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FundamentalRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GrowthAnalysisResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    growth_assessment_endpoint_fundamentals_growth_assessment_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GrowthAssessmentRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GrowthAssessmentResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    sec_fundamentals_endpoint_fundamentals_sec_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FundamentalRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FundamentalResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -3693,6 +3349,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runUniverseStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniverseStatsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniverseStatsResponse"];
                 };
             };
             /** @description Validation Error */

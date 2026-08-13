@@ -3,10 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { FactorsPage } from "@/pages/FactorsPage"
 import { PredefinedFactorsRarityPage } from "@/pages/PredefinedFactorsRarityPage"
 import { SmaStrategyPage } from "@/pages/SmaStrategyPage"
-import { NewLowComparisonPage } from "@/pages/NewLowComparisonPage"
 import { NewLowDeepPage } from "@/pages/NewLowDeepPage"
-import { FundamentalsPage } from "@/pages/FundamentalsPage"
-import { GrowthDashboardPage } from "@/pages/GrowthDashboardPage"
 import { InstrumentsPage } from "@/pages/InstrumentsPage"
 import { CompaniesPage } from "@/pages/CompaniesPage"
 import { DataOperationsPage } from "@/pages/DataOperationsPage"
@@ -16,6 +13,7 @@ import { CryptoMarketsPage } from "@/pages/CryptoMarketsPage"
 import { DataModelPage } from "@/pages/DataModelPage"
 import { ReferenceRatesPage } from "@/pages/ReferenceRatesPage"
 import { VenuesPage } from "@/pages/VenuesPage"
+import { UniverseStatsPage } from "@/pages/UniverseStatsPage"
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -37,10 +35,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/factor-rarity" replace />} />
           <Route path="/factor-rarity" element={<FactorsPage />} />
           <Route path="/factor-rarity/predefined" element={<PredefinedFactorsRarityPage />} />
-          <Route path="/events/new-low" element={<NewLowComparisonPage />} />
+          <Route path="/universe-stats" element={<UniverseStatsPage />} />
           <Route path="/events/new-low/deep" element={<NewLowDeepPage />} />
-          <Route path="/fundamentals" element={<FundamentalsPage />} />
-          <Route path="/company/growth" element={<GrowthDashboardPage />} />
           <Route path="/instruments" element={<InstrumentsPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/company/lists" element={<LegacyInstrumentsRedirect />} />

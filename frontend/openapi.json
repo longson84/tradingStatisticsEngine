@@ -225,139 +225,6 @@
         "title": "AnalyzeRequest",
         "type": "object"
       },
-      "AnnualGrowthRowSchema": {
-        "properties": {
-          "eps_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Yoy Pct"
-          },
-          "fiscal_year": {
-            "title": "Fiscal Year",
-            "type": "integer"
-          },
-          "free_cash_flow_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Margin Pct"
-          },
-          "free_cash_flow_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Yoy Pct"
-          },
-          "gross_profit_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gross Profit Yoy Pct"
-          },
-          "net_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income Yoy Pct"
-          },
-          "operating_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Yoy Pct"
-          },
-          "operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Margin Pct"
-          },
-          "revenue": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue"
-          },
-          "revenue_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Yoy Pct"
-          },
-          "share_count_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share Count Yoy Pct"
-          }
-        },
-        "required": [
-          "fiscal_year",
-          "revenue",
-          "revenue_yoy_pct",
-          "gross_profit_yoy_pct",
-          "operating_income_yoy_pct",
-          "net_income_yoy_pct",
-          "free_cash_flow_yoy_pct",
-          "eps_yoy_pct",
-          "share_count_yoy_pct",
-          "operating_margin_pct",
-          "free_cash_flow_margin_pct"
-        ],
-        "title": "AnnualGrowthRowSchema",
-        "type": "object"
-      },
       "BacktestRequest": {
         "properties": {
           "data_source": {
@@ -1821,1256 +1688,6 @@
         "title": "FactorRequest",
         "type": "object"
       },
-      "FundamentalQuarterRowSchema": {
-        "properties": {
-          "capex": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capex"
-          },
-          "capex_to_revenue_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capex To Revenue Pct"
-          },
-          "cash_and_short_term_investments": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cash And Short Term Investments"
-          },
-          "debt": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Debt"
-          },
-          "diluted_shares": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Diluted Shares"
-          },
-          "eps_diluted": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Diluted"
-          },
-          "eps_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Yoy Pct"
-          },
-          "filed": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filed"
-          },
-          "filing_accepted_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Accepted At"
-          },
-          "filing_return_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Return Pct"
-          },
-          "filing_timing": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Timing"
-          },
-          "free_cash_flow": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow"
-          },
-          "free_cash_flow_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Margin Pct"
-          },
-          "free_cash_flow_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Yoy Pct"
-          },
-          "net_cash": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Cash"
-          },
-          "net_income": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income"
-          },
-          "net_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income Yoy Pct"
-          },
-          "operating_income": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income"
-          },
-          "operating_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Yoy Pct"
-          },
-          "operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Margin Pct"
-          },
-          "period_end": {
-            "format": "date",
-            "title": "Period End",
-            "type": "string"
-          },
-          "reaction_session_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reaction Session Date"
-          },
-          "revenue": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue"
-          },
-          "revenue_qoq_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Qoq Pct"
-          },
-          "revenue_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Yoy Pct"
-          }
-        },
-        "required": [
-          "period_end",
-          "filed",
-          "filing_accepted_at",
-          "filing_timing",
-          "reaction_session_date",
-          "filing_return_pct",
-          "revenue",
-          "revenue_yoy_pct",
-          "revenue_qoq_pct",
-          "operating_income",
-          "operating_income_yoy_pct",
-          "operating_margin_pct",
-          "net_income",
-          "net_income_yoy_pct",
-          "free_cash_flow",
-          "free_cash_flow_yoy_pct",
-          "free_cash_flow_margin_pct",
-          "capex",
-          "capex_to_revenue_pct",
-          "cash_and_short_term_investments",
-          "debt",
-          "net_cash",
-          "eps_diluted",
-          "eps_yoy_pct",
-          "diluted_shares"
-        ],
-        "title": "FundamentalQuarterRowSchema",
-        "type": "object"
-      },
-      "FundamentalRequest": {
-        "properties": {
-          "current_year": {
-            "maximum": 2100.0,
-            "minimum": 1990.0,
-            "title": "Current Year",
-            "type": "integer"
-          },
-          "data_source": {
-            "default": "yfinance",
-            "enum": [
-              "yfinance",
-              "vnstock"
-            ],
-            "title": "Data Source",
-            "type": "string"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "years": {
-            "default": 20,
-            "maximum": 40.0,
-            "minimum": 1.0,
-            "title": "Years",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "symbol",
-          "current_year"
-        ],
-        "title": "FundamentalRequest",
-        "type": "object"
-      },
-      "FundamentalResponse": {
-        "properties": {
-          "cik": {
-            "title": "Cik",
-            "type": "string"
-          },
-          "entity_name": {
-            "title": "Entity Name",
-            "type": "string"
-          },
-          "first_year": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Year"
-          },
-          "last_year": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Year"
-          },
-          "quarter_rows": {
-            "items": {
-              "$ref": "#/components/schemas/FundamentalQuarterRowSchema"
-            },
-            "title": "Quarter Rows",
-            "type": "array"
-          },
-          "requested_current_year": {
-            "title": "Requested Current Year",
-            "type": "integer"
-          },
-          "rows": {
-            "items": {
-              "$ref": "#/components/schemas/FundamentalRowSchema"
-            },
-            "title": "Rows",
-            "type": "array"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/FundamentalSummarySchema"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "cik",
-          "entity_name",
-          "requested_current_year",
-          "first_year",
-          "last_year",
-          "rows",
-          "quarter_rows",
-          "summary"
-        ],
-        "title": "FundamentalResponse",
-        "type": "object"
-      },
-      "FundamentalRowSchema": {
-        "properties": {
-          "capex": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capex"
-          },
-          "capex_to_revenue_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capex To Revenue Pct"
-          },
-          "cash_and_short_term_investments": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cash And Short Term Investments"
-          },
-          "debt": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Debt"
-          },
-          "debt_to_fcf": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Debt To Fcf"
-          },
-          "diluted_shares": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Diluted Shares"
-          },
-          "eps_diluted": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Diluted"
-          },
-          "eps_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Yoy Pct"
-          },
-          "equity": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Equity"
-          },
-          "filed": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filed"
-          },
-          "filing_accepted_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Accepted At"
-          },
-          "filing_return_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Return Pct"
-          },
-          "filing_timing": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filing Timing"
-          },
-          "fiscal_year": {
-            "title": "Fiscal Year",
-            "type": "integer"
-          },
-          "free_cash_flow": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow"
-          },
-          "free_cash_flow_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Margin Pct"
-          },
-          "free_cash_flow_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Yoy Pct"
-          },
-          "gross_profit": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gross Profit"
-          },
-          "net_cash": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Cash"
-          },
-          "net_income": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income"
-          },
-          "net_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income Yoy Pct"
-          },
-          "operating_income": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income"
-          },
-          "operating_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Yoy Pct"
-          },
-          "operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Margin Pct"
-          },
-          "reaction_session_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reaction Session Date"
-          },
-          "revenue": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue"
-          },
-          "revenue_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Yoy Pct"
-          }
-        },
-        "required": [
-          "fiscal_year",
-          "filed",
-          "filing_accepted_at",
-          "filing_timing",
-          "reaction_session_date",
-          "filing_return_pct",
-          "revenue",
-          "revenue_yoy_pct",
-          "gross_profit",
-          "operating_income",
-          "operating_income_yoy_pct",
-          "operating_margin_pct",
-          "net_income",
-          "net_income_yoy_pct",
-          "free_cash_flow",
-          "free_cash_flow_yoy_pct",
-          "free_cash_flow_margin_pct",
-          "capex",
-          "capex_to_revenue_pct",
-          "cash_and_short_term_investments",
-          "debt",
-          "net_cash",
-          "debt_to_fcf",
-          "equity",
-          "eps_diluted",
-          "eps_yoy_pct",
-          "diluted_shares"
-        ],
-        "title": "FundamentalRowSchema",
-        "type": "object"
-      },
-      "FundamentalSummarySchema": {
-        "properties": {
-          "eps_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Cagr Pct"
-          },
-          "free_cash_flow_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Cagr Pct"
-          },
-          "latest_capex_to_revenue_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Capex To Revenue Pct"
-          },
-          "latest_debt_to_fcf": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Debt To Fcf"
-          },
-          "latest_fcf_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Fcf Margin Pct"
-          },
-          "latest_net_cash": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Net Cash"
-          },
-          "latest_operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Operating Margin Pct"
-          },
-          "net_income_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income Cagr Pct"
-          },
-          "operating_income_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Cagr Pct"
-          },
-          "revenue_cagr_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Cagr Pct"
-          },
-          "share_count_change_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share Count Change Pct"
-          }
-        },
-        "required": [
-          "revenue_cagr_pct",
-          "operating_income_cagr_pct",
-          "net_income_cagr_pct",
-          "free_cash_flow_cagr_pct",
-          "eps_cagr_pct",
-          "latest_operating_margin_pct",
-          "latest_fcf_margin_pct",
-          "latest_capex_to_revenue_pct",
-          "latest_debt_to_fcf",
-          "latest_net_cash",
-          "share_count_change_pct"
-        ],
-        "title": "FundamentalSummarySchema",
-        "type": "object"
-      },
-      "GrowthAnalysisResponse": {
-        "properties": {
-          "annual_metrics": {
-            "items": {
-              "$ref": "#/components/schemas/GrowthMetricSnapshotSchema"
-            },
-            "title": "Annual Metrics",
-            "type": "array"
-          },
-          "annual_rows": {
-            "items": {
-              "$ref": "#/components/schemas/AnnualGrowthRowSchema"
-            },
-            "title": "Annual Rows",
-            "type": "array"
-          },
-          "cik": {
-            "title": "Cik",
-            "type": "string"
-          },
-          "entity_name": {
-            "title": "Entity Name",
-            "type": "string"
-          },
-          "first_year": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Year"
-          },
-          "last_year": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Year"
-          },
-          "quarterly_metrics": {
-            "items": {
-              "$ref": "#/components/schemas/QuarterlyGrowthSnapshotSchema"
-            },
-            "title": "Quarterly Metrics",
-            "type": "array"
-          },
-          "quarterly_rows": {
-            "items": {
-              "$ref": "#/components/schemas/QuarterlyGrowthRowSchema"
-            },
-            "title": "Quarterly Rows",
-            "type": "array"
-          },
-          "requested_current_year": {
-            "title": "Requested Current Year",
-            "type": "integer"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/GrowthQualitySummarySchema"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "cik",
-          "entity_name",
-          "requested_current_year",
-          "first_year",
-          "last_year",
-          "annual_metrics",
-          "quarterly_metrics",
-          "annual_rows",
-          "quarterly_rows",
-          "summary"
-        ],
-        "title": "GrowthAnalysisResponse",
-        "type": "object"
-      },
-      "GrowthAssessmentRequest": {
-        "properties": {
-          "growth": {
-            "$ref": "#/components/schemas/GrowthAnalysisResponse"
-          }
-        },
-        "required": [
-          "growth"
-        ],
-        "title": "GrowthAssessmentRequest",
-        "type": "object"
-      },
-      "GrowthAssessmentResponse": {
-        "properties": {
-          "bad_things": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Bad Things",
-            "type": "array"
-          },
-          "disclaimer": {
-            "title": "Disclaimer",
-            "type": "string"
-          },
-          "good_things": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Good Things",
-            "type": "array"
-          },
-          "investment_considerations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Investment Considerations",
-            "type": "array"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          },
-          "opportunities": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Opportunities",
-            "type": "array"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "provider": {
-            "title": "Provider",
-            "type": "string"
-          },
-          "risks": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Risks",
-            "type": "array"
-          }
-        },
-        "required": [
-          "provider",
-          "model",
-          "good_things",
-          "bad_things",
-          "risks",
-          "opportunities",
-          "investment_considerations",
-          "disclaimer",
-          "prompt"
-        ],
-        "title": "GrowthAssessmentResponse",
-        "type": "object"
-      },
-      "GrowthMetricSnapshotSchema": {
-        "properties": {
-          "cagr_10y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cagr 10Y Pct"
-          },
-          "cagr_3y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cagr 3Y Pct"
-          },
-          "cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cagr 5Y Pct"
-          },
-          "latest_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Margin Pct"
-          },
-          "latest_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Value"
-          },
-          "latest_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Yoy Pct"
-          },
-          "metric": {
-            "title": "Metric",
-            "type": "string"
-          }
-        },
-        "required": [
-          "metric",
-          "latest_value",
-          "latest_yoy_pct",
-          "cagr_3y_pct",
-          "cagr_5y_pct",
-          "cagr_10y_pct",
-          "latest_margin_pct"
-        ],
-        "title": "GrowthMetricSnapshotSchema",
-        "type": "object"
-      },
-      "GrowthQualitySummarySchema": {
-        "properties": {
-          "eps_cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Cagr 5Y Pct"
-          },
-          "fcf_margin_change_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fcf Margin Change 5Y Pct"
-          },
-          "free_cash_flow_cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Cagr 5Y Pct"
-          },
-          "latest_fcf_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Fcf Margin Pct"
-          },
-          "latest_operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Operating Margin Pct"
-          },
-          "operating_income_cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Cagr 5Y Pct"
-          },
-          "operating_margin_change_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Margin Change 5Y Pct"
-          },
-          "revenue_cagr_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Cagr 5Y Pct"
-          },
-          "share_count_change_5y_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share Count Change 5Y Pct"
-          }
-        },
-        "required": [
-          "revenue_cagr_5y_pct",
-          "operating_income_cagr_5y_pct",
-          "free_cash_flow_cagr_5y_pct",
-          "eps_cagr_5y_pct",
-          "latest_operating_margin_pct",
-          "latest_fcf_margin_pct",
-          "operating_margin_change_5y_pct",
-          "fcf_margin_change_5y_pct",
-          "share_count_change_5y_pct"
-        ],
-        "title": "GrowthQualitySummarySchema",
-        "type": "object"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4063,6 +2680,66 @@
         "title": "NewLowCurrentEpisodeSchema",
         "type": "object"
       },
+      "NewLowDeepRequest": {
+        "properties": {
+          "forward_horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Forward Horizons",
+            "type": "array"
+          },
+          "instrument_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "lookback_sessions": {
+            "default": 50,
+            "minimum": 2.0,
+            "title": "Lookback Sessions",
+            "type": "integer"
+          },
+          "quick_recovery_sessions": {
+            "default": 2,
+            "minimum": 0.0,
+            "title": "Quick Recovery Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instrument_id"
+        ],
+        "title": "NewLowDeepRequest",
+        "type": "object"
+      },
+      "NewLowDeepResponse": {
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/NewLowSymbolResultSchema"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "instrument": {
+            "$ref": "#/components/schemas/NewLowInstrumentIdentitySchema"
+          },
+          "price_history": {
+            "$ref": "#/components/schemas/NewLowPriceHistoryStatusSchema"
+          }
+        },
+        "required": [
+          "formula_version",
+          "instrument",
+          "price_history",
+          "analysis"
+        ],
+        "title": "NewLowDeepResponse",
+        "type": "object"
+      },
       "NewLowEpisodeSchema": {
         "properties": {
           "days_to_low": {
@@ -4173,72 +2850,6 @@
         "title": "NewLowEpisodeSchema",
         "type": "object"
       },
-      "NewLowEpisodesRequest": {
-        "properties": {
-          "data_source": {
-            "default": "yfinance",
-            "enum": [
-              "yfinance",
-              "vnstock",
-              "csv"
-            ],
-            "title": "Data Source",
-            "type": "string"
-          },
-          "date_range": {
-            "$ref": "#/components/schemas/DateRange"
-          },
-          "forward_horizons": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Forward Horizons",
-            "type": "array"
-          },
-          "lookback_sessions": {
-            "default": 50,
-            "minimum": 2.0,
-            "title": "Lookback Sessions",
-            "type": "integer"
-          },
-          "quick_recovery_sessions": {
-            "default": 2,
-            "minimum": 0.0,
-            "title": "Quick Recovery Sessions",
-            "type": "integer"
-          },
-          "symbols": {
-            "items": {
-              "type": "string"
-            },
-            "minItems": 1,
-            "title": "Symbols",
-            "type": "array"
-          }
-        },
-        "required": [
-          "symbols",
-          "date_range"
-        ],
-        "title": "NewLowEpisodesRequest",
-        "type": "object"
-      },
-      "NewLowEpisodesResponse": {
-        "properties": {
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/NewLowSymbolResultSchema"
-            },
-            "title": "Results",
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "title": "NewLowEpisodesResponse",
-        "type": "object"
-      },
       "NewLowForwardStatsSchema": {
         "properties": {
           "count": {
@@ -4271,6 +2882,135 @@
           "max_down_percentiles"
         ],
         "title": "NewLowForwardStatsSchema",
+        "type": "object"
+      },
+      "NewLowInstrumentIdentitySchema": {
+        "properties": {
+          "base_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Asset"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "quote_asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Asset"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "instrument_type",
+          "currency"
+        ],
+        "title": "NewLowInstrumentIdentitySchema",
+        "type": "object"
+      },
+      "NewLowPriceHistoryStatusSchema": {
+        "properties": {
+          "data_last_session": {
+            "format": "date",
+            "title": "Data Last Session",
+            "type": "string"
+          },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
+          },
+          "first_session": {
+            "format": "date",
+            "title": "First Session",
+            "type": "string"
+          },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "price_basis": {
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "stored_sessions": {
+            "title": "Stored Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source",
+          "price_basis",
+          "first_session",
+          "data_last_session",
+          "expected_last_session",
+          "stored_sessions",
+          "is_stale"
+        ],
+        "title": "NewLowPriceHistoryStatusSchema",
         "type": "object"
       },
       "NewLowSymbolResultSchema": {
@@ -4936,213 +3676,6 @@
           }
         },
         "title": "PriceVsMAConfig",
-        "type": "object"
-      },
-      "QuarterlyGrowthRowSchema": {
-        "properties": {
-          "eps_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eps Yoy Pct"
-          },
-          "free_cash_flow_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Margin Pct"
-          },
-          "free_cash_flow_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Free Cash Flow Yoy Pct"
-          },
-          "net_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Income Yoy Pct"
-          },
-          "operating_income_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Income Yoy Pct"
-          },
-          "operating_margin_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operating Margin Pct"
-          },
-          "period_end": {
-            "format": "date",
-            "title": "Period End",
-            "type": "string"
-          },
-          "revenue": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue"
-          },
-          "revenue_qoq_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Qoq Pct"
-          },
-          "revenue_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revenue Yoy Pct"
-          }
-        },
-        "required": [
-          "period_end",
-          "revenue",
-          "revenue_yoy_pct",
-          "revenue_qoq_pct",
-          "operating_income_yoy_pct",
-          "net_income_yoy_pct",
-          "free_cash_flow_yoy_pct",
-          "eps_yoy_pct",
-          "operating_margin_pct",
-          "free_cash_flow_margin_pct"
-        ],
-        "title": "QuarterlyGrowthRowSchema",
-        "type": "object"
-      },
-      "QuarterlyGrowthSnapshotSchema": {
-        "properties": {
-          "average_4q_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average 4Q Yoy Pct"
-          },
-          "direction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Direction"
-          },
-          "latest_qoq_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Qoq Pct"
-          },
-          "latest_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Value"
-          },
-          "latest_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Yoy Pct"
-          },
-          "metric": {
-            "title": "Metric",
-            "type": "string"
-          },
-          "previous_yoy_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Previous Yoy Pct"
-          }
-        },
-        "required": [
-          "metric",
-          "latest_value",
-          "latest_yoy_pct",
-          "previous_yoy_pct",
-          "average_4q_yoy_pct",
-          "latest_qoq_pct",
-          "direction"
-        ],
-        "title": "QuarterlyGrowthSnapshotSchema",
         "type": "object"
       },
       "RarityAnalysisResponse": {
@@ -6619,6 +5152,192 @@
           "universes"
         ],
         "title": "UniverseListResponse",
+        "type": "object"
+      },
+      "UniverseStatsErrorResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "universe_code": {
+            "title": "Universe Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "universe_code",
+          "message"
+        ],
+        "title": "UniverseStatsErrorResponse",
+        "type": "object"
+      },
+      "UniverseStatsPointResponse": {
+        "properties": {
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "median_distance_from_high": {
+            "title": "Median Distance From High",
+            "type": "number"
+          },
+          "median_distance_from_low": {
+            "title": "Median Distance From Low",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "median_distance_from_high",
+          "median_distance_from_low",
+          "eligible_count",
+          "coverage_pct"
+        ],
+        "title": "UniverseStatsPointResponse",
+        "type": "object"
+      },
+      "UniverseStatsRequest": {
+        "properties": {
+          "universe_codes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Universe Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "universe_codes"
+        ],
+        "title": "UniverseStatsRequest",
+        "type": "object"
+      },
+      "UniverseStatsResponse": {
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseStatsErrorResponse"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "history_years": {
+            "title": "History Years",
+            "type": "integer"
+          },
+          "membership_mode": {
+            "title": "Membership Mode",
+            "type": "string"
+          },
+          "minimum_coverage_pct": {
+            "title": "Minimum Coverage Pct",
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseStatsResultResponse"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "formula_version",
+          "window",
+          "minimum_coverage_pct",
+          "history_years",
+          "membership_mode",
+          "results",
+          "errors"
+        ],
+        "title": "UniverseStatsResponse",
+        "type": "object"
+      },
+      "UniverseStatsResultResponse": {
+        "properties": {
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "instruments_with_history": {
+            "title": "Instruments With History",
+            "type": "integer"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "missing_history_count": {
+            "title": "Missing History Count",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseStatsPointResponse"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "universe_code": {
+            "title": "Universe Code",
+            "type": "string"
+          },
+          "universe_name": {
+            "title": "Universe Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "universe_code",
+          "universe_name",
+          "member_count",
+          "instruments_with_history",
+          "missing_history_count",
+          "first_date",
+          "last_date",
+          "sources",
+          "fetched_at",
+          "points"
+        ],
+        "title": "UniverseStatsResultResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -8195,14 +6914,14 @@
         ]
       }
     },
-    "/events/new-low-episodes": {
+    "/events/new-low-deep": {
       "post": {
-        "operationId": "new_low_episodes_endpoint_events_new_low_episodes_post",
+        "operationId": "analyzeNewLowDeep",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewLowEpisodesRequest"
+                "$ref": "#/components/schemas/NewLowDeepRequest"
               }
             }
           },
@@ -8213,7 +6932,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NewLowEpisodesResponse"
+                  "$ref": "#/components/schemas/NewLowDeepResponse"
                 }
               }
             },
@@ -8230,7 +6949,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "New Low Episodes Endpoint",
+        "summary": "New Low Deep Endpoint",
         "tags": [
           "events"
         ]
@@ -8438,129 +7157,6 @@
         "summary": "Analyze Universe Endpoint",
         "tags": [
           "factors"
-        ]
-      }
-    },
-    "/fundamentals/growth": {
-      "post": {
-        "operationId": "growth_fundamentals_endpoint_fundamentals_growth_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FundamentalRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GrowthAnalysisResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Growth Fundamentals Endpoint",
-        "tags": [
-          "fundamentals"
-        ]
-      }
-    },
-    "/fundamentals/growth/assessment": {
-      "post": {
-        "operationId": "growth_assessment_endpoint_fundamentals_growth_assessment_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GrowthAssessmentRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GrowthAssessmentResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Growth Assessment Endpoint",
-        "tags": [
-          "fundamentals"
-        ]
-      }
-    },
-    "/fundamentals/sec": {
-      "post": {
-        "operationId": "sec_fundamentals_endpoint_fundamentals_sec_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FundamentalRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FundamentalResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Sec Fundamentals Endpoint",
-        "tags": [
-          "fundamentals"
         ]
       }
     },
@@ -8907,6 +7503,47 @@
         "summary": "Run Sweep",
         "tags": [
           "sweep"
+        ]
+      }
+    },
+    "/universe-stats/run": {
+      "post": {
+        "operationId": "runUniverseStats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UniverseStatsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UniverseStatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Universe Stats",
+        "tags": [
+          "universe-stats"
         ]
       }
     },

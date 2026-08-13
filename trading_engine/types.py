@@ -183,6 +183,15 @@ class CrossSectionalResult:
     universe_median: pd.Series    # median factor value across universe at each t
 
 
+@dataclass(frozen=True)
+class UniverseStatsSeries:
+    """Cross-sectional Universe distance statistics indexed by observation date."""
+    median_distance_from_high: pd.Series
+    median_distance_from_low: pd.Series
+    eligible_count: pd.Series
+    coverage_pct: pd.Series
+
+
 @dataclass
 class RegimeSeries:
     """Time-indexed regime labels derived from breadth analysis."""

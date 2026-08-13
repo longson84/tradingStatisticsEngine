@@ -1,49 +1,84 @@
 """Event-analysis endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
-from api.deps import fetch_prices
+from fastapi import APIRouter, Depends, HTTPException
+
+from api.deps import get_new_low_analysis_service
 from api.schemas.events import (
     NewLowCurrentEpisodeSchema,
     NewLowEpisodeSchema,
-    NewLowEpisodesRequest,
-    NewLowEpisodesResponse,
+    NewLowDeepRequest,
+    NewLowDeepResponse,
     NewLowForwardStatsSchema,
+    NewLowInstrumentIdentitySchema,
+    NewLowPriceHistoryStatusSchema,
     NewLowSymbolResultSchema,
     NewLowTimeSeriesPointSchema,
 )
-from trading_engine.event_analysis import analyze_new_low_episodes
+from api.services.instrument_analysis_service import (
+    InstrumentPriceUnavailableError,
+    UnknownInstrumentError,
+)
+from api.services.new_low_analysis_service import (
+    NEW_LOW_DEEP_FORMULA_VERSION,
+    NewLowAnalysisService,
+)
 from trading_engine.types import InsufficientDataError
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 
-@router.post("/new-low-episodes", response_model=NewLowEpisodesResponse)
-def new_low_episodes_endpoint(req: NewLowEpisodesRequest) -> NewLowEpisodesResponse:
-    symbols = [s.upper().strip() for s in req.symbols if s.strip()]
-    if not symbols:
-        raise HTTPException(status_code=422, detail="At least one symbol is required")
+@router.post(
+    "/new-low-deep",
+    response_model=NewLowDeepResponse,
+    operation_id="analyzeNewLowDeep",
+)
+def new_low_deep_endpoint(
+    req: NewLowDeepRequest,
+    service: Annotated[
+        NewLowAnalysisService, Depends(get_new_low_analysis_service)
+    ],
+) -> NewLowDeepResponse:
+    try:
+        result = service.analyze_deep(
+            req.instrument_id,
+            lookback_sessions=req.lookback_sessions,
+            quick_recovery_sessions=req.quick_recovery_sessions,
+            forward_horizons=req.forward_horizons,
+        )
+    except UnknownInstrumentError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (InstrumentPriceUnavailableError, InsufficientDataError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    prices = fetch_prices(symbols, req.date_range.start, req.date_range.end, req.data_source)
-    results: list[NewLowSymbolResultSchema] = []
-
-    for symbol in symbols:
-        if symbol not in prices:
-            continue
-        try:
-            result = analyze_new_low_episodes(
-                prices=prices[symbol],
-                lookback_sessions=req.lookback_sessions,
-                quick_recovery_sessions=req.quick_recovery_sessions,
-                forward_horizons=req.forward_horizons,
-            )
-        except (InsufficientDataError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=f"{symbol}: {exc}") from exc
-
-        results.append(_to_new_low_schema(result))
-
-    return NewLowEpisodesResponse(results=results)
+    instrument = result.instrument
+    status = result.price_history
+    return NewLowDeepResponse(
+        formula_version=NEW_LOW_DEEP_FORMULA_VERSION,
+        instrument=NewLowInstrumentIdentitySchema(
+            id=instrument.id,
+            symbol=instrument.symbol,
+            instrument_type=instrument.instrument_type,
+            company_name=instrument.company_name,
+            venue_code=instrument.venue_code,
+            venue_name=instrument.venue_name,
+            base_asset=instrument.base_asset,
+            quote_asset=instrument.quote_asset,
+            currency=instrument.currency,
+        ),
+        price_history=NewLowPriceHistoryStatusSchema(
+            source=status.source,
+            price_basis=status.price_basis,
+            first_session=status.first_session,
+            data_last_session=status.data_last_session,
+            expected_last_session=status.expected_last_session,
+            stored_sessions=status.stored_sessions,
+            is_stale=status.is_stale,
+        ),
+        analysis=_to_new_low_schema(result.analysis),
+    )
 
 
 def _to_new_low_schema(result) -> NewLowSymbolResultSchema:

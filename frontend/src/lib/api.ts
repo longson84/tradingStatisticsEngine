@@ -68,7 +68,6 @@ function errorMessage(err: unknown, status: number): string {
 
 export type FactorType = components["schemas"]["RarityRequest"]["factor_type"]
 export type MaType = components["schemas"]["RarityRequest"]["ma_type"]
-export type DataSource = "yfinance" | "vnstock" | "csv"
 export type RarityRecoveryMode = components["schemas"]["RarityRequest"]["recovery_mode"]
 
 // ── Rarity Analysis ──────────────────────────────────────────────────────────
@@ -107,6 +106,9 @@ export type VenueListResponse = components["schemas"]["VenueListResponse"]
 export type AnalysisInstrument = components["schemas"]["AnalysisInstrumentResponse"]
 export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
 export type UniverseListResponse = components["schemas"]["UniverseListResponse"]
+export type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
+export type UniverseStatsResponse = components["schemas"]["UniverseStatsResponse"]
+export type UniverseStatsResult = components["schemas"]["UniverseStatsResultResponse"]
 export type DataOperationRequest = components["schemas"]["DataOperationRequest"]
 export type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
 export type DataOperationJob = components["schemas"]["DataOperationJobResponse"]
@@ -252,182 +254,8 @@ export interface NewLowSymbolResult {
   time_series: NewLowTimeSeriesPoint[]
 }
 
-export interface NewLowEpisodesResponse {
-  results: NewLowSymbolResult[]
-}
-
-// ── SEC Fundamental Dashboard ───────────────────────────────────────────────
-
-export interface FundamentalRow {
-  fiscal_year: number
-  filed: string | null
-  filing_accepted_at: string | null
-  filing_timing: string | null
-  reaction_session_date: string | null
-  filing_return_pct: number | null
-  revenue: number | null
-  revenue_yoy_pct: number | null
-  gross_profit: number | null
-  operating_income: number | null
-  operating_income_yoy_pct: number | null
-  operating_margin_pct: number | null
-  net_income: number | null
-  net_income_yoy_pct: number | null
-  free_cash_flow: number | null
-  free_cash_flow_yoy_pct: number | null
-  free_cash_flow_margin_pct: number | null
-  capex: number | null
-  capex_to_revenue_pct: number | null
-  cash_and_short_term_investments: number | null
-  debt: number | null
-  net_cash: number | null
-  debt_to_fcf: number | null
-  equity: number | null
-  eps_diluted: number | null
-  eps_yoy_pct: number | null
-  diluted_shares: number | null
-}
-
-export interface FundamentalQuarterRow {
-  period_end: string
-  filed: string | null
-  filing_accepted_at: string | null
-  filing_timing: string | null
-  reaction_session_date: string | null
-  filing_return_pct: number | null
-  revenue: number | null
-  revenue_yoy_pct: number | null
-  revenue_qoq_pct: number | null
-  operating_income: number | null
-  operating_income_yoy_pct: number | null
-  operating_margin_pct: number | null
-  net_income: number | null
-  net_income_yoy_pct: number | null
-  free_cash_flow: number | null
-  free_cash_flow_yoy_pct: number | null
-  free_cash_flow_margin_pct: number | null
-  capex: number | null
-  capex_to_revenue_pct: number | null
-  cash_and_short_term_investments: number | null
-  debt: number | null
-  net_cash: number | null
-  eps_diluted: number | null
-  eps_yoy_pct: number | null
-  diluted_shares: number | null
-}
-
-export interface FundamentalSummary {
-  revenue_cagr_pct: number | null
-  operating_income_cagr_pct: number | null
-  net_income_cagr_pct: number | null
-  free_cash_flow_cagr_pct: number | null
-  eps_cagr_pct: number | null
-  latest_operating_margin_pct: number | null
-  latest_fcf_margin_pct: number | null
-  latest_capex_to_revenue_pct: number | null
-  latest_debt_to_fcf: number | null
-  latest_net_cash: number | null
-  share_count_change_pct: number | null
-}
-
-export interface FundamentalResponse {
-  symbol: string
-  cik: string
-  entity_name: string
-  requested_current_year: number
-  first_year: number | null
-  last_year: number | null
-  rows: FundamentalRow[]
-  quarter_rows: FundamentalQuarterRow[]
-  summary: FundamentalSummary
-}
-
-// ── Growth Dashboard ───────────────────────────────────────────────────────
-
-export interface GrowthMetricSnapshot {
-  metric: string
-  latest_value: number | null
-  latest_yoy_pct: number | null
-  cagr_3y_pct: number | null
-  cagr_5y_pct: number | null
-  cagr_10y_pct: number | null
-  latest_margin_pct: number | null
-}
-
-export interface QuarterlyGrowthSnapshot {
-  metric: string
-  latest_value: number | null
-  latest_yoy_pct: number | null
-  previous_yoy_pct: number | null
-  average_4q_yoy_pct: number | null
-  latest_qoq_pct: number | null
-  direction: string | null
-}
-
-export interface AnnualGrowthRow {
-  fiscal_year: number
-  revenue: number | null
-  revenue_yoy_pct: number | null
-  gross_profit_yoy_pct: number | null
-  operating_income_yoy_pct: number | null
-  net_income_yoy_pct: number | null
-  free_cash_flow_yoy_pct: number | null
-  eps_yoy_pct: number | null
-  share_count_yoy_pct: number | null
-  operating_margin_pct: number | null
-  free_cash_flow_margin_pct: number | null
-}
-
-export interface QuarterlyGrowthRow {
-  period_end: string
-  revenue: number | null
-  revenue_yoy_pct: number | null
-  revenue_qoq_pct: number | null
-  operating_income_yoy_pct: number | null
-  net_income_yoy_pct: number | null
-  free_cash_flow_yoy_pct: number | null
-  eps_yoy_pct: number | null
-  operating_margin_pct: number | null
-  free_cash_flow_margin_pct: number | null
-}
-
-export interface GrowthQualitySummary {
-  revenue_cagr_5y_pct: number | null
-  operating_income_cagr_5y_pct: number | null
-  free_cash_flow_cagr_5y_pct: number | null
-  eps_cagr_5y_pct: number | null
-  latest_operating_margin_pct: number | null
-  latest_fcf_margin_pct: number | null
-  operating_margin_change_5y_pct: number | null
-  fcf_margin_change_5y_pct: number | null
-  share_count_change_5y_pct: number | null
-}
-
-export interface GrowthAnalysisResponse {
-  symbol: string
-  cik: string
-  entity_name: string
-  requested_current_year: number
-  first_year: number | null
-  last_year: number | null
-  annual_metrics: GrowthMetricSnapshot[]
-  quarterly_metrics: QuarterlyGrowthSnapshot[]
-  annual_rows: AnnualGrowthRow[]
-  quarterly_rows: QuarterlyGrowthRow[]
-  summary: GrowthQualitySummary
-}
-
-export interface GrowthAssessmentResponse {
-  provider: string
-  model: string
-  good_things: string[]
-  bad_things: string[]
-  risks: string[]
-  opportunities: string[]
-  investment_considerations: string[]
-  disclaimer: string
-  prompt: string
-}
+export type NewLowDeepRequest = components["schemas"]["NewLowDeepRequest"]
+export type NewLowDeepResponse = components["schemas"]["NewLowDeepResponse"]
 
 // ── SMA Strategy Analysis ───────────────────────────────────────────────────
 
@@ -502,6 +330,12 @@ export function instrumentsApi(
 
 export function universesApi(): Promise<UniverseListResponse> {
   return get("/universes")
+}
+
+export function universeStatsApi(
+  params: UniverseStatsRequest,
+): Promise<UniverseStatsResponse> {
+  return post("/universe-stats/run", params)
 }
 
 export function predefinedRarityApi(params: {
@@ -635,53 +469,8 @@ export function instrumentPriceHistoryApi(
   return get(`/instruments/${instrumentId}/history`)
 }
 
-export function newLowEpisodesApi(params: {
-  symbols: string[]
-  lookback_sessions: number
-  quick_recovery_sessions: number
-  data_source?: DataSource
-  start?: string
-  end?: string
-  forward_horizons?: number[]
-}): Promise<NewLowEpisodesResponse> {
-  const today = new Date().toISOString().slice(0, 10)
-  return post("/events/new-low-episodes", {
-    symbols: params.symbols.map(s => s.toUpperCase().trim()).filter(Boolean),
-    lookback_sessions: params.lookback_sessions,
-    quick_recovery_sessions: params.quick_recovery_sessions,
-    data_source: params.data_source ?? "yfinance",
-    forward_horizons: params.forward_horizons ?? [5, 10, 20, 50, 100, 150, 200],
-    date_range: { start: params.start ?? "1980-01-01", end: params.end ?? today },
-  })
-}
-
-export function fundamentalsSecApi(params: {
-  symbol: string
-  current_year: number
-  years?: number
-  data_source?: "yfinance" | "vnstock"
-}): Promise<FundamentalResponse> {
-  return post("/fundamentals/sec", {
-    symbol: params.symbol.toUpperCase().trim(),
-    current_year: params.current_year,
-    years: params.years ?? 20,
-    data_source: params.data_source ?? "yfinance",
-  })
-}
-
-export function growthAnalysisApi(params: {
-  symbol: string
-  current_year: number
-  years?: number
-}): Promise<GrowthAnalysisResponse> {
-  return post("/fundamentals/growth", {
-    symbol: params.symbol.toUpperCase().trim(),
-    current_year: params.current_year,
-    years: params.years ?? 20,
-    data_source: "yfinance",
-  })
-}
-
-export function growthAssessmentApi(growth: GrowthAnalysisResponse): Promise<GrowthAssessmentResponse> {
-  return post("/fundamentals/growth/assessment", { growth })
+export function newLowDeepApi(
+  params: NewLowDeepRequest,
+): Promise<NewLowDeepResponse> {
+  return post("/events/new-low-deep", params)
 }

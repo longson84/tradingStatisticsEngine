@@ -1543,3 +1543,85 @@ Consequences: `/market/health` and `/market-health/*` no longer exist, and the
 Instruments page no longer interprets Market Health query parameters or renders
 health-derived columns. No replacement analysis, persistence model, or formula
 is implied by this retirement; those will require a separate reviewed design.
+
+### 2026-08-12 — Universe Stats from canonical instrument observations
+
+Context: after retiring Market Health, the required cross-sectional view is a
+user-selected comparison of one or more canonical Universes. Restoring the old
+market boundary, ticker-keyed matrices, composite health score, or hardcoded
+Universe list would conflict with exact instrument identity and metadata-driven
+observation routing.
+
+Decision: add Universe Stats as an on-demand analysis over active current
+Universe membership. The API resolves each chosen Universe to exact instrument
+IDs and each member's canonical price basis, then reads a close-only ten-year
+range plus 400 calendar days of warm-up from PostgreSQL. It does not refresh or
+persist derived statistics. For every instrument, missing closes after its first
+observation are carried forward while leading pre-listing values remain null.
+
+Formula version `universe-distance-v1` uses a fixed 200-session window. For each
+eligible instrument and observation date it calculates
+`(close / rolling_max(close, 200) - 1) * 100` and
+`(close / rolling_min(close, 200) - 1) * 100`, then takes the cross-sectional
+median separately for the High 200 and Low 200 charts. A date is published only
+when at least 50 percent of the current active membership has a valid 200-session
+observation. The response includes eligible count and coverage percentage.
+
+Consequences: the `/universe-stats` UI can compare any selected catalog
+Universes without treating them as markets or losing venue-specific identity.
+Historical lines intentionally reconstruct today's membership and therefore
+retain survivorship bias; the API marks the membership mode as
+`current_snapshot` and the UI states this limitation. Point-in-time constituent
+statistics require effective-dated Universe membership in a future model.
+
+### 2026-08-12 — New-Low Deep exact-instrument read cutover
+
+Context: New-Low Deep still accepted free-form ticker text plus a user-selected
+Yahoo Finance, VNStock, or CSV source and downloaded prices while running the
+analysis. That path bypassed canonical instrument identity, could not distinguish
+equal symbols on different venues, and allowed the selected provider to change
+the price basis independently of PostgreSQL.
+
+Decision: New-Low Deep now identifies one canonical `instrument_id` and reads
+that instrument's complete canonical stored price history without refreshing a
+provider. The dedicated `POST /events/new-low-deep` contract contains only the
+instrument ID and analytical parameters. Its response carries instrument
+identity, Venue or venue-less asset identity, currency, price source, canonical
+price basis, stored range, expected latest session, row count, and stale status.
+The UI uses the shared three-character instrument search across equities, crypto
+spot products, and reference rates and displays storage provenance before the
+analysis results.
+
+Formula version `new-low-episodes-v1` preserves the existing engine behavior:
+a strict trigger is a close below the prior configurable session-window low;
+recovery is the first close at or above the pre-trigger close; qualifying quick
+recoveries are discarded; and forward-return and maximum-down statistics use
+the configured trading-session horizons. The migration changes input identity
+and observation access, not the analytical calculation.
+
+Consequences: New-Low Deep no longer accepts a data source, ticker, or arbitrary
+date range and cannot silently fetch or mix observations while analyzing. Stale
+history remains analyzable but is visibly labeled and must be refreshed through
+Data Operations.
+
+### 2026-08-12 — Legacy analysis surface retirement
+
+Context: New-Low Comparison, the SEC Fundamentals page, and Growth Dashboard
+still accepted free-form symbols and, where price observations were needed,
+selected a provider directly. They bypassed exact canonical instrument identity
+and canonical PostgreSQL observation reads. Their legacy contracts also kept a
+second analysis path alive beside the migrated pages.
+
+Decision: remove the three frontend routes and navigation entries and retire
+`POST /events/new-low-episodes`, `POST /fundamentals/sec`,
+`POST /fundamentals/growth`, and `POST /fundamentals/growth/assessment`. New-Low
+Deep remains the supported new-low workflow and continues to resolve one exact
+`instrument_id`. Canonical fundamental ingestion, normalized PostgreSQL storage,
+Data Operations refreshes, and fundamental-derived Price History fields remain
+part of the application; only the legacy analytical dashboards and their public
+HTTP contracts are retired.
+
+Consequences: no visible analysis page can submit arbitrary symbol text plus a
+provider through these retired workflows. Reintroducing multi-instrument new-low
+comparison or dedicated fundamental analysis requires a new contract based on
+exact instrument IDs or canonical Collections and stored observations.

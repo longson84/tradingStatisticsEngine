@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { Activity, BarChart2, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, Waves, SearchCode, Database, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark } from "lucide-react"
+import { BarChart2, BarChart3, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, SearchCode, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -10,6 +10,7 @@ const sections = [
     links: [
       { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2, end: true },
       { to: "/factor-rarity/predefined", label: "Predefined", icon: BarChart2 },
+      { to: "/universe-stats", label: "Universe Stats", icon: BarChart3 },
     ],
   },
   {
@@ -30,7 +31,6 @@ const sections = [
   {
     label: "Event Analysis",
     links: [
-      { to: "/events/new-low", label: "New-Low Compare", icon: Waves, end: true },
       { to: "/events/new-low/deep", label: "New-Low Deep", icon: SearchCode },
     ],
   },
@@ -40,8 +40,6 @@ const sections = [
       { to: "/companies", label: "Companies", icon: Building2 },
       { to: "/instruments", label: "Instruments", icon: ListTree },
       { to: "/company/price-history", label: "Price History", icon: ChartNoAxesCombined },
-      { to: "/fundamentals", label: "Fundamentals", icon: Database },
-      { to: "/company/growth", label: "Growth Dashboard", icon: Activity },
     ],
   },
   {

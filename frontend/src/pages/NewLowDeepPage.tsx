@@ -1,54 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   ColorType,
   createChart,
   createSeriesMarkers,
   LineSeries,
   LineStyle,
+  type Time,
 } from "lightweight-charts"
 import { Sidebar } from "@/components/Sidebar"
+import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import {
-  newLowEpisodesApi,
-  type DataSource,
+  instrumentsApi,
+  newLowDeepApi,
+  type AnalysisInstrument,
+  type InstrumentScope,
+  type NewLowDeepResponse,
   type NewLowCurrentEpisode,
   type NewLowEpisode,
   type NewLowSymbolResult,
-  type NewLowTimeSeriesPoint,
 } from "@/lib/api"
-import { fmtDate, fmtInt, fmtPct, fmtPrice } from "@/lib/format"
-
-const DATA_SOURCES: Array<{ label: string; value: DataSource }> = [
-  { label: "Yahoo Finance", value: "yfinance" },
-  { label: "VN Stock", value: "vnstock" },
-  { label: "CSV", value: "csv" },
-]
+import { fmtDate, fmtInt, fmtPct, fmtPrice, fmtProviderSource } from "@/lib/format"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
       {children}
     </span>
-  )
-}
-
-function FormSelect<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T
-  onChange: (v: T) => void
-  options: Array<{ label: string; value: T }>
-}) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value as T)}
-      className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-ring"
-    >
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
   )
 }
 
@@ -73,37 +52,62 @@ function NumberInput({
 }
 
 export function NewLowDeepPage() {
-  const [symbol, setSymbol] = useState("MSFT")
-  const [dataSource, setDataSource] = useState<DataSource>("yfinance")
+  const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
+  const [instrumentSearch, setInstrumentSearch] = useState("")
+  const [selectedInstrument, setSelectedInstrument] = useState<AnalysisInstrument | null>(null)
   const [lookback, setLookback] = useState(50)
   const [quickRecovery, setQuickRecovery] = useState(2)
-  const [runId, setRunId] = useState(0)
-  const [params, setParams] = useState<Parameters<typeof newLowEpisodesApi>[0] | null>(null)
-
-  const { data, isFetching, error } = useQuery({
-    queryKey: ["new-low-deep", params, runId],
-    queryFn: () => newLowEpisodesApi(params!),
-    enabled: params != null,
-    retry: false,
+  const debouncedInstrumentSearch = useDebouncedValue(instrumentSearch.trim(), 300)
+  const canSearchInstruments = debouncedInstrumentSearch.length >= 3
+  const instruments = useQuery({
+    queryKey: ["analysis-instruments", instrumentScope, debouncedInstrumentSearch],
+    queryFn: () => instrumentsApi({
+      scope: instrumentScope,
+      search: debouncedInstrumentSearch || undefined,
+      has_price_history: true,
+      limit: 25,
+    }),
+    enabled: canSearchInstruments,
   })
+  const analysis = useMutation({ mutationFn: newLowDeepApi })
+  const result = analysis.data?.analysis as NewLowSymbolResult | undefined
 
-  const result = data?.results[0]
+  const handleAnalyse = () => {
+    if (!selectedInstrument) return
+    analysis.mutate({
+      instrument_id: selectedInstrument.id,
+      lookback_sessions: lookback,
+      quick_recovery_sessions: quickRecovery,
+      forward_horizons: [5, 10, 20, 50, 100, 150, 200],
+    })
+  }
 
   const controls = (
     <div className="space-y-4">
-      <div>
-        <Label>Data Source</Label>
-        <FormSelect value={dataSource} onChange={setDataSource} options={DATA_SOURCES} />
-      </div>
-
-      <div>
-        <Label>Symbol</Label>
-        <input
-          value={symbol}
-          onChange={e => setSymbol(e.target.value.toUpperCase())}
-          className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground uppercase focus:outline-none focus:border-ring"
-        />
-      </div>
+      <AnalysisInstrumentSelector
+        scope={instrumentScope}
+        search={instrumentSearch}
+        instruments={instruments.data?.instruments ?? []}
+        selectedInstrument={selectedInstrument}
+        total={instruments.data?.total}
+        isPending={canSearchInstruments && instruments.isFetching}
+        onScopeChange={scope => {
+          setInstrumentScope(scope)
+          setInstrumentSearch("")
+          setSelectedInstrument(null)
+          analysis.reset()
+        }}
+        onSearchChange={search => {
+          setInstrumentSearch(search)
+          setSelectedInstrument(null)
+          analysis.reset()
+        }}
+        onInstrumentChange={instrument => {
+          setSelectedInstrument(instrument)
+          analysis.reset()
+        }}
+        onSubmit={handleAnalyse}
+      />
 
       <div>
         <Label>Lowest Lookback</Label>
@@ -116,19 +120,11 @@ export function NewLowDeepPage() {
       </div>
 
       <button
-        onClick={() => {
-          setParams({
-            symbols: [symbol],
-            lookback_sessions: lookback,
-            quick_recovery_sessions: quickRecovery,
-            data_source: dataSource,
-          })
-          setRunId(id => id + 1)
-        }}
-        disabled={isFetching || !symbol.trim()}
+        onClick={handleAnalyse}
+        disabled={analysis.isPending || !selectedInstrument}
         className="w-full py-2.5 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground text-sm font-semibold transition-colors tracking-wide"
       >
-        {isFetching ? "Analysing..." : "Analyse"}
+        {analysis.isPending ? "Analysing..." : "Analyse"}
       </button>
     </div>
   )
@@ -144,30 +140,31 @@ export function NewLowDeepPage() {
               Single-symbol episode chart, forward outcomes, and historical log.
             </p>
           </div>
-          {result && (
+          {analysis.data && (
             <div className="text-xs text-muted-foreground text-right">
-              <div>{result.symbol}</div>
-              <div>{fmtDate(result.first_date)} - {fmtDate(result.last_date)}</div>
+              <div className="font-medium text-foreground">{instrumentIdentity(analysis.data.instrument)}</div>
+              <div>{fmtDate(analysis.data.price_history.first_session)} - {fmtDate(analysis.data.price_history.data_last_session)}</div>
             </div>
           )}
         </div>
 
-        {isFetching && <LoadingBar />}
+        {analysis.isPending && <LoadingBar />}
 
-        {error && !isFetching && (
+        {analysis.error && !analysis.isPending && (
           <div className="mt-4 rounded-lg border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
-            {(error as Error).message}
+            {analysis.error.message}
           </div>
         )}
 
-        {!result && !isFetching && !error && (
+        {!result && !analysis.isPending && !analysis.error && (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground/50">
-            Configure a symbol and run the deep analysis.
+            Choose a canonical instrument and run the deep analysis.
           </div>
         )}
 
-        {result && !isFetching && (
+        {result && analysis.data && !analysis.isPending && (
           <div className="mt-5 space-y-6">
+            <PriceHistoryStatus data={analysis.data} />
             <CurrentStrip result={result} />
             <NewLowPriceChart result={result} />
             <EpisodeDistributionCharts result={result} />
@@ -198,6 +195,89 @@ export function NewLowDeepPage() {
       </main>
     </div>
   )
+}
+
+
+function PriceHistoryStatus({ data }: { data: NewLowDeepResponse }) {
+  const instrument = data.instrument
+  const history = data.price_history
+  const identity = instrument.company_name
+    ?? (instrument.base_asset && instrument.quote_asset
+      ? `${instrument.base_asset}/${instrument.quote_asset}`
+      : instrument.instrument_type)
+  return (
+    <section className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-6">
+        <StatusCell label="Instrument" value={`${instrument.symbol} · ${identity}`} />
+        <StatusCell
+          label="Venue"
+          value={instrument.venue_name ?? instrument.venue_code ?? "Venue-less"}
+        />
+        <StatusCell label="Price source" value={fmtProviderSource(history.source)} />
+        <StatusCell label="Price basis" value={priceBasisLabel(history.price_basis)} />
+        <StatusCell
+          label="Stored history"
+          value={`${fmtInt(history.stored_sessions)} sessions`}
+          secondary={`${fmtDate(history.first_session)} – ${fmtDate(history.data_last_session)}`}
+        />
+        <StatusCell
+          label="Freshness"
+          value={history.is_stale ? "Stale" : "Current"}
+          secondary={`Expected ${fmtDate(history.expected_last_session)}`}
+          warning={history.is_stale}
+        />
+      </div>
+      {history.is_stale && (
+        <div className="border-t border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+          This analysis ends at {fmtDate(history.data_last_session)}. Update the instrument through Data Operations before treating it as current.
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function StatusCell({
+  label,
+  value,
+  secondary,
+  warning = false,
+}: {
+  label: string
+  value: string
+  secondary?: string
+  warning?: boolean
+}) {
+  return (
+    <div className="min-w-0 bg-card px-3 py-3">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={[
+        "mt-1 truncate text-sm font-semibold",
+        warning ? "text-amber-700 dark:text-amber-300" : "text-foreground",
+      ].join(" ")}>{value}</div>
+      {secondary && <div className="mt-0.5 text-[10px] text-muted-foreground">{secondary}</div>}
+    </div>
+  )
+}
+
+
+function instrumentIdentity(instrument: NewLowDeepResponse["instrument"]): string {
+  const identity = instrument.company_name
+    ?? (instrument.base_asset && instrument.quote_asset
+      ? `${instrument.base_asset}/${instrument.quote_asset}`
+      : instrument.instrument_type)
+  return [instrument.symbol, identity, instrument.venue_code]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+
+function priceBasisLabel(value: string): string {
+  return {
+    adjusted: "Adjusted OHLC",
+    provider_unspecified: "Provider OHLC",
+    venue_unadjusted: "Venue OHLC",
+  }[value] ?? value
 }
 
 function CurrentStrip({ result }: { result: NewLowSymbolResult }) {
@@ -371,7 +451,7 @@ function NewLowPriceChart({ result }: { result: NewLowSymbolResult }) {
       lineWidth: 2,
       priceLineVisible: false,
     })
-    priceSeries.setData(result.time_series.map(p => ({ time: p.date as any, value: p.close })))
+    priceSeries.setData(result.time_series.map(p => ({ time: p.date as Time, value: p.close })))
 
     const c = result.current
     if (c) {
@@ -383,20 +463,20 @@ function NewLowPriceChart({ result }: { result: NewLowSymbolResult }) {
         lastValueVisible: true,
         title: "Recovery",
       }).setData([
-        { time: c.start_date as any, value: c.recovery_level },
-        { time: c.current_date as any, value: c.recovery_level },
+        { time: c.start_date as Time, value: c.recovery_level },
+        { time: c.current_date as Time, value: c.recovery_level },
       ])
 
       createSeriesMarkers(priceSeries, [
         {
-          time: c.start_date as any,
+          time: c.start_date as Time,
           position: "aboveBar" as const,
           color: "#f97316",
           shape: "arrowDown" as const,
           text: "Start",
         },
         {
-          time: c.low_date as any,
+          time: c.low_date as Time,
           position: "belowBar" as const,
           color: "#dc2626",
           shape: "arrowUp" as const,
@@ -405,16 +485,16 @@ function NewLowPriceChart({ result }: { result: NewLowSymbolResult }) {
         ...result.time_series
           .filter(p => currentNewLowDates.has(p.date) && p.date !== c.start_date)
           .map(p => ({
-            time: p.date as any,
+            time: p.date as Time,
             position: "belowBar" as const,
             color: "rgba(220,38,38,0.65)",
             shape: "circle" as const,
             size: 1,
           })),
-      ].sort((a, b) => (a.time < b.time ? -1 : 1)))
+      ].sort((a, b) => String(a.time).localeCompare(String(b.time))))
     } else {
       createSeriesMarkers(priceSeries, result.episodes.slice(-20).map(e => ({
-        time: e.start_date as any,
+        time: e.start_date as Time,
         position: "belowBar" as const,
         color: "#f97316",
         shape: "circle" as const,
