@@ -132,7 +132,7 @@ export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPr
 
 export type NewLowCurrentEpisode = components["schemas"]["NewLowCurrentEpisodeSchema"]
 export type NewLowEpisode = components["schemas"]["NewLowEpisodeSchema"]
-export type NewLowSymbolResult = components["schemas"]["NewLowSymbolResultSchema"]
+export type NewLowAnalysisResult = components["schemas"]["NewLowAnalysisResultSchema"]
 
 type NewLowDeepRequest = components["schemas"]["NewLowDeepRequest"]
 export type NewLowDeepResponse = components["schemas"]["NewLowDeepResponse"]

@@ -2093,6 +2093,140 @@
         "title": "MonthlyStatRowResponse",
         "type": "object"
       },
+      "NewLowAnalysisResultSchema": {
+        "properties": {
+          "active_episodes": {
+            "title": "Active Episodes",
+            "type": "integer"
+          },
+          "completed_episodes": {
+            "title": "Completed Episodes",
+            "type": "integer"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewLowCurrentEpisodeSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "episodes": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowEpisodeSchema"
+            },
+            "title": "Episodes",
+            "type": "array"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "forward_stats": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowForwardStatsSchema"
+            },
+            "title": "Forward Stats",
+            "type": "array"
+          },
+          "ignored_new_low_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Ignored New Low Percentiles",
+            "type": "object"
+          },
+          "kept_episodes": {
+            "title": "Kept Episodes",
+            "type": "integer"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "latest_price": {
+            "title": "Latest Price",
+            "type": "number"
+          },
+          "lookback_sessions": {
+            "title": "Lookback Sessions",
+            "type": "integer"
+          },
+          "max_down_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Max Down Percentiles",
+            "type": "object"
+          },
+          "quick_ignored_episodes": {
+            "title": "Quick Ignored Episodes",
+            "type": "integer"
+          },
+          "quick_recovery_sessions": {
+            "title": "Quick Recovery Sessions",
+            "type": "integer"
+          },
+          "raw_new_low_bars": {
+            "title": "Raw New Low Bars",
+            "type": "integer"
+          },
+          "recovery_session_percentiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Recovery Session Percentiles",
+            "type": "object"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "time_series": {
+            "items": {
+              "$ref": "#/components/schemas/NewLowTimeSeriesPointSchema"
+            },
+            "title": "Time Series",
+            "type": "array"
+          },
+          "total_bars": {
+            "title": "Total Bars",
+            "type": "integer"
+          },
+          "total_ignored_new_lows": {
+            "title": "Total Ignored New Lows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol",
+          "first_date",
+          "last_date",
+          "total_bars",
+          "latest_price",
+          "lookback_sessions",
+          "quick_recovery_sessions",
+          "raw_new_low_bars",
+          "kept_episodes",
+          "completed_episodes",
+          "active_episodes",
+          "quick_ignored_episodes",
+          "total_ignored_new_lows",
+          "max_down_percentiles",
+          "recovery_session_percentiles",
+          "ignored_new_low_percentiles",
+          "current",
+          "forward_stats",
+          "episodes",
+          "time_series"
+        ],
+        "title": "NewLowAnalysisResultSchema",
+        "type": "object"
+      },
       "NewLowCurrentEpisodeSchema": {
         "properties": {
           "current_date": {
@@ -2227,7 +2361,7 @@
       "NewLowDeepResponse": {
         "properties": {
           "analysis": {
-            "$ref": "#/components/schemas/NewLowSymbolResultSchema"
+            "$ref": "#/components/schemas/NewLowAnalysisResultSchema"
           },
           "formula_version": {
             "title": "Formula Version",
@@ -2520,140 +2654,6 @@
           "is_stale"
         ],
         "title": "NewLowPriceHistoryStatusSchema",
-        "type": "object"
-      },
-      "NewLowSymbolResultSchema": {
-        "properties": {
-          "active_episodes": {
-            "title": "Active Episodes",
-            "type": "integer"
-          },
-          "completed_episodes": {
-            "title": "Completed Episodes",
-            "type": "integer"
-          },
-          "current": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NewLowCurrentEpisodeSchema"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "episodes": {
-            "items": {
-              "$ref": "#/components/schemas/NewLowEpisodeSchema"
-            },
-            "title": "Episodes",
-            "type": "array"
-          },
-          "first_date": {
-            "format": "date",
-            "title": "First Date",
-            "type": "string"
-          },
-          "forward_stats": {
-            "items": {
-              "$ref": "#/components/schemas/NewLowForwardStatsSchema"
-            },
-            "title": "Forward Stats",
-            "type": "array"
-          },
-          "ignored_new_low_percentiles": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Ignored New Low Percentiles",
-            "type": "object"
-          },
-          "kept_episodes": {
-            "title": "Kept Episodes",
-            "type": "integer"
-          },
-          "last_date": {
-            "format": "date",
-            "title": "Last Date",
-            "type": "string"
-          },
-          "latest_price": {
-            "title": "Latest Price",
-            "type": "number"
-          },
-          "lookback_sessions": {
-            "title": "Lookback Sessions",
-            "type": "integer"
-          },
-          "max_down_percentiles": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Max Down Percentiles",
-            "type": "object"
-          },
-          "quick_ignored_episodes": {
-            "title": "Quick Ignored Episodes",
-            "type": "integer"
-          },
-          "quick_recovery_sessions": {
-            "title": "Quick Recovery Sessions",
-            "type": "integer"
-          },
-          "raw_new_low_bars": {
-            "title": "Raw New Low Bars",
-            "type": "integer"
-          },
-          "recovery_session_percentiles": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Recovery Session Percentiles",
-            "type": "object"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "time_series": {
-            "items": {
-              "$ref": "#/components/schemas/NewLowTimeSeriesPointSchema"
-            },
-            "title": "Time Series",
-            "type": "array"
-          },
-          "total_bars": {
-            "title": "Total Bars",
-            "type": "integer"
-          },
-          "total_ignored_new_lows": {
-            "title": "Total Ignored New Lows",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "symbol",
-          "first_date",
-          "last_date",
-          "total_bars",
-          "latest_price",
-          "lookback_sessions",
-          "quick_recovery_sessions",
-          "raw_new_low_bars",
-          "kept_episodes",
-          "completed_episodes",
-          "active_episodes",
-          "quick_ignored_episodes",
-          "total_ignored_new_lows",
-          "max_down_percentiles",
-          "recovery_session_percentiles",
-          "ignored_new_low_percentiles",
-          "current",
-          "forward_stats",
-          "episodes",
-          "time_series"
-        ],
-        "title": "NewLowSymbolResultSchema",
         "type": "object"
       },
       "NewLowTimeSeriesPointSchema": {

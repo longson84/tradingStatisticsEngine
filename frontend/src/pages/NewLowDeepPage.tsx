@@ -18,7 +18,7 @@ import {
   type NewLowDeepResponse,
   type NewLowCurrentEpisode,
   type NewLowEpisode,
-  type NewLowSymbolResult,
+  type NewLowAnalysisResult,
 } from "@/lib/api"
 import { fmtDate, fmtInt, fmtPct, fmtPrice, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
@@ -70,7 +70,7 @@ export function NewLowDeepPage() {
     enabled: canSearchInstruments,
   })
   const analysis = useMutation({ mutationFn: newLowDeepApi })
-  const result = analysis.data?.analysis as NewLowSymbolResult | undefined
+  const result = analysis.data?.analysis as NewLowAnalysisResult | undefined
 
   const handleAnalyse = () => {
     if (!selectedInstrument) return
@@ -280,7 +280,7 @@ function priceBasisLabel(value: string): string {
   }[value] ?? value
 }
 
-function CurrentStrip({ result }: { result: NewLowSymbolResult }) {
+function CurrentStrip({ result }: { result: NewLowAnalysisResult }) {
   const c = result.current
   const episodeCells = [
     ["State", c ? "Active" : "Inactive"],
@@ -404,7 +404,7 @@ function CurrentStrip({ result }: { result: NewLowSymbolResult }) {
   )
 }
 
-function NewLowPriceChart({ result }: { result: NewLowSymbolResult }) {
+function NewLowPriceChart({ result }: { result: NewLowAnalysisResult }) {
   const ref = useRef<HTMLDivElement>(null)
 
   const currentNewLowDates = useMemo(() => {
@@ -534,7 +534,7 @@ function NewLowPriceChart({ result }: { result: NewLowSymbolResult }) {
   )
 }
 
-function ForwardStatsTable({ result }: { result: NewLowSymbolResult }) {
+function ForwardStatsTable({ result }: { result: NewLowAnalysisResult }) {
   return (
     <table className="w-full text-sm">
       <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -590,7 +590,7 @@ function ReturnCell({ value }: { value: number }) {
   )
 }
 
-function DistributionTable({ result }: { result: NewLowSymbolResult }) {
+function DistributionTable({ result }: { result: NewLowAnalysisResult }) {
   const c = result.current
   return (
     <table className="w-full text-sm min-w-[620px]">
@@ -632,7 +632,7 @@ function DistributionTable({ result }: { result: NewLowSymbolResult }) {
   )
 }
 
-function EpisodeDistributionCharts({ result }: { result: NewLowSymbolResult }) {
+function EpisodeDistributionCharts({ result }: { result: NewLowAnalysisResult }) {
   const c = result.current
 
   return (

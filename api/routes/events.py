@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_new_low_analysis_service
 from api.schemas.events import (
+    NewLowAnalysisResultSchema,
     NewLowCurrentEpisodeSchema,
-    NewLowEpisodeSchema,
     NewLowDeepRequest,
     NewLowDeepResponse,
+    NewLowEpisodeSchema,
     NewLowForwardStatsSchema,
     NewLowInstrumentIdentitySchema,
     NewLowPriceHistoryStatusSchema,
-    NewLowSymbolResultSchema,
     NewLowTimeSeriesPointSchema,
 )
 from api.services.instrument_analysis_service import (
@@ -77,11 +77,11 @@ def new_low_deep_endpoint(
             stored_sessions=status.stored_sessions,
             is_stale=status.is_stale,
         ),
-        analysis=_to_new_low_schema(result.analysis),
+        analysis=_to_new_low_analysis_schema(result.analysis),
     )
 
 
-def _to_new_low_schema(result) -> NewLowSymbolResultSchema:
+def _to_new_low_analysis_schema(result) -> NewLowAnalysisResultSchema:
     current = None
     if result.current is not None:
         c = result.current
@@ -105,7 +105,7 @@ def _to_new_low_schema(result) -> NewLowSymbolResultSchema:
             duration_percentile=c.duration_percentile,
         )
 
-    return NewLowSymbolResultSchema(
+    return NewLowAnalysisResultSchema(
         symbol=result.symbol,
         first_date=result.first_date,
         last_date=result.last_date,

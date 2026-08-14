@@ -157,11 +157,14 @@ def test_deep_request_validates_forward_horizons():
 def test_deep_openapi_contract_is_exact_instrument_and_legacy_is_retired():
     schema = app.openapi()
     operation = schema["paths"]["/events/new-low-deep"]["post"]
+    components = schema["components"]["schemas"]
     assert operation["operationId"] == "analyzeNewLowDeep"
-    request = schema["components"]["schemas"]["NewLowDeepRequest"]["properties"]
+    request = components["NewLowDeepRequest"]["properties"]
     assert "instrument_id" in request
     assert "symbol" not in request
     assert "symbols" not in request
     assert "data_source" not in request
     assert "date_range" not in request
+    assert "NewLowAnalysisResultSchema" in components
+    assert "NewLowSymbolResultSchema" not in components
     assert "/events/new-low-episodes" not in schema["paths"]

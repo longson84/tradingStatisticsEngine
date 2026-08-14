@@ -54,7 +54,7 @@ class NewLowTimeSeriesPointSchema(BaseModel):
     is_new_low: bool
 
 
-class NewLowSymbolResultSchema(BaseModel):
+class NewLowAnalysisResultSchema(BaseModel):
     symbol: str
     first_date: date
     last_date: date
@@ -123,4 +123,4 @@ class NewLowDeepResponse(BaseModel):
     formula_version: str
     instrument: NewLowInstrumentIdentitySchema
     price_history: NewLowPriceHistoryStatusSchema
-    analysis: NewLowSymbolResultSchema
+    analysis: NewLowAnalysisResultSchema

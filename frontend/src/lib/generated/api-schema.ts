@@ -956,6 +956,60 @@ export interface components {
             /** P95 */
             p95: number | null;
         };
+        /** NewLowAnalysisResultSchema */
+        NewLowAnalysisResultSchema: {
+            /** Active Episodes */
+            active_episodes: number;
+            /** Completed Episodes */
+            completed_episodes: number;
+            current: components["schemas"]["NewLowCurrentEpisodeSchema"] | null;
+            /** Episodes */
+            episodes: components["schemas"]["NewLowEpisodeSchema"][];
+            /**
+             * First Date
+             * Format: date
+             */
+            first_date: string;
+            /** Forward Stats */
+            forward_stats: components["schemas"]["NewLowForwardStatsSchema"][];
+            /** Ignored New Low Percentiles */
+            ignored_new_low_percentiles: {
+                [key: string]: number;
+            };
+            /** Kept Episodes */
+            kept_episodes: number;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /** Latest Price */
+            latest_price: number;
+            /** Lookback Sessions */
+            lookback_sessions: number;
+            /** Max Down Percentiles */
+            max_down_percentiles: {
+                [key: string]: number;
+            };
+            /** Quick Ignored Episodes */
+            quick_ignored_episodes: number;
+            /** Quick Recovery Sessions */
+            quick_recovery_sessions: number;
+            /** Raw New Low Bars */
+            raw_new_low_bars: number;
+            /** Recovery Session Percentiles */
+            recovery_session_percentiles: {
+                [key: string]: number;
+            };
+            /** Symbol */
+            symbol: string;
+            /** Time Series */
+            time_series: components["schemas"]["NewLowTimeSeriesPointSchema"][];
+            /** Total Bars */
+            total_bars: number;
+            /** Total Ignored New Lows */
+            total_ignored_new_lows: number;
+        };
         /** NewLowCurrentEpisodeSchema */
         NewLowCurrentEpisodeSchema: {
             /**
@@ -1021,7 +1075,7 @@ export interface components {
         };
         /** NewLowDeepResponse */
         NewLowDeepResponse: {
-            analysis: components["schemas"]["NewLowSymbolResultSchema"];
+            analysis: components["schemas"]["NewLowAnalysisResultSchema"];
             /** Formula Version */
             formula_version: string;
             instrument: components["schemas"]["NewLowInstrumentIdentitySchema"];
@@ -1127,60 +1181,6 @@ export interface components {
             source: string;
             /** Stored Sessions */
             stored_sessions: number;
-        };
-        /** NewLowSymbolResultSchema */
-        NewLowSymbolResultSchema: {
-            /** Active Episodes */
-            active_episodes: number;
-            /** Completed Episodes */
-            completed_episodes: number;
-            current: components["schemas"]["NewLowCurrentEpisodeSchema"] | null;
-            /** Episodes */
-            episodes: components["schemas"]["NewLowEpisodeSchema"][];
-            /**
-             * First Date
-             * Format: date
-             */
-            first_date: string;
-            /** Forward Stats */
-            forward_stats: components["schemas"]["NewLowForwardStatsSchema"][];
-            /** Ignored New Low Percentiles */
-            ignored_new_low_percentiles: {
-                [key: string]: number;
-            };
-            /** Kept Episodes */
-            kept_episodes: number;
-            /**
-             * Last Date
-             * Format: date
-             */
-            last_date: string;
-            /** Latest Price */
-            latest_price: number;
-            /** Lookback Sessions */
-            lookback_sessions: number;
-            /** Max Down Percentiles */
-            max_down_percentiles: {
-                [key: string]: number;
-            };
-            /** Quick Ignored Episodes */
-            quick_ignored_episodes: number;
-            /** Quick Recovery Sessions */
-            quick_recovery_sessions: number;
-            /** Raw New Low Bars */
-            raw_new_low_bars: number;
-            /** Recovery Session Percentiles */
-            recovery_session_percentiles: {
-                [key: string]: number;
-            };
-            /** Symbol */
-            symbol: string;
-            /** Time Series */
-            time_series: components["schemas"]["NewLowTimeSeriesPointSchema"][];
-            /** Total Bars */
-            total_bars: number;
-            /** Total Ignored New Lows */
-            total_ignored_new_lows: number;
         };
         /** NewLowTimeSeriesPointSchema */
         NewLowTimeSeriesPointSchema: {
