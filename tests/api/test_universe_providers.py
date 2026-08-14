@@ -25,15 +25,18 @@ from api.providers.vietnam_universes import VnstockUniverseProvider
 def test_normalize_symbol_uses_canonical_class_share_notation():
     assert normalize_symbol(" brk.b ", "US") == "BRK-B"
     assert normalize_symbol("fpt", "VN") == "FPT"
+    assert normalize_symbol("7203", "JP") == "7203"
 
     with pytest.raises(UniverseProviderDataError, match="Invalid VN"):
         normalize_symbol("VN 30", "VN")
+    with pytest.raises(UniverseProviderDataError, match="listing country"):
+        normalize_symbol("7203", "jpn")
 
 
 def test_validated_constituents_rejects_normalized_duplicates():
     values = [
-        make_constituent(symbol="BRK.B", country_code="US"),
-        make_constituent(symbol="BRK-B", country_code="US"),
+        make_constituent(symbol="BRK.B", listing_country_code="US"),
+        make_constituent(symbol="BRK-B", listing_country_code="US"),
     ]
 
     with pytest.raises(UniverseProviderDataError, match="duplicate symbols"):

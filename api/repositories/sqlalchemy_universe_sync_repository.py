@@ -221,7 +221,10 @@ class SqlAlchemyUniverseSyncRepository:
                 )
             for member in snapshot.members:
                 venue = EQUITY_VENUES_BY_CODE.get(member.venue_code)
-                if venue is None or venue.country_code != snapshot.country_code:
+                if (
+                    venue is None
+                    or venue.country_code != snapshot.listing_country_code
+                ):
                     raise UniverseSyncRejectedError(
                         f"{snapshot.code} member {member.symbol} has a cross-country "
                         f"or unknown Venue {member.venue_code!r}"
@@ -299,9 +302,7 @@ class SqlAlchemyUniverseSyncRepository:
             for member in snapshot.members:
                 instrument = exact.get((member.venue_code, member.symbol))
                 if instrument is None:
-                    candidates = unvenued.get(
-                        (snapshot.country_code, member.symbol), ()
-                    )
+                    candidates = unvenued.get(member.symbol, ())
                     if len(candidates) == 1:
                         instrument = candidates[0]
                 identifier_companies = {
@@ -322,7 +323,7 @@ class SqlAlchemyUniverseSyncRepository:
                     company = Company(
                         display_name=member.company_name,
                         legal_name=member.company_name,
-                        country_code=snapshot.country_code,
+                        domicile_country_code=None,
                         source=snapshot.source,
                     )
                     session.add(company)
@@ -345,15 +346,14 @@ class SqlAlchemyUniverseSyncRepository:
                         companies_by_identifier[key] = company
 
                 if instrument is None:
+                    currency = EQUITY_VENUES_BY_CODE[member.venue_code].currency_code
                     instrument = new_instrument(
                         member.symbol,
                         source=snapshot.source,
                         company=company,
                         venue=venues[member.venue_code],
                         instrument_type="common_stock",
-                        currency=(
-                            "VND" if snapshot.country_code == "VN" else "USD"
-                        ),
+                        currency=currency,
                     )
                     session.add(instrument)
                     session.flush()
@@ -361,9 +361,9 @@ class SqlAlchemyUniverseSyncRepository:
                 else:
                     instrument.company = company
                     instrument.venue = venues[member.venue_code]
-                instrument.currency = (
-                    "VND" if snapshot.country_code == "VN" else "USD"
-                )
+                instrument.currency = EQUITY_VENUES_BY_CODE[
+                    member.venue_code
+                ].currency_code
                 instrument.quote_asset = quote_assets[instrument.currency]
                 instrument.settlement_asset = quote_assets[instrument.currency]
                 instrument.is_active = True
@@ -433,10 +433,10 @@ class SqlAlchemyUniverseSyncRepository:
         instruments: list[Instrument],
     ) -> tuple[
         dict[tuple[str, str], Instrument],
-        dict[tuple[str, str], tuple[Instrument, ...]],
+        dict[str, tuple[Instrument, ...]],
     ]:
         exact: dict[tuple[str, str], Instrument] = {}
-        unvenued_lists: dict[tuple[str, str], list[Instrument]] = defaultdict(list)
+        unvenued_lists: dict[str, list[Instrument]] = defaultdict(list)
         for instrument in instruments:
             symbols = {
                 canonical_symbol(instrument),
@@ -445,11 +445,9 @@ class SqlAlchemyUniverseSyncRepository:
             if instrument.venue is not None:
                 for symbol in symbols:
                     exact[(instrument.venue.code, symbol)] = instrument
-            elif instrument.company is not None:
+            else:
                 for symbol in symbols:
-                    unvenued_lists[(instrument.company.country_code, symbol)].append(
-                        instrument
-                    )
+                    unvenued_lists[symbol].append(instrument)
         return exact, {
             key: tuple(values) for key, values in unvenued_lists.items()
         }
@@ -465,7 +463,6 @@ class SqlAlchemyUniverseSyncRepository:
             member.company_name,
         )
         company.legal_name = company.legal_name or member.company_name
-        company.country_code = snapshot.country_code
         company.sector = member.sector or company.sector
         company.industry = member.industry or company.industry
         company.is_active = True
@@ -483,7 +480,7 @@ class SqlAlchemyUniverseSyncRepository:
         if asset is None:
             asset = Asset(
                 canonical_code=(
-                    f"EQUITY:{snapshot.country_code}:{instrument.id}"
+                    f"EQUITY:{snapshot.listing_country_code}:{instrument.id}"
                 ),
                 name=member_name(company, instrument),
                 asset_type="equity",
@@ -564,20 +561,22 @@ class SqlAlchemyUniverseSyncRepository:
 
     @staticmethod
     def _upsert_quote_assets(session: Session) -> dict[str, Asset]:
+        currency_codes = {row.currency_code for row in EQUITY_VENUES}
         assets = {
             row.canonical_code: row
             for row in session.scalars(
-                select(Asset).where(Asset.canonical_code.in_(("USD", "VND")))
+                select(Asset).where(Asset.canonical_code.in_(currency_codes))
             )
         }
-        for code, name in (
-            ("USD", "United States Dollar"),
-            ("VND", "Vietnamese Dong"),
-        ):
+        currency_names = {
+            "USD": "United States Dollar",
+            "VND": "Vietnamese Dong",
+        }
+        for code in sorted(currency_codes):
             if code not in assets:
                 assets[code] = Asset(
                     canonical_code=code,
-                    name=name,
+                    name=currency_names.get(code, code),
                     asset_type="fiat",
                     source="system",
                 )
@@ -618,7 +617,7 @@ class SqlAlchemyUniverseSyncRepository:
             return
         lock_keys = {
             "universe-sync:VN-family"
-            if snapshot.country_code == "VN"
+            if snapshot.listing_country_code == "VN"
             else f"universe-sync:{snapshot.code}"
             for snapshot in snapshots
         }

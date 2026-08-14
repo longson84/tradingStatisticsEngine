@@ -17,7 +17,7 @@ def test_exact_instrument_fundamentals_write_and_incremental_reuse(monkeypatch):
         instrument = Instrument(
             company=Company(
                 display_name="Microsoft",
-                country_code="US",
+                domicile_country_code="US",
                 source="test",
             ),
             venue=Venue(

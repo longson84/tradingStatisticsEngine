@@ -25,7 +25,9 @@ FETCHED_AT = datetime(2026, 8, 3, tzinfo=UTC)
 def _seed(session: Session) -> FundamentalReport:
     instrument = Instrument(
         company=Company(
-            display_name="FPT Corporation", country_code="VN", source="test"
+            display_name="FPT Corporation",
+            domicile_country_code="VN",
+            source="test",
         ),
         symbol="FPT",
         currency="VND",

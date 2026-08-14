@@ -16,14 +16,14 @@ class CompanyCatalogService:
     def list_companies(
         self,
         *,
-        country: str | None = None,
+        listing_country: str | None = None,
         search: str | None = None,
         sector: str | None = None,
         offset: int = 0,
         limit: int = 50,
     ) -> tuple[tuple[CompanyCatalogRecord, ...], int, CompanyCatalogFacets]:
         return self._repository.list_companies(CompanyCatalogQuery(
-            country=country,
+            listing_country=listing_country,
             search=search,
             sector=sector,
             offset=offset,

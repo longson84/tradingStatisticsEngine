@@ -47,20 +47,30 @@ def _service() -> tuple[WatchlistService, Session, dict[str, int]]:
     instruments = {
         "MSFT": Instrument(
             venue=nasdaq,
-            company=Company(display_name="Microsoft", country_code="US", source="test"),
+            company=Company(
+                display_name="Microsoft",
+                domicile_country_code="US",
+                source="test",
+            ),
             symbol="MSFT", instrument_type="common_stock",
             currency="USD", source="test", is_active=True,
         ),
         "AAPL": Instrument(
             venue=nasdaq,
-            company=Company(display_name="Apple", country_code="US", source="test"),
+            company=Company(
+                display_name="Apple",
+                domicile_country_code="US",
+                source="test",
+            ),
             symbol="AAPL", instrument_type="common_stock",
             currency="USD", source="test", is_active=True,
         ),
         "FPT": Instrument(
             venue=hose,
             company=Company(
-                display_name="FPT Corporation", country_code="VN", source="test"
+                display_name="FPT Corporation",
+                domicile_country_code="VN",
+                source="test",
             ),
             symbol="FPT", instrument_type="common_stock",
             currency="VND", source="test", is_active=True,

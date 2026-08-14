@@ -74,11 +74,11 @@
       },
       "CompanyCatalogFacetsResponse": {
         "properties": {
-          "countries": {
+          "listing_countries": {
             "items": {
               "$ref": "#/components/schemas/FacetCountResponse"
             },
-            "title": "Countries",
+            "title": "Listing Countries",
             "type": "array"
           },
           "sectors": {
@@ -90,7 +90,7 @@
           }
         },
         "required": [
-          "countries",
+          "listing_countries",
           "sectors"
         ],
         "title": "CompanyCatalogFacetsResponse",
@@ -98,17 +98,20 @@
       },
       "CompanyCatalogItemResponse": {
         "properties": {
-          "country_code": {
-            "enum": [
-              "US",
-              "VN"
-            ],
-            "title": "Country Code",
-            "type": "string"
-          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
+          },
+          "domicile_country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domicile Country Code"
           },
           "id": {
             "title": "Id",
@@ -154,6 +157,13 @@
             ],
             "title": "Legal Name"
           },
+          "listing_country_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Listing Country Codes",
+            "type": "array"
+          },
           "sector": {
             "anyOf": [
               {
@@ -169,7 +179,7 @@
         "required": [
           "id",
           "display_name",
-          "country_code",
+          "listing_country_codes",
           "is_active",
           "identifiers",
           "instruments"
@@ -280,6 +290,17 @@
               }
             ],
             "title": "Venue Code"
+          },
+          "venue_country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Country Code"
           }
         },
         "required": [
@@ -5327,22 +5348,21 @@
         "parameters": [
           {
             "in": "query",
-            "name": "country",
+            "name": "listing_country",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "US",
-                    "VN"
-                  ],
+                  "maxLength": 2,
+                  "minLength": 2,
+                  "pattern": "^[A-Z]{2}$",
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Country"
+              "title": "Listing Country"
             }
           },
           {

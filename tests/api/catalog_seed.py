@@ -98,7 +98,7 @@ def seed_company_catalog(session: Session) -> dict[str, Instrument]:
         issuer = company or Company(
             display_name=company_name,
             legal_name=company_name,
-            country_code=country,
+            domicile_country_code=country,
             sector=sector,
             industry=industry,
             is_active=True,
@@ -164,7 +164,7 @@ def seed_company_catalog(session: Session) -> dict[str, Instrument]:
     alphabet = Company(
         display_name="Alphabet Inc.",
         legal_name="Alphabet Inc.",
-        country_code="US",
+        domicile_country_code="US",
         sector="Communication Services",
         industry="Interactive Media & Services",
         is_active=True,

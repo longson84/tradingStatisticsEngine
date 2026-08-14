@@ -23,7 +23,7 @@ def test_symbol_history_preserves_ticker_rename_without_changing_instrument():
         instrument = Instrument(
             company=Company(
                 display_name="Core Natural Resources",
-                country_code="US",
+                domicile_country_code="US",
                 source="sec",
             ),
             symbol="CNR",

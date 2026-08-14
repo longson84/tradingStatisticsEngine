@@ -14,7 +14,7 @@ def _instrument() -> Instrument:
     return Instrument(
         company=Company(
             display_name="FPT Corporation",
-            country_code="VN",
+            domicile_country_code="VN",
             sector="Information Technology",
             industry="Công nghệ và thông tin",
             source="test",

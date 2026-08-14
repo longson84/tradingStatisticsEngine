@@ -10,7 +10,8 @@ export function CompanyCatalogTable({ companies }: { companies: CompanyCatalogIt
           <tr>
             <th className="px-3 py-2 text-left font-medium">Company</th>
             <th className="px-3 py-2 text-left font-medium">Legal name</th>
-            <th className="px-3 py-2 text-left font-medium">Country</th>
+            <th className="px-3 py-2 text-left font-medium">Domicile</th>
+            <th className="px-3 py-2 text-left font-medium">Listing countries</th>
             <th className="px-3 py-2 text-left font-medium">Sector</th>
             <th className="px-3 py-2 text-left font-medium">Industry</th>
             <th className="px-3 py-2 text-left font-medium">Instruments</th>
@@ -38,7 +39,12 @@ export function CompanyCatalogTable({ companies }: { companies: CompanyCatalogIt
                 <td className="min-w-64 px-3 py-2 text-muted-foreground">
                   {company.legal_name ?? "n/a"}
                 </td>
-                <td className="px-3 py-2 font-medium">{company.country_code}</td>
+                <td className="px-3 py-2 font-medium">
+                  {company.domicile_country_code ?? "Unknown"}
+                </td>
+                <td className="px-3 py-2 font-medium">
+                  {company.listing_country_codes.join(", ") || "n/a"}
+                </td>
                 <td className="px-3 py-2 text-muted-foreground">
                   {company.sector ?? "n/a"}
                 </td>
@@ -90,7 +96,7 @@ export function CompanyCatalogTable({ companies }: { companies: CompanyCatalogIt
           })}
           {companies.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">
+              <td colSpan={9} className="px-3 py-10 text-center text-muted-foreground">
                 No companies match the current filters.
               </td>
             </tr>

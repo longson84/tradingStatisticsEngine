@@ -22,7 +22,9 @@ from api.db.models import (
 def _seed_identity(session: Session) -> tuple[Instrument, Universe]:
     instrument = Instrument(
         company=Company(
-            display_name="FPT Corporation", country_code="VN", source="test"
+            display_name="FPT Corporation",
+            domicile_country_code="VN",
+            source="test",
         ),
         symbol="FPT",
         currency="VND",

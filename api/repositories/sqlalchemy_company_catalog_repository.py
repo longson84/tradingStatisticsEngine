@@ -4,7 +4,13 @@ from __future__ import annotations
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Company, Instrument, InstrumentSymbol, UniverseMembership
+from api.db.models import (
+    Company,
+    Instrument,
+    InstrumentSymbol,
+    UniverseMembership,
+    Venue,
+)
 from api.instrument_symbols import canonical_symbol
 from api.repositories.company_catalog_repository import (
     CompanyCatalogQuery,
@@ -42,8 +48,14 @@ class SqlAlchemyCompanyCatalogRepository:
             )
             base_filters.append(search_filter)
         filters = list(base_filters)
-        if query.country:
-            filters.append(Company.country_code == query.country)
+        if query.listing_country:
+            filters.append(
+                Company.instruments.any(
+                    Instrument.venue.has(
+                        Venue.country_code == query.listing_country
+                    )
+                )
+            )
         if query.sector:
             filters.append(
                 or_(Company.sector.is_(None), Company.sector == "Unknown")
@@ -71,15 +83,23 @@ class SqlAlchemyCompanyCatalogRepository:
             .offset(query.offset)
             .limit(query.limit)
         ).all()
-        country_rows = self._session.execute(
-            select(Company.country_code, func.count(Company.id))
-            .where(*base_filters)
-            .group_by(Company.country_code)
-            .order_by(Company.country_code)
+        listing_country_rows = self._session.execute(
+            select(Venue.country_code, func.count(func.distinct(Company.id)))
+            .join(Instrument, Instrument.venue_id == Venue.id)
+            .join(Company, Company.id == Instrument.company_id)
+            .where(*base_filters, Venue.country_code.is_not(None))
+            .group_by(Venue.country_code)
+            .order_by(Venue.country_code)
         )
         sector_filters = list(base_filters)
-        if query.country:
-            sector_filters.append(Company.country_code == query.country)
+        if query.listing_country:
+            sector_filters.append(
+                Company.instruments.any(
+                    Instrument.venue.has(
+                        Venue.country_code == query.listing_country
+                    )
+                )
+            )
         sector_value = func.coalesce(Company.sector, "Unknown")
         sector_rows = self._session.execute(
             select(sector_value, func.count(Company.id))
@@ -88,9 +108,9 @@ class SqlAlchemyCompanyCatalogRepository:
             .order_by(sector_value)
         )
         facets = CompanyCatalogFacets(
-            countries=tuple(
+            listing_countries=tuple(
                 CompanyCatalogFacetCount(value=value, count=int(count))
-                for value, count in country_rows
+                for value, count in listing_country_rows
             ),
             sectors=tuple(
                 CompanyCatalogFacetCount(value=value, count=int(count))
@@ -105,7 +125,15 @@ class SqlAlchemyCompanyCatalogRepository:
             id=company.id,
             display_name=company.display_name,
             legal_name=company.legal_name,
-            country_code=company.country_code,
+            domicile_country_code=company.domicile_country_code,
+            listing_country_codes=tuple(
+                sorted({
+                    instrument.venue.country_code
+                    for instrument in company.instruments
+                    if instrument.venue is not None
+                    and instrument.venue.country_code is not None
+                })
+            ),
             sector=company.sector,
             industry=company.industry,
             is_active=company.is_active,
@@ -126,6 +154,11 @@ class SqlAlchemyCompanyCatalogRepository:
                     instrument_type=instrument.instrument_type,
                     share_class=instrument.share_class,
                     venue_code=(instrument.venue.code if instrument.venue else None),
+                    venue_country_code=(
+                        instrument.venue.country_code
+                        if instrument.venue
+                        else None
+                    ),
                     currency=instrument.currency,
                     is_active=instrument.is_active,
                     universes=tuple(sorted(

@@ -55,7 +55,7 @@ class MutableUS30Provider:
         return UniverseSnapshot(
             code="US30",
             name="Test Dow 30",
-            country_code="US",
+            listing_country_code="US",
             description="Test current constituents",
             effective_date=date(2026, 8, 13),
             fetched_at=datetime(2026, 8, 13, tzinfo=UTC),
@@ -63,7 +63,7 @@ class MutableUS30Provider:
             constituents=tuple(
                 make_constituent(
                     symbol=ticker,
-                    country_code="US",
+                    listing_country_code="US",
                     company_name=(
                         "Same Provider Name" if index in (2, 3)
                         else f"Company {ticker}"
@@ -113,6 +113,7 @@ def test_live_sync_is_idempotent_and_reconciles_companies_by_identifier(sync_set
         )
         assert first_instrument is not None and second_instrument is not None
         assert first_instrument.company_id == second_instrument.company_id
+        assert first_instrument.company.domicile_country_code is None
         same_name = session.scalars(
             select(Instrument)
             .where(Instrument.symbol.in_(("T002", "T003")))
@@ -301,7 +302,9 @@ def test_vietnam_selection_expands_to_the_atomic_family(sync_setup):
 def test_sync_cli_selection_controls():
     parser = build_parser()
 
-    assert selected_universes(parser.parse_args(["--country", "us"])) == (
+    assert selected_universes(
+        parser.parse_args(["--listing-country", "us"])
+    ) == (
         "US500", "US30", "US100", "US2000",
     )
     assert selected_universes(
@@ -313,7 +316,7 @@ def test_missing_us_exchange_is_resolved_from_nasdaq_trader_catalog():
     snapshot = UniverseSnapshot(
         code="US500",
         name="S&P 500",
-        country_code="US",
+        listing_country_code="US",
         description="",
         effective_date=None,
         fetched_at=datetime(2026, 8, 13, tzinfo=UTC),
@@ -321,7 +324,7 @@ def test_missing_us_exchange_is_resolved_from_nasdaq_trader_catalog():
         constituents=(
             make_constituent(
                 symbol="BRK.B",
-                country_code="US",
+                listing_country_code="US",
                 company_name="Berkshire Hathaway",
             ),
         ),

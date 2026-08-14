@@ -13,7 +13,6 @@ from api.schemas.company import (
     CompanyIdentifierResponse,
     CompanyInstrumentResponse,
     FacetCountResponse,
-    CompanyCountryCode,
 )
 from api.services.company_catalog_service import CompanyCatalogService
 
@@ -28,14 +27,19 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 )
 def list_companies(
     service: Annotated[CompanyCatalogService, Depends(get_company_catalog_service)],
-    country: CompanyCountryCode | None = Query(default=None),
+    listing_country: str | None = Query(
+        default=None,
+        min_length=2,
+        max_length=2,
+        pattern=r"^[A-Z]{2}$",
+    ),
     search: str | None = Query(default=None, max_length=100),
     sector: str | None = Query(default=None, max_length=255),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
 ) -> CompanyCatalogResponse:
     companies, total, facets = service.list_companies(
-        country=country,
+        listing_country=listing_country,
         search=search,
         sector=sector,
         offset=offset,
@@ -50,7 +54,8 @@ def list_companies(
                 id=company.id,
                 display_name=company.display_name,
                 legal_name=company.legal_name,
-                country_code=company.country_code,
+                domicile_country_code=company.domicile_country_code,
+                listing_country_codes=list(company.listing_country_codes),
                 sector=company.sector,
                 industry=company.industry,
                 is_active=company.is_active,
@@ -68,6 +73,7 @@ def list_companies(
                         instrument_type=instrument.instrument_type,
                         share_class=instrument.share_class,
                         venue_code=instrument.venue_code,
+                        venue_country_code=instrument.venue_country_code,
                         currency=instrument.currency,
                         is_active=instrument.is_active,
                         universes=list(instrument.universes),
@@ -78,9 +84,9 @@ def list_companies(
             for company in companies
         ],
         facets=CompanyCatalogFacetsResponse(
-            countries=[
+            listing_countries=[
                 FacetCountResponse(value=facet.value, count=facet.count)
-                for facet in facets.countries
+                for facet in facets.listing_countries
             ],
             sectors=[
                 FacetCountResponse(value=facet.value, count=facet.count)

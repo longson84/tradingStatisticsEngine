@@ -59,6 +59,10 @@ log; revise the main sections when the current architecture itself changes.
 12. Preserve the actual quote asset. A BTC/USDT close is denominated in USDT
     and must not be labelled USD unless an explicit conversion methodology is
     applied.
+13. Keep issuer domicile separate from listing geography. A Company's optional
+    domicile must come from authoritative issuer metadata; the country in which
+    an Instrument trades belongs to its Venue and must not be copied into the
+    Company record.
 
 ## Persistence
 
@@ -84,8 +88,9 @@ fundamentals also use PostgreSQL.
 ### Canonical company, asset, venue, and instrument schema
 
 - `companies` stores issuer identity and company-level metadata such as display
-  name, legal name, sector, and industry. A company can issue multiple
-  instruments.
+  name, legal name, optional verified `domicile_country_code`, sector, and
+  industry. Domicile is nullable and is never inferred from a listing Venue or
+  Universe. A company can issue multiple instruments in one or more countries.
 - `company_identifiers` stores stable reconciliation keys such as SEC CIK. Its
   `namespace` and `source` are plain strings; there is intentionally no
   provider catalog foreign key.
@@ -95,12 +100,12 @@ fundamentals also use PostgreSQL.
 - `asset_issuers` stores the optional effective-dated relationship from an
   asset to a company. Decentralized assets such as BTC have no synthetic issuer
   row.
-- `venues` stores the economic location of trading, such as Binance Spot or
-  NASDAQ. A venue is not a data-provider registry and remains part of market
-  identity even if its API becomes unavailable. Every venue also owns an IANA
-  timezone, a `trading_calendar_code` policy string, and a local daily-session
-  cutoff. The calendar code is application metadata, not a foreign key to a
-  calendar table.
+- `venues` stores the economic location and listing country of trading, such as
+  Binance Spot or NASDAQ. A venue is not a data-provider registry and remains
+  part of market identity even if its API becomes unavailable. Every venue also
+  owns an IANA timezone, a `trading_calendar_code` policy string, and a local
+  daily-session cutoff. The calendar code is application metadata, not a
+  foreign key to a calendar table.
 - `instruments` stores venue-specific tradable-product identity: optional
   company, venue, base asset, quote asset, settlement asset, market class,
   product type, trading increments, active state, and source. Existing equity
@@ -2153,3 +2158,32 @@ Consequences: the relational schema no longer advertises metadata that no
 active provider contract can populate. Contract-level token identity may be
 introduced later only with an authoritative chain-aware source, explicit
 network taxonomy, reconciliation rules, and complete ingestion support.
+
+### 2026-08-14 — Company domicile and listing-country separation
+
+Context: `companies.country_code` was restricted to `US` and `VN`, but live
+Universe ingestion populated it from the listing scope of each snapshot. That
+made a Venue property look like issuer domicile and would misclassify foreign
+issuers or depositary receipts listed in another country. Before this cutover,
+all 2,786 live Companies with Instruments had venue-backed listing geography,
+and no live common-stock Instrument lacked a Venue.
+
+Decision: migration `0028` renames the Company field to nullable
+`domicile_country_code`, removes the US/VN-only constraint, and clears the old
+unverified values. Domicile accepts normalized two-letter codes but remains
+null until an authoritative issuer source supplies it. Listing geography is
+derived from `Instrument -> Venue.country_code`; Company catalog filters and
+facets therefore operate on listing country and return domicile separately.
+
+Universe provider and persistence contracts use `listing_country_code`. That
+field validates member Venue ownership, symbol normalization, synchronization
+locks, and Venue-specific currency selection, but it never writes Company
+domicile. Equity Venue definitions own both listing country and quote currency,
+so adding a new country requires an explicit Venue definition rather than an
+implicit non-Vietnam-to-USD fallback.
+
+Consequences: a Company may issue Instruments listed in multiple countries
+without duplicating or corrupting its issuer identity. The UI can distinguish
+unknown domicile from known listing countries. Adding Japan, Australia, Hong
+Kong, China, or the United Kingdom now requires provider and Venue support, but
+no Company-schema widening or US/VN literal change.

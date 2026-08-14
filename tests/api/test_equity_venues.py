@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from api.db.models import Base, Company, Instrument, InstrumentSymbol
+from api.db.models import Base, Company, Instrument, InstrumentSymbol, Venue
 from api.providers.nasdaq_symbol_directory import (
     USListingVenue,
     USListingVenueCatalog,
@@ -105,12 +105,18 @@ def test_sqlalchemy_repository_creates_registry_and_assigns_exact_instrument():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session, session.begin():
+        repository = SqlAlchemyEquityVenueRepository(session)
+        repository.ensure_venue_registry()
+        session.flush()
+        nasdaq = session.scalar(select(Venue).where(Venue.code == "NASDAQ"))
+        assert nasdaq is not None
         instrument = Instrument(
             company=Company(
                 display_name="Example Issuer",
-                country_code="US",
+                domicile_country_code="CA",
                 source="test",
             ),
+            venue=nasdaq,
             symbol="EXAMPLE",
             currency="USD",
             source="test",
@@ -123,16 +129,13 @@ def test_sqlalchemy_repository_creates_registry_and_assigns_exact_instrument():
         ))
         session.add(instrument)
         session.flush()
-        repository = SqlAlchemyEquityVenueRepository(session)
-        repository.ensure_venue_registry()
-        session.flush()
 
         rows = repository.list_us_equity_instruments()
         assert rows == (EquityVenueInstrumentRecord(
             instrument_id=instrument.id,
             symbol="EXAMPLE",
             symbol_aliases=("EXAMPLE.A",),
-            venue_code=None,
+            venue_code="NASDAQ",
         ),)
         assert repository.assign_venues((
             EquityVenueAssignment(instrument.id, "NYSE"),

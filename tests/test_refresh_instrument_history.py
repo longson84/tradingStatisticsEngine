@@ -17,7 +17,7 @@ def test_failed_exact_price_refresh_records_instrument_state(monkeypatch):
         instrument = Instrument(
             company=Company(
                 display_name="Microsoft",
-                country_code="US",
+                domicile_country_code="US",
                 source="test",
             ),
             venue=Venue(

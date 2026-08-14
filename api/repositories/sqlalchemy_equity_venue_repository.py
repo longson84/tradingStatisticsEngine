@@ -4,7 +4,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from api.db.models import Company, Instrument, Venue
+from api.db.models import Instrument, Venue
 from api.equity_venues import (
     EQUITY_VENUES,
     EQUITY_VENUE_SOURCE,
@@ -53,7 +53,7 @@ class SqlAlchemyEquityVenueRepository(EquityVenueRepository):
             .where(
                 Instrument.company_id.is_not(None),
                 Instrument.instrument_type == "common_stock",
-                Instrument.company.has(Company.country_code == "US"),
+                Instrument.venue.has(Venue.country_code == "US"),
                 Instrument.is_active.is_(True),
             )
             .options(

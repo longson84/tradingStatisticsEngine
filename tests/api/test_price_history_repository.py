@@ -30,11 +30,19 @@ def _seed(session: Session) -> None:
         session_cutoff_time=time(15, 15), source="test",
     )
     fpt = Instrument(
-        company=Company(display_name="FPT", country_code="VN", source="test"),
+        company=Company(
+            display_name="FPT",
+            domicile_country_code="VN",
+            source="test",
+        ),
         venue=venue, symbol="FPT", currency="VND", source="test"
     )
     acb = Instrument(
-        company=Company(display_name="ACB", country_code="VN", source="test"),
+        company=Company(
+            display_name="ACB",
+            domicile_country_code="VN",
+            source="test",
+        ),
         venue=venue, symbol="ACB", currency="VND", source="test"
     )
     universe = Universe(
@@ -146,7 +154,11 @@ def test_repository_writes_equal_tickers_to_the_exact_instrument_id():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        company = Company(display_name="Dual Listing", country_code="US", source="test")
+        company = Company(
+            display_name="Dual Listing",
+            domicile_country_code="US",
+            source="test",
+        )
         venues = [
             Venue(
                 code=code,

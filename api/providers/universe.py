@@ -4,12 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 import re
-from typing import Literal, Protocol
+from typing import Protocol
 
 
-CountryCode = Literal["US", "VN"]
 _US_TICKER = re.compile(r"^[A-Z0-9][A-Z0-9-]{0,31}$")
 _VN_TICKER = re.compile(r"^[A-Z0-9][A-Z0-9]{0,31}$")
+_LISTING_SYMBOL = re.compile(r"^[A-Z0-9][A-Z0-9.-]{0,31}$")
 
 
 class UniverseProviderError(RuntimeError):
@@ -49,12 +49,23 @@ class UniverseConstituent:
 class UniverseSnapshot:
     code: str
     name: str
-    country_code: CountryCode
+    listing_country_code: str
     description: str
     effective_date: date | None
     fetched_at: datetime
     source: str
     constituents: tuple[UniverseConstituent, ...]
+
+    def __post_init__(self) -> None:
+        country = self.listing_country_code
+        if (
+            len(country) != 2
+            or not country.isalpha()
+            or country != country.upper()
+        ):
+            raise UniverseProviderDataError(
+                "listing_country_code must be two uppercase letters"
+            )
 
 
 class UniverseProvider(Protocol):
@@ -88,17 +99,24 @@ class UniverseProviderRegistry:
         return provider.fetch(code)
 
 
-def normalize_symbol(value: object, country_code: CountryCode) -> str:
+def normalize_symbol(value: object, listing_country_code: str) -> str:
     """Normalize a provider symbol into the canonical Instrument namespace."""
+    country = listing_country_code.upper().strip()
+    if len(country) != 2 or not country.isalpha():
+        raise UniverseProviderDataError(
+            f"Invalid listing country code: {listing_country_code!r}"
+        )
     symbol = str(value).upper().strip()
-    if country_code == "US":
+    if country == "US":
         symbol = symbol.replace(".", "-").replace("/", "-")
         pattern = _US_TICKER
-    else:
+    elif country == "VN":
         pattern = _VN_TICKER
+    else:
+        pattern = _LISTING_SYMBOL
     if not symbol or not pattern.fullmatch(symbol):
         raise UniverseProviderDataError(
-            f"Invalid {country_code} universe symbol: {value!r}"
+            f"Invalid {country} universe symbol: {value!r}"
         )
     return symbol
 
@@ -113,7 +131,7 @@ def optional_text(value: object) -> str | None:
 def make_constituent(
     *,
     symbol: object,
-    country_code: CountryCode,
+    listing_country_code: str,
     company_name: object = None,
     sector: object = None,
     industry: object = None,
@@ -121,7 +139,7 @@ def make_constituent(
     company_identifiers: tuple[UniverseCompanyIdentifier, ...] = (),
 ) -> UniverseConstituent:
     listing_symbol = str(symbol).upper().strip()
-    canonical = normalize_symbol(symbol, country_code)
+    canonical = normalize_symbol(symbol, listing_country_code)
     return UniverseConstituent(
         canonical_symbol=canonical,
         listing_symbol=listing_symbol,

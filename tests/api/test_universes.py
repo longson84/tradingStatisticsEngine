@@ -36,7 +36,11 @@ def _services():
     session = Session(engine)
     fetched_at = datetime(2026, 8, 10, tzinfo=UTC)
     msft = Instrument(
-        company=Company(display_name="Microsoft", country_code="US", source="test"),
+        company=Company(
+            display_name="Microsoft",
+            domicile_country_code="US",
+            source="test",
+        ),
         symbol="MSFT",
         instrument_type="common_stock",
         currency="USD",

@@ -9,21 +9,23 @@ import { fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
-const ALL_COUNTRIES = "ALL"
+const ALL_LISTING_COUNTRIES = "ALL"
 const ALL_SECTORS = "ALL"
 const PAGE_SIZE = 50
 
 
 export function CompaniesPage() {
-  const [country, setCountry] = useState(ALL_COUNTRIES)
+  const [listingCountry, setListingCountry] = useState(ALL_LISTING_COUNTRIES)
   const [sector, setSector] = useState(ALL_SECTORS)
   const [query, setQuery] = useState("")
   const [offset, setOffset] = useState(0)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
   const catalog = useQuery({
-    queryKey: ["company-catalog", country, sector, debouncedQuery, offset],
+    queryKey: ["company-catalog", listingCountry, sector, debouncedQuery, offset],
     queryFn: () => companiesApi({
-      country: country === ALL_COUNTRIES ? undefined : country as "US" | "VN",
+      listing_country: listingCountry === ALL_LISTING_COUNTRIES
+        ? undefined
+        : listingCountry,
       sector: sector === ALL_SECTORS ? undefined : sector,
       search: debouncedQuery || undefined,
       offset,
@@ -38,21 +40,21 @@ export function CompaniesPage() {
     [catalog.data?.companies],
   )
 
-  const countryOptions = useMemo(() => {
-    const facets = catalog.data?.facets.countries ?? []
+  const listingCountryOptions = useMemo(() => {
+    const facets = catalog.data?.facets.listing_countries ?? []
     return [
       {
-        value: ALL_COUNTRIES,
+        value: ALL_LISTING_COUNTRIES,
         label: "All Companies",
-        count: facets.reduce((sum, facet) => sum + facet.count, 0),
+        count: catalog.data?.total ?? 0,
       },
       ...facets.map(facet => ({
         value: facet.value,
-        label: facet.value === "US" ? "US Companies" : "VN Companies",
+        label: `${facet.value} listings`,
         count: facet.count,
       })),
     ]
-  }, [catalog.data?.facets.countries])
+  }, [catalog.data?.facets.listing_countries, catalog.data?.total])
 
   const sectorOptions = useMemo(() => {
     const facets = catalog.data?.facets.sectors ?? []
@@ -83,13 +85,13 @@ export function CompaniesPage() {
             </div>
           </div>
 
-          <FilterGroup label="Country">
-            {countryOptions.map(option => (
+          <FilterGroup label="Listing country">
+            {listingCountryOptions.map(option => (
               <FilterButton
                 key={option.value}
-                active={country === option.value}
+                active={listingCountry === option.value}
                 onClick={() => {
-                  setCountry(option.value)
+                  setListingCountry(option.value)
                   setSector(ALL_SECTORS)
                   setOffset(0)
                 }}

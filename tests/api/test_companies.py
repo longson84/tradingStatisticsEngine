@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from api.db.models import Base
+from api.db.models import Base, Company
 from api.main import app
 from api.repositories.sqlalchemy_company_catalog_repository import (
     SqlAlchemyCompanyCatalogRepository,
@@ -41,7 +41,7 @@ def test_root_company_catalog_groups_alphabet_share_classes_under_one_issuer():
     try:
         response = list_companies(
             company_service,
-            country="US",
+            listing_country="US",
             search="Alphabet",
             sector=None,
             offset=0,
@@ -61,6 +61,8 @@ def test_root_company_catalog_groups_alphabet_share_classes_under_one_issuer():
         "namespace": "sec_cik",
         "value": "1652044",
     }
+    assert alphabet.domicile_country_code == "US"
+    assert alphabet.listing_country_codes == ["US"]
 
 
 def test_company_catalog_uses_server_pagination_and_facets():
@@ -68,7 +70,7 @@ def test_company_catalog_uses_server_pagination_and_facets():
     try:
         first = list_companies(
             company_service,
-            country=None,
+            listing_country=None,
             search=None,
             sector=None,
             offset=0,
@@ -76,7 +78,7 @@ def test_company_catalog_uses_server_pagination_and_facets():
         )
         second = list_companies(
             company_service,
-            country=None,
+            listing_country=None,
             search=None,
             sector=None,
             offset=50,
@@ -91,9 +93,38 @@ def test_company_catalog_uses_server_pagination_and_facets():
     assert {row.id for row in first.companies}.isdisjoint(
         row.id for row in second.companies
     )
-    countries = {row.value: row.count for row in first.facets.countries}
+    countries = {
+        row.value: row.count
+        for row in first.facets.listing_countries
+    }
     assert countries == {"US": 59, "VN": 6}
     assert sum(countries.values()) == first.total
+
+
+def test_company_domicile_is_independent_from_listing_country():
+    company_service, _, session = _services()
+    try:
+        apple = session.scalar(
+            select(Company).where(Company.display_name == "Apple Inc.")
+        )
+        assert apple is not None
+        apple.domicile_country_code = "CA"
+        session.commit()
+
+        response = list_companies(
+            company_service,
+            listing_country="US",
+            search="Apple",
+            sector=None,
+            offset=0,
+            limit=50,
+        )
+    finally:
+        session.close()
+
+    assert response.total == 1
+    assert response.companies[0].domicile_country_code == "CA"
+    assert response.companies[0].listing_country_codes == ["US"]
 
 
 def test_instrument_catalog_supports_all_equities_and_real_universe_filters():
@@ -141,6 +172,12 @@ def test_openapi_exposes_three_precise_catalogs_without_company_compatibility_pa
     schema = app.openapi()
 
     assert schema["paths"]["/companies"]["get"]["operationId"] == "listCompanies"
+    company_parameters = {
+        parameter["name"]
+        for parameter in schema["paths"]["/companies"]["get"]["parameters"]
+    }
+    assert "listing_country" in company_parameters
+    assert "country" not in company_parameters
     assert schema["paths"]["/instruments"]["get"]["operationId"] == "listInstruments"
     assert schema["paths"]["/universes"]["get"]["operationId"] == "listUniverses"
     assert "/companies/catalog" not in schema["paths"]
@@ -153,7 +190,15 @@ def test_openapi_exposes_three_precise_catalogs_without_company_compatibility_pa
     assert "VN_ALL" not in str(schema)
 
     company_fields = components["CompanyCatalogItemResponse"]["properties"]
-    assert {"id", "display_name", "identifiers", "instruments"} <= company_fields.keys()
+    assert {
+        "id",
+        "display_name",
+        "domicile_country_code",
+        "listing_country_codes",
+        "identifiers",
+        "instruments",
+    } <= company_fields.keys()
+    assert "country_code" not in company_fields
     company_instrument_fields = components["CompanyInstrumentResponse"]["properties"]
     assert "symbol" in company_instrument_fields
     assert "ticker" not in company_instrument_fields

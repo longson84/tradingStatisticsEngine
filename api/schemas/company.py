@@ -1,12 +1,9 @@
 """Public company API contracts generated into frontend TypeScript types."""
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel
 
 
-CompanyCountryCode = Literal["US", "VN"]
 class FacetCountResponse(BaseModel):
     value: str
     count: int
@@ -23,6 +20,7 @@ class CompanyInstrumentResponse(BaseModel):
     instrument_type: str
     share_class: str | None = None
     venue_code: str | None = None
+    venue_country_code: str | None = None
     currency: str
     is_active: bool
     universes: list[str]
@@ -32,7 +30,8 @@ class CompanyCatalogItemResponse(BaseModel):
     id: int
     display_name: str
     legal_name: str | None = None
-    country_code: CompanyCountryCode
+    domicile_country_code: str | None = None
+    listing_country_codes: list[str]
     sector: str | None = None
     industry: str | None = None
     is_active: bool
@@ -41,7 +40,7 @@ class CompanyCatalogItemResponse(BaseModel):
 
 
 class CompanyCatalogFacetsResponse(BaseModel):
-    countries: list[FacetCountResponse]
+    listing_countries: list[FacetCountResponse]
     sectors: list[FacetCountResponse]
 
 

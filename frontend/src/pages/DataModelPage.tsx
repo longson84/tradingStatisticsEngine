@@ -23,8 +23,8 @@ const entities = [
     name: "Company",
     icon: Building2,
     definition: "A legal or economic issuer, not something directly traded.",
-    examples: "Alphabet Inc., Apple Inc.",
-    stores: "Name, country, sector, industry, stable identifiers",
+    examples: "Alphabet Inc., Shopify Inc.",
+    stores: "Name, optional verified domicile, sector, industry and stable identifiers",
   },
   {
     name: "Asset",
@@ -52,7 +52,7 @@ const entities = [
     icon: Landmark,
     definition: "The economic location where trades occur—not the data provider.",
     examples: "NASDAQ, Binance Spot, future OKX Spot",
-    stores: "Stable code, type, country, timezone, calendar policy code and session cutoff",
+    stores: "Stable code, type, listing country, timezone, calendar policy code and session cutoff",
   },
   {
     name: "Observation",
@@ -89,6 +89,27 @@ const instrumentTypes = [
   ["spot", "Venue-specific exchange of base for quote", "Binance BTC/USDT"],
   ["reference_rate", "Provider-defined observation without an execution venue", "Yahoo BTC-USD, ETH-USD"],
   ["market_index", "Calculated market-level series without an execution venue", "SPX, VN30"],
+]
+
+const countrySemantics = [
+  [
+    "Issuer domicile",
+    "Company.domicile_country_code",
+    "Verified legal or economic home; nullable until an authoritative source supplies it",
+    "CA for Shopify Inc.",
+  ],
+  [
+    "Listing country",
+    "Venue.country_code",
+    "Jurisdiction of the venue on which an exact Instrument is listed",
+    "US for NASDAQ",
+  ],
+  [
+    "Universe ingestion scope",
+    "UniverseSnapshot.listing_country_code",
+    "Validates and resolves listing venues; never writes Company domicile",
+    "US for an S&P 500 snapshot",
+  ],
 ]
 
 const instrumentTypeBranches = [
@@ -187,7 +208,8 @@ export function DataModelPage() {
             <p className="mt-3 max-w-5xl text-lg font-medium leading-8">
               A company may issue an asset; an instrument makes assets tradable or observable;
               a symbol names that instrument in one namespace; a venue says where it trades;
-              and provenance says where each observation came from.
+              company domicile stays separate from venue listing country; and provenance says
+              where each observation came from.
             </p>
           </section>
 
@@ -309,6 +331,13 @@ export function DataModelPage() {
             rows={collectionTypes}
           />
 
+          <TaxonomyTable
+            eyebrow="Country semantics"
+            title="Which country belongs to which entity?"
+            columns={["Meaning", "Owner", "Rule", "Example"]}
+            rows={countrySemantics}
+          />
+
           <section className="grid gap-5 xl:grid-cols-2">
             <TaxonomyTable
               eyebrow="Venue schedule storage"
@@ -367,11 +396,11 @@ export function DataModelPage() {
                 title="Listed equity"
                 subtitle="Alphabet Class A on NASDAQ"
                 lines={[
-                  ["Company", "Alphabet Inc."],
+                  ["Company", "Alphabet Inc. · domicile US"],
                   ["Asset", "Alphabet Class A · equity"],
                   ["Instrument", "NASDAQ common stock"],
                   ["Symbol", "GOOGL · canonical/yfinance"],
-                  ["Venue", "NASDAQ"],
+                  ["Venue", "NASDAQ · listing country US"],
                   ["Observation", "Adjusted or unadjusted daily bars"],
                 ]}
               />

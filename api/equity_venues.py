@@ -12,22 +12,24 @@ class EquityVenueDefinition:
     code: str
     name: str
     country_code: str
+    currency_code: str
     venue_type: str = "exchange"
 
 
 EQUITY_VENUES = (
-    EquityVenueDefinition("NASDAQ", "Nasdaq Stock Market", "US"),
-    EquityVenueDefinition("NYSE", "New York Stock Exchange", "US"),
-    EquityVenueDefinition("NYSE_AMERICAN", "NYSE American", "US"),
-    EquityVenueDefinition("NYSE_ARCA", "NYSE Arca", "US"),
-    EquityVenueDefinition("CBOE_BZX", "Cboe BZX Exchange", "US"),
-    EquityVenueDefinition("IEX", "Investors Exchange", "US"),
-    EquityVenueDefinition("HOSE", "Ho Chi Minh Stock Exchange", "VN"),
-    EquityVenueDefinition("HNX", "Hanoi Stock Exchange", "VN"),
+    EquityVenueDefinition("NASDAQ", "Nasdaq Stock Market", "US", "USD"),
+    EquityVenueDefinition("NYSE", "New York Stock Exchange", "US", "USD"),
+    EquityVenueDefinition("NYSE_AMERICAN", "NYSE American", "US", "USD"),
+    EquityVenueDefinition("NYSE_ARCA", "NYSE Arca", "US", "USD"),
+    EquityVenueDefinition("CBOE_BZX", "Cboe BZX Exchange", "US", "USD"),
+    EquityVenueDefinition("IEX", "Investors Exchange", "US", "USD"),
+    EquityVenueDefinition("HOSE", "Ho Chi Minh Stock Exchange", "VN", "VND"),
+    EquityVenueDefinition("HNX", "Hanoi Stock Exchange", "VN", "VND"),
     EquityVenueDefinition(
         "UPCOM",
         "Unlisted Public Company Market",
         "VN",
+        "VND",
         venue_type="market",
     ),
 )
@@ -71,4 +73,3 @@ def canonical_equity_venue_code(
     country = country_code.upper().strip()
     label = " ".join(exchange.upper().replace("_", " ").split())
     return _EXCHANGE_ALIASES.get((country, label))
-

@@ -120,7 +120,7 @@ class UniverseSyncService:
         return UniverseSyncSnapshot(
             code=snapshot.code,
             name=snapshot.name,
-            country_code=snapshot.country_code,
+            listing_country_code=snapshot.listing_country_code,
             description=snapshot.description,
             effective_date=snapshot.effective_date,
             fetched_at=snapshot.fetched_at,

@@ -31,7 +31,7 @@ class UniverseSyncMember:
 class UniverseSyncSnapshot:
     code: str
     name: str
-    country_code: str
+    listing_country_code: str
     description: str
     effective_date: date | None
     fetched_at: datetime

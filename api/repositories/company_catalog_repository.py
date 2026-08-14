@@ -7,7 +7,7 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class CompanyCatalogQuery:
-    country: str | None = None
+    listing_country: str | None = None
     search: str | None = None
     sector: str | None = None
     offset: int = 0
@@ -27,6 +27,7 @@ class CompanyInstrumentRecord:
     instrument_type: str
     share_class: str | None
     venue_code: str | None
+    venue_country_code: str | None
     currency: str
     is_active: bool
     universes: tuple[str, ...]
@@ -37,7 +38,8 @@ class CompanyCatalogRecord:
     id: int
     display_name: str
     legal_name: str | None
-    country_code: str
+    domicile_country_code: str | None
+    listing_country_codes: tuple[str, ...]
     sector: str | None
     industry: str | None
     is_active: bool
@@ -53,7 +55,7 @@ class CompanyCatalogFacetCount:
 
 @dataclass(frozen=True)
 class CompanyCatalogFacets:
-    countries: tuple[CompanyCatalogFacetCount, ...]
+    listing_countries: tuple[CompanyCatalogFacetCount, ...]
     sectors: tuple[CompanyCatalogFacetCount, ...]
 
 

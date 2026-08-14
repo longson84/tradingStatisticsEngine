@@ -456,7 +456,7 @@ def test_sqlalchemy_scope_projects_instrument_coverage_and_refresh_state():
     with Session(engine) as session, session.begin():
         company = Company(
             display_name="Example Issuer",
-            country_code="US",
+            domicile_country_code="US",
             source="test",
         )
         venue = Venue(

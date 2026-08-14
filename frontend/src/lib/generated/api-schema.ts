@@ -386,20 +386,17 @@ export interface components {
         };
         /** CompanyCatalogFacetsResponse */
         CompanyCatalogFacetsResponse: {
-            /** Countries */
-            countries: components["schemas"]["FacetCountResponse"][];
+            /** Listing Countries */
+            listing_countries: components["schemas"]["FacetCountResponse"][];
             /** Sectors */
             sectors: components["schemas"]["FacetCountResponse"][];
         };
         /** CompanyCatalogItemResponse */
         CompanyCatalogItemResponse: {
-            /**
-             * Country Code
-             * @enum {string}
-             */
-            country_code: "US" | "VN";
             /** Display Name */
             display_name: string;
+            /** Domicile Country Code */
+            domicile_country_code?: string | null;
             /** Id */
             id: number;
             /** Identifiers */
@@ -412,6 +409,8 @@ export interface components {
             is_active: boolean;
             /** Legal Name */
             legal_name?: string | null;
+            /** Listing Country Codes */
+            listing_country_codes: string[];
             /** Sector */
             sector?: string | null;
         };
@@ -452,6 +451,8 @@ export interface components {
             universes: string[];
             /** Venue Code */
             venue_code?: string | null;
+            /** Venue Country Code */
+            venue_country_code?: string | null;
         };
         /** CryptoInstrumentFacetCountResponse */
         CryptoInstrumentFacetCountResponse: {
@@ -2183,7 +2184,7 @@ export interface operations {
     listCompanies: {
         parameters: {
             query?: {
-                country?: ("US" | "VN") | null;
+                listing_country?: string | null;
                 search?: string | null;
                 sector?: string | null;
                 offset?: number;

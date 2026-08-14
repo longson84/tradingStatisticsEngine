@@ -38,13 +38,19 @@ class Company(Base):
 
     __tablename__ = "companies"
     __table_args__ = (
-        CheckConstraint("country_code IN ('US', 'VN')", name="ck_companies_country"),
+        CheckConstraint(
+            "domicile_country_code IS NULL OR "
+            "(length(domicile_country_code) = 2 "
+            "AND substr(domicile_country_code, 1, 1) BETWEEN 'A' AND 'Z' "
+            "AND substr(domicile_country_code, 2, 1) BETWEEN 'A' AND 'Z')",
+            name="ck_companies_domicile_country",
+        ),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     legal_name: Mapped[str | None] = mapped_column(String(255))
-    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    domicile_country_code: Mapped[str | None] = mapped_column(String(2))
     sector: Mapped[str | None] = mapped_column(String(255))
     industry: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
