@@ -457,69 +457,6 @@ def _filter_same_day_breaches(
     }
 
 
-def _filter_first_touch_per_zone(
-    entries_by_zone: dict[int, list[_Entry]],
-) -> dict[int, list[_Entry]]:
-    """Within each parent episode keep only the first touch of each deeper zone.
-
-    Rule: if P30 is hit inside a P40 episode, recovers back above P30 (but stays
-    inside P40), and then hits P30 again — the second P30 crossing is not a new
-    entry.  Descendants of removed entries are also removed.
-
-    Entries with no parent (standalone root episodes) are never removed by this
-    step — the deduplication only applies within a shared parent episode.
-    """
-    all_entries: list[_Entry] = [e for lst in entries_by_zone.values() for e in lst]
-
-    # Build parent-id → sorted children list
-    parent_to_children: dict[int, list[_Entry]] = {}
-    for e in all_entries:
-        if e.parent is not None:
-            parent_to_children.setdefault(id(e.parent), []).append(e)
-    for lst in parent_to_children.values():
-        lst.sort(key=lambda e: e.start_ts)
-
-    to_remove: set[int] = set()
-
-    def _mark_subtree(entry: _Entry) -> None:
-        to_remove.add(id(entry))
-        for child in parent_to_children.get(id(entry), []):
-            _mark_subtree(child)
-
-    def _deduplicate_children(entry: _Entry) -> None:
-        seen_zones: set[int] = set()
-        for child in parent_to_children.get(id(entry), []):
-            if child.zone_pct in seen_zones:
-                _mark_subtree(child)
-            else:
-                seen_zones.add(child.zone_pct)
-                _deduplicate_children(child)
-
-    for e in all_entries:
-        if e.level == 0:
-            _deduplicate_children(e)
-
-    # Rebuild entries_by_zone without removed entries and recompute children_count
-    filtered: dict[int, list[_Entry]] = {
-        pct: [e for e in lst if id(e) not in to_remove]
-        for pct, lst in entries_by_zone.items()
-    }
-
-    # Recompute children_count on all surviving entries
-    surviving_ids: set[int] = {id(e) for lst in filtered.values() for e in lst}
-    for lst in filtered.values():
-        for e in lst:
-            e.children_count = 0
-    for lst in filtered.values():
-        for e in lst:
-            ancestor = e.parent
-            while ancestor is not None and id(ancestor) in surviving_ids:
-                ancestor.children_count += 1
-                ancestor = ancestor.parent
-
-    return filtered
-
-
 def _build_display_order(entries_by_zone: dict[int, list[_Entry]]) -> list[_Entry]:
     """Return entries in display order: pre-order tree traversal, roots sorted
     descending by start_date (most recent first), children ascending.

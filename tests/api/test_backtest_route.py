@@ -95,7 +95,7 @@ def test_analyze_request_rejects_reversed_date_range():
         (InstrumentPriceUnavailableError("No stored history"), 422),
     ],
 )
-def test_analyze_maps_company_price_errors(error: Exception, status: int):
+def test_analyze_maps_instrument_price_errors(error: Exception, status: int):
     service = StubInstrumentAnalysisService(error)
 
     with pytest.raises(HTTPException) as raised:

@@ -6,7 +6,7 @@ import pandas as pd
 
 from api.repositories.price_bar_repository import (
     PriceBarWriteRecord,
-    SymbolPriceCoverageRecord,
+    InstrumentPriceCoverageRecord,
     PriceRefreshStateRecord,
 )
 from api.services.price_refresh_service import PriceRefreshAttempt, PriceRefreshService
@@ -16,7 +16,7 @@ from api.services.price_refresh_service import PriceRefreshTarget
 class FakePriceRefreshRepository:
     def __init__(self):
         self.coverage = (
-            SymbolPriceCoverageRecord(
+            InstrumentPriceCoverageRecord(
                 instrument_id=1,
                 symbol="CURRENT",
                 first_date=date(2021, 1, 4),
@@ -25,7 +25,7 @@ class FakePriceRefreshRepository:
                 source="test",
                 fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
             ),
-            SymbolPriceCoverageRecord(
+            InstrumentPriceCoverageRecord(
                 instrument_id=2,
                 symbol="STALE",
                 first_date=date(2021, 1, 4),

@@ -28,7 +28,6 @@ function computePeriods(curve: Record<string, number>): DDPeriod[] {
   const periods: DDPeriod[] = []
   let peak = sorted[0][1]
   let inDD = false
-  let startDate = ""
   let startPeak = peak
   let troughVal = Infinity
   let troughDate = ""
@@ -43,7 +42,7 @@ function computePeriods(curve: Record<string, number>): DDPeriod[] {
       }
       peak = val
     } else {
-      if (!inDD) { inDD = true; startDate = date; startPeak = peak; troughVal = val; troughDate = date }
+      if (!inDD) { inDD = true; startPeak = peak; troughVal = val; troughDate = date }
       else if (val < troughVal) { troughVal = val; troughDate = date }
     }
   }
@@ -52,8 +51,6 @@ function computePeriods(curve: Record<string, number>): DDPeriod[] {
     if (depth < -DD_MIN_THRESHOLD)
       periods.push({ depthPct: depth, recoveryDays: null })
   }
-  // suppress unused warning
-  void startDate
   return periods
 }
 

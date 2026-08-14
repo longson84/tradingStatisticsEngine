@@ -13,10 +13,8 @@ Partial weight changes:
 """
 from __future__ import annotations
 
-import math
 from datetime import date as date_type
 
-import numpy as np
 import pandas as pd
 
 from trading_engine.types import PriceFrame, StrategyOutputError, Trade, WeightEvent

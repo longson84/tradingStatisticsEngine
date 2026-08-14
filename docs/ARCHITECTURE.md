@@ -1746,7 +1746,7 @@ but a clean database still depended on `scripts.import_companies` and the
 checked-in symbol-list files. There was no transactional live writer or durable
 record of successful and failed membership synchronization attempts.
 
-Decision: `scripts.sync_company_universes` is the supported equity-Universe
+Decision: `scripts.sync_equity_universes` is the supported equity-Universe
 bootstrap and maintenance command. It fetches provider data and the Nasdaq
 Trader venue directory before opening a write transaction, normalizes and
 validates the complete snapshots in memory, and then acquires PostgreSQL
@@ -1788,7 +1788,7 @@ the provider-facing `universe_code` rather than a mandatory Universe foreign
 key; the public reader resolves a canonical Universe ID to that code.
 
 Consequences: `alembic upgrade head` followed by
-`python -m scripts.sync_company_universes --all` can populate a clean database
+`python -m scripts.sync_equity_universes --all` can populate a clean database
 without the legacy importer and without persisting a downloaded JSON, CSV, or
 provider response. Provider availability is an operational synchronization
 dependency, not an API-startup dependency; synchronization is never run during
@@ -1892,7 +1892,7 @@ reconstruct different membership and metadata from the supported live sources.
 
 Decision: remove `api/data/symbol_lists`, its JSON/CSV reader, the static
 company importer, and its command. A clean database is populated only by
-Alembic followed by `scripts.sync_company_universes --all`. Tests use compact
+Alembic followed by `scripts.sync_equity_universes --all`. Tests use compact
 relational fixtures for catalog behavior and mocked provider snapshots for
 synchronization behavior; the normal suite never fetches live constituent
 data. Provider payloads are validated in memory and are not persisted as
@@ -2109,3 +2109,26 @@ fundamental pipeline actually knows. Publication timestamps, report scope, or
 explicit restatement metadata must be introduced later as a complete
 provider-contract and ingestion change rather than as perpetually empty schema
 columns. Historical raw-payload hashes remain available for provenance audits.
+
+### 2026-08-14 — Post-cutover dead code and vocabulary closure
+
+Context: after the canonical Instrument migration, a final reachability pass
+found unused symbol predicates, an abandoned rarity-filter implementation, a
+redundant routing property, placeholder frontend state, unused imports and
+application-package re-export barrels. Active equity-Universe synchronization
+and Price History components also retained company- and symbol-scoped names
+despite operating on canonical Instrument identities.
+
+Decision: remove code with no runtime, test, framework, or public-library
+consumer. Application packages expose their concrete modules instead of unused
+barrels. Rename `SymbolPriceCoverageRecord` to
+`InstrumentPriceCoverageRecord`, the equity catalog command to
+`scripts.sync_equity_universes`, and the chart component to
+`InstrumentPriceHistoryChart`. Remove superseded clean-room rebuild documents
+that described the completed Streamlit-to-React transition as active work.
+
+Consequences: the active code and operational documentation consistently name
+Instrument observations and equity Universes without compatibility aliases.
+Historical Alembic revisions and chronological decisions remain unchanged;
+provider-local ticker or exchange labels remain valid only at source-adapter
+boundaries.

@@ -9,8 +9,6 @@ future data (look-ahead bias).
 """
 from __future__ import annotations
 
-import pandas as pd
-
 from trading_engine.types import PriceFrame, Strategy, StrategyOutputError
 
 

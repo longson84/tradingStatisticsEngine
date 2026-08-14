@@ -61,11 +61,6 @@ class InstrumentDataRoute:
     full_history_start: date
     fundamental_adapter: FundamentalAdapter | None = None
 
-    @property
-    def coordination_key(self) -> str:
-        return self.price_adapter
-
-
 class UnsupportedInstrumentRouteError(ValueError):
     pass
 

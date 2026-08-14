@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
 from typing import Any
 
 import numpy as np

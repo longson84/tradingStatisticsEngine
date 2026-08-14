@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import date
 
 from sqlalchemy import case, delete, func, insert, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
@@ -23,7 +22,7 @@ from api.repositories.price_bar_repository import (
     PriceRefreshStateRecord,
     PriceRefreshStateWriteRecord,
     InstrumentPriceBarQuery,
-    SymbolPriceCoverageRecord,
+    InstrumentPriceCoverageRecord,
     PriceBarWriteRecord,
 )
 
@@ -59,13 +58,13 @@ class SqlAlchemyPriceBarRepository:
 
     def get_instrument_coverage(
         self, instrument_id: int, price_basis: str
-    ) -> SymbolPriceCoverageRecord | None:
+    ) -> InstrumentPriceCoverageRecord | None:
         rows = self.list_instrument_coverages((instrument_id,), price_basis)
         return rows[0] if rows else None
 
     def list_instrument_coverages(
         self, instrument_ids: tuple[int, ...], price_basis: str
-    ) -> tuple[SymbolPriceCoverageRecord, ...]:
+    ) -> tuple[InstrumentPriceCoverageRecord, ...]:
         if not instrument_ids:
             return ()
         rows = self._session.execute(
@@ -79,7 +78,7 @@ class SqlAlchemyPriceBarRepository:
             .order_by(Instrument.id)
         )
         return tuple(
-            SymbolPriceCoverageRecord(
+            InstrumentPriceCoverageRecord(
                 instrument_id=instrument_id,
                 symbol=symbol,
                 first_date=coverage.first_date,

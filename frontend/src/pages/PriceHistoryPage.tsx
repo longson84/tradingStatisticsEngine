@@ -5,9 +5,9 @@ import { FormLabel } from "@/components/forms/FormSelect"
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { Sidebar } from "@/components/Sidebar"
 import {
-  SymbolPriceHistoryChart,
+  InstrumentPriceHistoryChart,
   type PriceHistoryCursorSnapshot,
-} from "@/components/market/SymbolPriceHistoryChart"
+} from "@/components/market/InstrumentPriceHistoryChart"
 import { Badge } from "@/components/ui/badge"
 import {
   instrumentPriceHistoryApi,
@@ -225,7 +225,7 @@ export function PriceHistoryPage() {
             />
 
             <section className="rounded-lg border border-border bg-card p-5">
-              <SymbolPriceHistoryChart
+              <InstrumentPriceHistoryChart
                 key={history.data.instrument_id}
                 symbol={history.data.symbol}
                 instrumentType={history.data.instrument_type}

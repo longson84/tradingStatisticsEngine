@@ -13,7 +13,6 @@ P&L computation:
 """
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from trading_engine.types import (
@@ -21,7 +20,6 @@ from trading_engine.types import (
     PortfolioResult,
     PriceFrame,
     RegimeSeries,
-    StrategySlot,
 )
 from trading_engine.factor_analysis.cross_sectional import analyze_cross_section
 from trading_engine.factor_analysis.regime import detect_regime

@@ -28,22 +28,6 @@ def canonical_symbol_expression() -> ColumnElement[str]:
     )
 
 
-def canonical_symbol_exists(symbol: str | ColumnElement[str]) -> ColumnElement[bool]:
-    """Return an EXISTS predicate for a current canonical symbol."""
-    return (
-        select(InstrumentSymbol.id)
-        .where(
-            InstrumentSymbol.instrument_id == Instrument.id,
-            InstrumentSymbol.namespace == CANONICAL_SYMBOL_NAMESPACE,
-            InstrumentSymbol.symbol == symbol,
-            InstrumentSymbol.valid_to.is_(None),
-            InstrumentSymbol.is_primary.is_(True),
-        )
-        .correlate(Instrument)
-        .exists()
-    )
-
-
 def canonical_symbol(instrument: Instrument) -> str:
     """Read the exactly one current canonical symbol from a loaded Instrument."""
     values = {

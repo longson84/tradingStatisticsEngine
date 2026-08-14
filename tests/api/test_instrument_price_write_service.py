@@ -8,7 +8,7 @@ import pytest
 from api.repositories.price_bar_repository import (
     PriceInstrumentRecord,
     PriceBarRecord,
-    SymbolPriceCoverageRecord,
+    InstrumentPriceCoverageRecord,
 )
 from api.instrument_data_routing import InstrumentRoutingMetadata
 from api.venue_calendars import venue_calendar
@@ -38,7 +38,7 @@ class StubRepository:
     def get_instrument_coverage(self, instrument_id, price_basis):
         if self.last_date is None:
             return None
-        return SymbolPriceCoverageRecord(
+        return InstrumentPriceCoverageRecord(
             instrument_id=self.target.instrument_id,
             symbol=self.target.symbol,
             first_date=self.records[0].trading_date,

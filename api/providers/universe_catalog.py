@@ -1,4 +1,4 @@
-"""Default provider composition for all system-managed company universes."""
+"""Default provider composition for system-managed equity Universes."""
 from __future__ import annotations
 
 from api.providers.universe import UniverseProviderRegistry

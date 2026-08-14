@@ -1,9 +1,9 @@
 """Synchronize live equity Universes directly into canonical PostgreSQL tables.
 
 Examples:
-    uv run python -m scripts.sync_company_universes --all
-    uv run python -m scripts.sync_company_universes --country vn --dry-run
-    uv run python -m scripts.sync_company_universes --universe US500 --force
+    uv run python -m scripts.sync_equity_universes --all
+    uv run python -m scripts.sync_equity_universes --country vn --dry-run
+    uv run python -m scripts.sync_equity_universes --universe US500 --force
 """
 from __future__ import annotations
 

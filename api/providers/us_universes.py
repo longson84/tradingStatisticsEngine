@@ -1,4 +1,4 @@
-"""Live adapters for current United States company universes."""
+"""Live adapters for current United States equity Universes."""
 from __future__ import annotations
 
 import csv

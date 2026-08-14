@@ -1,4 +1,4 @@
-"""VNStock KBS adapters for current Vietnam company universes."""
+"""VNStock KBS adapters for current Vietnam equity Universes."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -9,7 +9,6 @@ import pandas as pd
 
 from api.providers.universe import (
     UnsupportedUniverseError,
-    UniverseConstituent,
     UniverseProviderDataError,
     UniverseProviderUnavailableError,
     UniverseSnapshot,

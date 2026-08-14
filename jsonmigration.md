@@ -183,12 +183,12 @@ Required invariants:
 
 ## Phase 4: Replace the Bootstrap Command
 
-Status: complete. `scripts.sync_company_universes` is now the supported live
+Status: complete. `scripts.sync_equity_universes` is now the supported live
 bootstrap with `--all`, `--country`, `--universe`, `--dry-run`, `--force`, and
 `--database-url`. It is the only supported company/Universe bootstrap command:
 
 ```bash
-python -m scripts.sync_company_universes --all
+python -m scripts.sync_equity_universes --all
 ```
 
 Supported controls should include:
@@ -208,7 +208,7 @@ A clean installation becomes:
 
 ```bash
 alembic upgrade head
-python -m scripts.sync_company_universes --all
+python -m scripts.sync_equity_universes --all
 ```
 
 Do not synchronize during API startup. The application must continue using the

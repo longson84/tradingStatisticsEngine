@@ -4,7 +4,7 @@ import type { InstrumentCatalogItem } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 
-export type InstrumentRow = InstrumentCatalogItem
+type InstrumentRow = InstrumentCatalogItem
 type CoverageSortKey = "first_session" | "last_session" | "stored_sessions"
 type SortDirection = "asc" | "desc"
 

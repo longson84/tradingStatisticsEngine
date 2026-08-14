@@ -83,49 +83,47 @@ export type PredefinedRarityTable = components["schemas"]["PredefinedRarityTable
 export type PredefinedRarityResponse = components["schemas"]["PredefinedRarityResponse"]
 
 export type CompanyCatalogItem = components["schemas"]["CompanyCatalogItemResponse"]
-export type CompanyCatalogResponse = components["schemas"]["CompanyCatalogResponse"]
-export type CompanyCatalogQuery = NonNullable<
+type CompanyCatalogResponse = components["schemas"]["CompanyCatalogResponse"]
+type CompanyCatalogQuery = NonNullable<
   operations["listCompanies"]["parameters"]["query"]
 >
 export type CryptoInstrument = components["schemas"]["CryptoInstrumentResponse"]
-export type CryptoInstrumentListResponse = components["schemas"]["CryptoInstrumentListResponse"]
-export type CryptoInstrumentQuery = NonNullable<
+type CryptoInstrumentListResponse = components["schemas"]["CryptoInstrumentListResponse"]
+type CryptoInstrumentQuery = NonNullable<
   operations["listCryptoInstruments"]["parameters"]["query"]
 >
 export type ReferenceRateInstrument = components["schemas"]["ReferenceRateInstrumentResponse"]
-export type ReferenceRateListResponse = components["schemas"]["ReferenceRateListResponse"]
-export type ReferenceRateQuery = NonNullable<
+type ReferenceRateListResponse = components["schemas"]["ReferenceRateListResponse"]
+type ReferenceRateQuery = NonNullable<
   operations["listReferenceRates"]["parameters"]["query"]
 >
 export type Venue = components["schemas"]["VenueResponse"]
-export type VenueListResponse = components["schemas"]["VenueListResponse"]
+type VenueListResponse = components["schemas"]["VenueListResponse"]
 export type InstrumentCatalogItem = components["schemas"]["InstrumentCatalogItemResponse"]
-export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
-export type UniverseListResponse = components["schemas"]["UniverseListResponse"]
+type UniverseListResponse = components["schemas"]["UniverseListResponse"]
 export type UniverseSyncRun = components["schemas"]["UniverseSyncRunResponse"]
-export type UniverseSyncRunPage = components["schemas"]["UniverseSyncRunPageResponse"]
-export type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
-export type UniverseStatsResponse = components["schemas"]["UniverseStatsResponse"]
+type UniverseSyncRunPage = components["schemas"]["UniverseSyncRunPageResponse"]
+type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
+type UniverseStatsResponse = components["schemas"]["UniverseStatsResponse"]
 export type UniverseStatsResult = components["schemas"]["UniverseStatsResultResponse"]
-export type DataOperationRequest = components["schemas"]["DataOperationRequest"]
-export type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
+type DataOperationRequest = components["schemas"]["DataOperationRequest"]
+type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
 export type DataOperationJob = components["schemas"]["DataOperationJobResponse"]
 export type InstrumentPriceCoverage = components["schemas"]["InstrumentPriceCoverageResponse"]
-export type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPriceCoveragePageResponse"]
+type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPriceCoveragePageResponse"]
 export type DataOperationScopeType = DataOperationRequest["scope_type"]
 export type DataOperationDataset = NonNullable<DataOperationRequest["dataset"]>
 export type DataOperationMode = NonNullable<DataOperationRequest["mode"]>
-export type InstrumentCatalogResponse = components["schemas"]["InstrumentCatalogResponse"]
-export type InstrumentCatalogQuery = NonNullable<
+type InstrumentCatalogResponse = components["schemas"]["InstrumentCatalogResponse"]
+type InstrumentCatalogQuery = NonNullable<
   operations["listInstruments"]["parameters"]["query"]
 >
 export type InstrumentScope = NonNullable<InstrumentCatalogQuery["scope"]>
-export type WatchlistSummary = components["schemas"]["WatchlistSummaryResponse"]
 export type Watchlist = components["schemas"]["WatchlistResponse"]
-export type WatchlistListResponse = components["schemas"]["WatchlistListResponse"]
-export type WatchlistCreateRequest = components["schemas"]["WatchlistCreateRequest"]
-export type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateRequest"]
-export type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
+type WatchlistListResponse = components["schemas"]["WatchlistListResponse"]
+type WatchlistCreateRequest = components["schemas"]["WatchlistCreateRequest"]
+type WatchlistUpdateRequest = components["schemas"]["WatchlistUpdateRequest"]
+type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
 
 export type InstrumentPricePoint = components["schemas"]["InstrumentPricePointResponse"]
 export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPriceHistoryResponse"]
@@ -136,7 +134,7 @@ export type NewLowCurrentEpisode = components["schemas"]["NewLowCurrentEpisodeSc
 export type NewLowEpisode = components["schemas"]["NewLowEpisodeSchema"]
 export type NewLowSymbolResult = components["schemas"]["NewLowSymbolResultSchema"]
 
-export type NewLowDeepRequest = components["schemas"]["NewLowDeepRequest"]
+type NewLowDeepRequest = components["schemas"]["NewLowDeepRequest"]
 export type NewLowDeepResponse = components["schemas"]["NewLowDeepResponse"]
 
 // ── SMA Strategy Analysis ───────────────────────────────────────────────────

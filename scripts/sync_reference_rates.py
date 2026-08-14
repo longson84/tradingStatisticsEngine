@@ -15,8 +15,6 @@ from __future__ import annotations
 import argparse
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy.orm import Session
-
 from api.db.session import create_db_engine, database_url, session_scope
 from api.repositories.sqlalchemy_price_bar_repository import (
     SqlAlchemyPriceBarRepository,

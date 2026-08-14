@@ -23,7 +23,7 @@ class PriceBarRecord:
 
 
 @dataclass(frozen=True)
-class SymbolPriceCoverageRecord:
+class InstrumentPriceCoverageRecord:
     instrument_id: int
     symbol: str
     first_date: date
@@ -100,11 +100,11 @@ class PriceBarRepository(Protocol):
 
     def get_instrument_coverage(
         self, instrument_id: int, price_basis: str
-    ) -> SymbolPriceCoverageRecord | None: ...
+    ) -> InstrumentPriceCoverageRecord | None: ...
 
     def list_instrument_coverages(
         self, instrument_ids: tuple[int, ...], price_basis: str
-    ) -> tuple[SymbolPriceCoverageRecord, ...]: ...
+    ) -> tuple[InstrumentPriceCoverageRecord, ...]: ...
 
     def list_instrument_refresh_states(
         self, instrument_ids: tuple[int, ...], price_basis: str
@@ -124,7 +124,7 @@ class PriceBarRepository(Protocol):
 class PriceBarRefreshRepository(Protocol):
     def list_instrument_coverages(
         self, instrument_ids: tuple[int, ...], price_basis: str
-    ) -> tuple[SymbolPriceCoverageRecord, ...]: ...
+    ) -> tuple[InstrumentPriceCoverageRecord, ...]: ...
 
     def list_instrument_refresh_states(
         self, instrument_ids: tuple[int, ...], price_basis: str

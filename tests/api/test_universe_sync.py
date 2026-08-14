@@ -37,7 +37,7 @@ from api.services.universe_sync_service import (
     VN_UNIVERSE_FAMILY,
     UniverseSyncService,
 )
-from scripts.sync_company_universes import build_parser, selected_universes
+from scripts.sync_equity_universes import build_parser, selected_universes
 
 
 class MutableUS30Provider:

@@ -43,7 +43,7 @@ export interface PriceHistoryCursorSnapshot {
 }
 
 
-export function SymbolPriceHistoryChart({
+export function InstrumentPriceHistoryChart({
   symbol,
   instrumentType,
   relativeStrengthBenchmark,
