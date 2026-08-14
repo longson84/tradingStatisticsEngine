@@ -67,6 +67,9 @@ def test_fundamental_report_has_no_dormant_metadata_columns():
     assert "is_restatement" not in columns
     assert "raw_payload_hash" in columns
 
+    valuation_columns = ProviderValuationObservation.__table__.columns
+    assert "observed_at" not in valuation_columns
+
 
 def test_point_in_time_query_preserves_later_restatement():
     engine = create_engine("sqlite+pysqlite:///:memory:")
@@ -148,13 +151,11 @@ def test_provider_valuations_are_sparse_observations_not_daily_facts():
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         instrument, _ = _seed_identity(session)
-        observed_at = datetime(2026, 7, 30, 8, tzinfo=UTC)
         session.add_all([
             ProviderValuationObservation(
                 instrument_id=instrument.id,
                 source="vnstock-vci-4.0.5",
                 observation_key="2026-Q2",
-                observed_at=observed_at,
                 effective_session_date=date(2026, 7, 30),
                 metric_code="pe",
                 value=Decimal("5.46"),
@@ -167,7 +168,6 @@ def test_provider_valuations_are_sparse_observations_not_daily_facts():
                 instrument_id=instrument.id,
                 source="vnstock-vci-4.0.5",
                 observation_key="2026-Q2",
-                observed_at=observed_at,
                 effective_session_date=date(2026, 7, 30),
                 metric_code="pb",
                 value=Decimal("1.14"),

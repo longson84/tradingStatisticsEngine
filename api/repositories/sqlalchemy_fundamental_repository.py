@@ -239,7 +239,6 @@ class SqlAlchemyFundamentalRepository:
                 "instrument_id": instrument_id,
                 "source": batch.source,
                 "observation_key": report.report_key,
-                "observed_at": None,
                 "effective_session_date": report.effective_session_date,
                 "metric_code": valuation.metric_code,
                 "value": valuation.value,

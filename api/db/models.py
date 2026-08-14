@@ -98,22 +98,12 @@ class Asset(Base):
             "asset_type IN ('equity', 'crypto', 'fiat', 'stablecoin')",
             name="ck_assets_type",
         ),
-        Index(
-            "uq_assets_network_contract",
-            "network",
-            "contract_address",
-            unique=True,
-            postgresql_where=text("contract_address IS NOT NULL"),
-            sqlite_where=text("contract_address IS NOT NULL"),
-        ),
     )
 
     id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
     canonical_code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    network: Mapped[str | None] = mapped_column(String(64))
-    contract_address: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -829,7 +819,6 @@ class ProviderValuationObservation(Base):
     )
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     observation_key: Mapped[str] = mapped_column(String(255), nullable=False)
-    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     effective_session_date: Mapped[date] = mapped_column(Date, nullable=False)
     metric_code: Mapped[str] = mapped_column(String(100), nullable=False)
     value: Mapped[Decimal] = mapped_column(Numeric(38, 10), nullable=False)

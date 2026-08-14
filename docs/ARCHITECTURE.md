@@ -2132,3 +2132,24 @@ Instrument observations and equity Universes without compatibility aliases.
 Historical Alembic revisions and chronological decisions remain unchanged;
 provider-local ticker or exchange labels remain valid only at source-adapter
 boundaries.
+
+### 2026-08-14 — Dormant asset and valuation metadata retirement
+
+Context: all 58,655 stored provider valuation observations left `observed_at`
+null, while the active writer always supplied null and the read model used the
+required `effective_session_date`. All 3,576 stored Assets likewise left
+`network` and `contract_address` null because the supported catalog sources
+identify economic assets by canonical code and do not provide authoritative
+blockchain contract identity.
+
+Decision: migration `0027` drops `observed_at` from
+`provider_valuation_observations`; `effective_session_date` remains the
+point-in-time observation boundary. The same migration drops `network` and
+`contract_address` from `assets` and removes their partial unique index. The
+Asset model represents venue-independent economic identity with canonical code,
+name, type, active state, and source provenance.
+
+Consequences: the relational schema no longer advertises metadata that no
+active provider contract can populate. Contract-level token identity may be
+introduced later only with an authoritative chain-aware source, explicit
+network taxonomy, reconciliation rules, and complete ingestion support.

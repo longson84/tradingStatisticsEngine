@@ -67,6 +67,12 @@ def _catalog(*symbols: BinanceSpotSymbol) -> BinanceSpotCatalog:
     )
 
 
+def test_asset_model_has_no_dormant_contract_identity_columns():
+    columns = Asset.__table__.columns
+    assert "network" not in columns
+    assert "contract_address" not in columns
+
+
 def test_public_rest_client_parses_catalog_and_daily_klines():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("exchangeInfo"):

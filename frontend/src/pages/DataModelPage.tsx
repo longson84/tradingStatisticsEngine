@@ -31,7 +31,7 @@ const entities = [
     icon: CircleDollarSign,
     definition: "The venue-independent economic thing that exists or carries value.",
     examples: "Alphabet Class A, BTC, USD, USDT",
-    stores: "Canonical code, asset type, network and contract identity",
+    stores: "Canonical code, name, asset type, active state and provenance",
   },
   {
     name: "Instrument",

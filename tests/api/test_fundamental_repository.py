@@ -76,7 +76,6 @@ def _seed(session: Session) -> FundamentalReport:
             instrument_id=instrument.id,
             source="vnstock-vci-4.0.5",
             observation_key="2025-Q1",
-            observed_at=datetime(2025, 4, 25, tzinfo=UTC),
             effective_session_date=date(2025, 4, 25),
             metric_code="pe",
             value=Decimal("11.2"),
