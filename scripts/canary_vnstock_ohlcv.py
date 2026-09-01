@@ -14,7 +14,7 @@ from api.db.session import create_db_engine
 from api.market_sessions import latest_completed_venue_session
 from api.venue_calendars import venue_calendar
 from api.providers.vietnam_market import (
-    create_vietnam_market_provider,
+    VnstockDataProvider,
     normalize_ohlcv_result,
 )
 from api.repositories.price_bar_repository import InstrumentPriceBarQuery
@@ -133,7 +133,7 @@ def run_canary(
     database_url: str | None = None,
 ) -> dict[str, Any]:
     normalized_symbol = symbol.upper().strip()
-    provider = create_vietnam_market_provider(require_sponsored=True)
+    provider = VnstockDataProvider()
     provider_result = provider.ohlcv(normalized_symbol, start, end, interval="1D")
     sponsored = normalize_ohlcv_result(provider_result)
     engine = create_db_engine(database_url)

@@ -39,8 +39,8 @@ def test_diagnostic_reports_schema_and_coverage_without_credentials(monkeypatch)
 
     monkeypatch.setattr(
         diagnose_vnstock_data,
-        "create_vietnam_market_provider",
-        lambda **kwargs: Provider(),
+        "VnstockDataProvider",
+        Provider,
     )
 
     result = diagnose_vnstock_data.run_diagnostic(

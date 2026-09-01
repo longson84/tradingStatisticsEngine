@@ -750,9 +750,10 @@ action lives on the watchlist detail page, while Market Data provides a central
 monitor for the latest watchlist refresh jobs. The background worker reads the
 watchlist and PostgreSQL coverage in a short transaction, downloads only missing
 or stale members outside any database transaction, then bulk-upserts successful
-histories in a separate transaction. VN requests remain sequential and paced at
-4.1 seconds; US requests use Yahoo Finance. Existing rows survive individual
-provider failures, and no universe memberships are created or changed.
+histories in a separate transaction. VN requests use the sponsored
+subscription's shared rate limiter and bounded worker pool; US requests use
+Yahoo Finance. Existing rows survive individual provider failures, and no
+universe memberships are created or changed.
 Universe refresh planning queries that same canonical coverage directly by
 market and ticker, rather than treating coverage as owned by a universe. Thus a
 completed watchlist refresh is reused by later incremental US500, US2000,
@@ -2187,3 +2188,55 @@ without duplicating or corrupting its issuer identity. The UI can distinguish
 unknown domicile from known listing countries. Adding Japan, Australia, Hong
 Kong, China, or the United Kingdom now requires provider and Venue support, but
 no Company-schema widening or US/VN literal change.
+
+### 2026-09-01 — Complete sponsored Vnstock cutover
+
+Context: VN price and fundamental refreshes already required authenticated
+`vnstock_data`, but equity-Universe synchronization still imported the public
+`vnstock` package for KBS membership and company metadata. The market-provider
+module also retained an unused community fallback, while two environment flags
+suggested a configurable fallback and request limiter that no code actually
+read.
+
+Decision: every production Vietnam acquisition path now uses the authenticated
+`vnstock_data` distribution. Universe synchronization constructs
+`vnstock_data.Listing(source="KBS")`; base and derived snapshots record the
+runtime package version and upstream in provenance such as
+`vnstock-data-3.2.7-kbs`. KBS remains an upstream source, not a community-client
+escape hatch. Remove `CommunityVnstockProvider`, the fallback factory branch,
+and the unused `VNSTOCK_ALLOW_COMMUNITY_FALLBACK` and
+`VNSTOCK_REQUESTS_PER_MINUTE` settings. Provider absence or authentication
+failure is always visible and never changes the acquisition package.
+
+Consequences: prices, trade history, fundamentals, and Vietnam Universe
+membership all require the paid package installed by `pnpm setup`. Production
+code has no public-`vnstock` import or free-data fallback. The public package may
+still exist as a transitive dependency of the sponsored distribution, but the
+application does not select it directly. Historical stored source labels remain
+readable compatibility data and do not represent an active acquisition route.
+
+### 2026-09-01 — Use the paid Vnstock request budget
+
+Context: the Data Operation worker retained a 4.1-second delay from the former
+community-provider workflow. That serialized VN refreshes at roughly 14.6
+instruments per minute even though the authenticated Silver entitlement allows
+300 requests per minute and the sponsored client is designed for concurrent
+acquisition.
+
+Decision: VN price and fundamental groups use a bounded thread pool and a
+shared start-rate limiter. Defaults are five workers and 300 requests per
+minute, configurable through `VNSTOCK_DATA_MAX_WORKERS` and
+`VNSTOCK_DATA_REQUESTS_PER_MINUTE`. A price refresh reserves one request slot;
+a fundamental refresh reserves two because it obtains ratio and income reports.
+Starts are evenly spaced instead of released as a large burst. Each Instrument
+retains its independent acquisition and PostgreSQL transaction, progress is
+reported as futures complete, and failures remain aggregated without cancelling
+successful Instruments. Non-Vnstock adapters preserve their existing execution
+policy.
+
+Consequences: the normal VNALL operation can overlap provider latency and use
+the paid request allowance rather than the obsolete free-era throttle. The
+single-active-job adapter lease still prevents two VN price operations from
+competing for the same budget. Operators may lower the rate or worker count if
+an upstream source becomes unstable; raising them should follow observed 429,
+timeout, latency, and retry metrics rather than subscription limits alone.

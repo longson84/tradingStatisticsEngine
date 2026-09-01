@@ -4,8 +4,6 @@ from datetime import date
 from types import SimpleNamespace
 
 import pandas as pd
-import pytest
-
 from api.providers import vietnam_market
 
 
@@ -79,23 +77,3 @@ def test_sponsored_provider_returns_frames_with_dynamic_provenance(monkeypatch):
     assert normalized["provider_source"].tolist() == [
         "vnstock-data-3.2.7-vci"
     ]
-
-
-def test_factory_does_not_silently_downgrade_when_sponsor_is_required(monkeypatch):
-    monkeypatch.setattr(vietnam_market.util, "find_spec", lambda name: None)
-
-    with pytest.raises(
-        vietnam_market.ProviderUnavailableError,
-        match="official sponsor installer",
-    ):
-        vietnam_market.create_vietnam_market_provider(require_sponsored=True)
-
-
-def test_community_trade_history_is_explicitly_unsupported():
-    provider = vietnam_market.CommunityVnstockProvider()
-
-    with pytest.raises(
-        vietnam_market.UnsupportedProviderMethodError,
-        match="requires the sponsored",
-    ):
-        provider.trade_history("FPT", date(2026, 8, 1), date(2026, 8, 8))

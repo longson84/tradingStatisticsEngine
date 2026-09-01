@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from api.providers.vietnam_market import create_vietnam_market_provider
+from api.providers.vietnam_market import VnstockDataProvider
 
 
 def _summary(frame: pd.DataFrame, date_column: str) -> dict[str, Any]:
@@ -22,7 +22,7 @@ def _summary(frame: pd.DataFrame, date_column: str) -> dict[str, Any]:
 
 
 def run_diagnostic(symbol: str, start: date, end: date) -> dict[str, Any]:
-    provider = create_vietnam_market_provider(require_sponsored=True)
+    provider = VnstockDataProvider()
     ohlcv = provider.ohlcv(symbol, start, end)
     trades = provider.trade_history(symbol, start, end)
     metadata = ohlcv.metadata

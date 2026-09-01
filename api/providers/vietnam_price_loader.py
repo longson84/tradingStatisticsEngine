@@ -7,7 +7,7 @@ from api.providers.vietnam_market import (
     ProviderDataError,
     ProviderUnavailableError,
     VietnamMarketProvider,
-    create_vietnam_market_provider,
+    VnstockDataProvider,
     normalize_ohlcv_result,
 )
 from trading_engine.types import DataLoadError, PriceFrame
@@ -20,9 +20,7 @@ class VietnamPriceLoader:
         self._provider = provider
 
     def load(self, symbol: str, start: date, end: date) -> PriceFrame:
-        provider = self._provider or create_vietnam_market_provider(
-            require_sponsored=True
-        )
+        provider = self._provider or VnstockDataProvider()
         try:
             result = provider.ohlcv(symbol, start, end)
             normalized = normalize_ohlcv_result(result)

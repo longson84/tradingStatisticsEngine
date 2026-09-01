@@ -256,9 +256,10 @@ def test_dry_run_reports_diff_without_writing(sync_setup):
 def test_sync_audit_retains_latest_100_attempts_per_universe(sync_setup):
     engine, _provider, service = sync_setup
     service.synchronize(("US30",))
+    latest_started_at = datetime.now(UTC) + timedelta(days=1)
     with Session(engine) as session, session.begin():
         for index in range(100):
-            timestamp = datetime(2026, 8, 14, tzinfo=UTC) + timedelta(seconds=index)
+            timestamp = latest_started_at - timedelta(seconds=101 - index)
             session.add(UniverseSyncRun(
                 universe_code="US30",
                 source="seed",
@@ -275,7 +276,7 @@ def test_sync_audit_retains_latest_100_attempts_per_universe(sync_setup):
     service._repository.record_failures(  # type: ignore[attr-defined]
         universe_codes=("US30",),
         source="latest",
-        started_at=datetime(2026, 8, 15, tzinfo=UTC),
+        started_at=latest_started_at,
         error="latest failure",
     )
 

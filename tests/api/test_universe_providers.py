@@ -19,6 +19,7 @@ from api.providers.us_universes import (
     Nasdaq100UniverseProvider,
     WikipediaUSIndexProvider,
 )
+from api.providers import vietnam_universes
 from api.providers.vietnam_universes import VnstockUniverseProvider
 
 
@@ -186,7 +187,10 @@ class _FakeListing:
         })
 
 
-def test_vnstock_provider_derives_composite_universes_and_caches_source_calls():
+def test_vnstock_provider_derives_composite_universes_and_caches_source_calls(
+    monkeypatch,
+):
+    monkeypatch.setattr(vietnam_universes.metadata, "version", lambda name: "3.2.7")
     listing = _FakeListing()
     provider = VnstockUniverseProvider(lambda: listing)
 
@@ -205,6 +209,27 @@ def test_vnstock_provider_derives_composite_universes_and_caches_source_calls():
     }
     assert listing.group_calls == ["VN30", "VNMidCap", "VNSmallCap"]
     assert listing.metadata_calls == 1
+    assert vn30.source == "vnstock-data-3.2.7-kbs"
+    assert vn100.source == "vnstock-data-3.2.7-kbs-derived"
     fpt = next(row for row in vnall.constituents if row.canonical_symbol == "FPT")
     assert fpt.sector == "Information Technology"
     assert fpt.industry == "Công nghệ và thông tin"
+
+
+def test_vnstock_default_listing_uses_sponsored_package(monkeypatch):
+    listing = object()
+
+    class Module:
+        @staticmethod
+        def Listing(*, source: str, show_log: bool):
+            assert source == "KBS"
+            assert show_log is False
+            return listing
+
+    def import_sponsored(name: str):
+        assert name == "vnstock_data"
+        return Module
+
+    monkeypatch.setattr(vietnam_universes, "import_module", import_sponsored)
+
+    assert vietnam_universes._default_listing_factory() is listing

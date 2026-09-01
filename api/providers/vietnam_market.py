@@ -1,9 +1,9 @@
-"""Typed adapters for sponsored and community Vietnam market data."""
+"""Typed adapter for authenticated sponsored Vietnam market data."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from importlib import import_module, metadata, util
+from importlib import import_module, metadata
 from typing import Literal, Protocol
 
 import pandas as pd
@@ -11,7 +11,7 @@ import pandas as pd
 from api.config import load_env_file
 
 
-AccessMode = Literal["sponsored", "community"]
+AccessMode = Literal["sponsored"]
 
 
 class ProviderUnavailableError(RuntimeError):
@@ -20,10 +20,6 @@ class ProviderUnavailableError(RuntimeError):
 
 class ProviderDataError(RuntimeError):
     """Raised when a provider returns no usable data for a request."""
-
-
-class UnsupportedProviderMethodError(RuntimeError):
-    """Raised when an access mode does not expose the requested dataset."""
 
 
 @dataclass(frozen=True)
@@ -148,77 +144,6 @@ class VnstockDataProvider:
                 requested_end=end,
             ),
         )
-
-
-class CommunityVnstockProvider:
-    """Community OHLCV adapter available only through explicit fallback policy."""
-
-    package = "vnstock"
-    access_mode: AccessMode = "community"
-
-    def __init__(self, source: str = "KBS") -> None:
-        self.source = source.upper().strip()
-
-    def ohlcv(
-        self,
-        symbol: str,
-        start: date,
-        end: date,
-        *,
-        interval: str = "1D",
-    ) -> VietnamProviderResult:
-        normalized = _request(symbol, start, end)
-        try:
-            module = import_module(self.package)
-            frame = module.Quote(symbol=normalized, source=self.source).history(
-                start=start.isoformat(),
-                end=end.isoformat(),
-                interval=interval,
-            )
-        except Exception as exc:
-            raise ProviderUnavailableError(
-                "community vnstock could not be loaded"
-            ) from exc
-        return VietnamProviderResult(
-            frame=_require_frame(frame, normalized, "ohlcv"),
-            metadata=VietnamProviderMetadata(
-                package=self.package,
-                package_version=_package_version(self.package),
-                access_mode=self.access_mode,
-                upstream_source=self.source,
-                method="ohlcv",
-                symbol=normalized,
-                requested_start=start,
-                requested_end=end,
-            ),
-        )
-
-    def trade_history(
-        self,
-        symbol: str,
-        start: date,
-        end: date,
-    ) -> VietnamProviderResult:
-        _request(symbol, start, end)
-        raise UnsupportedProviderMethodError(
-            "trade_history requires the sponsored vnstock_data package"
-        )
-
-
-def create_vietnam_market_provider(
-    *,
-    require_sponsored: bool = False,
-    community_source: str = "KBS",
-) -> VietnamMarketProvider:
-    """Prefer sponsored access and fall back only when its package is absent."""
-    load_env_file()
-    if util.find_spec("vnstock_data") is not None:
-        return VnstockDataProvider()
-    if require_sponsored:
-        raise ProviderUnavailableError(
-            "vnstock_data is not installed; use the official sponsor installer"
-        )
-    return CommunityVnstockProvider(source=community_source)
 
 
 def provider_source_label(metadata: VietnamProviderMetadata) -> str:
