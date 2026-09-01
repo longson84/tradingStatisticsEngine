@@ -14,7 +14,12 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 const ALL_SECTORS = "ALL"
 const PAGE_SIZE = 50
-export function InstrumentsPage() {
+export function InstrumentsPage({
+  scope = "equity",
+}: {
+  scope?: "equity" | "market_index"
+}) {
+  const isEquity = scope === "equity"
   const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null)
   const [activeSector, setActiveSector] = useState(ALL_SECTORS)
   const [query, setQuery] = useState("")
@@ -24,14 +29,15 @@ export function InstrumentsPage() {
   const { data: availableUniverses } = useQuery({
     queryKey: ["instrument-universes"],
     queryFn: universesApi,
+    enabled: isEquity,
     retry: false,
   })
 
   const equityUniverses = useMemo(
-    () => (availableUniverses?.universes ?? []).filter(
+    () => isEquity ? (availableUniverses?.universes ?? []).filter(
       universe => universe.instrument_types.includes("common_stock"),
-    ),
-    [availableUniverses?.universes],
+    ) : [],
+    [availableUniverses?.universes, isEquity],
   )
   const activeUniverse = equityUniverses.find(
     universe => universe.code === selectedUniverse,
@@ -40,15 +46,16 @@ export function InstrumentsPage() {
   const { data: list, isFetching, error } = useQuery({
     queryKey: [
       "instrument-list",
+      scope,
       selectedUniverse,
       activeSector,
       debouncedQuery,
       offset,
     ],
     queryFn: () => instrumentsApi({
-      scope: "equity",
-      universe: selectedUniverse ?? undefined,
-      sector: activeSector === ALL_SECTORS ? undefined : activeSector,
+      scope,
+      universe: isEquity ? selectedUniverse ?? undefined : undefined,
+      sector: isEquity && activeSector !== ALL_SECTORS ? activeSector : undefined,
       search: debouncedQuery || undefined,
       has_price_history: false,
       offset,
@@ -81,9 +88,13 @@ export function InstrumentsPage() {
         <div className="flex flex-col gap-4 pb-4 border-b border-border">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Instruments</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {isEquity ? "Equity Instruments" : "Market Indices"}
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Canonical tradable equity instruments, optionally filtered by Universe.
+                {isEquity
+                  ? "Canonical tradable equity instruments, optionally filtered by Universe."
+                  : "Canonical calculated market-index instruments and their stored index-level history."}
               </p>
             </div>
             {data && (
@@ -94,13 +105,13 @@ export function InstrumentsPage() {
                     ? activeUniverse.as_of
                       ? `As of ${activeUniverse.as_of}`
                       : "Persisted Universe"
-                    : "All active equities"}
+                    : isEquity ? "All active equities" : "All active market indices"}
                 </div>
               </div>
             )}
           </div>
 
-          <FilterGroup label="Universe">
+          {isEquity && <FilterGroup label="Universe">
             <FilterButton
               active={selectedUniverse === null}
               onClick={() => {
@@ -124,9 +135,9 @@ export function InstrumentsPage() {
                   {universe.name} ({fmtInt(universe.active_instrument_count)})
                 </FilterButton>
             ))}
-          </FilterGroup>
+          </FilterGroup>}
 
-          {sectorOptions.length > 0 && (
+          {isEquity && sectorOptions.length > 0 && (
             <FilterGroup label="Sector">
               {sectorOptions.map(option => (
                 <FilterButton
@@ -148,12 +159,16 @@ export function InstrumentsPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-semibold">
-                {activeUniverse ? `${activeUniverse.name} Instruments` : "All Equity Instruments"}
+                {activeUniverse
+                  ? `${activeUniverse.name} Instruments`
+                  : isEquity ? "All Equity Instruments" : "All Market Indices"}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
                 {activeUniverse
                   ? activeUniverse.description
-                  : "All active equity instruments; no synthetic all-market Universe is required."}
+                  : isEquity
+                    ? "All active equity instruments; no synthetic all-market Universe is required."
+                    : "Index identity is independent from companies, venues, and reference-rate instruments."}
               </p>
             </div>
 
@@ -165,7 +180,7 @@ export function InstrumentsPage() {
                   setQuery(e.target.value)
                   setOffset(0)
                 }}
-                placeholder="Search symbol, company, sector..."
+                placeholder={isEquity ? "Search symbol, company, sector..." : "Search index symbol..."}
                 className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground focus:outline-none focus:border-ring"
               />
             </label>

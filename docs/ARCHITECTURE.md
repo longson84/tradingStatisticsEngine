@@ -195,7 +195,7 @@ explicit migration and a source capable of providing reliable membership dates.
 - The safe operational default synchronizes only the catalog. History loading
   requires an explicit symbol or quote-asset selector and enforces a maximum
   selection size unless the operator deliberately raises it.
-- `GET /crypto/instruments` is the read projection for the Crypto Instruments UI. It
+- `GET /instruments/crypto-spot` is the read projection for the Crypto Spot UI. It
   pages venue instruments in PostgreSQL, applies search, venue, quote-asset,
   and active-state filters server-side, and returns trading rules plus derived
   price coverage. Venue is an explicit row and filter dimension so Binance Spot
@@ -220,7 +220,7 @@ explicit migration and a source capable of providing reliable membership dates.
   provider contract does not give this application a durable adjusted-versus-
   unadjusted guarantee. They are stored in canonical `price_bars` with USD as
   the quote currency, never as a JSON cache or a venue-specific trade series.
-- `GET /reference-rates` is a 50-row server-paginated read projection with
+- `GET /instruments/reference-rates` is a 50-row server-paginated read projection with
   search, base/quote, and active-state filters. Its explicit null venue is a
   semantic distinction, not missing catalog data.
 - The operational sync seeds the registered catalog safely by default.
@@ -2240,3 +2240,28 @@ single-active-job adapter lease still prevents two VN price operations from
 competing for the same budget. Operators may lower the rate or worker count if
 an upstream source becomes unstable; raising them should follow observed 429,
 timeout, latency, and retry metrics rather than subscription limits alone.
+
+### 2026-09-01 — Align the Instrument product hierarchy
+
+Context: the canonical model treats equity, crypto spot, reference rates, and
+market indices as Instrument categories, but navigation and HTTP paths placed
+them under unrelated Catalog, Crypto, and Data groups. The generic Instruments
+page also represented only equities, while Companies are issuers rather than an
+Instrument subtype.
+
+Decision: the frontend has one Instruments navigation group with Equity,
+Crypto Spot, Reference Rates, Market Indices, and Price History. Matching routes
+live under `/instruments/*`; `/instruments` redirects to the Equity catalog.
+Companies remain separately grouped as Issuers. The API retains
+`GET /instruments` as its cross-category discovery endpoint with the canonical
+`scope` discriminator, while rich category projections move to
+`GET /instruments/crypto-spot` and `GET /instruments/reference-rates`.
+Instrument history remains `GET /instruments/{instrument_id}/history`.
+
+Consequences: navigation, browser URLs, HTTP resources, generated contracts,
+and domain vocabulary now share the same hierarchy. Market indices use the
+generic catalog with `scope=market_index`; equity uses `scope=equity`. Specialized
+crypto trading rules and reference-rate facets remain available without
+creating top-level non-Instrument namespaces. Adding a future Instrument
+category requires another scope and `/instruments/*` surface rather than a new
+unrelated product root.

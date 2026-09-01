@@ -355,7 +355,7 @@ def test_crypto_instrument_route_paginates_filters_and_preserves_decimal_rules()
 def test_crypto_instrument_openapi_contract_is_generated_for_frontend():
     schema = app.openapi()
 
-    operation = schema["paths"]["/crypto/instruments"]["get"]
+    operation = schema["paths"]["/instruments/crypto-spot"]["get"]
     assert operation["operationId"] == "listCryptoInstruments"
     properties = schema["components"]["schemas"][
         "CryptoInstrumentResponse"

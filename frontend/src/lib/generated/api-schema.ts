@@ -41,23 +41,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/crypto/instruments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Crypto Instruments */
-        get: operations["listCryptoInstruments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/data-operations/coverage": {
         parameters: {
             query?: never;
@@ -211,6 +194,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/crypto-spot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Crypto Instruments */
+        get: operations["listCryptoInstruments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instruments/reference-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reference Rates */
+        get: operations["listReferenceRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments/{instrument_id}/history": {
         parameters: {
             query?: never;
@@ -220,23 +237,6 @@ export interface paths {
         };
         /** Instrument Price History */
         get: operations["getInstrumentPriceHistory"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reference-rates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Reference Rates */
-        get: operations["listReferenceRates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2216,42 +2216,6 @@ export interface operations {
             };
         };
     };
-    listCryptoInstruments: {
-        parameters: {
-            query?: {
-                venue_code?: string | null;
-                search?: string | null;
-                quote_asset?: string | null;
-                status?: "active" | "inactive" | "all";
-                offset?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CryptoInstrumentListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     getDataOperationPriceCoverage: {
         parameters: {
             query: {
@@ -2543,13 +2507,18 @@ export interface operations {
             };
         };
     };
-    getInstrumentPriceHistory: {
+    listCryptoInstruments: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                instrument_id: number;
+            query?: {
+                venue_code?: string | null;
+                search?: string | null;
+                quote_asset?: string | null;
+                status?: "active" | "inactive" | "all";
+                offset?: number;
+                limit?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -2560,7 +2529,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InstrumentPriceHistoryResponse"];
+                    "application/json": components["schemas"]["CryptoInstrumentListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2597,6 +2566,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferenceRateListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstrumentPriceHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentPriceHistoryResponse"];
                 };
             };
             /** @description Validation Error */

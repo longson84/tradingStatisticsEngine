@@ -18,11 +18,11 @@ from api.schemas.crypto import (
 from api.services.crypto_instrument_service import CryptoInstrumentService
 
 
-router = APIRouter(prefix="/crypto", tags=["crypto"])
+router = APIRouter(prefix="/instruments/crypto-spot", tags=["instruments"])
 
 
 @router.get(
-    "/instruments",
+    "",
     response_model=CryptoInstrumentListResponse,
     operation_id="listCryptoInstruments",
 )

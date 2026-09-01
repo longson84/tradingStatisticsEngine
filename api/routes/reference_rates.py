@@ -19,7 +19,7 @@ from api.schemas.reference_rates import (
 from api.services.reference_rate_service import ReferenceRateService
 
 
-router = APIRouter(prefix="/reference-rates", tags=["reference-rates"])
+router = APIRouter(prefix="/instruments/reference-rates", tags=["instruments"])
 
 
 @router.get(

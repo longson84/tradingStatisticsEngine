@@ -205,7 +205,7 @@ def test_reference_rate_route_paginates_filters_and_exposes_no_venue():
 
 def test_reference_rate_openapi_contract_is_generated_for_frontend():
     schema = app.openapi()
-    operation = schema["paths"]["/reference-rates"]["get"]
+    operation = schema["paths"]["/instruments/reference-rates"]["get"]
     assert operation["operationId"] == "listReferenceRates"
     properties = schema["components"]["schemas"][
         "ReferenceRateInstrumentResponse"

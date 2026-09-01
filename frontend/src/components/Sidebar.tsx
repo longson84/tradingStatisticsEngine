@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { BarChart2, BarChart3, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, SearchCode, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark } from "lucide-react"
+import { BarChart2, BarChart3, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, SearchCode, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark, LineChart, CandlestickChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -17,8 +17,17 @@ const sections = [
     label: "Data",
     links: [
       { to: "/data-operations", label: "Data Operations", icon: HardDriveDownload },
-      { to: "/reference-rates", label: "Reference Rates", icon: Scale },
       { to: "/venues", label: "Venues", icon: Landmark },
+    ],
+  },
+  {
+    label: "Instruments",
+    links: [
+      { to: "/instruments/equity", label: "Equity", icon: CandlestickChart },
+      { to: "/instruments/crypto-spot", label: "Crypto Spot", icon: Bitcoin },
+      { to: "/instruments/reference-rates", label: "Reference Rates", icon: Scale },
+      { to: "/instruments/market-indices", label: "Market Indices", icon: LineChart },
+      { to: "/instruments/price-history", label: "Price History", icon: ChartNoAxesCombined },
     ],
   },
   {
@@ -35,17 +44,9 @@ const sections = [
     ],
   },
   {
-    label: "Catalog",
+    label: "Issuers",
     links: [
       { to: "/companies", label: "Companies", icon: Building2 },
-      { to: "/instruments", label: "Instruments", icon: ListTree },
-      { to: "/price-history", label: "Price History", icon: ChartNoAxesCombined },
-    ],
-  },
-  {
-    label: "Crypto",
-    links: [
-      { to: "/crypto", label: "Crypto Instruments", icon: Bitcoin },
     ],
   },
   {

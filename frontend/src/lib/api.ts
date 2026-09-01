@@ -254,7 +254,7 @@ export function cryptoInstrumentsApi(
     if (value != null) query.set(key, String(value))
   }
   const suffix = query.size > 0 ? `?${query}` : ""
-  return get(`/crypto/instruments${suffix}`)
+  return get(`/instruments/crypto-spot${suffix}`)
 }
 
 export function referenceRatesApi(
@@ -265,7 +265,7 @@ export function referenceRatesApi(
     if (value != null) query.set(key, String(value))
   }
   const suffix = query.size > 0 ? `?${query}` : ""
-  return get(`/reference-rates${suffix}`)
+  return get(`/instruments/reference-rates${suffix}`)
 }
 
 export function venuesApi(): Promise<VenueListResponse> {

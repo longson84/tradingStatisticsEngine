@@ -37,15 +37,17 @@ export default function App() {
           <Route path="/factor-rarity/predefined" element={<PredefinedFactorsRarityPage />} />
           <Route path="/universe-stats" element={<UniverseStatsPage />} />
           <Route path="/events/new-low/deep" element={<NewLowDeepPage />} />
-          <Route path="/instruments" element={<InstrumentsPage />} />
+          <Route path="/instruments" element={<Navigate to="/instruments/equity" replace />} />
+          <Route path="/instruments/equity" element={<InstrumentsPage scope="equity" />} />
+          <Route path="/instruments/market-indices" element={<InstrumentsPage scope="market_index" />} />
           <Route path="/companies" element={<CompaniesPage />} />
-          <Route path="/price-history" element={<PriceHistoryPage />} />
+          <Route path="/instruments/price-history" element={<PriceHistoryPage />} />
           <Route path="/collections" element={<Navigate to="/collections/universes" replace />} />
           <Route path="/collections/universes" element={<InstrumentCollectionsPage tab="universes" />} />
           <Route path="/collections/watchlists" element={<InstrumentCollectionsPage tab="watchlists" />} />
           <Route path="/data-operations" element={<DataOperationsPage />} />
-          <Route path="/crypto" element={<CryptoInstrumentsPage />} />
-          <Route path="/reference-rates" element={<ReferenceRatesPage />} />
+          <Route path="/instruments/crypto-spot" element={<CryptoInstrumentsPage />} />
+          <Route path="/instruments/reference-rates" element={<ReferenceRatesPage />} />
           <Route path="/build/data-model" element={<DataModelPage />} />
           <Route path="/venues" element={<VenuesPage />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />

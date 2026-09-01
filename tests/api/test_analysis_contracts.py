@@ -74,7 +74,8 @@ def test_openapi_has_no_legacy_company_or_market_identity_contracts():
         "/build/venues",
     }.isdisjoint(paths)
     assert "/crypto/markets" not in paths
-    assert "/crypto/instruments" in paths
+    assert "/instruments/crypto-spot" in paths
+    assert "/crypto/instruments" not in paths
     assert "SingleTickerAnalysisResponse" not in schema["components"]["schemas"]
 
     response = schema["components"]["schemas"]["SingleInstrumentAnalysisResponse"]
