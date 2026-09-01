@@ -14,6 +14,7 @@ import { DataModelPage } from "@/pages/DataModelPage"
 import { ReferenceRatesPage } from "@/pages/ReferenceRatesPage"
 import { VenuesPage } from "@/pages/VenuesPage"
 import { UniverseStatsPage } from "@/pages/UniverseStatsPage"
+import { AnalysisContextProvider } from "@/lib/analysis-provider"
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -30,8 +31,9 @@ const qc = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        <Routes>
+      <AnalysisContextProvider>
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<Navigate to="/factor-rarity" replace />} />
           <Route path="/factor-rarity" element={<FactorsPage />} />
           <Route path="/factor-rarity/predefined" element={<PredefinedFactorsRarityPage />} />
@@ -41,7 +43,7 @@ export default function App() {
           <Route path="/instruments/equity" element={<InstrumentsPage scope="equity" />} />
           <Route path="/instruments/market-indices" element={<InstrumentsPage scope="market_index" />} />
           <Route path="/companies" element={<CompaniesPage />} />
-          <Route path="/instruments/price-history" element={<PriceHistoryPage />} />
+          <Route path="/price-history" element={<PriceHistoryPage />} />
           <Route path="/collections" element={<Navigate to="/collections/universes" replace />} />
           <Route path="/collections/universes" element={<InstrumentCollectionsPage tab="universes" />} />
           <Route path="/collections/watchlists" element={<InstrumentCollectionsPage tab="watchlists" />} />
@@ -51,8 +53,9 @@ export default function App() {
           <Route path="/build/data-model" element={<DataModelPage />} />
           <Route path="/venues" element={<VenuesPage />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </AnalysisContextProvider>
     </QueryClientProvider>
   )
 }

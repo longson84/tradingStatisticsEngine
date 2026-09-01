@@ -13,8 +13,6 @@ import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumen
 import {
   instrumentsApi,
   newLowDeepApi,
-  type InstrumentCatalogItem,
-  type InstrumentScope,
   type NewLowDeepResponse,
   type NewLowCurrentEpisode,
   type NewLowEpisode,
@@ -22,6 +20,8 @@ import {
 } from "@/lib/api"
 import { fmtDate, fmtInt, fmtPct, fmtPrice, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
+import { useAnalysisContext } from "@/lib/use-analysis-context"
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -52,9 +52,14 @@ function NumberInput({
 }
 
 export function NewLowDeepPage() {
-  const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
-  const [instrumentSearch, setInstrumentSearch] = useState("")
-  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
+  const {
+    scope: instrumentScope,
+    search: instrumentSearch,
+    instrument: selectedInstrument,
+    changeScope: setInstrumentScope,
+    changeSearch: setInstrumentSearch,
+    setInstrument: setSelectedInstrument,
+  } = useAnalysisContext()
   const [lookback, setLookback] = useState(50)
   const [quickRecovery, setQuickRecovery] = useState(2)
   const debouncedInstrumentSearch = useDebouncedValue(instrumentSearch.trim(), 300)
@@ -131,7 +136,8 @@ export function NewLowDeepPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel>{controls}</AnalysisPanel>
       <main className="flex-1 overflow-y-auto p-6">
         <div className="flex items-end justify-between gap-4 pb-4 border-b border-border">
           <div>

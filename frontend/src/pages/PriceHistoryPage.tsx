@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ChartNoAxesCombined } from "lucide-react"
 import { FormLabel } from "@/components/forms/FormSelect"
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { Sidebar } from "@/components/Sidebar"
 import {
   InstrumentPriceHistoryChart,
@@ -14,17 +15,22 @@ import {
   instrumentsApi,
   type InstrumentCatalogItem,
   type InstrumentPriceHistoryResponse,
-  type InstrumentScope,
 } from "@/lib/api"
 import { fmtProviderSource } from "@/lib/format"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
+import { useAnalysisContext } from "@/lib/use-analysis-context"
 
 
 export function PriceHistoryPage() {
-  const [scope, setScope] = useState<InstrumentScope>("equity")
-  const [search, setSearch] = useState("")
-  const [instrument, setInstrument] = useState<InstrumentCatalogItem | null>(null)
+  const {
+    scope,
+    search,
+    instrument,
+    changeScope: setScope,
+    changeSearch: setSearch,
+    setInstrument,
+  } = useAnalysisContext()
   const [smaInput, setSmaInput] = useState("")
   const [emaInput, setEmaInput] = useState("")
   const [cursorSnapshot, setCursorSnapshot] = useState<PriceHistoryCursorSnapshot | null>(null)
@@ -129,7 +135,8 @@ export function PriceHistoryPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel>{controls}</AnalysisPanel>
       <main className="min-w-0 flex-1 overflow-y-auto p-6">
         <div className="mb-6 border-b border-border pb-4">
           <div className="flex items-center gap-2">

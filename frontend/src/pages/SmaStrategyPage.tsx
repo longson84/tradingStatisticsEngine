@@ -5,8 +5,10 @@ import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisR
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
 import { FormLabel as Label } from "@/components/forms/FormSelect"
 import { instrumentsApi, smaStrategyAnalysisApi } from "@/lib/api"
-import type { InstrumentCatalogItem, InstrumentScope, MaType } from "@/lib/api"
+import type { MaType } from "@/lib/api"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
+import { useAnalysisContext } from "@/lib/use-analysis-context"
 
 function NumberInput({
   value, onChange, min = 0, step = 1,
@@ -29,9 +31,14 @@ function NumberInput({
 }
 
 export function SmaStrategyPage() {
-  const [scope, setScope]                 = useState<InstrumentScope>("equity")
-  const [search, setSearch]               = useState("")
-  const [instrument, setInstrument]       = useState<InstrumentCatalogItem | null>(null)
+  const {
+    scope,
+    search,
+    instrument,
+    changeScope: setScope,
+    changeSearch: setSearch,
+    setInstrument,
+  } = useAnalysisContext()
   const maType: MaType = "sma"
   const [maLength, setMaLength]           = useState(50)
   const [buyLag, setBuyLag]               = useState(0)
@@ -145,7 +152,8 @@ export function SmaStrategyPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel>{controls}</AnalysisPanel>
 
       <main className="flex-1 overflow-y-auto p-6">
         <div className="mb-5 border-b border-border pb-4">

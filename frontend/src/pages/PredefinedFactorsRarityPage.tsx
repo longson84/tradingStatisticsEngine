@@ -13,6 +13,7 @@ import {
 } from "@/lib/api"
 import { fmtDate, fmtInt, fmtPct, fmtPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 
 export function PredefinedFactorsRarityPage() {
   const [watchlistId, setWatchlistId] = useState("")
@@ -74,7 +75,8 @@ export function PredefinedFactorsRarityPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel label="Watchlist selection">{controls}</AnalysisPanel>
       <main className="flex-1 overflow-y-auto p-6">
         <div className="flex items-end justify-between gap-4 pb-4 border-b border-border">
           <div>

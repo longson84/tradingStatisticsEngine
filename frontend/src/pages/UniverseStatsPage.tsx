@@ -10,6 +10,7 @@ import {
   type UniverseStatsResult,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 
 
 export function UniverseStatsPage() {
@@ -95,7 +96,8 @@ export function UniverseStatsPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel label="Universe selection">{controls}</AnalysisPanel>
       <main className="min-w-0 flex-1 overflow-y-auto p-6">
         <header className="border-b border-border pb-5">
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">

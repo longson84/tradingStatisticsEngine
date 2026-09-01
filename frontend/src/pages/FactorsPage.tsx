@@ -8,13 +8,13 @@ import {
 } from "@/components/forms/AnalysisInstrumentSelector"
 import { instrumentsApi, rarityAnalysisApi } from "@/lib/api"
 import type {
-  InstrumentCatalogItem,
   FactorType,
-  InstrumentScope,
   MaType,
   RarityRecoveryMode,
 } from "@/lib/api"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
+import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
+import { useAnalysisContext } from "@/lib/use-analysis-context"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -79,9 +79,14 @@ function NumberInput({
 
 export function FactorsPage() {
   // Form state
-  const [instrumentScope, setInstrumentScope] = useState<InstrumentScope>("equity")
-  const [instrumentSearch, setInstrumentSearch] = useState("")
-  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
+  const {
+    scope: instrumentScope,
+    search: instrumentSearch,
+    instrument: selectedInstrument,
+    changeScope: setInstrumentScope,
+    changeSearch: setInstrumentSearch,
+    setInstrument: setSelectedInstrument,
+  } = useAnalysisContext()
   const [factorType, setFactorType] = useState<FactorType>("distance_from_peak")
   const [period, setPeriod]         = useState(200)
   const [maType, setMaType]         = useState<MaType>("sma")
@@ -212,7 +217,8 @@ export function FactorsPage() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar className="w-72" children={controls} />
+      <Sidebar className="w-72" />
+      <AnalysisPanel>{controls}</AnalysisPanel>
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Analysis type tabs */}

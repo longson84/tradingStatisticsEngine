@@ -11,13 +11,13 @@ const sections = [
       { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2, end: true },
       { to: "/factor-rarity/predefined", label: "Predefined", icon: BarChart2 },
       { to: "/universe-stats", label: "Universe Stats", icon: BarChart3 },
+      { to: "/price-history", label: "Price History", icon: ChartNoAxesCombined },
     ],
   },
   {
     label: "Data",
     links: [
       { to: "/data-operations", label: "Data Operations", icon: HardDriveDownload },
-      { to: "/venues", label: "Venues", icon: Landmark },
     ],
   },
   {
@@ -27,7 +27,7 @@ const sections = [
       { to: "/instruments/crypto-spot", label: "Crypto Spot", icon: Bitcoin },
       { to: "/instruments/reference-rates", label: "Reference Rates", icon: Scale },
       { to: "/instruments/market-indices", label: "Market Indices", icon: LineChart },
-      { to: "/instruments/price-history", label: "Price History", icon: ChartNoAxesCombined },
+      { to: "/venues", label: "Venues", icon: Landmark },
     ],
   },
   {
