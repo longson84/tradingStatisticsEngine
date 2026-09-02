@@ -24,11 +24,16 @@ from api.providers.universe import (
 
 HttpFetcher = Callable[[str, Mapping[str, str] | None], bytes]
 NASDAQ_100_URL = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
-ISHARES_IWM_URL = (
-    "https://www.blackrock.com/us/individual/products/239710/"
-    "ishares-russell-2000-etf/1464253357814.ajax"
-    "?fileType=csv&fileName=IWM_holdings&dataType=fund"
-)
+ISHARES_RUSSELL_URLS = {
+    "US1000": (
+        "https://www.blackrock.com/us/individual/products/239707/"
+        "ishares-russell-1000-etf/latest-holdings.csv"
+    ),
+    "US2000": (
+        "https://www.blackrock.com/us/individual/products/239710/"
+        "ishares-russell-2000-etf/latest-holdings.csv"
+    ),
+}
 WIKIPEDIA_SP500_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 WIKIPEDIA_DOW_URL = "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average"
 _ISHARES_TICKER_OVERRIDES = {
@@ -115,38 +120,73 @@ class Nasdaq100UniverseProvider:
         )
 
 
-class IsharesRussell2000UniverseProvider:
-    """Use listed-equity IWM holdings as a practical Russell 2000 proxy."""
+class IsharesRussellUniverseProvider:
+    """Use listed-equity IWB/IWM holdings as practical Russell index proxies."""
 
-    supported_universes = frozenset({"US2000"})
+    supported_universes = frozenset({"US1000", "US2000", "US3000"})
 
     def __init__(self, fetcher: HttpFetcher = _fetch_bytes) -> None:
         self._fetcher = fetcher
+        self._holdings_cache: dict[str, tuple[date | None, list[UniverseConstituent]]] = {}
 
     def fetch(self, universe: str) -> UniverseSnapshot:
         code = universe.upper().strip()
         if code not in self.supported_universes:
             raise UnsupportedUniverseError(f"iShares does not provide {universe!r}")
-        content = self._fetcher(ISHARES_IWM_URL, None)
+        if code == "US3000":
+            first_date, first = self._holdings("US1000")
+            second_date, second = self._holdings("US2000")
+            by_symbol = {row.canonical_symbol: row for row in (*first, *second)}
+            effective_date = min(
+                value for value in (first_date, second_date) if value is not None
+            ) if first_date or second_date else None
+            constituents = list(by_symbol.values())
+            fund = "IWB and IWM"
+            name = "Russell 3000"
+            source = "ishares-iwb-iwm-holdings-derived"
+        else:
+            effective_date, constituents = self._holdings(code)
+            if code == "US2000" and "US1000" in self._holdings_cache:
+                large_symbols = {
+                    row.canonical_symbol for row in self._holdings_cache["US1000"][1]
+                }
+                constituents = [
+                    row for row in constituents
+                    if row.canonical_symbol not in large_symbols
+                ]
+            fund = "IWB" if code == "US1000" else "IWM"
+            name = "Russell 1000" if code == "US1000" else "Russell 2000"
+            source = f"ishares-{fund.lower()}-holdings"
+        return UniverseSnapshot(
+            code=code,
+            name=name,
+            listing_country_code="US",
+            description=(
+                f"Current listed-equity holdings of {fund} used as a practical "
+                f"{name} constituent proxy."
+            ),
+            effective_date=effective_date,
+            fetched_at=datetime.now(timezone.utc),
+            source=source,
+            constituents=validated_constituents(constituents, universe=code),
+        )
+
+    def _holdings(
+        self,
+        code: str,
+    ) -> tuple[date | None, list[UniverseConstituent]]:
+        cached = self._holdings_cache.get(code)
+        if cached is not None:
+            return cached
+        content = self._fetcher(ISHARES_RUSSELL_URLS[code], None)
         text = _decode_text(content)
         if text.lstrip().lower().startswith("<!doctype html"):
             raise UniverseProviderDataError(
                 "iShares returned an HTML product page instead of holdings CSV"
             )
-        effective_date, constituents = _parse_ishares_csv(text)
-        return UniverseSnapshot(
-            code=code,
-            name="Russell 2000",
-            listing_country_code="US",
-            description=(
-                "Current listed-equity holdings of IWM used as a practical "
-                "Russell 2000 constituent proxy."
-            ),
-            effective_date=effective_date,
-            fetched_at=datetime.now(timezone.utc),
-            source="ishares-iwm-holdings",
-            constituents=validated_constituents(constituents, universe=code),
-        )
+        parsed = _parse_ishares_csv(text)
+        self._holdings_cache[code] = parsed
+        return parsed
 
 
 class WikipediaUSIndexProvider:

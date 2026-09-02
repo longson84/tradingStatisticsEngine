@@ -192,6 +192,16 @@ class UniverseStatsSeries:
     coverage_pct: pd.Series
 
 
+@dataclass(frozen=True)
+class InstrumentReturnSnapshot:
+    """Latest point-in-time return and trailing-high metrics for one instrument."""
+    return_1w: float | None
+    return_1m: float | None
+    return_3m: float | None
+    distance_from_high_200d: float | None
+    high_200d_date: date | None
+
+
 @dataclass
 class RegimeSeries:
     """Time-indexed regime labels derived from breadth analysis."""

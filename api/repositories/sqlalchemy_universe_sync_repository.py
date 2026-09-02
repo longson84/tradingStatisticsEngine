@@ -33,8 +33,10 @@ from api.instrument_symbols import canonical_symbol, canonical_symbol_expression
 _EXPECTED_MEMBER_RANGES = {
     "US30": (25, 35),
     "US100": (80, 120),
+    "US1000": (900, 1_150),
     "US500": (450, 550),
     "US2000": (1_500, 2_500),
+    "US3000": (2_400, 3_200),
     "VN30": (25, 35),
     "VNMID": (50, 100),
     "VN100": (80, 130),

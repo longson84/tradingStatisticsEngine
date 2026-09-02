@@ -79,12 +79,18 @@ def test_universe_stats_route_uses_exact_instrument_ids_and_canonical_bases():
         service,
     )
 
-    assert response.formula_version == "universe-distance-v1"
+    assert response.formula_version == "universe-distance-v2"
     assert response.membership_mode == "current_snapshot"
     assert response.window == 200
     assert len(response.results) == 1
     assert response.results[0].universe_code == "US_TEST"
     assert response.results[0].points[-1].eligible_count == 2
+    assert [row.symbol for row in response.results[0].instruments] == ["T11", "T22"]
+    assert response.results[0].instruments[0].return_1w is not None
+    assert response.results[0].instruments[0].return_1m is not None
+    assert response.results[0].instruments[0].return_3m is not None
+    assert response.results[0].instruments[0].distance_from_high_200d == 0.0
+    assert response.results[0].instruments[0].high_200d_date == date(2025, 9, 7)
     assert stats_repository.query is not None
     assert stats_repository.query.instrument_price_bases == (
         (11, "adjusted"),
@@ -118,3 +124,15 @@ def test_universe_stats_openapi_contract_is_generated_for_frontend():
         "eligible_count",
         "coverage_pct",
     }.issubset(properties)
+    instrument_properties = schema["components"]["schemas"]["UniverseInstrumentStatsResponse"][
+        "properties"
+    ]
+    assert {
+        "instrument_id",
+        "symbol",
+        "return_1w",
+        "return_1m",
+        "return_3m",
+        "distance_from_high_200d",
+        "high_200d_date",
+    }.issubset(instrument_properties)

@@ -4238,6 +4238,96 @@
         "title": "UniverseCatalogResponse",
         "type": "object"
       },
+      "UniverseInstrumentStatsResponse": {
+        "properties": {
+          "distance_from_high_200d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance From High 200D"
+          },
+          "high_200d_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High 200D Date"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "latest_close": {
+            "title": "Latest Close",
+            "type": "number"
+          },
+          "return_1m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1M"
+          },
+          "return_1w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1W"
+          },
+          "return_3m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 3M"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "last_date",
+          "latest_close",
+          "return_1w",
+          "return_1m",
+          "return_3m",
+          "distance_from_high_200d",
+          "high_200d_date"
+        ],
+        "title": "UniverseInstrumentStatsResponse",
+        "type": "object"
+      },
       "UniverseListResponse": {
         "properties": {
           "universes": {
@@ -4385,6 +4475,13 @@
             "title": "First Date",
             "type": "string"
           },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseInstrumentStatsResponse"
+            },
+            "title": "Instruments",
+            "type": "array"
+          },
           "instruments_with_history": {
             "title": "Instruments With History",
             "type": "integer"
@@ -4435,7 +4532,8 @@
           "last_date",
           "sources",
           "fetched_at",
-          "points"
+          "points",
+          "instruments"
         ],
         "title": "UniverseStatsResultResponse",
         "type": "object"

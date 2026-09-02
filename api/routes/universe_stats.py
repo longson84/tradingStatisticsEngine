@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from api.deps import get_universe_stats_service
 from api.schemas.universe_stats import (
     UniverseStatsErrorResponse,
+    UniverseInstrumentStatsResponse,
     UniverseStatsPointResponse,
     UniverseStatsRequest,
     UniverseStatsResponse,
@@ -53,6 +54,10 @@ def run_universe_stats(
                 sources=list(result.sources),
                 fetched_at=result.fetched_at,
                 points=[UniverseStatsPointResponse(**vars(point)) for point in result.points],
+                instruments=[
+                    UniverseInstrumentStatsResponse(**vars(instrument))
+                    for instrument in result.instruments
+                ],
             )
             for result in run.results
         ],

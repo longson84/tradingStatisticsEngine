@@ -3,7 +3,38 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from trading_engine.factor_analysis.universe_stats import calculate_universe_stats
+from trading_engine.factor_analysis.universe_stats import (
+    calculate_instrument_return_snapshot,
+    calculate_universe_stats,
+)
+
+
+def test_instrument_return_snapshot_uses_trading_session_horizons_and_200_session_high():
+    closes = pd.Series(
+        range(100, 300),
+        index=pd.date_range("2025-01-01", periods=200, freq="B"),
+        dtype=float,
+    )
+
+    result = calculate_instrument_return_snapshot(closes)
+
+    assert result.return_1w == pytest.approx((299 / 294 - 1) * 100)
+    assert result.return_1m == pytest.approx((299 / 278 - 1) * 100)
+    assert result.return_3m == pytest.approx((299 / 236 - 1) * 100)
+    assert result.distance_from_high_200d == pytest.approx(0.0)
+    assert result.high_200d_date == closes.index[-1].date()
+
+
+def test_instrument_return_snapshot_reports_unavailable_longer_horizons():
+    closes = pd.Series([100.0, 105.0], index=pd.date_range("2026-01-01", periods=2))
+
+    result = calculate_instrument_return_snapshot(closes)
+
+    assert result.return_1w is None
+    assert result.return_1m is None
+    assert result.return_3m is None
+    assert result.distance_from_high_200d is None
+    assert result.high_200d_date is None
 from trading_engine.types import InsufficientDataError
 
 

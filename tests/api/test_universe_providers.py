@@ -15,7 +15,7 @@ from api.providers.universe import (
 )
 from api.providers.universe_catalog import create_universe_provider_registry
 from api.providers.us_universes import (
-    IsharesRussell2000UniverseProvider,
+    IsharesRussellUniverseProvider,
     Nasdaq100UniverseProvider,
     WikipediaUSIndexProvider,
 )
@@ -48,7 +48,7 @@ def test_default_registry_has_one_provider_for_every_system_universe():
     registry = create_universe_provider_registry()
 
     assert registry.supported_universes == {
-        "US100", "US2000", "US500", "US30",
+        "US100", "US1000", "US2000", "US3000", "US500", "US30",
         "VN30", "VNMID", "VN100", "VNSML", "VNALL",
     }
 
@@ -105,7 +105,7 @@ XTSLA,BLK CASH FUND,Cash and/or Derivatives,Money Market,-
 ADRO,CHINOOK THERAPEUTICS CVR,Health Care,Equity,NO MARKET (E.G. UNLISTED)
 FOLD,AMICUS THERAPEUTICS INC,Health Care,Equity,NASDAQ
 """
-    provider = IsharesRussell2000UniverseProvider(
+    provider = IsharesRussellUniverseProvider(
         lambda url, params: csv_text.encode()
     )
 
@@ -118,12 +118,38 @@ FOLD,AMICUS THERAPEUTICS INC,Health Care,Equity,NASDAQ
 
 
 def test_ishares_provider_rejects_product_page_fallback():
-    provider = IsharesRussell2000UniverseProvider(
+    provider = IsharesRussellUniverseProvider(
         lambda url, params: b"<!DOCTYPE html><html></html>"
     )
 
     with pytest.raises(UniverseProviderDataError, match="instead of holdings CSV"):
         provider.fetch("US2000")
+
+
+def test_ishares_provider_derives_russell_3000_as_1000_union_2000():
+    large_csv = """Fund Holdings as of,"Aug 7, 2026"
+Ticker,Name,Sector,Asset Class,Exchange
+MKL,MARKEL GROUP INC,Financials,Equity,NYSE
+AAPL,APPLE INC,Technology,Equity,NASDAQ
+"""
+    small_csv = """Fund Holdings as of,"Aug 7, 2026"
+Ticker,Name,Sector,Asset Class,Exchange
+FOLD,AMICUS THERAPEUTICS INC,Health Care,Equity,NASDAQ
+"""
+
+    def fetcher(url: str, params):
+        return large_csv.encode() if "239707" in url else small_csv.encode()
+
+    provider = IsharesRussellUniverseProvider(fetcher)
+
+    russell_3000 = provider.fetch("US3000")
+    russell_1000 = provider.fetch("US1000")
+    russell_2000 = provider.fetch("US2000")
+
+    members = lambda snapshot: {row.canonical_symbol for row in snapshot.constituents}
+    assert members(russell_3000) == members(russell_1000) | members(russell_2000)
+    assert "MKL" in members(russell_1000)
+    assert russell_3000.source == "ishares-iwb-iwm-holdings-derived"
 
 
 @pytest.mark.parametrize(

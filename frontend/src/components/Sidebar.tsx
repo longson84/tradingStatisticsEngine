@@ -10,8 +10,14 @@ const sections = [
     links: [
       { to: "/factor-rarity", label: "Factor Rarity", icon: BarChart2, end: true },
       { to: "/factor-rarity/predefined", label: "Predefined", icon: BarChart2 },
-      { to: "/universe-stats", label: "Universe Stats", icon: BarChart3 },
       { to: "/price-history", label: "Price History", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    label: "Universe Stats",
+    links: [
+      { to: "/universe-stats/breadth", label: "Breadth Analysis", icon: BarChart3 },
+      { to: "/universe-stats/member-performance", label: "Member Performance", icon: TrendingUp },
     ],
   },
   {

@@ -26,6 +26,18 @@ class UniverseStatsPointResponse(BaseModel):
     coverage_pct: float
 
 
+class UniverseInstrumentStatsResponse(BaseModel):
+    instrument_id: int
+    symbol: str
+    last_date: date
+    latest_close: float
+    return_1w: float | None
+    return_1m: float | None
+    return_3m: float | None
+    distance_from_high_200d: float | None
+    high_200d_date: date | None
+
+
 class UniverseStatsResultResponse(BaseModel):
     universe_code: str
     universe_name: str
@@ -37,6 +49,7 @@ class UniverseStatsResultResponse(BaseModel):
     sources: list[str]
     fetched_at: datetime
     points: list[UniverseStatsPointResponse]
+    instruments: list[UniverseInstrumentStatsResponse]
 
 
 class UniverseStatsErrorResponse(BaseModel):

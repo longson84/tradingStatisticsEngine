@@ -171,7 +171,20 @@ export function PriceHistoryPage() {
 
         {history.data && first && latest && (
           <>
-            <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
+            <section className="rounded-lg border border-border bg-card p-5">
+              <InstrumentPriceHistoryChart
+                key={history.data.instrument_id}
+                symbol={history.data.symbol}
+                instrumentType={history.data.instrument_type}
+                relativeStrengthBenchmark={history.data.relative_strength_benchmark}
+                prices={prices}
+                smaLengths={selection.smaLengths}
+                emaLengths={selection.emaLengths}
+                onCursorSnapshotChange={setCursorSnapshot}
+              />
+            </section>
+
+            <div className="mb-5 mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
               <Datum label="First session" value={history.data.first_date} />
               <Datum label="Latest session" value={history.data.last_date} />
               <Datum label="Sessions" value={history.data.row_count.toLocaleString()} />
@@ -230,19 +243,6 @@ export function PriceHistoryPage() {
               showFundamentals={isEquity}
               showRelativeStrength={history.data.relative_strength_benchmark != null}
             />
-
-            <section className="rounded-lg border border-border bg-card p-5">
-              <InstrumentPriceHistoryChart
-                key={history.data.instrument_id}
-                symbol={history.data.symbol}
-                instrumentType={history.data.instrument_type}
-                relativeStrengthBenchmark={history.data.relative_strength_benchmark}
-                prices={prices}
-                smaLengths={selection.smaLengths}
-                emaLengths={selection.emaLengths}
-                onCursorSnapshotChange={setCursorSnapshot}
-              />
-            </section>
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
               {historyFootnote(history.data)}

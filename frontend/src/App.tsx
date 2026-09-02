@@ -37,7 +37,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/factor-rarity" replace />} />
           <Route path="/factor-rarity" element={<FactorsPage />} />
           <Route path="/factor-rarity/predefined" element={<PredefinedFactorsRarityPage />} />
-          <Route path="/universe-stats" element={<UniverseStatsPage />} />
+          <Route path="/universe-stats" element={<Navigate to="/universe-stats/breadth" replace />} />
+          <Route path="/universe-stats/breadth" element={<UniverseStatsPage view="breadth" />} />
+          <Route path="/universe-stats/member-performance" element={<UniverseStatsPage view="member-performance" />} />
           <Route path="/events/new-low/deep" element={<NewLowDeepPage />} />
           <Route path="/instruments" element={<Navigate to="/instruments/equity" replace />} />
           <Route path="/instruments/equity" element={<InstrumentsPage scope="equity" />} />

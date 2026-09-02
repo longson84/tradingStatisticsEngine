@@ -1747,6 +1747,30 @@ export interface components {
             /** Venue Codes */
             venue_codes: string[];
         };
+        /** UniverseInstrumentStatsResponse */
+        UniverseInstrumentStatsResponse: {
+            /** Distance From High 200D */
+            distance_from_high_200d: number | null;
+            /** High 200D Date */
+            high_200d_date: string | null;
+            /** Instrument Id */
+            instrument_id: number;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /** Latest Close */
+            latest_close: number;
+            /** Return 1M */
+            return_1m: number | null;
+            /** Return 1W */
+            return_1w: number | null;
+            /** Return 3M */
+            return_3m: number | null;
+            /** Symbol */
+            symbol: string;
+        };
         /** UniverseListResponse */
         UniverseListResponse: {
             /** Universes */
@@ -1809,6 +1833,8 @@ export interface components {
              * Format: date
              */
             first_date: string;
+            /** Instruments */
+            instruments: components["schemas"]["UniverseInstrumentStatsResponse"][];
             /** Instruments With History */
             instruments_with_history: number;
             /**

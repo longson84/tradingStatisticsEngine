@@ -6,7 +6,51 @@ import math
 import numpy as np
 import pandas as pd
 
-from trading_engine.types import InsufficientDataError, UniverseStatsSeries
+from trading_engine.types import (
+    InsufficientDataError,
+    InstrumentReturnSnapshot,
+    UniverseStatsSeries,
+)
+
+
+def calculate_instrument_return_snapshot(
+    closes: pd.Series,
+    *,
+    high_window: int = 200,
+) -> InstrumentReturnSnapshot:
+    """Calculate latest returns over 5/21/63 sessions and distance from a 200-session high."""
+    if high_window < 2:
+        raise ValueError("high_window must be at least 2")
+    values = closes.sort_index().astype(float).replace([np.inf, -np.inf], np.nan).dropna()
+    if values.empty:
+        raise InsufficientDataError("No stored closing prices are available")
+
+    latest = float(values.iloc[-1])
+
+    def trailing_return(sessions: int) -> float | None:
+        if len(values) <= sessions:
+            return None
+        base = float(values.iloc[-(sessions + 1)])
+        if base == 0:
+            return None
+        return (latest / base - 1.0) * 100.0
+
+    distance_from_high = None
+    high_200d_date = None
+    if len(values) >= high_window:
+        trailing_values = values.iloc[-high_window:]
+        trailing_high = float(trailing_values.max())
+        if trailing_high != 0:
+            distance_from_high = (latest / trailing_high - 1.0) * 100.0
+            high_200d_date = trailing_values[trailing_values == trailing_high].index[-1].date()
+
+    return InstrumentReturnSnapshot(
+        return_1w=trailing_return(5),
+        return_1m=trailing_return(21),
+        return_3m=trailing_return(63),
+        distance_from_high_200d=distance_from_high,
+        high_200d_date=high_200d_date,
+    )
 
 
 def calculate_universe_stats(

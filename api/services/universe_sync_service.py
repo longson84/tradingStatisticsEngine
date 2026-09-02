@@ -20,7 +20,7 @@ from api.repositories.universe_sync_repository import (
 )
 
 
-US_UNIVERSE_ORDER = ("US500", "US30", "US100", "US2000")
+US_UNIVERSE_ORDER = ("US3000", "US1000", "US2000", "US500", "US30", "US100")
 VN_UNIVERSE_FAMILY = ("VN30", "VNMID", "VN100", "VNSML", "VNALL")
 ALL_UNIVERSE_ORDER = (*US_UNIVERSE_ORDER, *VN_UNIVERSE_FAMILY)
 
@@ -50,6 +50,7 @@ class UniverseSyncService:
             provider_snapshots = tuple(
                 self._providers.fetch(code) for code in requested
             )
+            self._validate_russell_relationships(provider_snapshots)
             self._validate_vietnam_relationships(provider_snapshots)
             catalog = (
                 self._us_listing_catalog_fetcher()
@@ -98,6 +99,22 @@ class UniverseSyncService:
         if normalized.intersection(VN_UNIVERSE_FAMILY):
             normalized.update(VN_UNIVERSE_FAMILY)
         return tuple(code for code in ALL_UNIVERSE_ORDER if code in normalized)
+
+    @staticmethod
+    def _validate_russell_relationships(
+        snapshots: tuple[UniverseSnapshot, ...],
+    ) -> None:
+        by_code = {row.code: row for row in snapshots}
+        if not {"US1000", "US2000", "US3000"}.issubset(by_code):
+            return
+        members = {
+            code: {row.canonical_symbol for row in by_code[code].constituents}
+            for code in ("US1000", "US2000", "US3000")
+        }
+        if members["US1000"] & members["US2000"]:
+            raise ValueError("Russell 1000 and Russell 2000 proxies must not overlap")
+        if members["US3000"] != members["US1000"] | members["US2000"]:
+            raise ValueError("Russell 3000 must equal Russell 1000 union Russell 2000")
 
     @staticmethod
     def _validate_vietnam_relationships(

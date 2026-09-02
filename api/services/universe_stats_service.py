@@ -11,14 +11,17 @@ from api.repositories.universe_stats_repository import (
     UniverseStatsCloseQuery,
     UniverseStatsRepository,
 )
-from trading_engine.factor_analysis import calculate_universe_stats
+from trading_engine.factor_analysis import (
+    calculate_instrument_return_snapshot,
+    calculate_universe_stats,
+)
 from trading_engine.types import InsufficientDataError
 
 
 UNIVERSE_STATS_WINDOW = 200
 UNIVERSE_STATS_MINIMUM_COVERAGE = 0.5
 UNIVERSE_STATS_HISTORY_YEARS = 10
-UNIVERSE_STATS_FORMULA_VERSION = "universe-distance-v1"
+UNIVERSE_STATS_FORMULA_VERSION = "universe-distance-v2"
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,19 @@ class UniverseStatsPointData:
     median_distance_from_low: float
     eligible_count: int
     coverage_pct: float
+
+
+@dataclass(frozen=True)
+class UniverseInstrumentStatsData:
+    instrument_id: int
+    symbol: str
+    last_date: date
+    latest_close: float
+    return_1w: float | None
+    return_1m: float | None
+    return_3m: float | None
+    distance_from_high_200d: float | None
+    high_200d_date: date | None
 
 
 @dataclass(frozen=True)
@@ -42,6 +58,7 @@ class UniverseStatsResultData:
     sources: tuple[str, ...]
     fetched_at: datetime
     points: tuple[UniverseStatsPointData, ...]
+    instruments: tuple[UniverseInstrumentStatsData, ...]
 
 
 @dataclass(frozen=True)
@@ -151,6 +168,24 @@ class UniverseStatsService:
             )
             for index in high.index
         )
+        instruments_by_id = {instrument.id: instrument for instrument in covered}
+        instrument_stats = tuple(
+            UniverseInstrumentStatsData(
+                instrument_id=instrument_id,
+                symbol=instruments_by_id[instrument_id].symbol,
+                last_date=values[-1][0],
+                latest_close=float(values[-1][1]),
+                **vars(calculate_instrument_return_snapshot(pd.Series(
+                    (value for _, value in values),
+                    index=pd.DatetimeIndex(date_value for date_value, _ in values),
+                    dtype=float,
+                ))),
+            )
+            for instrument_id, values in sorted(
+                values_by_id.items(),
+                key=lambda item: instruments_by_id[item[0]].symbol,
+            )
+        )
         return UniverseStatsResultData(
             universe_code=scope.scope_id,
             universe_name=scope.name,
@@ -162,4 +197,5 @@ class UniverseStatsService:
             sources=tuple(sorted(sources)),
             fetched_at=fetched_at,
             points=points,
+            instruments=instrument_stats,
         )

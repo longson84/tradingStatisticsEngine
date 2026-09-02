@@ -121,7 +121,7 @@ fundamentals also use PostgreSQL.
   one current primary `canonical` row. That row is the authoritative display
   and lookup symbol; provider and listing namespaces remain independent aliases.
 - `universes` stores system-managed named current snapshots such as US100,
-  US500, US2000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
+  US500, US1000, US2000, US3000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
   universe has no market classification; any instrument characteristics needed
   by a consumer come from its current membership.
 - `universe_memberships` implements the many-to-many relationship between
@@ -1599,13 +1599,20 @@ range plus 400 calendar days of warm-up from PostgreSQL. It does not refresh or
 persist derived statistics. For every instrument, missing closes after its first
 observation are carried forward while leading pre-listing values remain null.
 
-Formula version `universe-distance-v1` uses a fixed 200-session window. For each
+Formula version `universe-distance-v2` uses a fixed 200-session window. For each
 eligible instrument and observation date it calculates
 `(close / rolling_max(close, 200) - 1) * 100` and
 `(close / rolling_min(close, 200) - 1) * 100`, then takes the cross-sectional
 median separately for the High 200 and Low 200 charts. A date is published only
 when at least 50 percent of the current active membership has a valid 200-session
 observation. The response includes eligible count and coverage percentage.
+For the latest observation of every member with history, the same response also
+publishes close-to-close returns over 5, 21, and 63 trading sessions (displayed
+as 1W, 1M, and 3M) and distance from the highest close in the latest 200 stored
+sessions. A metric is null when that instrument lacks the required lookback.
+These member rows use exact canonical Instrument IDs.
+The member projection also reports the latest date on which the 200-session
+maximum close occurred; ties resolve to the most recent matching session.
 
 Consequences: the `/universe-stats` UI can compare any selected catalog
 Universes without treating them as markets or losing venue-specific identity.
@@ -1613,6 +1620,13 @@ Historical lines intentionally reconstruct today's membership and therefore
 retain survivorship bias; the API marks the membership mode as
 `current_snapshot` and the UI states this limitation. Point-in-time constituent
 statistics require effective-dated Universe membership in a future model.
+
+The frontend separates these two analytical views under a `Universe Stats`
+navigation group. `Breadth Analysis` at `/universe-stats/breadth` accepts one or
+more Universes and displays only aggregate charts and coverage summaries.
+`Member Performance` at `/universe-stats/member-performance` accepts exactly one
+Universe and displays the latest per-Instrument return table. The legacy
+`/universe-stats` URL redirects to Breadth Analysis.
 
 ### 2026-08-12 — New-Low Deep exact-instrument read cutover
 
@@ -2250,8 +2264,9 @@ page also represented only equities, while Companies are issuers rather than an
 Instrument subtype.
 
 Decision: the frontend has one Instruments navigation group with Equity,
-Crypto Spot, Reference Rates, Market Indices, and Price History. Matching routes
-live under `/instruments/*`; `/instruments` redirects to the Equity catalog.
+Crypto Spot, Reference Rates, Market Indices, and Venues. Instrument catalog
+routes live under `/instruments/*`; `/instruments` redirects to the Equity catalog.
+Price History is an analytical view at `/price-history`.
 Companies remain separately grouped as Issuers. The API retains
 `GET /instruments` as its cross-category discovery endpoint with the canonical
 `scope` discriminator, while rich category projections move to
@@ -2265,3 +2280,24 @@ crypto trading rules and reference-rate facets remain available without
 creating top-level non-Instrument namespaces. Adding a future Instrument
 category requires another scope and `/instruments/*` surface rather than a new
 unrelated product root.
+
+### 2026-09-02 — Add Russell 1000 and Russell 3000 Universes
+
+Context: the application tracked a Russell 2000 proxy but could not represent
+large- and mid-cap Russell membership such as Markel (`MKL`). Russell 2000 is
+not a parent index: Russell 1000 represents the large/mid-cap segment, Russell
+2000 represents the smaller segment, and Russell 3000 is their union.
+
+Decision: add system Universes `US1000` and `US3000`. `US1000` uses current
+listed-equity IWB holdings as a practical Russell 1000 proxy, matching the
+existing IWM-based `US2000` convention. `US3000` is derived as the exact union
+of those two proxy snapshots rather than using potentially sampled IWV
+holdings. When the complete Russell family is synchronized, the service
+requires US1000 and US2000 to be disjoint and US3000 to equal their union.
+iShares non-equity, cash, derivative, and unlisted rows remain excluded.
+
+Consequences: Universe catalogs, data operations, analysis selectors, and
+instrument membership projections can expose all three Russell size scopes.
+`US3000` is explicitly a derived practical proxy whose membership provenance is
+`ishares-iwb-iwm-holdings-derived`; it is not presented as a licensed direct
+FTSE Russell constituent feed.

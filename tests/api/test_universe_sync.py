@@ -306,7 +306,7 @@ def test_sync_cli_selection_controls():
     assert selected_universes(
         parser.parse_args(["--listing-country", "us"])
     ) == (
-        "US500", "US30", "US100", "US2000",
+        "US3000", "US1000", "US2000", "US500", "US30", "US100",
     )
     assert selected_universes(
         parser.parse_args(["--universe", "US500", "--universe", "US30"])
