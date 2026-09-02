@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { FormLabel as Label, FormSelect } from "@/components/forms/FormSelect"
 import { RarityResults } from "@/components/rarity/RarityResults"
@@ -15,6 +15,7 @@ import type {
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { useAnalysisContext } from "@/lib/use-analysis-context"
+import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -113,7 +114,8 @@ export function FactorsPage() {
     data,
     error,
     isPending: isFetching,
-  } = useMutation({
+  } = usePersistedAnalysis({
+    storageKey: "factor-rarity",
     mutationFn: rarityAnalysisApi,
   })
 

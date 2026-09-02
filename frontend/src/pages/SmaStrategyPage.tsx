@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Sidebar } from "@/components/Sidebar"
 import { StrategyAnalysisResults } from "@/components/backtest/StrategyAnalysisResults"
 import { AnalysisInstrumentSelector } from "@/components/forms/AnalysisInstrumentSelector"
@@ -9,6 +9,7 @@ import type { MaType } from "@/lib/api"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { useAnalysisContext } from "@/lib/use-analysis-context"
+import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
 
 function NumberInput({
   value, onChange, min = 0, step = 1,
@@ -59,7 +60,8 @@ export function SmaStrategyPage() {
     data,
     isPending: isFetching,
     error,
-  } = useMutation({
+  } = usePersistedAnalysis({
+    storageKey: "sma-strategy",
     mutationFn: smaStrategyAnalysisApi,
   })
 

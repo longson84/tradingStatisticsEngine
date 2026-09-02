@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Check, Search } from "lucide-react"
 
 import { Sidebar } from "@/components/Sidebar"
@@ -11,6 +11,7 @@ import {
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
+import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
 
 
 type UniverseStatsView = "breadth" | "member-performance"
@@ -21,7 +22,10 @@ export function UniverseStatsPage({ view }: { view: UniverseStatsView }) {
   const [search, setSearch] = useState("")
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
   const universes = useQuery({ queryKey: ["universes"], queryFn: universesApi })
-  const stats = useMutation({ mutationFn: universeStatsApi })
+  const stats = usePersistedAnalysis({
+    storageKey: `universe-stats.${view}`,
+    mutationFn: universeStatsApi,
+  })
   const visibleUniverses = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
     return universes.data?.universes.filter(universe => (

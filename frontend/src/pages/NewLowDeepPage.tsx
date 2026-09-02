@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import {
   ColorType,
   createChart,
@@ -22,6 +22,7 @@ import { fmtDate, fmtInt, fmtPct, fmtPrice, fmtProviderSource } from "@/lib/form
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { useAnalysisContext } from "@/lib/use-analysis-context"
+import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -74,7 +75,10 @@ export function NewLowDeepPage() {
     }),
     enabled: canSearchInstruments,
   })
-  const analysis = useMutation({ mutationFn: newLowDeepApi })
+  const analysis = usePersistedAnalysis({
+    storageKey: "new-low-deep",
+    mutationFn: newLowDeepApi,
+  })
   const result = analysis.data?.analysis as NewLowAnalysisResult | undefined
 
   const handleAnalyse = () => {

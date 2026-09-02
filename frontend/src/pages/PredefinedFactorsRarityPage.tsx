@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { Sidebar } from "@/components/Sidebar"
@@ -14,6 +14,7 @@ import {
 import { fmtDate, fmtInt, fmtPct, fmtPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
+import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
 
 export function PredefinedFactorsRarityPage() {
   const [watchlistId, setWatchlistId] = useState("")
@@ -26,7 +27,8 @@ export function PredefinedFactorsRarityPage() {
     data,
     isPending: isFetching,
     error,
-  } = useMutation({
+  } = usePersistedAnalysis({
+    storageKey: "predefined-rarity",
     mutationFn: predefinedRarityApi,
   })
   const selectedWatchlist = watchlists.data?.watchlists.find(
