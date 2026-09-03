@@ -138,16 +138,14 @@ function WatchlistEditor({
     enabled: canSearch,
   })
 
-  const save = useMutation({
+  const create = useMutation({
     mutationFn: () => {
       const request = {
         name,
         description,
         instrument_ids: members.map(member => member.id),
       }
-      return initial
-        ? updateWatchlistApi(initial.id, request)
-        : createWatchlistApi(request)
+      return createWatchlistApi(request)
     },
     onSuccess: async saved => {
       await Promise.all([
@@ -155,6 +153,28 @@ function WatchlistEditor({
         queryClient.invalidateQueries({ queryKey: ["watchlist", saved.id] }),
       ])
       onSaved(saved.id)
+    },
+  })
+  const persist = useMutation({
+    mutationFn: ({
+      nextMembers,
+      nextName,
+      nextDescription,
+    }: {
+      nextMembers: EditorInstrument[]
+      nextName: string
+      nextDescription: string
+    }) => updateWatchlistApi(initial!.id, {
+      name: nextName,
+      description: nextDescription,
+      instrument_ids: nextMembers.map(member => member.id),
+    }),
+    scope: { id: `watchlist-${initial?.id ?? "new"}` },
+    onSuccess: async saved => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["watchlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["watchlist", saved.id] }),
+      ])
     },
   })
   const remove = useMutation({
@@ -166,27 +186,37 @@ function WatchlistEditor({
   })
   const canAdd = candidate != null && !members.some(member => member.id === candidate.id)
 
+  const saveExisting = (
+    nextMembers: EditorInstrument[],
+    nextName = name,
+    nextDescription = description,
+  ) => {
+    if (!initial || !nextName.trim()) return
+    persist.mutate({ nextMembers, nextName, nextDescription })
+  }
+
   const addCandidate = () => {
     if (!candidate || !canAdd) return
-    setMembers(current => [...current, fromAnalysisInstrument(candidate)])
+    const next = [...members, fromAnalysisInstrument(candidate)]
+    setMembers(next)
+    saveExisting(next)
     setCandidate(null)
     setSearch("")
   }
   const move = (index: number, offset: -1 | 1) => {
     const target = index + offset
     if (target < 0 || target >= members.length) return
-    setMembers(current => {
-      const next = [...current]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
+    const next = [...members]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setMembers(next)
+    saveExisting(next)
   }
 
   return (
     <section className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h2 className="text-lg font-semibold">{initial ? initial.name : "New watchlist"}</h2>
+          <h2 className="text-lg font-semibold">{initial ? name : "New watchlist"}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Add equities, crypto spot instruments, reference rates, and market indices by stable instrument identity.
           </p>
@@ -212,6 +242,7 @@ function WatchlistEditor({
           <input
             value={name}
             onChange={event => setName(event.target.value)}
+            onBlur={() => saveExisting(members)}
             maxLength={100}
             className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:border-ring focus:outline-none"
           />
@@ -221,6 +252,7 @@ function WatchlistEditor({
           <input
             value={description}
             onChange={event => setDescription(event.target.value)}
+            onBlur={() => saveExisting(members)}
             maxLength={500}
             className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:border-ring focus:outline-none"
           />
@@ -246,7 +278,7 @@ function WatchlistEditor({
             }}
             onInstrumentChange={setCandidate}
             onSubmit={addCandidate}
-            helperText="Type at least 3 characters. Active instruments are shown even before price history is loaded."
+            hideHelperText
           />
         </div>
         <button
@@ -277,7 +309,16 @@ function WatchlistEditor({
             <span className="flex justify-end gap-1">
               <button onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${member.symbol} up`} className="rounded p-1 hover:bg-accent disabled:opacity-25"><ArrowUp size={13} /></button>
               <button onClick={() => move(index, 1)} disabled={index === members.length - 1} aria-label={`Move ${member.symbol} down`} className="rounded p-1 hover:bg-accent disabled:opacity-25"><ArrowDown size={13} /></button>
-              <button onClick={() => setMembers(current => current.filter(item => item.id !== member.id))} className="ml-1 text-xs text-destructive hover:underline">Remove</button>
+              <button
+                onClick={() => {
+                  const next = members.filter(item => item.id !== member.id)
+                  setMembers(next)
+                  saveExisting(next)
+                }}
+                className="ml-1 text-xs text-destructive hover:underline"
+              >
+                Remove
+              </button>
             </span>
           </div>
         ))}
@@ -288,21 +329,26 @@ function WatchlistEditor({
         )}
       </div>
 
-      {(save.error || remove.error) && (
+      {(create.error || persist.error || remove.error) && (
         <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {(save.error ?? remove.error)?.message}
+          {(create.error ?? persist.error ?? remove.error)?.message}
         </div>
       )}
 
       <div className="mt-5 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{members.length.toLocaleString()} instruments</span>
-        <button
-          onClick={() => save.mutate()}
-          disabled={!name.trim() || save.isPending}
-          className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
-        >
-          {save.isPending ? "Saving…" : initial ? "Save watchlist" : "Create watchlist"}
-        </button>
+        <span className="text-xs text-muted-foreground">
+          {members.length.toLocaleString()} instruments
+          {initial && (persist.isPending ? " · Saving…" : persist.isSuccess ? " · Saved" : "")}
+        </span>
+        {!initial && (
+          <button
+            onClick={() => create.mutate()}
+            disabled={!name.trim() || create.isPending}
+            className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+          >
+            {create.isPending ? "Creating…" : "Create watchlist"}
+          </button>
+        )}
       </div>
     </section>
   )

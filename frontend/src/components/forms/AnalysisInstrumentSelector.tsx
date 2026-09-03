@@ -24,6 +24,7 @@ export function AnalysisInstrumentSelector({
   onInstrumentChange,
   onSubmit,
   helperText,
+  hideHelperText = false,
 }: {
   scope: InstrumentScope
   search: string
@@ -36,6 +37,7 @@ export function AnalysisInstrumentSelector({
   onInstrumentChange: (instrument: InstrumentCatalogItem | null) => void
   onSubmit?: () => void
   helperText?: string
+  hideHelperText?: boolean
 }) {
   const canSearch = search.trim().length >= 3
   const showResults = canSearch && !selectedInstrument && instruments.length > 0
@@ -112,13 +114,15 @@ export function AnalysisInstrumentSelector({
             ))}
           </div>
         )}
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          {helperText ?? (!selectedInstrument && !canSearch
-            ? "Type at least 3 characters to search PostgreSQL instruments."
-            : total != null
-            ? `${total.toLocaleString()} analysis-ready instruments with PostgreSQL price history.`
-            : "Only instruments with canonical stored price history are shown.")}
-        </p>
+        {!hideHelperText && (
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {helperText ?? (!selectedInstrument && !canSearch
+              ? "Type at least 3 characters to search PostgreSQL instruments."
+              : total != null
+              ? `${total.toLocaleString()} analysis-ready instruments with PostgreSQL price history.`
+              : "Only instruments with canonical stored price history are shown.")}
+          </p>
+        )}
       </div>
     </>
   )
