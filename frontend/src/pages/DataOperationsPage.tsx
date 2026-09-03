@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle2,
   DatabaseZap,
+  History,
   ListChecks,
   ListTree,
   RefreshCw,
@@ -16,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   dataOperationJobApi,
+  dataOperationHistoryApi,
   dataOperationPriceCoverageApi,
   dataOperationPreviewApi,
   instrumentsApi,
@@ -101,7 +103,10 @@ export function DataOperationsPage() {
   })
   const start = useMutation({
     mutationFn: startDataOperationApi,
-    onSuccess: job => setStartedJob(job),
+    onSuccess: job => {
+      setStartedJob(job)
+      void queryClient.invalidateQueries({ queryKey: ["data-operation-history"] })
+    },
   })
   const job = useQuery({
     queryKey: ["data-operation-job", startedJob?.id],
@@ -114,10 +119,18 @@ export function DataOperationsPage() {
     },
   })
   const activeJob = job.data ?? startedJob
+  const history = useQuery({
+    queryKey: ["data-operation-history"],
+    queryFn: () => dataOperationHistoryApi(100),
+    refetchInterval: runningStatus(activeJob?.status) ? 2_000 : false,
+  })
 
   useEffect(() => {
     if (activeJob?.status === "completed") {
       void queryClient.invalidateQueries({ queryKey: ["data-operation-price-coverage"] })
+    }
+    if (activeJob?.status === "completed" || activeJob?.status === "failed") {
+      void queryClient.invalidateQueries({ queryKey: ["data-operation-history"] })
     }
   }, [activeJob?.id, activeJob?.status, queryClient])
 
@@ -134,6 +147,22 @@ export function DataOperationsPage() {
     start.mutate({ scope_type: scopeType, scope_id: scopeId, dataset, mode })
   }
   const running = activeJob?.status === "queued" || activeJob?.status === "running"
+  const reuseRun = (run: DataOperationJob) => {
+    setScopeType(run.scope_type)
+    setScopeId(run.scope_id)
+    setDataset(run.dataset)
+    setMode(run.mode)
+    setStartedJob(null)
+    setCoverageOffset(0)
+    if (run.scope_type === "instrument") {
+      setInstrumentSearch(run.scope_name)
+      setSelectedInstrument(null)
+    } else {
+      setInstrumentSearch("")
+      setSelectedInstrument(null)
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -297,9 +326,150 @@ export function DataOperationsPage() {
           />
         )}
 
+        <RunHistory
+          runs={history.data?.runs ?? []}
+          loading={history.isFetching}
+          error={history.error?.message}
+          onReuse={reuseRun}
+        />
+
       </main>
     </div>
   )
+}
+
+
+function RunHistory({
+  runs,
+  loading,
+  error,
+  onReuse,
+}: {
+  runs: DataOperationJob[]
+  loading: boolean
+  error: string | undefined
+  onReuse: (run: DataOperationJob) => void
+}) {
+  return (
+    <section className="mt-5 rounded-xl border border-border bg-card">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <History size={17} className="text-primary" />
+            <h2 className="text-base font-semibold">Run history</h2>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            The last 100 operations and their outcomes are retained in PostgreSQL.
+          </p>
+        </div>
+        {loading && <RefreshCw size={15} className="animate-spin text-muted-foreground" />}
+      </div>
+      {error && <div className="px-5 pb-5"><ErrorMessage message={error} /></div>}
+      {!error && !loading && runs.length === 0 && (
+        <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+          No data operations have been run yet.
+        </div>
+      )}
+      {runs.length > 0 && (
+        <div className="max-h-[620px] overflow-auto">
+          <table className="w-full min-w-[980px] text-left text-xs">
+            <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Started</th>
+                <th className="px-4 py-3 font-semibold">Scope</th>
+                <th className="px-4 py-3 font-semibold">Operation</th>
+                <th className="px-4 py-3 font-semibold">Result</th>
+                <th className="px-4 py-3 font-semibold">Duration</th>
+                <th className="px-4 py-3 font-semibold">Details</th>
+                <th className="px-4 py-3 text-right font-semibold">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {runs.map(run => (
+                <tr key={run.id} className="align-top hover:bg-muted/20">
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                    {formatTimestamp(run.started_at ?? run.created_at)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold">{run.scope_name}</div>
+                    <div className="mt-0.5 text-[10px] capitalize text-muted-foreground">
+                      {run.scope_type} · {run.scope_id}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 capitalize">
+                    <div>{run.dataset} · {run.mode}</div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {run.adapter_keys.join(", ")}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <RunStatus run={run} />
+                    <div className="mt-1 tabular-nums text-muted-foreground">
+                      {run.succeeded.toLocaleString()} succeeded
+                      {run.failed > 0 ? ` · ${run.failed.toLocaleString()} failed` : ""}
+                      {` · ${run.current.toLocaleString()}/${run.total.toLocaleString()}`}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                    {formatDuration(run.started_at, run.finished_at)}
+                  </td>
+                  <td className="max-w-[340px] px-4 py-3">
+                    <div className="line-clamp-2 text-muted-foreground">{run.error ?? run.message}</div>
+                    {run.output.length > 0 && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-primary">Output</summary>
+                        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-[10px] leading-4">
+                          {run.output.join("\n")}
+                        </pre>
+                      </details>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button variant="outline" size="sm" onClick={() => onReuse(run)}>
+                      Use settings
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function RunStatus({ run }: { run: DataOperationJob }) {
+  const variant = run.status === "failed"
+    ? "destructive"
+    : run.status === "completed"
+      ? "secondary"
+      : "outline"
+  return <Badge variant={variant} className="capitalize">{run.status}</Badge>
+}
+
+
+function runningStatus(status: DataOperationJob["status"] | undefined) {
+  return status === "queued" || status === "running"
+}
+
+
+function formatTimestamp(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleString() : "—"
+}
+
+
+function formatDuration(startedAt: string | null, finishedAt: string | null) {
+  if (!startedAt) return "—"
+  const milliseconds = (finishedAt ? new Date(finishedAt) : new Date()).getTime()
+    - new Date(startedAt).getTime()
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—"
+  const seconds = Math.floor(milliseconds / 1_000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainder = seconds % 60
+  return `${minutes}m ${remainder}s`
 }
 
 

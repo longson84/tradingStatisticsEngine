@@ -109,6 +109,7 @@ export type UniverseStatsResult = components["schemas"]["UniverseStatsResultResp
 type DataOperationRequest = components["schemas"]["DataOperationRequest"]
 type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
 export type DataOperationJob = components["schemas"]["DataOperationJobResponse"]
+export type DataOperationHistory = components["schemas"]["DataOperationHistoryResponse"]
 export type InstrumentPriceCoverage = components["schemas"]["InstrumentPriceCoverageResponse"]
 type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPriceCoveragePageResponse"]
 export type DataOperationScopeType = DataOperationRequest["scope_type"]
@@ -327,6 +328,10 @@ export function startDataOperationApi(
 
 export function dataOperationJobApi(jobId: string): Promise<DataOperationJob> {
   return get(`/data-operations/jobs/${encodeURIComponent(jobId)}`)
+}
+
+export function dataOperationHistoryApi(limit = 50): Promise<DataOperationHistory> {
+  return get(`/data-operations/history?limit=${limit}`)
 }
 
 export function instrumentPriceHistoryApi(

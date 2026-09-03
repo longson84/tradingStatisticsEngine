@@ -447,6 +447,59 @@ def test_data_operations_openapi_exposes_preview_and_jobs():
     assert schema["paths"]["/data-operations/coverage"]["get"]["operationId"] == (
         "getDataOperationPriceCoverage"
     )
+    assert schema["paths"]["/data-operations/history"]["get"]["operationId"] == (
+        "getDataOperationHistory"
+    )
+
+
+def test_data_operation_run_history_is_durable_and_newest_first():
+    from api.data_operation_jobs import DataOperationJob, _insert_job, list_jobs
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    first = DataOperationJob(
+        id="a" * 32,
+        scope_type="universe",
+        scope_id="US500",
+        scope_name="S&P 500",
+        dataset="prices",
+        mode="incremental",
+        adapter_keys=("yfinance",),
+        status="completed",
+        current=500,
+        total=500,
+        succeeded=500,
+        message="updated 500 instruments",
+        output=("DATA_OPERATION_COMPLETE: updated 500 instruments",),
+        created_at="2026-09-03T01:00:00+00:00",
+        started_at="2026-09-03T01:00:01+00:00",
+        finished_at="2026-09-03T01:10:00+00:00",
+    )
+    second = DataOperationJob(
+        id="b" * 32,
+        scope_type="universe",
+        scope_id="US1000",
+        scope_name="Russell 1000",
+        dataset="prices",
+        mode="full",
+        adapter_keys=("yfinance",),
+        status="failed",
+        current=700,
+        total=1000,
+        succeeded=699,
+        failed=1,
+        message="Data update failed; existing observations were retained",
+        error="one instrument failed",
+        created_at="2026-09-03T02:00:00+00:00",
+    )
+    _insert_job(engine, first)
+    _insert_job(engine, second)
+
+    history = list_jobs(engine)
+
+    assert [job.scope_id for job in history] == ["US1000", "US500"]
+    assert history[0].failed == 1
+    assert history[1].adapter_keys == ("yfinance",)
 
 
 def test_sqlalchemy_scope_projects_instrument_coverage_and_refresh_state():

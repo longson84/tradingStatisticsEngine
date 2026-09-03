@@ -4,15 +4,18 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import Engine
 
 from api.data_operation_jobs import (
     get_job,
+    list_jobs,
     start_data_operation_job,
 )
-from api.deps import get_data_operation_service
+from api.deps import get_data_operation_service, get_database_engine
 from api.schemas.data_operations import (
     DataOperationDataset,
     DataOperationJobResponse,
+    DataOperationHistoryResponse,
     DataOperationPreviewResponse,
     DataOperationRequest,
     DataOperationScopeType,
@@ -80,6 +83,7 @@ def get_data_operation_price_coverage(
 def start_data_operation(
     request: DataOperationRequest,
     service: Annotated[DataOperationService, Depends(get_data_operation_service)],
+    engine: Annotated[Engine, Depends(get_database_engine)],
 ) -> DataOperationJobResponse:
     try:
         plan = service.plan(
@@ -98,6 +102,7 @@ def start_data_operation(
             mode=request.mode,
             adapter_keys=tuple(group.adapter for group in plan.groups),
             total=plan.eligible_count,
+            engine=engine,
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -109,8 +114,26 @@ def start_data_operation(
     response_model=DataOperationJobResponse,
     operation_id="getDataOperationJob",
 )
-def get_data_operation_job(job_id: str) -> DataOperationJobResponse:
-    job = get_job(job_id)
+def get_data_operation_job(
+    job_id: str,
+    engine: Annotated[Engine, Depends(get_database_engine)],
+) -> DataOperationJobResponse:
+    job = get_job(job_id, engine)
     if job is None:
         raise HTTPException(status_code=404, detail="Data operation job not found")
     return DataOperationJobResponse(**job.to_dict())
+
+
+@router.get(
+    "/history",
+    response_model=DataOperationHistoryResponse,
+    operation_id="getDataOperationHistory",
+)
+def get_data_operation_history(
+    engine: Annotated[Engine, Depends(get_database_engine)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> DataOperationHistoryResponse:
+    jobs = list_jobs(engine, limit=limit)
+    return DataOperationHistoryResponse(
+        runs=[DataOperationJobResponse(**job.to_dict()) for job in jobs]
+    )

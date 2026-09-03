@@ -10,6 +10,10 @@ from threading import Lock, Thread
 from typing import Literal
 from uuid import uuid4
 
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session
+
+from api.db.models import DataOperationRun
 from api.project_paths import PROJECT_ROOT
 from api.price_refresh_coordination import (
     acquire_price_refresh,
@@ -37,13 +41,16 @@ class DataOperationJob:
     current: int = 0
     total: int = 0
     message: str = "Waiting to start"
+    output: tuple[str, ...] = ()
+    created_at: str | None = None
     started_at: str | None = None
     finished_at: str | None = None
     error: str | None = None
+    succeeded: int = 0
+    failed: int = 0
 
     def to_dict(self) -> dict:
         values = asdict(self)
-        values.pop("adapter_keys")
         return values
 
 
@@ -61,6 +68,7 @@ def start_data_operation_job(
     mode: Mode,
     adapter_keys: tuple[str, ...],
     total: int,
+    engine: Engine,
 ) -> DataOperationJob:
     job = DataOperationJob(
         id=uuid4().hex,
@@ -71,10 +79,17 @@ def start_data_operation_job(
         mode=mode,
         adapter_keys=tuple(sorted(set(adapter_keys))),
         total=total,
+        created_at=_now(),
     )
     key = (scope_type, scope_id, dataset)
     acquired: list[str] = []
     try:
+        with _lock:
+            if key in _active_keys:
+                raise RuntimeError(
+                    f"This {scope_type} already has an active {dataset} update"
+                )
+            _active_keys[key] = job.id
         if dataset == "prices":
             for adapter in job.adapter_keys:
                 acquire_price_refresh(
@@ -83,14 +98,10 @@ def start_data_operation_job(
                     f"{scope_type} {scope_name}",
                 )
                 acquired.append(adapter)
+        _insert_job(engine, job)
         with _lock:
-            if key in _active_keys:
-                raise RuntimeError(
-                    f"This {scope_type} already has an active {dataset} update"
-                )
             _jobs[job.id] = job
-            _active_keys[key] = job.id
-        Thread(target=_run_job, args=(job.id,), daemon=True).start()
+        Thread(target=_run_job, args=(job.id, engine), daemon=True).start()
     except Exception:
         with _lock:
             _jobs.pop(job.id, None)
@@ -101,9 +112,20 @@ def start_data_operation_job(
     return job
 
 
-def get_job(job_id: str) -> DataOperationJob | None:
+def get_job(job_id: str, engine: Engine) -> DataOperationJob | None:
     with _lock:
-        return _jobs.get(job_id)
+        active = _jobs.get(job_id)
+    return active or _load_job(engine, job_id)
+
+
+def list_jobs(engine: Engine, *, limit: int = 50) -> tuple[DataOperationJob, ...]:
+    with Session(engine) as session:
+        rows = session.scalars(
+            select(DataOperationRun)
+            .order_by(DataOperationRun.created_at.desc())
+            .limit(limit)
+        ).all()
+    return tuple(_from_row(row) for row in rows)
 
 
 def get_active_scope_job(
@@ -118,7 +140,7 @@ def get_active_scope_job(
     return None
 
 
-def _run_job(job_id: str) -> None:
+def _run_job(job_id: str, engine: Engine) -> None:
     with _lock:
         job = _jobs[job_id]
         job.status = "running"
@@ -128,6 +150,8 @@ def _run_job(job_id: str) -> None:
         scope_id = job.scope_id
         dataset = job.dataset
         mode = job.mode
+        snapshot = DataOperationJob(**asdict(job))
+    _update_job(engine, snapshot)
     command = [
         sys.executable,
         "-u",
@@ -162,9 +186,16 @@ def _run_job(job_id: str) -> None:
             with _lock:
                 current = _jobs[job_id]
                 current.message = line
+                current.output = tuple(lines)
                 if match:
                     current.current = int(match.group(1))
                     current.total = int(match.group(2))
+                    if " failed instrument=" in f" {line}":
+                        current.failed += 1
+                    else:
+                        current.succeeded += 1
+                snapshot = DataOperationJob(**asdict(current))
+            _update_job(engine, snapshot)
         return_code = process.wait()
         if return_code != 0:
             raise RuntimeError(
@@ -177,6 +208,9 @@ def _run_job(job_id: str) -> None:
             current.finished_at = _now()
             current.error = str(exc)
             current.message = "Data update failed; existing observations were retained"
+            current.output = tuple(lines)
+            snapshot = DataOperationJob(**asdict(current))
+        _update_job(engine, snapshot)
     else:
         with _lock:
             current = _jobs[job_id]
@@ -184,6 +218,9 @@ def _run_job(job_id: str) -> None:
             current.finished_at = _now()
             current.current = current.total
             current.message = lines[-1] if lines else "Data update completed"
+            current.output = tuple(lines)
+            snapshot = DataOperationJob(**asdict(current))
+        _update_job(engine, snapshot)
     finally:
         with _lock:
             current = _jobs[job_id]
@@ -197,3 +234,85 @@ def _run_job(job_id: str) -> None:
 
 def _now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
+
+
+def _insert_job(engine: Engine, job: DataOperationJob) -> None:
+    with Session(engine) as session, session.begin():
+        session.add(DataOperationRun(
+            id=job.id,
+            scope_type=job.scope_type,
+            scope_id=job.scope_id,
+            scope_name=job.scope_name,
+            dataset=job.dataset,
+            mode=job.mode,
+            adapter_keys=list(job.adapter_keys),
+            status=job.status,
+            current=job.current,
+            total=job.total,
+            succeeded=job.succeeded,
+            failed=job.failed,
+            message=job.message,
+            output=list(job.output),
+            created_at=_parse_time(job.created_at),
+            started_at=_parse_time(job.started_at),
+            finished_at=_parse_time(job.finished_at),
+            error=job.error,
+        ))
+
+
+def _update_job(engine: Engine, job: DataOperationJob) -> None:
+    with Session(engine) as session, session.begin():
+        row = session.get(DataOperationRun, job.id)
+        if row is None:
+            return
+        row.status = job.status
+        row.current = job.current
+        row.total = job.total
+        row.succeeded = job.succeeded
+        row.failed = job.failed
+        row.message = job.message
+        row.output = list(job.output)
+        row.started_at = _parse_time(job.started_at)
+        row.finished_at = _parse_time(job.finished_at)
+        row.error = job.error
+
+
+def _load_job(engine: Engine, job_id: str) -> DataOperationJob | None:
+    with Session(engine) as session:
+        row = session.get(DataOperationRun, job_id)
+        return _from_row(row) if row is not None else None
+
+
+def _from_row(row: DataOperationRun) -> DataOperationJob:
+    return DataOperationJob(
+        id=row.id,
+        scope_type=row.scope_type,  # type: ignore[arg-type]
+        scope_id=row.scope_id,
+        scope_name=row.scope_name,
+        dataset=row.dataset,  # type: ignore[arg-type]
+        mode=row.mode,  # type: ignore[arg-type]
+        adapter_keys=tuple(row.adapter_keys),
+        status=row.status,  # type: ignore[arg-type]
+        current=row.current,
+        total=row.total,
+        succeeded=row.succeeded,
+        failed=row.failed,
+        message=row.message,
+        output=tuple(row.output),
+        created_at=_format_time(row.created_at),
+        started_at=_format_time(row.started_at),
+        finished_at=_format_time(row.finished_at),
+        error=row.error,
+    )
+
+
+def _parse_time(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value else None
+
+
+def _format_time(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).replace(microsecond=0).isoformat()

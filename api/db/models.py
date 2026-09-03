@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Time,
@@ -471,6 +472,52 @@ class UniverseSyncRun(Base):
     removed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     unchanged_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(String(2000))
+
+
+class DataOperationRun(Base):
+    """Durable audit record for one user-triggered Data Operations run."""
+
+    __tablename__ = "data_operation_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "scope_type IN ('universe', 'watchlist', 'instrument')",
+            name="ck_data_operation_runs_scope_type",
+        ),
+        CheckConstraint(
+            "dataset IN ('prices', 'fundamentals')",
+            name="ck_data_operation_runs_dataset",
+        ),
+        CheckConstraint(
+            "mode IN ('incremental', 'full')",
+            name="ck_data_operation_runs_mode",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'completed', 'failed')",
+            name="ck_data_operation_runs_status",
+        ),
+        Index("ix_data_operation_runs_created_at", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    scope_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    scope_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    dataset: Mapped[str] = mapped_column(String(16), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    adapter_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    current: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    succeeded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    message: Mapped[str] = mapped_column(String(2000), nullable=False)
+    output: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(String(4000))
 
 
 class UniverseMembership(Base):

@@ -2301,3 +2301,24 @@ instrument membership projections can expose all three Russell size scopes.
 `US3000` is explicitly a derived practical proxy whose membership provenance is
 `ishares-iwb-iwm-holdings-derived`; it is not presented as a licensed direct
 FTSE Russell constituent feed.
+
+### 2026-09-03 — Persist Data Operations run history
+
+Context: Data Operations retained job progress only in process memory. Leaving
+the page, reloading the backend, or starting a later operation removed the
+operator's evidence of what had run and whether a retry was needed.
+
+Decision: migration `0029` adds `data_operation_runs`, a scalar audit record for
+every user-triggered operation. It stores the exact selected scope, dataset,
+mode, resolved adapter names, lifecycle timestamps, progress and outcome
+counts, terminal error, and the last 20 worker output lines. Canonical market
+observations and per-Instrument freshness remain in their existing tables; the
+run record is an operational audit and does not duplicate price or fundamental
+data. Active-job exclusion remains process coordination, while job reads and
+the newest-first history use PostgreSQL.
+
+Consequences: `/data-operations/history` survives navigation and service
+restarts and gives the UI enough evidence to restore a previous run's settings.
+Restoring settings does not execute work: preview and explicit confirmation
+remain required. Run history complements, but never substitutes for,
+Instrument-grained coverage and refresh-state truth.

@@ -676,8 +676,42 @@
         "title": "CurrentPositionResponse",
         "type": "object"
       },
+      "DataOperationHistoryResponse": {
+        "properties": {
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/DataOperationJobResponse"
+            },
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runs"
+        ],
+        "title": "DataOperationHistoryResponse",
+        "type": "object"
+      },
       "DataOperationJobResponse": {
         "properties": {
+          "adapter_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Adapter Keys",
+            "type": "array"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
           "current": {
             "title": "Current",
             "type": "integer"
@@ -700,6 +734,10 @@
               }
             ],
             "title": "Error"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
           },
           "finished_at": {
             "anyOf": [
@@ -727,6 +765,13 @@
             ],
             "title": "Mode",
             "type": "string"
+          },
+          "output": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Output",
+            "type": "array"
           },
           "scope_id": {
             "title": "Scope Id",
@@ -766,6 +811,10 @@
             "title": "Status",
             "type": "string"
           },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -778,10 +827,15 @@
           "scope_name",
           "dataset",
           "mode",
+          "adapter_keys",
           "status",
           "current",
           "total",
+          "succeeded",
+          "failed",
           "message",
+          "output",
+          "created_at",
           "started_at",
           "finished_at",
           "error"
@@ -5625,6 +5679,51 @@
           }
         },
         "summary": "Get Data Operation Price Coverage",
+        "tags": [
+          "data-operations"
+        ]
+      }
+    },
+    "/data-operations/history": {
+      "get": {
+        "operationId": "getDataOperationHistory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataOperationHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Data Operation History",
         "tags": [
           "data-operations"
         ]

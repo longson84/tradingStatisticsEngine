@@ -78,10 +78,19 @@ class DataOperationJobResponse(BaseModel):
     scope_name: str
     dataset: DataOperationDataset
     mode: DataOperationMode
+    adapter_keys: list[str]
     status: Literal["queued", "running", "completed", "failed"]
     current: int
     total: int
+    succeeded: int
+    failed: int
     message: str
+    output: list[str]
+    created_at: str | None
     started_at: str | None
     finished_at: str | None
     error: str | None
+
+
+class DataOperationHistoryResponse(BaseModel):
+    runs: list[DataOperationJobResponse]

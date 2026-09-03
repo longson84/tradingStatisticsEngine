@@ -24,7 +24,6 @@ export function usePersistedAnalysis<TData, TVariables>({
 
   useEffect(() => {
     if (mutation.data === undefined) return
-    setCachedData(mutation.data)
     writeCache(fullKey, mutation.data)
   }, [fullKey, mutation.data])
 
