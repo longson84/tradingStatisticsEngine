@@ -20,6 +20,7 @@ def _instrument(instrument_id: int, *, rows: int = 250):
     return DataOperationInstrumentRecord(
         id=instrument_id,
         symbol=f"T{instrument_id}",
+        display_name=f"Test Company {instrument_id}",
         instrument_type="common_stock",
         company_id=instrument_id,
         venue_code="NYSE",
@@ -86,6 +87,10 @@ def test_universe_stats_route_uses_exact_instrument_ids_and_canonical_bases():
     assert response.results[0].universe_code == "US_TEST"
     assert response.results[0].points[-1].eligible_count == 2
     assert [row.symbol for row in response.results[0].instruments] == ["T11", "T22"]
+    assert [row.display_name for row in response.results[0].instruments] == [
+        "Test Company 11",
+        "Test Company 22",
+    ]
     assert response.results[0].instruments[0].return_1w is not None
     assert response.results[0].instruments[0].return_1m is not None
     assert response.results[0].instruments[0].return_3m is not None
@@ -130,6 +135,7 @@ def test_universe_stats_openapi_contract_is_generated_for_frontend():
     assert {
         "instrument_id",
         "symbol",
+        "display_name",
         "return_1w",
         "return_1m",
         "return_3m",

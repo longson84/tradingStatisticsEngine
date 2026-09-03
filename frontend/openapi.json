@@ -4294,6 +4294,10 @@
       },
       "UniverseInstrumentStatsResponse": {
         "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "distance_from_high_200d": {
             "anyOf": [
               {
@@ -4371,6 +4375,7 @@
         "required": [
           "instrument_id",
           "symbol",
+          "display_name",
           "last_date",
           "latest_close",
           "return_1w",

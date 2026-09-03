@@ -29,6 +29,7 @@ class UniverseStatsPointResponse(BaseModel):
 class UniverseInstrumentStatsResponse(BaseModel):
     instrument_id: int
     symbol: str
+    display_name: str
     last_date: date
     latest_close: float
     return_1w: float | None

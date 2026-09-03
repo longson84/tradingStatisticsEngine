@@ -30,6 +30,7 @@ class DataOperationInstrumentRecord:
     refresh_detail: str | None
     attempted_at: datetime | None
     fundamental_fetched_at: datetime | None = None
+    display_name: str | None = None
 
 
 @dataclass(frozen=True)

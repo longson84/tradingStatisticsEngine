@@ -566,6 +566,7 @@ def test_sqlalchemy_scope_projects_instrument_coverage_and_refresh_state():
     assert scope is not None
     row = scope.instruments[0]
     assert row.first_date == date(2020, 1, 2)
+    assert row.display_name == "Example Issuer"
     assert row.last_date == date(2026, 8, 10)
     assert row.row_count == 1_665
     assert row.coverage_source == "yfinance"

@@ -1,12 +1,16 @@
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Check, Search } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Check, ListPlus, Search } from "lucide-react"
 
 import { Sidebar } from "@/components/Sidebar"
 import { UniverseStatsChart } from "@/components/universe-stats/UniverseStatsChart"
 import {
   universeStatsApi,
   universesApi,
+  createWatchlistApi,
+  updateWatchlistApi,
+  watchlistApi,
+  watchlistsApi,
   type UniverseStatsResult,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -222,6 +226,7 @@ function UniverseStatsResults({
 interface InstrumentReturnRow {
   instrumentId: number
   symbol: string
+  displayName: string
   universeCodes: string[]
   lastDate: string
   latestClose: number
@@ -257,9 +262,15 @@ type ReturnSortKey = "return1w" | "return1m" | "return3m" | "distanceFromHigh200
 
 
 function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] }) {
+  const queryClient = useQueryClient()
   const [sortKey, setSortKey] = useState<ReturnSortKey>("return1w")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
-  const rows = useMemo(() => {
+  const [instrumentSearch, setInstrumentSearch] = useState("")
+  const [selectedInstrumentIds, setSelectedInstrumentIds] = useState<Set<number>>(new Set())
+  const [watchlistId, setWatchlistId] = useState("")
+  const [newWatchlistName, setNewWatchlistName] = useState("")
+  const watchlists = useQuery({ queryKey: ["watchlists"], queryFn: watchlistsApi })
+  const allRows = useMemo(() => {
     const byInstrument = new Map<number, InstrumentReturnRow>()
     for (const result of results) {
       for (const instrument of result.instruments) {
@@ -273,6 +284,7 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
         byInstrument.set(instrument.instrument_id, {
           instrumentId: instrument.instrument_id,
           symbol: instrument.symbol,
+          displayName: instrument.display_name,
           universeCodes: [result.universe_code],
           lastDate: instrument.last_date,
           latestClose: instrument.latest_close,
@@ -296,6 +308,69 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
         : sortDirection === "asc" ? comparison : -comparison
     })
   }, [results, sortDirection, sortKey])
+  const rows = useMemo(() => {
+    const query = instrumentSearch.trim().toLocaleLowerCase()
+    if (!query) return allRows
+    return allRows.filter(row => (
+      row.symbol.toLocaleLowerCase().includes(query)
+      || row.displayName.toLocaleLowerCase().includes(query)
+    ))
+  }, [allRows, instrumentSearch])
+  const selectedRows = allRows.filter(row => selectedInstrumentIds.has(row.instrumentId))
+  const allVisibleSelected = rows.length > 0
+    && rows.every(row => selectedInstrumentIds.has(row.instrumentId))
+  const addToWatchlist = useMutation({
+    mutationFn: async (destination: { watchlistId: number } | { name: string }) => {
+      if ("name" in destination) {
+        const created = await createWatchlistApi({
+          name: destination.name,
+          description: "",
+          instrument_ids: selectedRows.map(row => row.instrumentId),
+        })
+        return {
+          added: selectedRows.length,
+          alreadyPresent: 0,
+          name: created.name,
+          watchlistId: created.id,
+        }
+      }
+      const targetId = destination.watchlistId
+      const watchlist = await queryClient.fetchQuery({
+        queryKey: ["watchlist", targetId],
+        queryFn: () => watchlistApi(targetId),
+        staleTime: 0,
+      })
+      const existingIds = new Set(watchlist.members.map(member => member.instrument_id))
+      const additions = selectedRows
+        .map(row => row.instrumentId)
+        .filter(instrumentId => !existingIds.has(instrumentId))
+      if (additions.length > 0) {
+        await updateWatchlistApi(targetId, {
+          name: watchlist.name,
+          description: watchlist.description,
+          instrument_ids: [
+            ...watchlist.members.map(member => member.instrument_id),
+            ...additions,
+          ],
+        })
+      }
+      return {
+        added: additions.length,
+        alreadyPresent: selectedRows.length - additions.length,
+        name: watchlist.name,
+        watchlistId: watchlist.id,
+      }
+    },
+    onSuccess: async result => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["watchlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["watchlist", result.watchlistId] }),
+      ])
+      setWatchlistId(String(result.watchlistId))
+      setNewWatchlistName("")
+      setSelectedInstrumentIds(new Set())
+    },
+  })
 
   const changeSort = (key: ReturnSortKey) => {
     if (key === sortKey) {
@@ -305,23 +380,154 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
     setSortKey(key)
     setSortDirection("desc")
   }
+  const toggleInstrument = (instrumentId: number) => {
+    setSelectedInstrumentIds(current => {
+      const next = new Set(current)
+      if (next.has(instrumentId)) next.delete(instrumentId)
+      else next.add(instrumentId)
+      return next
+    })
+    addToWatchlist.reset()
+  }
+  const toggleAll = () => {
+    setSelectedInstrumentIds(current => {
+      const next = new Set(current)
+      if (allVisibleSelected) {
+        for (const row of rows) next.delete(row.instrumentId)
+      } else {
+        for (const row of rows) next.add(row.instrumentId)
+      }
+      return next
+    })
+    addToWatchlist.reset()
+  }
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="flex flex-col justify-between gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-3 border-b border-border px-5 py-4 xl:flex-row xl:items-end">
         <div>
           <h2 className="text-base font-semibold">Instrument returns</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Latest close-to-close returns over 5, 21, and 63 trading sessions.
           </p>
         </div>
-        <div className="text-xs text-muted-foreground">{rows.length.toLocaleString()} instruments</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs text-muted-foreground">
+            {selectedRows.length > 0
+              ? `${selectedRows.length.toLocaleString()} of ${rows.length.toLocaleString()} selected`
+              : `${rows.length.toLocaleString()} instruments`}
+          </span>
+          <select
+            value={watchlistId}
+            onChange={event => {
+              setWatchlistId(event.target.value)
+              if (event.target.value !== "new") setNewWatchlistName("")
+              addToWatchlist.reset()
+            }}
+            className="h-9 min-w-48 rounded-md border border-input bg-background px-3 text-xs"
+            aria-label="Destination watchlist"
+          >
+            <option value="">Choose watchlist…</option>
+            <option value="new">＋ Create new watchlist…</option>
+            {watchlists.data?.watchlists.map(watchlist => (
+              <option key={watchlist.id} value={watchlist.id}>
+                {watchlist.name} ({watchlist.member_count.toLocaleString()})
+              </option>
+            ))}
+          </select>
+          {watchlistId === "new" && (
+            <input
+              value={newWatchlistName}
+              onChange={event => {
+                setNewWatchlistName(event.target.value)
+                addToWatchlist.reset()
+              }}
+              onKeyDown={event => {
+                if (
+                  event.key === "Enter"
+                  && selectedRows.length > 0
+                  && newWatchlistName.trim()
+                  && !addToWatchlist.isPending
+                ) {
+                  addToWatchlist.mutate({ name: newWatchlistName.trim() })
+                }
+              }}
+              maxLength={100}
+              placeholder="New watchlist name"
+              aria-label="New watchlist name"
+              className="h-9 min-w-56 rounded-md border border-input bg-background px-3 text-xs focus:border-ring focus:outline-none"
+              autoFocus
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => addToWatchlist.mutate(
+              watchlistId === "new"
+                ? { name: newWatchlistName.trim() }
+                : { watchlistId: Number(watchlistId) },
+            )}
+            disabled={
+              selectedRows.length === 0
+              || !watchlistId
+              || (watchlistId === "new" && !newWatchlistName.trim())
+              || addToWatchlist.isPending
+            }
+            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ListPlus size={14} />
+            {addToWatchlist.isPending
+              ? watchlistId === "new" ? "Creating…" : "Adding…"
+              : watchlistId === "new" ? "Create and add" : "Add to watchlist"}
+          </button>
+        </div>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3">
+        <label className="relative block w-full max-w-md">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={instrumentSearch}
+            onChange={event => setInstrumentSearch(event.target.value)}
+            placeholder="Search by symbol or instrument name"
+            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:border-ring focus:outline-none"
+          />
+        </label>
+        <span className="text-xs text-muted-foreground">
+          Showing {rows.length.toLocaleString()} of {allRows.length.toLocaleString()}
+        </span>
+      </div>
+      {watchlists.data?.watchlists.length === 0 && (
+        <div className="border-b border-border bg-amber-500/10 px-5 py-2 text-xs">
+          No watchlists yet. Choose “Create new watchlist…” above to create one from your selection.
+        </div>
+      )}
+      {addToWatchlist.isSuccess && (
+        <div className="border-b border-border bg-emerald-500/10 px-5 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+          Added {addToWatchlist.data.added.toLocaleString()} instrument{addToWatchlist.data.added === 1 ? "" : "s"} to {addToWatchlist.data.name}.
+          {addToWatchlist.data.alreadyPresent > 0
+            ? ` ${addToWatchlist.data.alreadyPresent.toLocaleString()} already present.`
+            : ""}
+        </div>
+      )}
+      {addToWatchlist.error && (
+        <div className="border-b border-destructive/30 bg-destructive/10 px-5 py-2 text-xs text-destructive">
+          {addToWatchlist.error.message}
+        </div>
+      )}
       <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
           <thead className="sticky top-0 z-10 bg-muted/95 text-[10px] uppercase tracking-wide text-muted-foreground backdrop-blur">
             <tr>
+              <th className="w-10 px-3 py-2 text-center font-medium">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleAll}
+                  aria-label={allVisibleSelected ? "Clear visible instruments" : "Select visible instruments"}
+                  className="size-4 rounded border-input accent-primary"
+                />
+              </th>
               <th className="px-4 py-2 text-left font-medium">Symbol</th>
+              <th className="px-4 py-2 text-left font-medium">Instrument name</th>
               <th className="px-4 py-2 text-left font-medium">Universe</th>
               <th className="px-4 py-2 text-left font-medium">As of</th>
               <th className="px-4 py-2 text-right font-medium">Latest close</th>
@@ -340,8 +546,26 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map(row => (
-              <tr key={row.instrumentId} className="hover:bg-muted/30">
+              <tr
+                key={row.instrumentId}
+                className={cn(
+                  "hover:bg-muted/30",
+                  selectedInstrumentIds.has(row.instrumentId) && "bg-primary/5",
+                )}
+              >
+                <td className="px-3 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedInstrumentIds.has(row.instrumentId)}
+                    onChange={() => toggleInstrument(row.instrumentId)}
+                    aria-label={`Select ${row.symbol}`}
+                    className="size-4 rounded border-input accent-primary"
+                  />
+                </td>
                 <td className="px-4 py-2 font-semibold">{row.symbol}</td>
+                <td className="max-w-72 truncate px-4 py-2" title={row.displayName}>
+                  {row.displayName}
+                </td>
                 <td className="px-4 py-2 text-xs text-muted-foreground">
                   {[...row.universeCodes].sort().join(", ")}
                 </td>
@@ -354,6 +578,13 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
                 <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.high200dDate ?? "—"}</td>
               </tr>
             ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  No instruments match this search.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

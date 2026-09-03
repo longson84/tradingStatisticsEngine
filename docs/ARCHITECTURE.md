@@ -2322,3 +2322,21 @@ restarts and gives the UI enough evidence to restore a previous run's settings.
 Restoring settings does not execute work: preview and explicit confirmation
 remain required. Run history complements, but never substitutes for,
 Instrument-grained coverage and refresh-state truth.
+
+### 2026-09-03 — Universal Instrument display-name projection
+
+Context: Instrument identity is deliberately normalized by product type, so
+there is no canonical `instruments.name` column. Equities are named by their
+issuer and optional share class, while spot pairs and reference rates are named
+by their base and quote Assets. Market indices currently have only a canonical
+symbol.
+
+Decision: API views that need one human-readable label expose `display_name` as
+a derived projection: Company display name plus share class for equities, base
+Asset name plus quote Asset name for asset pairs, and canonical symbol as the
+fallback. The projection is presentation metadata; stable Instrument ID remains
+identity and Symbol remains the canonical compact code.
+
+Consequences: mixed-Instrument tables can display and search one consistent
+name without denormalizing type-specific names onto Instrument or making names
+part of update routing and observation identity.

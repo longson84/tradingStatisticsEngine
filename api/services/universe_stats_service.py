@@ -37,6 +37,7 @@ class UniverseStatsPointData:
 class UniverseInstrumentStatsData:
     instrument_id: int
     symbol: str
+    display_name: str
     last_date: date
     latest_close: float
     return_1w: float | None
@@ -173,6 +174,10 @@ class UniverseStatsService:
             UniverseInstrumentStatsData(
                 instrument_id=instrument_id,
                 symbol=instruments_by_id[instrument_id].symbol,
+                display_name=(
+                    instruments_by_id[instrument_id].display_name
+                    or instruments_by_id[instrument_id].symbol
+                ),
                 last_date=values[-1][0],
                 latest_close=float(values[-1][1]),
                 **vars(calculate_instrument_return_snapshot(pd.Series(

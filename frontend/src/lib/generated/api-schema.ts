@@ -1781,6 +1781,8 @@ export interface components {
         };
         /** UniverseInstrumentStatsResponse */
         UniverseInstrumentStatsResponse: {
+            /** Display Name */
+            display_name: string;
             /** Distance From High 200D */
             distance_from_high_200d: number | null;
             /** High 200D Date */

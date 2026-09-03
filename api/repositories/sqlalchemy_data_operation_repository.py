@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from sqlalchemy import case, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from api.db.models import (
+    Asset,
+    Company,
     Instrument,
     FundamentalReport,
     PriceBarCoverage,
@@ -103,6 +105,23 @@ class SqlAlchemyDataOperationRepository:
 
     @staticmethod
     def _instrument_rows():
+        base_asset = aliased(Asset, name="data_operation_base_asset")
+        quote_asset = aliased(Asset, name="data_operation_quote_asset")
+        equity_name = Company.display_name + case(
+            (Instrument.share_class.is_not(None), " " + Instrument.share_class),
+            else_="",
+        )
+        asset_pair_name = (
+            base_asset.name + " / " + quote_asset.name
+        )
+        display_name = case(
+            (Company.id.is_not(None), equity_name),
+            (
+                base_asset.id.is_not(None) & quote_asset.id.is_not(None),
+                asset_pair_name,
+            ),
+            else_=canonical_symbol_expression(),
+        )
         canonical_basis = case(
             (Instrument.instrument_type == "spot", SPOT_PRICE_BASIS),
             (
@@ -131,6 +150,7 @@ class SqlAlchemyDataOperationRepository:
             select(
                 Instrument.id,
                 canonical_symbol_expression(),
+                display_name.label("display_name"),
                 Instrument.instrument_type,
                 Instrument.company_id,
                 Venue.code.label("venue_code"),
@@ -150,6 +170,9 @@ class SqlAlchemyDataOperationRepository:
                 fundamental_coverage.c.fundamental_fetched_at,
             )
             .select_from(Instrument)
+            .outerjoin(Company, Company.id == Instrument.company_id)
+            .outerjoin(base_asset, base_asset.id == Instrument.base_asset_id)
+            .outerjoin(quote_asset, quote_asset.id == Instrument.quote_asset_id)
             .outerjoin(Venue, Venue.id == Instrument.venue_id)
             .outerjoin(
                 PriceBarCoverage,
@@ -172,6 +195,7 @@ class SqlAlchemyDataOperationRepository:
             DataOperationInstrumentRecord(
                 id=row.id,
                 symbol=row.symbol,
+                display_name=row.display_name,
                 instrument_type=row.instrument_type,
                 company_id=row.company_id,
                 venue_code=row.venue_code,
