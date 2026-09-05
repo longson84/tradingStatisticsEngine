@@ -203,7 +203,7 @@ def _positive_env_int(name: str, default: int) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--scope-type", choices=("universe", "watchlist", "instrument"), required=True
+        "--scope-type", choices=("category", "universe", "watchlist", "instrument"), required=True
     )
     parser.add_argument("--scope-id", required=True)
     parser.add_argument("--dataset", choices=("prices", "fundamentals"), required=True)

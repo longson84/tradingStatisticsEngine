@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Literal, Protocol
 
 
-DataOperationScopeType = Literal["universe", "watchlist", "instrument"]
+DataOperationScopeType = Literal["category", "universe", "watchlist", "instrument"]
 
 
 @dataclass(frozen=True)

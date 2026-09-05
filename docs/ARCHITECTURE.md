@@ -2323,6 +2323,46 @@ Restoring settings does not execute work: preview and explicit confirmation
 remain required. Run history complements, but never substitutes for,
 Instrument-grained coverage and refresh-state truth.
 
+The browser retains the most recently launched job ID and its selected controls
+in session storage. On remount or tab resumption it reloads the durable job row
+and resumes polling while the status is queued or running; it does not launch a
+replacement operation. This browser pointer is convenience state only. The
+backend's scope key and price-adapter lease remain authoritative for deciding
+whether a worker is actively owned by the current server process.
+`GET /data-operations/jobs/active` exposes that exact scope/dataset ownership
+to the Data Operations UI. The page checks it before enabling a launch and can
+attach to a worker even when no browser job pointer exists, such as work
+started in another tab or before a frontend reload.
+
+### 2026-09-04 — Add reusable Data Operations batch plans
+
+Context: recurring updates span changing collections such as all active equities,
+reference rates, Universes, and Watchlists. Encoding each run as a hard-coded
+symbol list would become stale and would bypass the existing per-Instrument
+routing, provider capacity controls, and durable operation audit.
+
+Decision: migration `0030` adds saved batch plans, ordered steps, and durable
+parent batch runs. A step stores a dynamic target selector plus dataset and mode;
+category, Universe, and Watchlist membership resolve from current PostgreSQL
+metadata when execution reaches that step. The orchestrator launches existing
+Data Operation jobs sequentially, records their IDs under an immutable step
+snapshot, and leaves Instrument updates, adapter leases, retries, and progress
+accounting with the existing worker. The frontend stores only the active parent
+run ID in session storage and reattaches to the PostgreSQL-backed run after
+navigation or tab suspension.
+
+The two workflows have stable frontend routes:
+`/data-operations/single` and `/data-operations/batch`. The former
+`/data-operations` URL redirects to the single-operation route. Route state,
+rather than component-local tab state, therefore preserves the selected view
+across reload, browser history, and copied links.
+
+Consequences: one saved plan can update equities and reference rates without
+duplicating symbols or provider logic. Parent history shows which steps ran and
+links their normal child results; successful children remain successful when a
+later step fails. Plan edits affect future runs only because in-flight and
+historical runs retain their launch-time snapshot.
+
 ### 2026-09-03 — Universal Instrument display-name projection
 
 Context: Instrument identity is deliberately normalized by product type, so

@@ -480,7 +480,7 @@ class DataOperationRun(Base):
     __tablename__ = "data_operation_runs"
     __table_args__ = (
         CheckConstraint(
-            "scope_type IN ('universe', 'watchlist', 'instrument')",
+            "scope_type IN ('category', 'universe', 'watchlist', 'instrument')",
             name="ck_data_operation_runs_scope_type",
         ),
         CheckConstraint(
@@ -887,3 +887,84 @@ class ProviderValuationObservation(Base):
     instrument: Mapped[Instrument] = relationship(
         back_populates="provider_valuation_observations"
     )
+
+
+class DataOperationBatchPlan(Base):
+    """Reusable, user-configured sequence of dynamic Data Operations targets."""
+
+    __tablename__ = "data_operation_batch_plans"
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    steps: Mapped[list[DataOperationBatchStep]] = relationship(
+        back_populates="plan", cascade="all, delete-orphan", order_by="DataOperationBatchStep.position"
+    )
+
+
+class DataOperationBatchStep(Base):
+    """One ordered, dynamically resolved target in a saved batch plan."""
+
+    __tablename__ = "data_operation_batch_steps"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "position", name="uq_data_operation_batch_step_position"),
+        CheckConstraint(
+            "target_type IN ('category', 'universe', 'watchlist', 'instrument')",
+            name="ck_data_operation_batch_steps_target_type",
+        ),
+        CheckConstraint(
+            "dataset IN ('prices', 'fundamentals')",
+            name="ck_data_operation_batch_steps_dataset",
+        ),
+        CheckConstraint(
+            "mode IN ('incremental', 'full')",
+            name="ck_data_operation_batch_steps_mode",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    plan_id: Mapped[int] = mapped_column(
+        ForeignKey("data_operation_batch_plans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    dataset: Mapped[str] = mapped_column(String(16), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    plan: Mapped[DataOperationBatchPlan] = relationship(back_populates="steps")
+
+
+class DataOperationBatchRun(Base):
+    """Durable parent audit record for one execution of a batch-plan snapshot."""
+
+    __tablename__ = "data_operation_batch_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued', 'running', 'completed', 'failed')",
+            name="ck_data_operation_batch_runs_status",
+        ),
+        Index("ix_data_operation_batch_runs_created_at", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("data_operation_batch_plans.id", ondelete="SET NULL"), index=True
+    )
+    plan_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    step_snapshot: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    child_job_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    current_step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_steps: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(String(4000))

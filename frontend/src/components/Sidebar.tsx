@@ -23,7 +23,7 @@ const sections = [
   {
     label: "Data",
     links: [
-      { to: "/data-operations", label: "Data Operations", icon: HardDriveDownload },
+      { to: "/data-operations/single", label: "Data Operations", icon: HardDriveDownload },
     ],
   },
   {

@@ -110,6 +110,12 @@ type DataOperationRequest = components["schemas"]["DataOperationRequest"]
 type DataOperationPreview = components["schemas"]["DataOperationPreviewResponse"]
 export type DataOperationJob = components["schemas"]["DataOperationJobResponse"]
 export type DataOperationHistory = components["schemas"]["DataOperationHistoryResponse"]
+export type BatchOperationPlan = components["schemas"]["BatchOperationPlanResponse"]
+export type BatchOperationPlanRequest = components["schemas"]["BatchOperationPlanRequest"]
+export type BatchOperationStepRequest = components["schemas"]["BatchOperationStepRequest"]
+export type BatchOperationRun = components["schemas"]["BatchOperationRunResponse"]
+type BatchOperationPlanList = components["schemas"]["BatchOperationPlanListResponse"]
+type BatchOperationRunList = components["schemas"]["BatchOperationRunListResponse"]
 export type InstrumentPriceCoverage = components["schemas"]["InstrumentPriceCoverageResponse"]
 type InstrumentPriceCoveragePage = components["schemas"]["InstrumentPriceCoveragePageResponse"]
 export type DataOperationScopeType = DataOperationRequest["scope_type"]
@@ -310,12 +316,14 @@ export function dataOperationPriceCoverageApi(params: {
   scope_id: string
   offset?: number
   limit?: number
+  search?: string
 }): Promise<InstrumentPriceCoveragePage> {
   const query = new URLSearchParams({
     scope_type: params.scope_type,
     scope_id: params.scope_id,
     offset: String(params.offset ?? 0),
     limit: String(params.limit ?? 50),
+    search: params.search ?? "",
   })
   return get(`/data-operations/coverage?${query}`)
 }
@@ -330,8 +338,50 @@ export function dataOperationJobApi(jobId: string): Promise<DataOperationJob> {
   return get(`/data-operations/jobs/${encodeURIComponent(jobId)}`)
 }
 
+export function activeDataOperationJobApi(params: {
+  scope_type: DataOperationScopeType
+  scope_id: string
+  dataset: DataOperationDataset
+}): Promise<DataOperationJob | null> {
+  const query = new URLSearchParams(params)
+  return get(`/data-operations/jobs/active?${query}`)
+}
+
 export function dataOperationHistoryApi(limit = 50): Promise<DataOperationHistory> {
   return get(`/data-operations/history?limit=${limit}`)
+}
+
+export function batchOperationPlansApi(): Promise<BatchOperationPlanList> {
+  return get("/data-operations/batch-plans")
+}
+
+export function createBatchOperationPlanApi(
+  request: BatchOperationPlanRequest,
+): Promise<BatchOperationPlan> {
+  return post("/data-operations/batch-plans", request)
+}
+
+export function updateBatchOperationPlanApi(
+  id: number,
+  request: BatchOperationPlanRequest,
+): Promise<BatchOperationPlan> {
+  return put(`/data-operations/batch-plans/${id}`, request)
+}
+
+export function deleteBatchOperationPlanApi(id: number): Promise<{ id: number; deleted: boolean }> {
+  return del(`/data-operations/batch-plans/${id}`)
+}
+
+export function startBatchOperationRunApi(planId: number): Promise<BatchOperationRun> {
+  return post(`/data-operations/batch-plans/${planId}/runs`, {})
+}
+
+export function batchOperationRunApi(runId: string): Promise<BatchOperationRun> {
+  return get(`/data-operations/batch-runs/${encodeURIComponent(runId)}`)
+}
+
+export function batchOperationRunsApi(limit = 20): Promise<BatchOperationRunList> {
+  return get(`/data-operations/batch-runs?limit=${limit}`)
 }
 
 export function instrumentPriceHistoryApi(

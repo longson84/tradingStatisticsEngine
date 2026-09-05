@@ -436,6 +436,31 @@ def test_crypto_price_coverage_expects_daily_sessions_and_paginates():
     assert coverage.instruments[0].expected_sessions_behind == 0
 
 
+def test_price_coverage_filters_the_whole_scope_by_symbol_before_pagination():
+    scope = DataOperationScopeRecord(
+        scope_type="universe",
+        scope_id="SEARCH",
+        name="Search",
+        instruments=(
+            instrument(1, "AAPL"),
+            instrument(2, "AAPD"),
+            instrument(3, "MSFT"),
+        ),
+    )
+
+    coverage = data_operation_service(scope).price_coverage(
+        "universe",
+        "SEARCH",
+        search="aap",
+        offset=1,
+        limit=1,
+    )
+
+    assert coverage.total == 2
+    assert [row.symbol for row in coverage.instruments] == ["AAPD"]
+    assert coverage.missing_count == 3
+
+
 def test_data_operations_openapi_exposes_preview_and_jobs():
     schema = app.openapi()
     assert schema["paths"]["/data-operations/preview"]["get"]["operationId"] == (
@@ -443,6 +468,9 @@ def test_data_operations_openapi_exposes_preview_and_jobs():
     )
     assert schema["paths"]["/data-operations/jobs"]["post"]["operationId"] == (
         "startDataOperation"
+    )
+    assert schema["paths"]["/data-operations/jobs/active"]["get"]["operationId"] == (
+        "getActiveDataOperationJob"
     )
     assert schema["paths"]["/data-operations/coverage"]["get"]["operationId"] == (
         "getDataOperationPriceCoverage"

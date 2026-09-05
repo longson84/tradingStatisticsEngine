@@ -38,6 +38,31 @@ class SqlAlchemyDataOperationRepository:
     def get_scope(
         self, scope_type: DataOperationScopeType, scope_id: str
     ) -> DataOperationScopeRecord | None:
+        if scope_type == "category":
+            category = scope_id.lower().strip()
+            filters = {
+                "equity": Instrument.company_id.is_not(None),
+                "crypto_spot": Instrument.instrument_type == "spot",
+                "reference_rate": Instrument.instrument_type == "reference_rate",
+                "market_index": Instrument.instrument_type == "market_index",
+            }
+            names = {
+                "equity": "All active equities",
+                "crypto_spot": "All active crypto spot instruments",
+                "reference_rate": "All active reference rates",
+                "market_index": "All active market indices",
+            }
+            if category not in filters:
+                return None
+            rows = self._instrument_rows().where(
+                filters[category], Instrument.is_active.is_(True)
+            ).order_by(canonical_symbol_expression(), Instrument.id)
+            return DataOperationScopeRecord(
+                scope_type="category",
+                scope_id=category,
+                name=names[category],
+                instruments=self._records(rows),
+            )
         if scope_type == "universe":
             universe = self._session.execute(
                 select(Universe.id, Universe.code, Universe.name).where(

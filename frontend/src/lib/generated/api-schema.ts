@@ -41,6 +41,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/data-operations/batch-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batch Plans */
+        get: operations["listBatchOperationPlans"];
+        put?: never;
+        /** Create Batch Plan */
+        post: operations["createBatchOperationPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/batch-plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Batch Plan */
+        put: operations["updateBatchOperationPlan"];
+        post?: never;
+        /** Delete Batch Plan */
+        delete: operations["deleteBatchOperationPlan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/batch-plans/{plan_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Batch Plan Run */
+        post: operations["startBatchOperationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/batch-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batch Runs */
+        get: operations["listBatchOperationRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/batch-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Batch Run */
+        get: operations["getBatchOperationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/data-operations/coverage": {
         parameters: {
             query?: never;
@@ -86,6 +173,23 @@ export interface paths {
         put?: never;
         /** Start Data Operation */
         post: operations["startDataOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data-operations/jobs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Active Data Operation */
+        get: operations["getActiveDataOperationJob"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -387,6 +491,133 @@ export interface components {
             /** Strategy */
             strategy: components["schemas"]["BuyAndHoldConfig"] | components["schemas"]["PriceVsMAConfig"];
         };
+        /** BatchOperationPlanDeleteResponse */
+        BatchOperationPlanDeleteResponse: {
+            /** Deleted */
+            deleted: boolean;
+            /** Id */
+            id: number;
+        };
+        /** BatchOperationPlanListResponse */
+        BatchOperationPlanListResponse: {
+            /** Plans */
+            plans: components["schemas"]["BatchOperationPlanResponse"][];
+        };
+        /** BatchOperationPlanRequest */
+        BatchOperationPlanRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+            /** Steps */
+            steps: components["schemas"]["BatchOperationStepRequest"][];
+        };
+        /** BatchOperationPlanResponse */
+        BatchOperationPlanResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Steps */
+            steps: components["schemas"]["BatchOperationStepResponse"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** BatchOperationRunListResponse */
+        BatchOperationRunListResponse: {
+            /** Runs */
+            runs: components["schemas"]["BatchOperationRunResponse"][];
+        };
+        /** BatchOperationRunResponse */
+        BatchOperationRunResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Step */
+            current_step: number;
+            /** Error */
+            error: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Jobs */
+            jobs: components["schemas"]["DataOperationJobResponse"][];
+            /** Plan Id */
+            plan_id: number | null;
+            /** Plan Name */
+            plan_name: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Total Steps */
+            total_steps: number;
+        };
+        /** BatchOperationStepRequest */
+        BatchOperationStepRequest: {
+            /**
+             * Dataset
+             * @default prices
+             * @enum {string}
+             */
+            dataset: "prices" | "fundamentals";
+            /**
+             * Mode
+             * @default incremental
+             * @enum {string}
+             */
+            mode: "incremental" | "full";
+            /** Target Id */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "category" | "universe" | "watchlist" | "instrument";
+        };
+        /** BatchOperationStepResponse */
+        BatchOperationStepResponse: {
+            /**
+             * Dataset
+             * @default prices
+             * @enum {string}
+             */
+            dataset: "prices" | "fundamentals";
+            /**
+             * Mode
+             * @default incremental
+             * @enum {string}
+             */
+            mode: "incremental" | "full";
+            /** Position */
+            position: number;
+            /** Target Id */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "category" | "universe" | "watchlist" | "instrument";
+        };
         /** BuyAndHoldConfig */
         BuyAndHoldConfig: {
             /**
@@ -619,7 +850,7 @@ export interface components {
              * Scope Type
              * @enum {string}
              */
-            scope_type: "universe" | "watchlist" | "instrument";
+            scope_type: "category" | "universe" | "watchlist" | "instrument";
             /** Started At */
             started_at: string | null;
             /**
@@ -659,7 +890,7 @@ export interface components {
              * Scope Type
              * @enum {string}
              */
-            scope_type: "universe" | "watchlist" | "instrument";
+            scope_type: "category" | "universe" | "watchlist" | "instrument";
             /** Stale Count */
             stale_count: number;
             /** Unsupported Count */
@@ -685,7 +916,7 @@ export interface components {
              * Scope Type
              * @enum {string}
              */
-            scope_type: "universe" | "watchlist" | "instrument";
+            scope_type: "category" | "universe" | "watchlist" | "instrument";
         };
         /** DistributionRowResponse */
         DistributionRowResponse: {
@@ -822,7 +1053,7 @@ export interface components {
              * Scope Type
              * @enum {string}
              */
-            scope_type: "universe" | "watchlist" | "instrument";
+            scope_type: "category" | "universe" | "watchlist" | "instrument";
             /** Stale Count */
             stale_count: number;
             /** Total */
@@ -2276,13 +2507,226 @@ export interface operations {
             };
         };
     };
+    listBatchOperationPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationPlanListResponse"];
+                };
+            };
+        };
+    };
+    createBatchOperationPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchOperationPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationPlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    updateBatchOperationPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchOperationPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationPlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteBatchOperationPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationPlanDeleteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startBatchOperationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listBatchOperationRuns: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationRunListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getBatchOperationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getDataOperationPriceCoverage: {
         parameters: {
             query: {
-                scope_type: "universe" | "watchlist" | "instrument";
+                scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
                 offset?: number;
                 limit?: number;
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -2374,6 +2818,39 @@ export interface operations {
             };
         };
     };
+    getActiveDataOperationJob: {
+        parameters: {
+            query: {
+                scope_type: "category" | "universe" | "watchlist" | "instrument";
+                scope_id: string;
+                dataset?: "prices" | "fundamentals";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataOperationJobResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getDataOperationJob: {
         parameters: {
             query?: never;
@@ -2408,7 +2885,7 @@ export interface operations {
     previewDataOperation: {
         parameters: {
             query: {
-                scope_type: "universe" | "watchlist" | "instrument";
+                scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
                 dataset?: "prices" | "fundamentals";
             };

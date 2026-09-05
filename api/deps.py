@@ -41,6 +41,8 @@ from api.repositories.sqlalchemy_universe_repository import (
 from api.repositories.sqlalchemy_data_operation_repository import (
     SqlAlchemyDataOperationRepository,
 )
+from api.repositories.data_operation_repository import DataOperationScopeType
+from api.repositories.sqlalchemy_batch_operation_repository import SqlAlchemyBatchOperationRepository
 from api.repositories.sqlalchemy_venue_repository import SqlAlchemyVenueRepository
 from api.repositories.sqlalchemy_universe_stats_repository import (
     SqlAlchemyUniverseStatsRepository,
@@ -52,7 +54,12 @@ from api.services.reference_rate_service import ReferenceRateService
 from api.services.instrument_analysis_service import InstrumentAnalysisService
 from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
-from api.services.data_operation_service import DataOperationService
+from api.services.data_operation_service import (
+    DataOperationDataset,
+    DataOperationPlan,
+    DataOperationService,
+)
+from api.services.batch_operation_service import BatchOperationService
 from api.services.venue_service import VenueService
 from api.services.universe_stats_service import UniverseStatsService
 from api.services.new_low_analysis_service import NewLowAnalysisService
@@ -137,6 +144,26 @@ def get_data_operation_service(
         SqlAlchemyDataOperationRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
     )
+
+
+def get_batch_operation_service(
+    session: Annotated[Session, Depends(get_db_transaction_session)],
+) -> BatchOperationService:
+    return BatchOperationService(SqlAlchemyBatchOperationRepository(session))
+
+
+def resolve_data_operation_plan(
+    engine: Engine,
+    scope_type: DataOperationScopeType,
+    scope_id: str,
+    dataset: DataOperationDataset,
+) -> DataOperationPlan:
+    """Resolve a fresh batch step without leaking persistence wiring to workers."""
+    with Session(engine) as session:
+        return DataOperationService(
+            SqlAlchemyDataOperationRepository(session),
+            SqlAlchemyInstrumentRoutingRepository(session),
+        ).plan(scope_type, scope_id, dataset)
 
 
 def get_venue_service(

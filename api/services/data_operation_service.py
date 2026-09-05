@@ -223,6 +223,7 @@ class DataOperationService:
         *,
         offset: int = 0,
         limit: int = 50,
+        search: str = "",
         now: datetime | None = None,
     ) -> InstrumentPriceCoveragePage:
         scope = self._repository.get_scope(scope_type, scope_id)
@@ -236,12 +237,18 @@ class DataOperationService:
             _price_coverage(row, routes.get(row.id), current)
             for row in scope.instruments
         )
-        page = rows[offset:offset + limit]
+        normalized_search = search.strip().casefold()
+        filtered_rows = tuple(
+            row for row in rows
+            if not normalized_search
+            or normalized_search in row.symbol.casefold()
+        )
+        page = filtered_rows[offset:offset + limit]
         return InstrumentPriceCoveragePage(
             scope_type=scope.scope_type,
             scope_id=scope.scope_id,
             scope_name=scope.name,
-            total=len(rows),
+            total=len(filtered_rows),
             offset=offset,
             limit=limit,
             current_count=sum(row.coverage_status == "current" for row in rows),

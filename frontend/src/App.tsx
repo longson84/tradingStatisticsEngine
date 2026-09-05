@@ -49,7 +49,9 @@ export default function App() {
           <Route path="/collections" element={<Navigate to="/collections/universes" replace />} />
           <Route path="/collections/universes" element={<InstrumentCollectionsPage tab="universes" />} />
           <Route path="/collections/watchlists" element={<InstrumentCollectionsPage tab="watchlists" />} />
-          <Route path="/data-operations" element={<DataOperationsPage />} />
+          <Route path="/data-operations" element={<Navigate to="/data-operations/single" replace />} />
+          <Route path="/data-operations/single" element={<DataOperationsPage view="single" />} />
+          <Route path="/data-operations/batch" element={<DataOperationsPage view="batch" />} />
           <Route path="/instruments/crypto-spot" element={<CryptoInstrumentsPage />} />
           <Route path="/instruments/reference-rates" element={<ReferenceRatesPage />} />
           <Route path="/build/data-model" element={<DataModelPage />} />

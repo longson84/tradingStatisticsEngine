@@ -21,7 +21,7 @@ from api.price_refresh_coordination import (
 )
 
 
-ScopeType = Literal["universe", "watchlist", "instrument"]
+ScopeType = Literal["category", "universe", "watchlist", "instrument"]
 Dataset = Literal["prices", "fundamentals"]
 Mode = Literal["incremental", "full"]
 Status = Literal["queued", "running", "completed", "failed"]
@@ -138,6 +138,17 @@ def get_active_scope_job(
             if job_id is not None:
                 return _jobs.get(job_id)
     return None
+
+
+def get_active_data_operation_job(
+    scope_type: ScopeType,
+    scope_id: str,
+    dataset: Dataset,
+) -> DataOperationJob | None:
+    """Return the current-process owner for one exact operation key."""
+    with _lock:
+        job_id = _active_keys.get((scope_type, scope_id, dataset))
+        return _jobs.get(job_id) if job_id is not None else None
 
 
 def _run_job(job_id: str, engine: Engine) -> None:

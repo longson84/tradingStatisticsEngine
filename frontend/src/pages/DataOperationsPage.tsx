@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { NavLink, useNavigate } from "react-router"
 import {
   CheckCircle2,
   DatabaseZap,
@@ -12,10 +13,13 @@ import {
 } from "lucide-react"
 
 import { Sidebar } from "@/components/Sidebar"
+import { BatchOperationsPanel } from "@/components/data-operations/BatchOperationsPanel"
 import { useSearchableSelectKeyboard } from "@/components/forms/useSearchableSelectKeyboard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  activeDataOperationJobApi,
+  batchOperationRunsApi,
   dataOperationJobApi,
   dataOperationHistoryApi,
   dataOperationPriceCoverageApi,
@@ -24,6 +28,7 @@ import {
   startDataOperationApi,
   universesApi,
   watchlistsApi,
+  type BatchOperationRun,
   type InstrumentCatalogItem,
   type DataOperationDataset,
   type DataOperationJob,
@@ -32,10 +37,13 @@ import {
   type InstrumentPriceCoverage,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
+
+type SingleOperationScopeType = Exclude<DataOperationScopeType, "category">
 
 const SCOPE_OPTIONS: Array<{
-  value: DataOperationScopeType
+  value: SingleOperationScopeType
   label: string
   detail: string
   icon: typeof ListTree
@@ -61,18 +69,38 @@ const SCOPE_OPTIONS: Array<{
 ]
 
 const COVERAGE_PAGE_SIZE = 50
+const TRACKED_OPERATION_KEY = "tse.data-operation.current"
+
+interface TrackedOperation {
+  jobId: string
+  scopeType: SingleOperationScopeType
+  scopeId: string
+  dataset: DataOperationDataset
+  mode: DataOperationMode
+}
 
 
-export function DataOperationsPage() {
+export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   const queryClient = useQueryClient()
-  const [scopeType, setScopeType] = useState<DataOperationScopeType>("universe")
-  const [scopeId, setScopeId] = useState("")
-  const [dataset, setDataset] = useState<DataOperationDataset>("prices")
-  const [mode, setMode] = useState<DataOperationMode>("incremental")
+  const navigate = useNavigate()
+  const [restoredOperation] = useState(readTrackedOperation)
+  const [scopeType, setScopeType] = useState<SingleOperationScopeType>(
+    restoredOperation?.scopeType ?? "universe",
+  )
+  const [scopeId, setScopeId] = useState(restoredOperation?.scopeId ?? "")
+  const [dataset, setDataset] = useState<DataOperationDataset>(
+    restoredOperation?.dataset ?? "prices",
+  )
+  const [mode, setMode] = useState<DataOperationMode>(
+    restoredOperation?.mode ?? "incremental",
+  )
   const [instrumentSearch, setInstrumentSearch] = useState("")
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [startedJob, setStartedJob] = useState<DataOperationJob | null>(null)
+  const [trackedJobId, setTrackedJobId] = useState(restoredOperation?.jobId ?? "")
   const [coverageOffset, setCoverageOffset] = useState(0)
+  const [coverageSearch, setCoverageSearch] = useState("")
+  const debouncedCoverageSearch = useDebouncedValue(coverageSearch.trim(), 300)
 
   const universes = useQuery({ queryKey: ["universes"], queryFn: universesApi })
   const watchlists = useQuery({ queryKey: ["watchlists"], queryFn: watchlistsApi })
@@ -92,38 +120,103 @@ export function DataOperationsPage() {
     enabled: scopeId.length > 0,
   })
   const coverage = useQuery({
-    queryKey: ["data-operation-price-coverage", scopeType, scopeId, coverageOffset],
+    queryKey: [
+      "data-operation-price-coverage",
+      scopeType,
+      scopeId,
+      coverageOffset,
+      debouncedCoverageSearch,
+    ],
     queryFn: () => dataOperationPriceCoverageApi({
       scope_type: scopeType,
       scope_id: scopeId,
       offset: coverageOffset,
       limit: COVERAGE_PAGE_SIZE,
+      search: debouncedCoverageSearch,
     }),
     enabled: scopeId.length > 0 && dataset === "prices",
   })
   const start = useMutation({
     mutationFn: startDataOperationApi,
     onSuccess: job => {
+      if (!isSingleOperationScope(job.scope_type)) return
       setStartedJob(job)
+      setTrackedJobId(job.id)
+      writeTrackedOperation({
+        jobId: job.id,
+        scopeType: job.scope_type,
+        scopeId: job.scope_id,
+        dataset: job.dataset,
+        mode: job.mode,
+      })
+      queryClient.setQueryData(
+        ["active-data-operation-job", job.scope_type, job.scope_id, job.dataset],
+        job,
+      )
       void queryClient.invalidateQueries({ queryKey: ["data-operation-history"] })
     },
   })
   const job = useQuery({
-    queryKey: ["data-operation-job", startedJob?.id],
-    queryFn: () => dataOperationJobApi(startedJob!.id),
-    enabled: startedJob != null,
-    initialData: startedJob ?? undefined,
+    queryKey: ["data-operation-job", trackedJobId],
+    queryFn: () => dataOperationJobApi(trackedJobId),
+    enabled: trackedJobId.length > 0,
+    initialData: startedJob?.id === trackedJobId ? startedJob : undefined,
     refetchInterval: query => {
       const status = query.state.data?.status
       return status === "queued" || status === "running" ? 1_000 : false
     },
+    refetchIntervalInBackground: true,
   })
-  const activeJob = job.data ?? startedJob
+  const trackedJob = job.data ?? (startedJob?.id === trackedJobId ? startedJob : null)
+  const activeScopeJob = useQuery({
+    queryKey: ["active-data-operation-job", scopeType, scopeId, dataset],
+    queryFn: () => activeDataOperationJobApi({
+      scope_type: scopeType,
+      scope_id: scopeId,
+      dataset,
+    }),
+    enabled: scopeId.length > 0,
+    refetchInterval: query => runningStatus(query.state.data?.status) ? 1_000 : 5_000,
+    refetchIntervalInBackground: true,
+  })
+  const operationRunning = runningStatus(activeScopeJob.data?.status)
+    || runningStatus(trackedJob?.status)
   const history = useQuery({
     queryKey: ["data-operation-history"],
     queryFn: () => dataOperationHistoryApi(100),
-    refetchInterval: runningStatus(activeJob?.status) ? 2_000 : false,
+    refetchInterval: operationRunning ? 2_000 : false,
+    refetchIntervalInBackground: true,
   })
+  const batchHistory = useQuery({
+    queryKey: ["batch-operation-runs", 100],
+    queryFn: () => batchOperationRunsApi(100),
+    enabled: view === "single",
+    refetchInterval: operationRunning ? 2_000 : false,
+    refetchIntervalInBackground: true,
+  })
+  const batchByJobId = new Map(
+    (batchHistory.data?.runs ?? []).flatMap(batchRun => (
+      batchRun.jobs.map(batchJob => [batchJob.id, batchRun] as const)
+    )),
+  )
+  const latestMatchingJob = history.data?.runs.find(run => (
+    run.scope_type === scopeType
+    && run.scope_id === scopeId
+    && run.dataset === dataset
+  )) ?? null
+  const activeJob = activeScopeJob.data ?? trackedJob ?? latestMatchingJob
+
+  useEffect(() => {
+    const detected = activeScopeJob.data
+    if (!detected || !runningStatus(detected.status) || !isSingleOperationScope(detected.scope_type)) return
+    writeTrackedOperation({
+      jobId: detected.id,
+      scopeType: detected.scope_type,
+      scopeId: detected.scope_id,
+      dataset: detected.dataset,
+      mode: detected.mode,
+    })
+  }, [activeScopeJob.data])
 
   useEffect(() => {
     if (activeJob?.status === "completed") {
@@ -134,20 +227,28 @@ export function DataOperationsPage() {
     }
   }, [activeJob?.id, activeJob?.status, queryClient])
 
-  const chooseScope = (value: DataOperationScopeType) => {
+  const chooseScope = (value: SingleOperationScopeType) => {
     setScopeType(value)
     setScopeId("")
     setInstrumentSearch("")
     setSelectedInstrument(null)
     setStartedJob(null)
     setCoverageOffset(0)
+    setCoverageSearch("")
   }
   const run = () => {
     if (!preview.data?.can_run) return
     start.mutate({ scope_type: scopeType, scope_id: scopeId, dataset, mode })
   }
-  const running = activeJob?.status === "queued" || activeJob?.status === "running"
+  const running = operationRunning
+  const checkingActiveJob = scopeId.length > 0
+    && activeScopeJob.data === undefined
+    && activeScopeJob.isFetching
   const reuseRun = (run: DataOperationJob) => {
+    if (run.scope_type === "category") {
+      void navigate("/data-operations/batch")
+      return
+    }
     setScopeType(run.scope_type)
     setScopeId(run.scope_id)
     setDataset(run.dataset)
@@ -177,6 +278,24 @@ export function DataOperationsPage() {
             Preview coverage and update canonical PostgreSQL observations by collection or exact instrument.
           </p>
         </header>
+
+        <div className="mb-5 flex gap-1 border-b border-border">
+          <NavLink
+            to="/data-operations/single"
+            className={cn("border-b-2 px-4 py-2 text-sm font-medium", view === "single" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}
+          >
+            Single operation
+          </NavLink>
+          <NavLink
+            to="/data-operations/batch"
+            className={cn("border-b-2 px-4 py-2 text-sm font-medium", view === "batch" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}
+          >
+            Batch plans
+          </NavLink>
+        </div>
+
+        {view === "batch" && <BatchOperationsPanel />}
+        {view === "single" && <>
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           <section className="rounded-xl border border-border bg-card p-5">
@@ -292,10 +411,14 @@ export function DataOperationsPage() {
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
                 onClick={run}
-                disabled={!preview.data?.can_run || start.isPending || running}
+                disabled={!preview.data?.can_run || start.isPending || running || checkingActiveJob}
               >
                 <RefreshCw className={start.isPending || running ? "animate-spin" : ""} />
-                {mode === "full" ? "Build full history" : "Update data"}
+                {checkingActiveJob
+                  ? "Checking active job…"
+                  : running
+                    ? "Update in progress"
+                    : mode === "full" ? "Build full history" : "Update data"}
               </Button>
               <span className="text-[11px] text-muted-foreground">
                 Existing observations are upserted; failed downloads do not erase stored rows.
@@ -316,6 +439,15 @@ export function DataOperationsPage() {
           Universe or Watchlist itself. Adapter-specific bulk limits protect provider capacity.
         </section>
 
+        <RunHistory
+          runs={history.data?.runs ?? []}
+          batchByJobId={batchByJobId}
+          loading={history.isFetching || batchHistory.isFetching}
+          originLoading={batchHistory.isPending}
+          error={history.error?.message}
+          onReuse={reuseRun}
+        />
+
         {dataset === "prices" && (
           <InstrumentCoverageTable
             coverage={coverage.data}
@@ -323,15 +455,14 @@ export function DataOperationsPage() {
             error={coverage.error?.message}
             offset={coverageOffset}
             onOffsetChange={setCoverageOffset}
+            search={coverageSearch}
+            onSearchChange={value => {
+              setCoverageSearch(value)
+              setCoverageOffset(0)
+            }}
           />
         )}
-
-        <RunHistory
-          runs={history.data?.runs ?? []}
-          loading={history.isFetching}
-          error={history.error?.message}
-          onReuse={reuseRun}
-        />
+        </>}
 
       </main>
     </div>
@@ -341,12 +472,16 @@ export function DataOperationsPage() {
 
 function RunHistory({
   runs,
+  batchByJobId,
   loading,
+  originLoading,
   error,
   onReuse,
 }: {
   runs: DataOperationJob[]
+  batchByJobId: Map<string, BatchOperationRun>
   loading: boolean
+  originLoading: boolean
   error: string | undefined
   onReuse: (run: DataOperationJob) => void
 }) {
@@ -378,6 +513,7 @@ function RunHistory({
                 <th className="px-4 py-3 font-semibold">Started</th>
                 <th className="px-4 py-3 font-semibold">Scope</th>
                 <th className="px-4 py-3 font-semibold">Operation</th>
+                <th className="px-4 py-3 font-semibold">Origin</th>
                 <th className="px-4 py-3 font-semibold">Result</th>
                 <th className="px-4 py-3 font-semibold">Duration</th>
                 <th className="px-4 py-3 font-semibold">Details</th>
@@ -403,6 +539,18 @@ function RunHistory({
                     </div>
                   </td>
                   <td className="px-4 py-3">
+                    {originLoading ? (
+                      <span className="text-muted-foreground">Checking…</span>
+                    ) : batchByJobId.has(run.id) ? (
+                      <div>
+                        <Badge variant="outline">Batch</Badge>
+                        <div className="mt-1 max-w-[180px] truncate text-[10px] text-muted-foreground">
+                          {batchByJobId.get(run.id)?.plan_name}
+                        </div>
+                      </div>
+                    ) : <Badge variant="secondary">Single</Badge>}
+                  </td>
+                  <td className="px-4 py-3">
                     <RunStatus run={run} />
                     <div className="mt-1 tabular-nums text-muted-foreground">
                       {run.succeeded.toLocaleString()} succeeded
@@ -426,7 +574,7 @@ function RunHistory({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button variant="outline" size="sm" onClick={() => onReuse(run)}>
-                      Use settings
+                      {run.scope_type === "category" ? "Open batches" : "Use settings"}
                     </Button>
                   </td>
                 </tr>
@@ -455,6 +603,11 @@ function runningStatus(status: DataOperationJob["status"] | undefined) {
 }
 
 
+function isSingleOperationScope(value: DataOperationScopeType): value is SingleOperationScopeType {
+  return value === "universe" || value === "watchlist" || value === "instrument"
+}
+
+
 function formatTimestamp(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : "—"
 }
@@ -479,12 +632,16 @@ function InstrumentCoverageTable({
   error,
   offset,
   onOffsetChange,
+  search,
+  onSearchChange,
 }: {
   coverage: Awaited<ReturnType<typeof dataOperationPriceCoverageApi>> | undefined
   loading: boolean
   error: string | undefined
   offset: number
   onOffsetChange: (offset: number) => void
+  search: string
+  onSearchChange: (value: string) => void
 }) {
   if (!coverage && !loading && !error) return null
   const first = coverage && coverage.total > 0 ? offset + 1 : 0
@@ -506,6 +663,23 @@ function InstrumentCoverageTable({
             <CoverageCount label="No new bar" value={coverage.checked_no_new_bar_count} />
             <CoverageCount label="Failed checks" value={coverage.failed_count} tone="missing" />
           </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <label className="relative block w-full max-w-md">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={event => onSearchChange(event.target.value)}
+            placeholder="Search by symbol"
+            aria-label="Search price coverage by symbol"
+            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:border-ring focus:outline-none"
+          />
+        </label>
+        {coverage && search.trim() && (
+          <span className="text-xs text-muted-foreground">
+            {coverage.total.toLocaleString()} matching instrument{coverage.total === 1 ? "" : "s"}
+          </span>
         )}
       </div>
       {loading && !coverage && <div className="m-5 h-1 animate-pulse rounded bg-primary/40" />}
@@ -534,7 +708,9 @@ function InstrumentCoverageTable({
           </div>
           {coverage.instruments.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              This scope has no active instruments.
+              {search.trim()
+                ? "No instruments match this symbol."
+                : "This scope has no active instruments."}
             </div>
           )}
           <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
@@ -856,4 +1032,43 @@ function Datum({ label, value }: { label: string; value: number }) {
 
 function ErrorMessage({ message }: { message: string }) {
   return <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{message}</div>
+}
+
+
+function readTrackedOperation(): TrackedOperation | null {
+  try {
+    const raw = window.sessionStorage.getItem(TRACKED_OPERATION_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<TrackedOperation>
+    if (
+      typeof value.jobId !== "string"
+      || !value.jobId
+      || !(["universe", "watchlist", "instrument"] as readonly string[]).includes(
+        value.scopeType ?? "",
+      )
+      || typeof value.scopeId !== "string"
+      || !(["prices", "fundamentals"] as const).includes(
+        value.dataset as DataOperationDataset,
+      )
+      || !(["incremental", "full"] as const).includes(
+        value.mode as DataOperationMode,
+      )
+    ) {
+      window.sessionStorage.removeItem(TRACKED_OPERATION_KEY)
+      return null
+    }
+    return value as TrackedOperation
+  } catch {
+    window.sessionStorage.removeItem(TRACKED_OPERATION_KEY)
+    return null
+  }
+}
+
+
+function writeTrackedOperation(value: TrackedOperation): void {
+  try {
+    window.sessionStorage.setItem(TRACKED_OPERATION_KEY, JSON.stringify(value))
+  } catch {
+    // PostgreSQL history still retains the job when browser storage is unavailable.
+  }
 }
