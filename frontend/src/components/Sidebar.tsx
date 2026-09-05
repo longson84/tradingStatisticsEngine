@@ -76,10 +76,10 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
     <aside className={cn("w-64 shrink-0 flex flex-col bg-card border-r border-border min-h-screen", className)}>
       <div className="px-4 py-5 border-b border-border flex items-center justify-between">
         <span className="text-sm font-semibold text-card-foreground tracking-wide">TSE</span>
-        <ThemeToggle />
+        <ThemeToggle compact />
       </div>
 
-      <nav className="px-2 py-3 space-y-3">
+      <nav className="flex-1 px-2 py-3 space-y-3">
         {sections.map(section => (
           <div key={section.label}>
             <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
@@ -126,6 +126,7 @@ export function Sidebar({ children, className }: { children?: React.ReactNode; c
           )}
         </>
       )}
+
     </aside>
   )
 }
