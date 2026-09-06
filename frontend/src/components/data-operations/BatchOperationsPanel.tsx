@@ -295,7 +295,16 @@ function BatchRunProgress({
 
 function BatchRunHistory() {
   const [openRunId, setOpenRunId] = useState<string | null>(null)
-  const runs = useQuery({ queryKey: ["batch-operation-runs"], queryFn: () => batchOperationRunsApi(20) })
+  const runs = useQuery({
+    queryKey: ["batch-operation-runs"],
+    queryFn: () => batchOperationRunsApi(20),
+    refetchInterval: query => (
+      query.state.data?.runs.some(run => run.status === "queued" || run.status === "running")
+        ? 1_000
+        : false
+    ),
+    refetchIntervalInBackground: true,
+  })
   return (
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2"><ListPlus size={17} className="text-primary" /><h2 className="text-base font-semibold">Batch run history</h2></div>
