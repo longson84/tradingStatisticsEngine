@@ -4,7 +4,7 @@ Run with:
     uv run uvicorn api.main:app --reload
 
 Docs available at:
-    http://localhost:8000/docs
+    http://localhost:8001/docs
 """
 from __future__ import annotations
 

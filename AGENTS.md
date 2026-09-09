@@ -105,7 +105,16 @@ pnpm type-check
 pnpm build
 ```
 
-Use the root `package.json` scripts as the source of truth for ports and dev commands. `frontend/src/lib/api.ts` currently targets `http://localhost:8000`.
+Use the root `package.json` scripts as the source of truth for ports and dev commands.
+`frontend/src/lib/api.ts` targets `http://localhost:8001`.
+
+**This project owns the 8xxx block** under the machine-wide convention: one thousand-block per
+app, API at BASE+1, web at BASE+173, preview at BASE+174 -- so API `8001`, web `8173`, preview
+`8174`, Postgres `5436`. Blocks as of 2026-09-09: eravntrans 3xxx, a Python app 4xxx, totha 6xxx,
+an ERP base 7xxx, this project 8xxx, personal-hq 9xxx; 5xxx is databases only. The web port was
+`5174`, Vite's default, which another project on this machine also hard-coded -- and with no
+`strictPort` the second to start renumbered itself silently. Both are set now. Avoid `5000` and
+`7000`: macOS ControlCenter answers on both.
 
 ## Testing Expectations
 
