@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
-    "dev:backend": "UV_CACHE_DIR=.cache/uv uv run --no-sync uvicorn api.main:app --reload --port 8000",
+    "dev:backend": "UV_CACHE_DIR=.cache/uv uv run --no-sync uvicorn api.main:app --reload --port 8001",
     "dev:frontend": "pnpm --filter frontend dev",
     "build": "pnpm --filter frontend build",
     "build:frontend": "pnpm --filter frontend build",

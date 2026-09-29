@@ -32,6 +32,17 @@ log; revise the main sections when the current architecture itself changes.
 - `scripts/` contains explicit operational entry points. Scripts call API-layer
   persistence and engine functions rather than duplicating their logic.
 
+## Local service ports
+
+This repository owns the machine-wide 8xxx application port block: API `8001`,
+frontend development `8173`, and frontend preview `8174`. PostgreSQL uses host
+port `5436`. Run the API and frontend with the root `pnpm dev` scripts; run the
+built frontend with `pnpm preview`. The API port is configured in root
+`package.json`, the frontend ports in `frontend/vite.config.ts`, and the browser
+API base URL in `frontend/src/lib/api.ts`. Keep these settings aligned. Vite
+uses `strictPort` for development and preview so a collision fails instead of
+silently moving to another reserved port.
+
 ## Data principles
 
 1. Use stable internal instrument IDs. Ticker text is searchable and displayed,
@@ -2380,3 +2391,12 @@ identity and Symbol remains the canonical compact code.
 Consequences: mixed-Instrument tables can display and search one consistent
 name without denormalizing type-specific names onto Instrument or making names
 part of update routing and observation identity.
+
+### 2026-09-29 — Align local services with reserved ports
+
+The machine-wide allocation reserves API `8001`, frontend development `8173`,
+and preview `8174` for this repository. The implementation still used API
+`8000` and frontend `5174`, predating that allocation. Align the launch command,
+browser API URL, Vite configuration, and contributor documentation with the
+reservation. Enable strict Vite port binding to prevent silent drift on a
+collision. PostgreSQL remains on `5436`.

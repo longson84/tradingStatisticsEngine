@@ -1,10 +1,10 @@
 """Trading Engine API — FastAPI application entrypoint.
 
 Run with:
-    uv run uvicorn api.main:app --reload
+    pnpm dev:backend
 
 Docs available at:
-    http://localhost:8000/docs
+    http://localhost:8001/docs
 """
 from __future__ import annotations
 

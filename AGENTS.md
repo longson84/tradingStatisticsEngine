@@ -105,7 +105,7 @@ pnpm type-check
 pnpm build
 ```
 
-Use the root `package.json` scripts as the source of truth for ports and dev commands. `frontend/src/lib/api.ts` currently targets `http://localhost:8000`.
+Use the root `package.json` scripts as the source of truth for dev commands and the API port (8001). `frontend/vite.config.ts` sets the frontend dev port (8173) and preview port (8174), both with `strictPort` enabled. `frontend/src/lib/api.ts` targets `http://localhost:8001`. These ports follow this repo's reserved 8xxx block; PostgreSQL uses 5436.
 
 ## Testing Expectations
 

@@ -1,6 +1,6 @@
 import type { components, operations } from "@/lib/generated/api-schema"
 
-const BASE = "http://localhost:8000"
+const BASE = "http://localhost:8001"
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
