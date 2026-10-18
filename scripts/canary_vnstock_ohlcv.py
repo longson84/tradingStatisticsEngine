@@ -14,7 +14,7 @@ from api.db.session import create_db_engine
 from api.market_sessions import latest_completed_venue_session
 from api.venue_calendars import venue_calendar
 from api.providers.vietnam_market import (
-    VnstockDataProvider,
+    VnstockProvider,
     normalize_ohlcv_result,
 )
 from api.repositories.price_bar_repository import InstrumentPriceBarQuery
@@ -133,21 +133,32 @@ def run_canary(
     database_url: str | None = None,
 ) -> dict[str, Any]:
     normalized_symbol = symbol.upper().strip()
-    provider = VnstockDataProvider()
-    provider_result = provider.ohlcv(normalized_symbol, start, end, interval="1D")
-    sponsored = normalize_ohlcv_result(provider_result)
     engine = create_db_engine(database_url)
     with Session(engine) as session:
         repository = SqlAlchemyPriceBarRepository(session)
-        metadata = SqlAlchemyInstrumentRoutingRepository(
-            session
-        ).find_instrument_route_metadata("listing", normalized_symbol)
+        routing_repository = SqlAlchemyInstrumentRoutingRepository(session)
+        metadata = routing_repository.find_instrument_route_metadata(
+            "listing", normalized_symbol
+        ) or routing_repository.find_instrument_route_metadata(
+            "vnstock", normalized_symbol
+        )
         if metadata is None:
-            raise RuntimeError(f"Unknown listing symbol: {normalized_symbol}")
+            raise RuntimeError(f"Unknown Vnstock symbol: {normalized_symbol}")
         route = resolve_instrument_data_route(metadata)
-        if route.price_adapter != "vnstock_data":
-            raise RuntimeError(f"{normalized_symbol} is not routed to vnstock_data")
+        if route.price_adapter != "vnstock":
+            raise RuntimeError(f"{normalized_symbol} is not routed to vnstock")
         stored = _stored_frame(repository, metadata.instrument_id, route.price_basis)
+    provider = VnstockProvider()
+    provider_result = provider.ohlcv(
+        normalized_symbol,
+        start,
+        end,
+        interval="1D",
+        instrument_kind=(
+            "index" if metadata.instrument_type == "market_index" else "equity"
+        ),
+    )
+    sponsored = normalize_ohlcv_result(provider_result)
     comparison = compare_frames(sponsored, stored)
     result: dict[str, Any] = {
         "symbol": normalized_symbol,
@@ -170,7 +181,7 @@ def run_canary(
     with Session(engine) as session, session.begin():
         service = PriceRefreshService(SqlAlchemyPriceBarRepository(session))
         write_result = service.store_frames(
-            "VNALL",
+            normalized_symbol,
             [sponsored.drop(columns=["provider_source"])],
             targets_by_provider_symbol={
                 route.provider_symbol: PriceRefreshTarget(
@@ -199,7 +210,7 @@ def run_canary(
             primary_source=source,
             selected_source=source,
             attempted_at=fetched_at,
-            detail="sponsored FPT canary comparison passed before upsert",
+            detail=f"sponsored {normalized_symbol} canary comparison passed before upsert",
         )])
     result["write_performed"] = True
     result["write_result"] = {

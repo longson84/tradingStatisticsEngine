@@ -233,7 +233,12 @@ def _refresh_market_index(
         if route.price_adapter == "yfinance"
         else VietnamPriceLoader()
     )
-    prices = loader.load(route.provider_symbol, start, end + timedelta(days=1))
+    prices = loader.load(
+        route.provider_symbol,
+        start,
+        end + timedelta(days=1),
+        **({"instrument_kind": "index"} if route.price_adapter == "vnstock" else {}),
+    )
     with session_scope(engine) as session:
         InstrumentPriceWriteService(
             SqlAlchemyPriceBarRepository(session),

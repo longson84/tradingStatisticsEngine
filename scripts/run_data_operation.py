@@ -11,7 +11,10 @@ from typing import Callable
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
-from api.providers.vietnam_fundamentals import VnstockDataFundamentalProvider
+from api.providers.vietnam_fundamentals import (
+    VnstockFundamentalProvider,
+    fundamental_request_cost,
+)
 from api.repositories.sqlalchemy_data_operation_repository import (
     SqlAlchemyDataOperationRepository,
 )
@@ -79,7 +82,7 @@ def _execute_group(
     mode: str,
     engine,
 ):
-    if adapter != "vnstock_data":
+    if adapter != "vnstock":
         for index, instrument_id in enumerate(instrument_ids):
             yield _execute_instrument(instrument_id, dataset, mode, engine)
             if (
@@ -91,14 +94,14 @@ def _execute_group(
         return
 
     requests_per_minute = _positive_env_int(
-        "VNSTOCK_DATA_REQUESTS_PER_MINUTE", 300
+        "VNSTOCK_REQUESTS_PER_MINUTE", 300
     )
     workers = min(
         len(instrument_ids),
-        _positive_env_int("VNSTOCK_DATA_MAX_WORKERS", 5),
+        _positive_env_int("VNSTOCK_MAX_WORKERS", 5),
     )
     limiter = StartRateLimiter(requests_per_minute)
-    request_cost = 2 if dataset == "fundamentals" else 1
+    request_cost = fundamental_request_cost() if dataset == "fundamentals" else 1
     with ThreadPoolExecutor(
         max_workers=workers,
         thread_name_prefix="vnstock-data",
@@ -147,7 +150,7 @@ def _execute_instrument(
             )
         else:
             provider = (
-                VnstockDataFundamentalProvider()
+                VnstockFundamentalProvider()
                 if dataset == "fundamentals"
                 else None
             )

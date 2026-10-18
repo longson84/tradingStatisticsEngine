@@ -1,4 +1,4 @@
-"""Sponsored Vnstock Data KBS adapter for current Vietnam equity Universes."""
+"""Vnstock generation 5 adapter for current Vietnam equity universes."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -13,12 +13,11 @@ from api.providers.universe import (
     UniverseProviderUnavailableError,
     UniverseSnapshot,
     make_constituent,
-    make_identifier,
     validated_constituents,
 )
 
 
-ListingFactory = Callable[[], object]
+ReferenceFactory = Callable[[], object]
 _BASE_GROUPS = {
     "VN30": "VN30",
     "VNMID": "VNMidCap",
@@ -31,57 +30,33 @@ _UNIVERSE_NAMES = {
     "VNSML": "VNSmallCap Index",
     "VNALL": "VNAllshare Index",
 }
-_SECTOR_BY_INDUSTRY_CODE = {
-    1: "Wholesale",
-    2: "Insurance",
-    3: "Real Estate",
-    5: "Securities",
-    6: "Information Technology",
-    7: "Retail",
-    8: "Health Care",
-    10: "Mining",
-    11: "Banking",
-    12: "Agriculture, Forestry & Fisheries",
-    15: "Machinery & Equipment Manufacturing",
-    16: "Household Goods Manufacturing",
-    17: "Rubber Products",
-    18: "Plastics & Chemicals",
-    19: "Food & Beverage",
-    20: "Seafood Processing",
-    21: "Construction Materials",
-    22: "Utilities",
-    23: "Transportation & Warehousing",
-    24: "Construction",
-    25: "Hospitality & Entertainment",
-    26: "Supporting Manufacturing",
-    27: "Electrical Equipment",
-    28: "Consulting & Support Services",
-    29: "Other Financial Services",
-}
 
 
-def _default_listing_factory() -> object:
+def _default_reference_factory() -> object:
     try:
-        module = import_module("vnstock_data")
-        return module.Listing(source="KBS", show_log=False)
-    except Exception as exc:
+        module = import_module("vnstock")
+        return module.Reference()
+    except (ImportError, AttributeError) as exc:
         raise UniverseProviderUnavailableError(
-            "Sponsored vnstock_data KBS listing provider could not be loaded or authenticated"
+            "Vnstock generation 5 Reference API could not be loaded"
         ) from exc
 
 
 class VnstockUniverseProvider:
-    """Fetch paid KBS segments and derive their composite universes."""
+    """Fetch Gen 5 index segments and derive their composite universes."""
 
     supported_universes = frozenset({
         "VN30", "VNMID", "VN100", "VNSML", "VNALL",
     })
 
-    def __init__(self, listing_factory: ListingFactory = _default_listing_factory) -> None:
-        self._listing_factory = listing_factory
-        self._listing: object | None = None
+    def __init__(
+        self,
+        reference_factory: ReferenceFactory = _default_reference_factory,
+    ) -> None:
+        self._reference_factory = reference_factory
+        self._reference: object | None = None
         self._metadata: dict[
-            str, tuple[str | None, int | None, str | None, str | None]
+            str, tuple[str | None, str | None, str | None, str | None]
         ] | None = None
         self._snapshots: dict[str, UniverseSnapshot] = {}
 
@@ -89,7 +64,7 @@ class VnstockUniverseProvider:
         code = universe.upper().strip()
         if code not in self.supported_universes:
             raise UnsupportedUniverseError(
-                f"Sponsored vnstock_data does not provide {universe!r}"
+                f"Vnstock does not provide {universe!r}"
             )
         if code in self._snapshots:
             return self._snapshots[code]
@@ -103,40 +78,36 @@ class VnstockUniverseProvider:
         return snapshot
 
     def _fetch_base(self, code: str) -> UniverseSnapshot:
-        listing = self._get_listing()
+        reference = self._get_reference()
         try:
-            raw = listing.symbols_by_group(_BASE_GROUPS[code])
+            raw = reference.index.list_by_group(
+                _BASE_GROUPS[code], source="kbs"
+            )
         except Exception as exc:
             raise UniverseProviderUnavailableError(
-                f"Sponsored vnstock_data KBS could not fetch {code} membership"
+                f"Vnstock KBS could not fetch {code} membership"
             ) from exc
         symbols = _extract_symbols(raw, universe=code)
-        metadata = self._get_metadata()
+        metadata_by_symbol = self._get_metadata()
         constituents = []
         for symbol in symbols:
-            name, industry_code, industry_name, organ_code = metadata.get(
-                str(symbol).upper().strip(), (None, None, None, None)
+            normalized = str(symbol).upper().strip()
+            name, sector, industry, exchange = metadata_by_symbol.get(
+                normalized, (None, None, None, None)
             )
             constituents.append(make_constituent(
-                symbol=symbol,
+                symbol=normalized,
                 listing_country_code="VN",
                 company_name=name,
-                sector=_SECTOR_BY_INDUSTRY_CODE.get(industry_code),
-                industry=industry_name,
-                exchange="HOSE",
-                company_identifiers=tuple(
-                    identifier
-                    for identifier in (
-                        make_identifier("vnstock_organ_code", organ_code),
-                    )
-                    if identifier is not None
-                ),
+                sector=sector,
+                industry=industry,
+                exchange=exchange or "HOSE",
             ))
         return UniverseSnapshot(
             code=code,
             name=_UNIVERSE_NAMES[code],
             listing_country_code="VN",
-            description=f"Current {code} constituents from sponsored Vnstock Data KBS.",
+            description=f"Current {code} constituents from Vnstock Gen 5 KBS.",
             effective_date=None,
             fetched_at=datetime.now(timezone.utc),
             source=_source_label(),
@@ -155,7 +126,7 @@ class VnstockUniverseProvider:
             name=_UNIVERSE_NAMES[code],
             listing_country_code="VN",
             description=(
-                f"Derived current {code} constituents from sponsored Vnstock Data KBS."
+                f"Derived current {code} constituents from Vnstock Gen 5 KBS."
             ),
             effective_date=None,
             fetched_at=max(snapshot.fetched_at for snapshot in bases),
@@ -165,57 +136,74 @@ class VnstockUniverseProvider:
             ),
         )
 
-    def _get_listing(self) -> object:
-        if self._listing is None:
-            self._listing = self._listing_factory()
-        return self._listing
+    def _get_reference(self) -> object:
+        if self._reference is None:
+            self._reference = self._reference_factory()
+        return self._reference
 
     def _get_metadata(
         self,
-    ) -> dict[str, tuple[str | None, int | None, str | None, str | None]]:
+    ) -> dict[str, tuple[str | None, str | None, str | None, str | None]]:
         if self._metadata is not None:
             return self._metadata
-        listing = self._get_listing()
+        reference = self._get_reference()
         try:
-            names = listing.all_symbols()
-            industries = listing.symbols_by_industries()
+            equities = reference.equity.list_by_exchange(source="vci")
+            industries = reference.equity.list_by_industry(
+                lang="en", source="vci"
+            )
         except Exception as exc:
             raise UniverseProviderUnavailableError(
-                "Sponsored vnstock_data KBS could not fetch company metadata"
+                "Vnstock VCI could not fetch company metadata"
             ) from exc
-        if not isinstance(names, pd.DataFrame) or "symbol" not in names:
+        if not isinstance(equities, pd.DataFrame) or "symbol" not in equities:
             raise UniverseProviderDataError(
-                "Sponsored vnstock_data all_symbols response is missing symbol metadata"
+                "Vnstock equity response is missing symbol metadata"
             )
-        name_by_symbol = {
+        company_by_symbol = {
             str(row["symbol"]).upper().strip(): (
                 _optional_frame_value(row.get("organ_name")),
-                _optional_frame_value(row.get("organ_code")),
+                _optional_frame_value(row.get("exchange")),
             )
-            for row in names.to_dict("records")
+            for row in equities.to_dict("records")
         }
-        industry_by_symbol: dict[str, tuple[int | None, str | None]] = {}
-        if isinstance(industries, pd.DataFrame) and "symbol" in industries:
-            for row in industries.to_dict("records"):
-                raw_code = row.get("industry_code")
-                try:
-                    industry_code = int(raw_code) if pd.notna(raw_code) else None
-                except (TypeError, ValueError):
-                    industry_code = None
-                industry_by_symbol[str(row["symbol"]).upper().strip()] = (
-                    industry_code,
-                    _optional_frame_value(row.get("industry_name")),
-                )
+        industry_by_symbol = _industry_metadata(industries)
         self._metadata = {
             symbol: (
-                name_and_code[0],
+                company[0],
                 industry_by_symbol.get(symbol, (None, None))[0],
                 industry_by_symbol.get(symbol, (None, None))[1],
-                name_and_code[1],
+                company[1],
             )
-            for symbol, name_and_code in name_by_symbol.items()
+            for symbol, company in company_by_symbol.items()
         }
         return self._metadata
+
+
+def _industry_metadata(
+    industries: object,
+) -> dict[str, tuple[str | None, str | None]]:
+    required = {"symbol", "icb_level", "icb_name"}
+    if not isinstance(industries, pd.DataFrame) or not required.issubset(
+        industries.columns
+    ):
+        return {}
+    result: dict[str, tuple[str | None, str | None]] = {}
+    rows = industries.copy()
+    rows["icb_level"] = pd.to_numeric(rows["icb_level"], errors="coerce")
+    for symbol, group in rows.dropna(subset=["symbol"]).groupby("symbol"):
+        ordered = group.dropna(subset=["icb_level"]).sort_values("icb_level")
+        if ordered.empty:
+            continue
+        level_one = ordered[ordered["icb_level"] == 1]
+        sector = (
+            _optional_frame_value(level_one.iloc[-1].get("icb_name"))
+            if not level_one.empty
+            else None
+        )
+        industry = _optional_frame_value(ordered.iloc[-1].get("icb_name"))
+        result[str(symbol).upper().strip()] = (sector, industry)
+    return result
 
 
 def _extract_symbols(value: object, *, universe: str) -> list[object]:
@@ -226,16 +214,16 @@ def _extract_symbols(value: object, *, universe: str) -> list[object]:
     if isinstance(value, (list, tuple, set)):
         return list(value)
     raise UniverseProviderDataError(
-        f"Sponsored vnstock_data {universe} response is not a symbol collection"
+        f"Vnstock {universe} response is not a symbol collection"
     )
 
 
 def _source_label() -> str:
     try:
-        version = metadata.version("vnstock_data")
+        version = metadata.version("vnstock")
     except metadata.PackageNotFoundError:
         version = "unknown"
-    return f"vnstock-data-{version}-kbs"
+    return f"vnstock-{version}-kbs"
 
 
 def _optional_frame_value(value: object) -> str | None:

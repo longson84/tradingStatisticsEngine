@@ -995,7 +995,7 @@ provenance and end-exclusive engine date semantics. Public-package access is
 limited to the deliberately explicit community recovery adapter and is not an
 automatic production fallback.
 
-### 2026-08-08 — Reproducible private sponsor installation
+### 2026-08-08 — Reproducible private sponsor installation (superseded 2026-10-18)
 
 Context: `vnstock_data` is distributed through Vnstock's authenticated member
 installer rather than the public package index. Its installed distribution
@@ -2401,7 +2401,7 @@ browser API URL, Vite configuration, and contributor documentation with the
 reservation. Enable strict Vite port binding to prevent silent drift on a
 collision. PostgreSQL remains on `5436`.
 
-### 2026-10-18 — Isolate the Vnstock generation 5 migration
+### 2026-10-18 — Isolate the Vnstock generation 5 migration (superseded after parity)
 
 Context: Vnstock generation 5 replaces both the public `vnstock` 4.x client and
 the sponsored `vnstock_data` 3.x client with one entitlement-aware `vnstock`
@@ -2423,3 +2423,38 @@ provenance such as `vnstock-5.1.0-vci`, distinct from the existing
 `vnstock-data-3.2.7-vci` baseline. Production selection, generation 5 setup
 replacement, fundamentals, and Universe membership remain separate cutover
 decisions with their own parity evidence.
+
+### 2026-10-18 — Cut over fully to Vnstock generation 5
+
+Context: bounded price parity and direct inspection of the generation 5 market,
+reference, and quantitative APIs completed the staged comparison above. The
+parallel generation 4 runtime required installer-specific dependency handling,
+duplicated provider identities, and could not remain the production path.
+Generation 5 financial statements no longer expose the historical publication
+date previously used for Vietnam point-in-time backfill.
+
+Decision: `vnstock` 5.1.x and `vnstock-quant` 0.4.x are locked through uv and
+are the only active Vietnam provider packages. The canonical routing identity
+is `vnstock`; migration `0031` changes only active Instrument Symbol namespace
+and source values. Existing price and fundamental provenance is immutable and
+continues to name the package that created each historical row.
+
+Market requests use explicit VCI routes. Universe membership uses KBS index
+groups, while company, exchange, and ICB metadata use VCI reference routes.
+Vietnam fundamental refreshes compute official quant ratios, select the latest
+complete fiscal quarter, and persist exactly one current observation effective
+on the day after its UTC acquisition timestamp. They do not infer or backfill
+historical publication dates. Existing historical observations remain valid
+and available for analysis.
+
+The fundamentals adapter builds the quant dataset from three explicit VCI
+statement requests and explicit VCI trade-history windows. Worker rate limiting
+reserves the full outbound fan-out. `total_assets` remains unavailable because
+the published ROA denominator is average assets and cannot be represented as
+the canonical period-end reported balance without changing its meaning.
+
+Consequences: setup is a normal exact `uv sync`; there is no downloaded
+installer, no generation 4 fallback, and no runtime alias for the former
+provider token. New market provenance is `vnstock-<version>-vci`; universe
+provenance is `vnstock-<version>-kbs`. Historical source labels remain
+displayable but are never rewritten.

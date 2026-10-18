@@ -9,6 +9,8 @@ dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.2.0",
     "scipy>=1.12.0",
+    "vnstock>=5.1,<5.2",
+    "vnstock-quant>=0.4,<0.5",
     "yfinance>=1.1.0",
 ]
 
@@ -24,3 +26,12 @@ api = [
 dev = [
     "pytest>=8.0",
 ]
+
+[[tool.uv.index]]
+name = "vnstock"
+url = "https://vnstocks.com/api/packages"
+explicit = true
+
+[tool.uv.sources]
+vnstock = { index = "vnstock" }
+"vnstock-quant" = { index = "vnstock" }

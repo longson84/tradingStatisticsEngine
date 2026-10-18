@@ -1,4 +1,4 @@
-"""Run a read-only sponsored-provider diagnostic against FPT by default."""
+"""Run a read-only Vnstock generation 5 diagnostic against FPT by default."""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from api.providers.vietnam_market import VnstockDataProvider
+from api.providers.vietnam_market import VnstockProvider
 
 
 def _summary(frame: pd.DataFrame, date_column: str) -> dict[str, Any]:
@@ -22,7 +22,7 @@ def _summary(frame: pd.DataFrame, date_column: str) -> dict[str, Any]:
 
 
 def run_diagnostic(symbol: str, start: date, end: date) -> dict[str, Any]:
-    provider = VnstockDataProvider()
+    provider = VnstockProvider()
     ohlcv = provider.ohlcv(symbol, start, end)
     trades = provider.trade_history(symbol, start, end)
     metadata = ohlcv.metadata

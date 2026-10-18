@@ -11,27 +11,23 @@ Create an ignored `.env` from `.env.example`, set `VNSTOCK_API_KEY`, then run:
 pnpm setup
 ```
 
-The setup order is intentional. `uv` installs the public dependency graph with
-`--inexact`, then the official Vnstock sponsor installer refreshes its private
-bundle in the project `.venv`. Normal project commands use `uv run --no-sync`
-so that `vnstock_data` is not removed merely because the private distribution
-cannot be represented in the public `uv.lock` file.
+`uv` resolves the locked dependency graph from PyPI and Vnstock's official
+package index. The active integration uses `vnstock` 5.1.x and
+`vnstock-quant` 0.4.x; exact artifacts are recorded in `uv.lock`.
 
-Verify the local sponsored installation without making a data request:
+Verify the local Gen 5 installation without making a data request:
 
 ```bash
 pnpm check:vnstock
 ```
 
-Force the official installer to fetch the latest entitled sponsor bundle:
+Inspect account and entitlement status with the official CLI:
 
 ```bash
-.venv/bin/python -m scripts.setup_vnstock_data --force
+.venv/bin/vnstock status
 ```
 
-The installer is downloaded at runtime from the
-[official Vnstock member installer](https://vnstocks.com/onboard-member/cai-dat-go-loi/cai-dat-nang-cao).
-Neither the API key nor the private temporary package path is committed.
+Neither the API key nor credentialed package-index URLs are committed.
 
 ## Local PostgreSQL
 
@@ -39,12 +35,12 @@ Start PostgreSQL, apply migrations, and synchronize the live equity Universes:
 
 ```bash
 docker compose up -d postgres
-UV_CACHE_DIR=.cache/uv uv run --no-sync alembic upgrade head
-UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_equity_universes --all
+UV_CACHE_DIR=.cache/uv uv run alembic upgrade head
+UV_CACHE_DIR=.cache/uv uv run python -m scripts.sync_equity_universes --all
 ```
 
 Preview provider changes without writing:
 
 ```bash
-UV_CACHE_DIR=.cache/uv uv run --no-sync python -m scripts.sync_equity_universes --all --dry-run
+UV_CACHE_DIR=.cache/uv uv run python -m scripts.sync_equity_universes --all --dry-run
 ```

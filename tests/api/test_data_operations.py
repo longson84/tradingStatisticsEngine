@@ -350,7 +350,7 @@ def test_same_symbol_on_different_venues_keeps_independent_ids():
     plan = data_operation_service(scope).plan("watchlist", "9", "prices")
 
     assert [(group.adapter, group.instrument_ids) for group in plan.groups] == [
-        ("vnstock_data", (22,)),
+        ("vnstock", (22,)),
         ("yfinance", (11,)),
     ]
 
