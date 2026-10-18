@@ -449,10 +449,14 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ? "Checking active job…"
                   : running
                     ? "Update in progress"
-                    : mode === "full" ? "Build full history" : "Update data"}
+                    : dataset === "session_stats"
+                      ? "Fetch selected period"
+                      : mode === "full" ? "Build full history" : "Update data"}
               </Button>
               <span className="text-[11px] text-muted-foreground">
-                Existing observations are upserted; failed downloads do not erase stored rows.
+                {dataset === "session_stats"
+                  ? "Each successful fetch creates an immutable snapshot; failed downloads retain earlier snapshots."
+                  : "Existing observations are upserted; failed downloads do not erase stored rows."}
               </span>
             </div>
             {start.error && <ErrorMessage message={start.error.message} />}
