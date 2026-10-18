@@ -27,8 +27,8 @@ def test_paid_rate_limiter_spaces_starts_by_request_cost():
 
 
 def test_paid_group_uses_bounded_workers_and_returns_every_result(monkeypatch):
-    monkeypatch.setenv("VNSTOCK_DATA_REQUESTS_PER_MINUTE", "60000")
-    monkeypatch.setenv("VNSTOCK_DATA_MAX_WORKERS", "2")
+    monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "60000")
+    monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "2")
     calls: list[int] = []
 
     def execute(instrument_id, dataset, mode, engine):
@@ -38,7 +38,7 @@ def test_paid_group_uses_bounded_workers_and_returns_every_result(monkeypatch):
     monkeypatch.setattr(run_data_operation, "_execute_instrument", execute)
 
     results = list(run_data_operation._execute_group(
-        "vnstock_data",
+        "vnstock",
         (1, 2, 3),
         "prices",
         "incremental",
@@ -50,12 +50,12 @@ def test_paid_group_uses_bounded_workers_and_returns_every_result(monkeypatch):
 
 
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):
-    monkeypatch.setenv("VNSTOCK_DATA_REQUESTS_PER_MINUTE", "invalid")
-    monkeypatch.setenv("VNSTOCK_DATA_MAX_WORKERS", "0")
+    monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "invalid")
+    monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "0")
 
     assert run_data_operation._positive_env_int(
-        "VNSTOCK_DATA_REQUESTS_PER_MINUTE", 300
+        "VNSTOCK_REQUESTS_PER_MINUTE", 300
     ) == 300
     assert run_data_operation._positive_env_int(
-        "VNSTOCK_DATA_MAX_WORKERS", 5
+        "VNSTOCK_MAX_WORKERS", 5
     ) == 5

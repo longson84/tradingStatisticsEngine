@@ -414,10 +414,10 @@ def _execution(
 def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
     defaults = {
         ("prices", "yfinance"): 5_000,
-        ("prices", "vnstock_data"): 1_000,
+        ("prices", "vnstock"): 1_000,
         ("prices", "binance_spot"): 100,
         ("fundamentals", "yfinance"): 5_000,
-        ("fundamentals", "vnstock_data"): 1_000,
+        ("fundamentals", "vnstock"): 1_000,
     }
     default = defaults.get((dataset, adapter), 1)
     key = f"DATA_OPERATION_{dataset}_{adapter}_MAX_INSTRUMENTS".upper()

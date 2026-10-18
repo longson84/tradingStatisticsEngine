@@ -120,7 +120,7 @@ def test_incremental_plan_reuses_symbol_checked_without_new_bar():
 
     plan = service.plan(
         "VN100",
-        [_target(2, "STALE", "vnstock_data", "provider_unspecified")],
+        [_target(2, "STALE", "vnstock", "provider_unspecified")],
         full_start=date(2021, 1, 1),
         end=date(2026, 8, 3),
         mode="incremental",
@@ -147,7 +147,7 @@ def test_store_frames_normalizes_vn_units_and_rejects_invalid_rows():
         "VN100",
         [frame],
         targets_by_provider_symbol={
-            "FPT": _target(10, "FPT", "vnstock_data", "provider_unspecified")
+            "FPT": _target(10, "FPT", "vnstock", "provider_unspecified")
         },
         source="vnstock-vci",
         fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
@@ -198,6 +198,6 @@ def _target(
         provider_symbol=symbol,
         price_adapter=adapter,
         price_basis=price_basis,
-        currency="VND" if adapter == "vnstock_data" else "USD",
-        price_scale=1_000 if adapter == "vnstock_data" else 1,
+        currency="VND" if adapter == "vnstock" else "USD",
+        price_scale=1_000 if adapter == "vnstock" else 1,
     )

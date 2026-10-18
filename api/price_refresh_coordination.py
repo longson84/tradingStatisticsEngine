@@ -36,6 +36,6 @@ def release_price_refresh(adapter: str, owner_id: str) -> None:
 
 def _adapter(value: str) -> str:
     normalized = value.lower().strip()
-    if normalized not in {"yfinance", "vnstock_data", "binance_spot"}:
+    if normalized not in {"yfinance", "vnstock", "binance_spot"}:
         raise ValueError(f"Unsupported price refresh adapter: {value}")
     return normalized

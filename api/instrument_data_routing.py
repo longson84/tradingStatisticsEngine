@@ -19,8 +19,8 @@ from api.venue_calendars import (
 )
 
 
-PriceAdapter = Literal["yfinance", "vnstock_data", "binance_spot"]
-FundamentalAdapter = Literal["yfinance", "vnstock_data"]
+PriceAdapter = Literal["yfinance", "vnstock", "binance_spot"]
+FundamentalAdapter = Literal["yfinance", "vnstock"]
 
 US_EQUITY_VENUES = frozenset({
     "NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX",
@@ -82,8 +82,8 @@ def resolve_instrument_data_route(
                 date(1927, 12, 30),
             ),
             "VN30": (
-                "vnstock_data",
-                ("vnstock_data", "listing"),
+                "vnstock",
+                ("vnstock", "listing"),
                 date(2012, 2, 6),
             ),
         }
@@ -175,14 +175,14 @@ def resolve_instrument_data_route(
     if venue_code in VN_EQUITY_VENUES:
         return InstrumentDataRoute(
             instrument_id=instrument.instrument_id,
-            price_adapter="vnstock_data",
+            price_adapter="vnstock",
             provider_symbol=_symbol(instrument, "listing", "canonical"),
             price_basis=DEFAULT_CANONICAL_PRICE_BASIS,
             currency=instrument.currency,
             price_scale=1_000,
             schedule=instrument_observation_schedule(instrument),
             full_history_start=date(2000, 1, 1),
-            fundamental_adapter="vnstock_data",
+            fundamental_adapter="vnstock",
         )
     raise UnsupportedInstrumentRouteError(
         f"No equity adapter for venue {venue_code or 'none'}"

@@ -55,7 +55,7 @@ def refresh_instrument_fundamentals(
 
     provider = (
         vn_provider or VnstockFundamentalProvider()
-        if adapter == "vnstock_data"
+        if adapter == "vnstock"
         else None
     )
     frame, source, methodology = fetch_provider_fundamentals(

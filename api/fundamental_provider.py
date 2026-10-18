@@ -52,7 +52,7 @@ def fetch_provider_fundamentals(
 ) -> tuple[pd.DataFrame, str, str]:
     """Fetch normalized snapshots without reading or writing local files."""
     normalized = symbol.upper().strip()
-    if adapter in {"vnstock", "vnstock_data"}:
+    if adapter == "vnstock":
         return _fetch_vn_fundamentals(normalized, provider=vn_provider)
     if adapter != "yfinance":
         raise ValueError(f"Unsupported fundamental adapter: {adapter}")
