@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from datetime import date
 import os
 from threading import Lock
 import time
@@ -27,6 +28,9 @@ from scripts.refresh_instrument_fundamentals import (
 )
 from scripts.refresh_instrument_history import refresh_instrument
 from scripts.refresh_instrument_flow import refresh_instrument_flow
+from scripts.refresh_instrument_session_statistics import (
+    refresh_instrument_session_statistics,
+)
 
 
 def run_data_operation(
@@ -36,7 +40,11 @@ def run_data_operation(
     mode: str,
     *,
     database_url: str | None = None,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> None:
+    if dataset == "session_stats" and (period_start is None or period_end is None):
+        raise ValueError("session_stats requires period_start and period_end")
     engine = create_db_engine(database_url)
     with Session(engine) as session:
         plan = DataOperationService(
@@ -56,6 +64,8 @@ def run_data_operation(
             dataset,
             mode,
             engine,
+            period_start=period_start,
+            period_end=period_end,
         ):
             if error:
                 errors.append(detail)
@@ -82,10 +92,15 @@ def _execute_group(
     dataset: str,
     mode: str,
     engine,
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ):
     if adapter != "vnstock":
         for index, instrument_id in enumerate(instrument_ids):
-            yield _execute_instrument(instrument_id, dataset, mode, engine)
+            yield _dispatch_instrument(
+                instrument_id, dataset, mode, engine, period_start, period_end
+            )
             if (
                 dataset == "fundamentals"
                 and adapter == "yfinance"
@@ -116,6 +131,8 @@ def _execute_group(
                 dataset,
                 mode,
                 engine,
+                period_start,
+                period_end,
             ): instrument_id
             for instrument_id in instrument_ids
         }
@@ -130,8 +147,28 @@ def _execute_paid_instrument(
     dataset: str,
     mode: str,
     engine,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ):
     limiter.wait(request_cost)
+    return _dispatch_instrument(
+        instrument_id, dataset, mode, engine, period_start, period_end
+    )
+
+
+def _dispatch_instrument(
+    instrument_id: int,
+    dataset: str,
+    mode: str,
+    engine,
+    period_start: date | None,
+    period_end: date | None,
+):
+    if dataset == "session_stats":
+        return _execute_instrument(
+            instrument_id, dataset, mode, engine,
+            period_start=period_start, period_end=period_end,
+        )
     return _execute_instrument(instrument_id, dataset, mode, engine)
 
 
@@ -140,6 +177,9 @@ def _execute_instrument(
     dataset: str,
     mode: str,
     engine,
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> tuple[int, str, bool]:
     try:
         if dataset == "prices":
@@ -168,6 +208,12 @@ def _execute_instrument(
         elif dataset == "proprietary_flow":
             detail = refresh_instrument_flow(
                 instrument_id, mode, participant_type="proprietary", engine=engine
+            )
+        elif dataset == "session_stats":
+            if period_start is None or period_end is None:
+                raise ValueError("session_stats requires period_start and period_end")
+            detail = refresh_instrument_session_statistics(
+                instrument_id, period_start, period_end, engine=engine
             )
         else:
             raise ValueError(f"Unsupported dataset: {dataset}")
@@ -222,11 +268,16 @@ def main() -> None:
     parser.add_argument("--scope-id", required=True)
     parser.add_argument(
         "--dataset",
-        choices=("prices", "fundamentals", "foreign_flow", "proprietary_flow"),
+        choices=(
+            "prices", "fundamentals", "foreign_flow", "proprietary_flow",
+            "session_stats",
+        ),
         required=True,
     )
     parser.add_argument("--mode", choices=("incremental", "full"), required=True)
     parser.add_argument("--database-url", default=None)
+    parser.add_argument("--period-start", type=date.fromisoformat, default=None)
+    parser.add_argument("--period-end", type=date.fromisoformat, default=None)
     args = parser.parse_args()
     run_data_operation(
         args.scope_type,
@@ -234,6 +285,8 @@ def main() -> None:
         args.dataset,
         args.mode,
         database_url=args.database_url,
+        period_start=args.period_start,
+        period_end=args.period_end,
     )
 
 

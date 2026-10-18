@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from scripts import run_data_operation
@@ -132,6 +134,26 @@ def test_execute_instrument_dispatches_proprietary_flow_participant(monkeypatch)
 
     assert result == (7, "flow ok", False)
     assert calls == [(7, "incremental", "proprietary", engine)]
+
+
+def test_execute_instrument_dispatches_session_stats_exact_period(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        run_data_operation,
+        "refresh_instrument_session_statistics",
+        lambda instrument_id, start, end, *, engine: calls.append(
+            (instrument_id, start, end, engine)
+        ) or "stats ok",
+        raising=False,
+    )
+    engine = object()
+    result = run_data_operation._execute_instrument(
+        7, "session_stats", "full", engine,
+        period_start=date(2026, 10, 15), period_end=date(2026, 10, 16),
+    )
+
+    assert result == (7, "stats ok", False)
+    assert calls == [(7, date(2026, 10, 15), date(2026, 10, 16), engine)]
 
 
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):
