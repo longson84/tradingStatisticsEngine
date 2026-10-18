@@ -59,6 +59,8 @@ export function TradingActivityPage() {
       instrument_id: request!.instrument.id, start: request!.start, end: request!.end,
     }),
     enabled: request != null,
+    // Every newly applied period rereads storage, including cached keys after a refresh handoff.
+    staleTime: 0,
     retry: false,
   })
   const rows = activity.data?.rows ?? []
