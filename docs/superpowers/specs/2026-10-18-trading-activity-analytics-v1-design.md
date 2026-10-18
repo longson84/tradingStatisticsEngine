@@ -45,4 +45,3 @@ activity presentation. It shows the latest available intensity and anomaly,
 an intensity/baseline chart, an anomaly chart, and readable unavailable states.
 The original raw activity charts, table, provenance, and Data Operations link
 remain intact.
-

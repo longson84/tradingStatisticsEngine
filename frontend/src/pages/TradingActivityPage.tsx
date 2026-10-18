@@ -117,6 +117,8 @@ export function TradingActivityPage() {
               selectedInstrument={selected}
               total={instruments.data?.total}
               isPending={debounced.length >= 3 && instruments.isFetching}
+              errorMessage={instruments.error?.message}
+              emptyMessage="No eligible Vietnam equity matches this search."
               onSearchChange={value => {
                 setSearch(value)
                 setRequest(null)

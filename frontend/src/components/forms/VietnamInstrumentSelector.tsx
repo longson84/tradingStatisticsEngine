@@ -8,6 +8,8 @@ export function VietnamInstrumentSelector({
   selectedInstrument,
   total,
   isPending,
+  errorMessage,
+  emptyMessage,
   onSearchChange,
   onInstrumentChange,
   onSubmit,
@@ -17,6 +19,8 @@ export function VietnamInstrumentSelector({
   selectedInstrument: InstrumentCatalogItem | null
   total?: number
   isPending: boolean
+  errorMessage?: string
+  emptyMessage?: string
   onSearchChange: (search: string) => void
   onInstrumentChange: (instrument: InstrumentCatalogItem | null) => void
   onSubmit?: () => void
@@ -29,6 +33,8 @@ export function VietnamInstrumentSelector({
       selectedInstrument={selectedInstrument}
       total={total}
       isPending={isPending}
+      errorMessage={errorMessage}
+      emptyMessage={emptyMessage}
       onScopeChange={() => undefined}
       onSearchChange={onSearchChange}
       onInstrumentChange={onInstrumentChange}

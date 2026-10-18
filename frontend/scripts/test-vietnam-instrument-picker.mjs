@@ -6,7 +6,8 @@ import { createServer } from "vite"
 
 const server = await createServer({
   appType: "custom",
-  server: { middlewareMode: true },
+  optimizeDeps: { noDiscovery: true },
+  server: { middlewareMode: true, hmr: false },
 })
 
 try {
@@ -55,6 +56,32 @@ try {
   assert.match(html, /role="listbox"/)
   assert.match(html, /role="option"/)
   assert.match(html, /Only eligible Vietnam equities are shown/)
+
+  const emptyHtml = renderToStaticMarkup(React.createElement(VietnamInstrumentSelector, {
+    search: "ZZZ",
+    instruments: [],
+    selectedInstrument: null,
+    total: 0,
+    isPending: false,
+    emptyMessage: "No eligible Vietnam equity matches this search.",
+    onSearchChange() {},
+    onInstrumentChange() {},
+  }))
+  assert.match(emptyHtml, /role="status"/)
+  assert.match(emptyHtml, /No eligible Vietnam equity matches this search/)
+
+  const errorHtml = renderToStaticMarkup(React.createElement(VietnamInstrumentSelector, {
+    search: "FPT",
+    instruments: [],
+    selectedInstrument: null,
+    total: 0,
+    isPending: false,
+    errorMessage: "Instrument catalog is unavailable.",
+    onSearchChange() {},
+    onInstrumentChange() {},
+  }))
+  assert.match(errorHtml, /role="alert"/)
+  assert.match(errorHtml, /Instrument catalog is unavailable/)
   console.log("Vietnam Instrument selector contract passed")
 } finally {
   await server.close()

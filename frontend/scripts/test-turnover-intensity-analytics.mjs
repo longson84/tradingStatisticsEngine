@@ -54,7 +54,22 @@ try {
   assert.match(html, /Fewer than 20 prior stored sessions/)
   assert.match(html, /Market capitalization is invalid/)
   assert.match(html, /Prior 20-session window has no variation/)
+  assert.match(html, /2026-09-03: intensity 1\.50%, baseline 1\.00%, anomaly Not available — Prior 20-session window has no variation/)
   assert.match(html, /Calculated from stored activity only/)
+
+  const isolatedHtml = renderToStaticMarkup(React.createElement(TurnoverIntensityAnalytics, {
+    analysis: {
+      formula_version: "turnover_intensity_v1",
+      baseline_sessions: 20,
+      points: [{
+        trading_date: "2026-09-21", intensity: 0.025,
+        baseline: 0.015, anomaly_score: 1.5,
+        unavailable_reason: null,
+      }],
+    },
+  }))
+  assert.match(isolatedHtml, /data-series="intensity"/)
+  assert.match(isolatedHtml, /data-series="baseline"/)
   console.log("Turnover intensity analytics contract passed")
 } finally {
   await server.close()

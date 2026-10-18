@@ -179,4 +179,3 @@ including the preserved picker/layout work.
 
 Expected: no whitespace errors, unrelated edits, provider calls, or raw-row
 contract regressions.
-

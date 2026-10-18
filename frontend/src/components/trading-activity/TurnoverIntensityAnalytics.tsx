@@ -85,6 +85,8 @@ function IntensityChart({ points, baselineSessions }: { points: Point[]; baselin
     <text x={plot.left - 8} y={y(0) + 4} textAnchor="end" fill="currentColor" fontSize={10}>0%</text>
     <SeriesSegments points={points} value={point => point.intensity} x={plot.x} y={y} color="#2563eb" />
     <SeriesSegments points={points} value={point => point.baseline} x={plot.x} y={y} color="#d97706" />
+    <SeriesPoints points={points} value={point => point.intensity} x={plot.x} y={y} color="#2563eb" series="intensity" />
+    <SeriesPoints points={points} value={point => point.baseline} x={plot.x} y={y} color="#d97706" series="baseline" />
     {points.map((point, index) => <PointTitle key={point.trading_date} point={point} x={plot.x(index)} />)}
     <ChartDates points={points} x={plot.x} />
     <text x={plot.left} y={18} fill="#2563eb" fontSize={10}>Intensity</text>
@@ -156,12 +158,42 @@ function SeriesSegments({
   })}</>
 }
 
+function SeriesPoints({
+  points,
+  value,
+  x,
+  y,
+  color,
+  series,
+}: {
+  points: Point[]
+  value: (point: Point) => number | null
+  x: (index: number) => number
+  y: (value: number) => number
+  color: string
+  series: "intensity" | "baseline"
+}) {
+  return <>{points.map((point, index) => {
+    const current = value(point)
+    if (current == null) return null
+    return <circle
+      key={`${point.trading_date}-${series}`}
+      data-series={series}
+      cx={x(index)} cy={y(current)} r={3}
+      fill={color}
+    />
+  })}</>
+}
+
 function PointTitle({ point, x }: { point: Point; x: number }) {
   const reason = point.unavailable_reason ? REASON_COPY[point.unavailable_reason] : null
+  const intensity = point.intensity == null ? "intensity Not available" : `intensity ${fmtPct(point.intensity * 100)}`
+  const baseline = point.baseline == null ? "" : `, baseline ${fmtPct(point.baseline * 100)}`
+  const anomaly = point.anomaly_score == null
+    ? `, anomaly Not available${reason ? ` — ${reason}` : ""}`
+    : `, anomaly ${formatAnomaly(point.anomaly_score)}`
   return <circle cx={x} cy={245} r={6} fill="transparent">
-    <title>{point.intensity == null
-      ? `${point.trading_date}: Not available${reason ? ` — ${reason}` : ""}`
-      : `${point.trading_date}: intensity ${fmtPct(point.intensity * 100)}${point.baseline == null ? "" : `, baseline ${fmtPct(point.baseline * 100)}`}`}</title>
+    <title>{`${point.trading_date}: ${intensity}${baseline}${anomaly}`}</title>
   </circle>
 }
 

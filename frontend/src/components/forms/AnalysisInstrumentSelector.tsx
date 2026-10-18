@@ -24,6 +24,8 @@ export function AnalysisInstrumentSelector({
   onInstrumentChange,
   onSubmit,
   helperText,
+  errorMessage,
+  emptyMessage,
   hideHelperText = false,
   hideScope = false,
 }: {
@@ -38,6 +40,8 @@ export function AnalysisInstrumentSelector({
   onInstrumentChange: (instrument: InstrumentCatalogItem | null) => void
   onSubmit?: () => void
   helperText?: string
+  errorMessage?: string
+  emptyMessage?: string
   hideHelperText?: boolean
   hideScope?: boolean
 }) {
@@ -117,6 +121,12 @@ export function AnalysisInstrumentSelector({
               </button>
             ))}
           </div>
+        )}
+        {errorMessage && (
+          <p role="alert" className="mt-1 text-xs text-destructive">{errorMessage}</p>
+        )}
+        {!errorMessage && emptyMessage && canSearch && !isPending && !selectedInstrument && instruments.length === 0 && (
+          <p role="status" className="mt-1 text-xs text-muted-foreground">{emptyMessage}</p>
         )}
         {!hideHelperText && (
           <p className="mt-1 text-[10px] text-muted-foreground">
