@@ -366,6 +366,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}/market-flows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Instrument Market Flows */
+        get: operations["getInstrumentMarketFlows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe-stats/run": {
         parameters: {
             query?: never;
@@ -579,7 +596,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals";
+            dataset: "prices" | "fundamentals" | "foreign_flow";
             /**
              * Mode
              * @default incremental
@@ -601,7 +618,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals";
+            dataset: "prices" | "fundamentals" | "foreign_flow";
             /**
              * Mode
              * @default incremental
@@ -824,7 +841,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals";
+            dataset: "prices" | "fundamentals" | "foreign_flow";
             /** Error */
             error: string | null;
             /** Failed */
@@ -873,7 +890,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals";
+            dataset: "prices" | "fundamentals" | "foreign_flow";
             /** Eligible Count */
             eligible_count: number;
             /** Instrument Count */
@@ -903,7 +920,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals";
+            dataset: "prices" | "fundamentals" | "foreign_flow";
             /**
              * Mode
              * @default incremental
@@ -1028,6 +1045,69 @@ export interface components {
             count: number;
             /** Value */
             value: string;
+        };
+        /** InstrumentFlowPointResponse */
+        InstrumentFlowPointResponse: {
+            /** Buy Value */
+            buy_value: number;
+            /** Buy Volume */
+            buy_volume: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Net Value */
+            net_value: number;
+            /** Net Volume */
+            net_volume: number;
+            /** Sell Value */
+            sell_value: number;
+            /** Sell Volume */
+            sell_volume: number;
+        };
+        /** InstrumentFlowResponse */
+        InstrumentFlowResponse: {
+            /** Currency */
+            currency: string;
+            /**
+             * Expected Last Session
+             * Format: date
+             */
+            expected_last_session: string;
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /**
+             * First Date
+             * Format: date
+             */
+            first_date: string;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Is Stale */
+            is_stale: boolean;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /** Observations */
+            observations: components["schemas"]["InstrumentFlowPointResponse"][];
+            /** Participant Type */
+            participant_type: string;
+            /** Row Count */
+            row_count: number;
+            /** Source */
+            source: string;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code: string | null;
         };
         /** InstrumentPriceCoveragePageResponse */
         InstrumentPriceCoveragePageResponse: {
@@ -2823,7 +2903,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals";
+                dataset?: "prices" | "fundamentals" | "foreign_flow";
             };
             header?: never;
             path?: never;
@@ -2887,7 +2967,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals";
+                dataset?: "prices" | "fundamentals" | "foreign_flow";
             };
             header?: never;
             path?: never;
@@ -3045,6 +3125,7 @@ export interface operations {
                 sector?: string | null;
                 industry?: string | null;
                 venue?: string | null;
+                capability?: "foreign_flow" | null;
                 has_price_history?: boolean;
                 offset?: number;
                 limit?: number;
@@ -3165,6 +3246,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentPriceHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstrumentMarketFlows: {
+        parameters: {
+            query?: {
+                participant_type?: "foreign";
+                start?: string | null;
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentFlowResponse"];
                 };
             };
             /** @description Validation Error */

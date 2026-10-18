@@ -1,10 +1,16 @@
 import { useState } from "react"
 import { NavLink } from "react-router"
-import { BarChart2, BarChart3, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, SearchCode, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark, LineChart, CandlestickChart } from "lucide-react"
+import { Activity, BarChart2, BarChart3, Bitcoin, Blocks, Building2, TrendingUp, ChevronUp, ChevronDown, SearchCode, HardDriveDownload, ChartNoAxesCombined, ListChecks, ListTree, Scale, Landmark, LineChart, CandlestickChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const sections = [
+  {
+    label: "Vietnam Market",
+    links: [
+      { to: "/vietnam-market/investor-flow", label: "Investor Flow", icon: Activity },
+    ],
+  },
   {
     label: "Factor Analysis",
     links: [

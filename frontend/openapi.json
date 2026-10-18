@@ -288,7 +288,8 @@
             "default": "prices",
             "enum": [
               "prices",
-              "fundamentals"
+              "fundamentals",
+              "foreign_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -332,7 +333,8 @@
             "default": "prices",
             "enum": [
               "prices",
-              "fundamentals"
+              "fundamentals",
+              "foreign_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1039,7 +1041,8 @@
           "dataset": {
             "enum": [
               "prices",
-              "fundamentals"
+              "fundamentals",
+              "foreign_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1177,7 +1180,8 @@
           "dataset": {
             "enum": [
               "prices",
-              "fundamentals"
+              "fundamentals",
+              "foreign_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1248,7 +1252,8 @@
             "default": "prices",
             "enum": [
               "prices",
-              "fundamentals"
+              "fundamentals",
+              "foreign_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1705,6 +1710,142 @@
           "count"
         ],
         "title": "InstrumentFacetCountResponse",
+        "type": "object"
+      },
+      "InstrumentFlowPointResponse": {
+        "properties": {
+          "buy_value": {
+            "title": "Buy Value",
+            "type": "number"
+          },
+          "buy_volume": {
+            "title": "Buy Volume",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "net_value": {
+            "title": "Net Value",
+            "type": "number"
+          },
+          "net_volume": {
+            "title": "Net Volume",
+            "type": "number"
+          },
+          "sell_value": {
+            "title": "Sell Value",
+            "type": "number"
+          },
+          "sell_volume": {
+            "title": "Sell Volume",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "buy_volume",
+          "buy_value",
+          "sell_volume",
+          "sell_value",
+          "net_volume",
+          "net_value"
+        ],
+        "title": "InstrumentFlowPointResponse",
+        "type": "object"
+      },
+      "InstrumentFlowResponse": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expected_last_session": {
+            "format": "date",
+            "title": "Expected Last Session",
+            "type": "string"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentFlowPointResponse"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "participant_type": {
+            "title": "Participant Type",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "instrument_type",
+          "venue_code",
+          "currency",
+          "participant_type",
+          "first_date",
+          "last_date",
+          "expected_last_session",
+          "is_stale",
+          "row_count",
+          "source",
+          "fetched_at",
+          "observations"
+        ],
+        "title": "InstrumentFlowResponse",
         "type": "object"
       },
       "InstrumentPriceCoveragePageResponse": {
@@ -6430,7 +6571,8 @@
               "default": "prices",
               "enum": [
                 "prices",
-                "fundamentals"
+                "fundamentals",
+                "foreign_flow"
               ],
               "title": "Dataset",
               "type": "string"
@@ -6553,7 +6695,8 @@
               "default": "prices",
               "enum": [
                 "prices",
-                "fundamentals"
+                "fundamentals",
+                "foreign_flow"
               ],
               "title": "Dataset",
               "type": "string"
@@ -6840,6 +6983,23 @@
                 }
               ],
               "title": "Venue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capability",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "foreign_flow",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capability"
             }
           },
           {
@@ -7185,6 +7345,96 @@
           }
         },
         "summary": "Instrument Price History",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/instruments/{instrument_id}/market-flows": {
+      "get": {
+        "operationId": "getInstrumentMarketFlows",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_id",
+            "required": true,
+            "schema": {
+              "title": "Instrument Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "participant_type",
+            "required": false,
+            "schema": {
+              "const": "foreign",
+              "default": "foreign",
+              "enum": [
+                "foreign"
+              ],
+              "title": "Participant Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentFlowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instrument Market Flows",
         "tags": [
           "instruments"
         ]

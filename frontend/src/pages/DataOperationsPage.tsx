@@ -106,10 +106,11 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   const watchlists = useQuery({ queryKey: ["watchlists"], queryFn: watchlistsApi })
   const normalizedSearch = instrumentSearch.trim()
   const instruments = useQuery({
-    queryKey: ["data-operation-instruments", normalizedSearch],
+    queryKey: ["data-operation-instruments", normalizedSearch, dataset],
     queryFn: () => instrumentsApi({
       search: normalizedSearch,
       has_price_history: false,
+      capability: dataset === "foreign_flow" ? "foreign_flow" : undefined,
       limit: 20,
     }),
     enabled: scopeType === "instrument" && normalizedSearch.length >= 3,
@@ -307,8 +308,9 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   <button
                     key={option.value}
                     onClick={() => chooseScope(option.value)}
+                    disabled={dataset === "foreign_flow" && option.value !== "instrument"}
                     className={cn(
-                      "rounded-lg border p-3 text-left transition-colors",
+                      "rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35",
                       scopeType === option.value
                         ? "border-primary bg-primary/10"
                         : "border-border hover:bg-accent",
@@ -390,10 +392,15 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                 options={[
                   ["prices", "Prices"],
                   ["fundamentals", "Fundamentals"],
+                  ["foreign_flow", "Foreign flow"],
                 ]}
                 value={dataset}
                 onChange={value => {
-                  setDataset(value as DataOperationDataset)
+                  const next = value as DataOperationDataset
+                  setDataset(next)
+                  if (next === "foreign_flow" && scopeType !== "instrument") {
+                    chooseScope("instrument")
+                  }
                   setStartedJob(null)
                 }}
               />
@@ -425,6 +432,11 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
               </span>
             </div>
             {start.error && <ErrorMessage message={start.error.message} />}
+            {dataset === "foreign_flow" && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Foreign flow updates stored VCI observations for one exact eligible Vietnam equity. It is not available for universes, watchlists, or unsupported instruments.
+              </p>
+            )}
           </section>
 
           <div className="space-y-5">
@@ -1047,7 +1059,7 @@ function readTrackedOperation(): TrackedOperation | null {
         value.scopeType ?? "",
       )
       || typeof value.scopeId !== "string"
-      || !(["prices", "fundamentals"] as const).includes(
+      || !(["prices", "fundamentals", "foreign_flow"] as const).includes(
         value.dataset as DataOperationDataset,
       )
       || !(["incremental", "full"] as const).includes(

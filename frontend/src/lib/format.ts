@@ -44,6 +44,21 @@ export function fmtInt(n: number): string {
   return Math.round(n).toLocaleString("en-US")
 }
 
+/** Compact signed market value, preserving direction for flow data. */
+export function fmtCompactVnd(n: number): string {
+  const absolute = Math.abs(n)
+  const units = [
+    { threshold: 1e12, suffix: "tn", divisor: 1e12 },
+    { threshold: 1e9, suffix: "bn", divisor: 1e9 },
+    { threshold: 1e6, suffix: "mn", divisor: 1e6 },
+  ]
+  const unit = units.find(item => absolute >= item.threshold)
+  const formatted = unit
+    ? `${(absolute / unit.divisor).toLocaleString("en-US", { maximumFractionDigits: 2 })}${unit.suffix}`
+    : Math.round(absolute).toLocaleString("en-US")
+  return `${n < 0 ? "−" : n > 0 ? "+" : ""}${formatted} VND`
+}
+
 export function fmtOrdinal(n: number): string {
   return n.toFixed(2) + "th"
 }

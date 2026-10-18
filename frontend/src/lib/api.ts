@@ -136,6 +136,8 @@ type WatchlistDeleteResponse = components["schemas"]["WatchlistDeleteResponse"]
 
 export type InstrumentPricePoint = components["schemas"]["InstrumentPricePointResponse"]
 export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPriceHistoryResponse"]
+export type InstrumentFlowPoint = components["schemas"]["InstrumentFlowPointResponse"]
+export type InstrumentFlowResponse = components["schemas"]["InstrumentFlowResponse"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -390,6 +392,18 @@ export function instrumentPriceHistoryApi(
   instrumentId: number,
 ): Promise<InstrumentPriceHistoryResponse> {
   return get(`/instruments/${instrumentId}/history`)
+}
+
+export function instrumentMarketFlowsApi(params: {
+  instrument_id: number
+  participant_type: "foreign"
+  start?: string
+  end?: string
+}): Promise<InstrumentFlowResponse> {
+  const query = new URLSearchParams({ participant_type: params.participant_type })
+  if (params.start) query.set("start", params.start)
+  if (params.end) query.set("end", params.end)
+  return get(`/instruments/${params.instrument_id}/market-flows?${query}`)
 }
 
 export function newLowDeepApi(

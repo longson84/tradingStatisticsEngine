@@ -14,6 +14,7 @@ import { DataModelPage } from "@/pages/DataModelPage"
 import { ReferenceRatesPage } from "@/pages/ReferenceRatesPage"
 import { VenuesPage } from "@/pages/VenuesPage"
 import { UniverseStatsPage } from "@/pages/UniverseStatsPage"
+import { InvestorFlowPage } from "@/pages/InvestorFlowPage"
 import { AnalysisContextProvider } from "@/lib/analysis-provider"
 
 const qc = new QueryClient({
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/build/data-model" element={<DataModelPage />} />
           <Route path="/venues" element={<VenuesPage />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />
+          <Route path="/vietnam-market/investor-flow" element={<InvestorFlowPage />} />
           </Routes>
         </BrowserRouter>
       </AnalysisContextProvider>
