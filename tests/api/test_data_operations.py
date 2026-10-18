@@ -596,6 +596,18 @@ def test_trade_history_collection_preview_counts_instrument_coverage_states():
     assert "3 stored sessions" in preview.message
 
 
+def test_trade_history_service_preview_requires_both_period_dates():
+    scope = DataOperationScopeRecord(
+        scope_type="instrument", scope_id="2", name="FPT",
+        instruments=(instrument(2, "FPT", country_code="VN"),),
+    )
+
+    with pytest.raises(ValueError, match="period_start and period_end"):
+        data_operation_service(scope).preview(
+            "instrument", "2", "trade_history", period_start=None, period_end=None,
+        )
+
+
 @pytest.mark.parametrize("dataset", ["session_stats", "trade_history", "prices"])
 def test_preview_rejects_invalid_period_contract_before_planning(dataset):
     class UnusedService:

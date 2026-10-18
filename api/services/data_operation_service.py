@@ -11,7 +11,10 @@ from api.instrument_data_routing import (
     UnsupportedInstrumentRouteError,
     resolve_instrument_data_route,
 )
-from api.market_sessions import latest_completed_venue_session
+from api.market_sessions import (
+    latest_completed_venue_session,
+    latest_requested_venue_session,
+)
 from api.repositories.data_operation_repository import (
     DataOperationInstrumentRecord,
     DataOperationRepository,
@@ -132,6 +135,10 @@ class DataOperationService:
         period_start: date | None = None,
         period_end: date | None = None,
     ) -> DataOperationPreview:
+        if dataset == "trade_history" and (
+            period_start is None or period_end is None
+        ):
+            raise ValueError("trade_history requires period_start and period_end")
         plan, scope, routes = self._plan(scope_type, scope_id, dataset)
         eligible = tuple(
             row
@@ -178,8 +185,8 @@ class DataOperationService:
                 }
                 current_count = sum(
                     bool(activity_rows[row.id])
-                    and activity_rows[row.id][-1].trading_date >= min(
-                        period_end, _expected_session(routes[row.id], current)
+                    and activity_rows[row.id][-1].trading_date >= latest_requested_venue_session(
+                        period_end, current, routes[row.id].schedule
                     )
                     for row in eligible
                 )

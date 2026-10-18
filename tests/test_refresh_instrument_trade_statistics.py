@@ -171,6 +171,31 @@ def test_incremental_refresh_skips_provider_when_requested_period_is_current(dat
     )
 
 
+@pytest.mark.parametrize(
+    ("period_end", "current"),
+    [
+        (date(2026, 10, 19), datetime(2026, 10, 19, 7, tzinfo=UTC)),
+        (date(2026, 10, 30), datetime(2026, 10, 18, 8, tzinfo=UTC)),
+    ],
+)
+def test_incremental_refresh_uses_latest_completed_venue_session(
+    database, monkeypatch, period_end, current,
+):
+    provider, calls = _provider(monkeypatch)
+    refresh.refresh_instrument_trade_statistics(
+        1, START, END, engine=database, provider=provider, now=FETCHED_AT,
+    )
+    calls.clear()
+
+    detail = refresh.refresh_instrument_trade_statistics(
+        1, START, period_end, mode="incremental", engine=database,
+        provider=provider, now=current,
+    )
+
+    assert calls == []
+    assert "already covered through 2026-10-16" in detail
+
+
 @pytest.mark.parametrize("case", ["unknown", "inactive", "unsupported"])
 def test_refresh_resolves_exact_instrument_capability_before_provider_work(database, monkeypatch, case):
     instrument_id = 999 if case == "unknown" else 1

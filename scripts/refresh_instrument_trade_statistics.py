@@ -5,6 +5,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine, session_scope
+from api.market_sessions import latest_requested_venue_session
 from api.providers.vietnam_market import (
     VietnamMarketProvider,
     VnstockProvider,
@@ -37,6 +38,7 @@ def refresh_instrument_trade_statistics(
         raise ValueError("now must be timezone-aware")
     if mode not in {"incremental", "full"}:
         raise ValueError("mode must be incremental or full")
+    current = now or datetime.now(UTC)
     db_engine = engine or create_db_engine()
     with Session(db_engine) as session:
         repository = SqlAlchemyTradeStatisticsRepository(session)
@@ -49,7 +51,9 @@ def refresh_instrument_trade_statistics(
         if mode == "incremental":
             stored = repository.list_rows(instrument_id, period_start, period_end)
             latest = stored[-1].trading_date if stored else None
-            target = _last_weekday(period_end)
+            target = latest_requested_venue_session(
+                period_end, current, route.schedule,
+            )
             if latest is not None and latest >= target:
                 return (
                     f"{instrument.symbol} trade statistics requested through {period_end} "
@@ -61,7 +65,7 @@ def refresh_instrument_trade_statistics(
         route.provider_symbol, fetch_start, period_end,
     )
     rows = normalize_trade_history_result(result)
-    fetched_at = now or datetime.now(UTC)
+    fetched_at = current
     with session_scope(db_engine) as session:
         stored_count = TradeStatisticsWriteService(
             SqlAlchemyTradeStatisticsRepository(session),
@@ -78,9 +82,3 @@ def refresh_instrument_trade_statistics(
     if mode == "incremental" and fetch_start != period_start:
         detail += f"; incremental tail {fetch_start} through {period_end}"
     return detail
-
-
-def _last_weekday(value: date) -> date:
-    while value.weekday() >= 5:
-        value -= timedelta(days=1)
-    return value

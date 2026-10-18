@@ -6,6 +6,7 @@ import pytest
 
 from api.market_sessions import (
     latest_completed_venue_session,
+    latest_requested_venue_session,
 )
 from api.venue_calendars import VenueCalendarMetadata, venue_calendar
 
@@ -31,6 +32,18 @@ def test_vietnam_and_continuous_venue_schedules_have_distinct_day_rules():
         datetime(2026, 8, 3, 12, tzinfo=UTC),
         venue_calendar("BINANCE_SPOT"),
     ) == date(2026, 8, 2)
+
+
+def test_requested_equity_session_uses_completed_cutoff_and_skips_weekend_end():
+    schedule = venue_calendar("HOSE")
+    monday_before_close = datetime(2026, 10, 19, 7, tzinfo=UTC)
+
+    assert latest_requested_venue_session(
+        date(2026, 10, 30), monday_before_close, schedule,
+    ) == date(2026, 10, 16)
+    assert latest_requested_venue_session(
+        date(2026, 10, 18), datetime(2026, 10, 20, 9, tzinfo=UTC), schedule,
+    ) == date(2026, 10, 16)
 
 
 def test_venue_session_helper_rejects_invalid_timezone_and_calendar():

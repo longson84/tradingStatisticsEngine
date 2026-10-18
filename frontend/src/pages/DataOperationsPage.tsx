@@ -15,8 +15,10 @@ import {
 import { Sidebar } from "@/components/Sidebar"
 import { BatchOperationsPanel } from "@/components/data-operations/BatchOperationsPanel"
 import {
+  buildDataOperationRequest,
   dataOperationModeOptions,
   effectiveDataOperationMode,
+  isIsoDate,
   requiresInstrumentScope,
 } from "@/components/data-operations/dataOperationRules"
 import { useSearchableSelectKeyboard } from "@/components/forms/useSearchableSelectKeyboard"
@@ -254,16 +256,10 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   }
   const run = () => {
     if (!preview.data?.can_run) return
-    if (isExactPeriodDataset(dataset) && (
-      scopeType !== "instrument" || !isIsoDate(periodStart) || !isIsoDate(periodEnd)
-      || periodStart > periodEnd
-    )) return
-    start.mutate({
-      scope_type: scopeType, scope_id: scopeId, dataset,
-      mode: effectiveDataOperationMode(dataset, mode),
-      period_start: isExactPeriodDataset(dataset) ? periodStart : null,
-      period_end: isExactPeriodDataset(dataset) ? periodEnd : null,
+    const request = buildDataOperationRequest({
+      scopeType, scopeId, dataset, mode, periodStart, periodEnd,
     })
+    if (request) start.mutate(request)
   }
   const running = operationRunning
   const checkingActiveJob = scopeId.length > 0
@@ -277,7 +273,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     setScopeType(run.scope_type)
     setScopeId(run.scope_id)
     setDataset(run.dataset)
-    setMode(isExactPeriodDataset(run.dataset) ? "full" : run.mode)
+    setMode(effectiveDataOperationMode(run.dataset, run.mode))
     setPeriodStart(run.period_start ?? "")
     setPeriodEnd(run.period_end ?? "")
     setStartedJob(null)
@@ -1144,12 +1140,6 @@ function isVnExactDataset(value: DataOperationDataset): value is "foreign_flow" 
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="text-xs font-medium">{label}<input type="date" value={value} onChange={event => onChange(event.target.value)} className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></label>
-}
-
-function isIsoDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) return false
-  const date = new Date(`${value}T00:00:00Z`)
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
 function parseExactPeriodPrefill(params: URLSearchParams): {

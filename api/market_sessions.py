@@ -46,3 +46,19 @@ def latest_completed_venue_session(
     while candidate.weekday() >= 5:
         candidate -= timedelta(days=1)
     return candidate
+
+
+def latest_requested_venue_session(
+    requested_end: date,
+    now: datetime,
+    schedule: VenueCalendarMetadata,
+) -> date:
+    """Bound a requested end date to the latest completed venue session."""
+    candidate = min(requested_end, latest_completed_venue_session(now, schedule))
+    if schedule.trading_calendar_code in {
+        US_EQUITY_CALENDAR,
+        VN_EQUITY_CALENDAR,
+    }:
+        while candidate.weekday() >= 5:
+            candidate -= timedelta(days=1)
+    return candidate

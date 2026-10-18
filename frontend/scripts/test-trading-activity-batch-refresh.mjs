@@ -23,6 +23,29 @@ try {
     ["incremental", "Incremental"],
     ["full", "Re-fetch period"],
   ])
+  assert.deepEqual(rules.buildDataOperationRequest({
+    scopeType: "universe",
+    scopeId: "VN100",
+    dataset: "trade_history",
+    mode: "incremental",
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-16",
+  }), {
+    scope_type: "universe",
+    scope_id: "VN100",
+    dataset: "trade_history",
+    mode: "incremental",
+    period_start: "2026-10-01",
+    period_end: "2026-10-16",
+  })
+  assert.equal(rules.buildDataOperationRequest({
+    scopeType: "watchlist",
+    scopeId: "7",
+    dataset: "session_stats",
+    mode: "full",
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-16",
+  }), null)
   console.log("Trading activity batch refresh UI rules passed")
 } finally {
   await server.close()
