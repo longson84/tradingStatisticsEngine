@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { NavLink, useNavigate } from "react-router"
+import { NavLink, useNavigate, useSearchParams } from "react-router"
 import {
   CheckCircle2,
   DatabaseZap,
@@ -83,18 +83,22 @@ interface TrackedOperation {
 export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [prefill] = useState(() => parseSessionStatsPrefill(searchParams))
   const [restoredOperation] = useState(readTrackedOperation)
   const [scopeType, setScopeType] = useState<SingleOperationScopeType>(
-    restoredOperation?.scopeType ?? "universe",
+    prefill ? "instrument" : restoredOperation?.scopeType ?? "universe",
   )
-  const [scopeId, setScopeId] = useState(restoredOperation?.scopeId ?? "")
+  const [scopeId, setScopeId] = useState(prefill?.instrumentId ?? restoredOperation?.scopeId ?? "")
   const [dataset, setDataset] = useState<DataOperationDataset>(
-    restoredOperation?.dataset ?? "prices",
+    prefill ? "session_stats" : restoredOperation?.dataset ?? "prices",
   )
   const [mode, setMode] = useState<DataOperationMode>(
-    restoredOperation?.mode ?? "incremental",
+    prefill ? "full" : restoredOperation?.mode ?? "incremental",
   )
-  const [instrumentSearch, setInstrumentSearch] = useState("")
+  const [instrumentSearch, setInstrumentSearch] = useState(prefill?.symbol ?? "")
+  const [periodStart, setPeriodStart] = useState(prefill?.periodStart ?? "")
+  const [periodEnd, setPeriodEnd] = useState(prefill?.periodEnd ?? "")
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentCatalogItem | null>(null)
   const [startedJob, setStartedJob] = useState<DataOperationJob | null>(null)
   const [trackedJobId, setTrackedJobId] = useState(restoredOperation?.jobId ?? "")
@@ -110,15 +114,21 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     queryFn: () => instrumentsApi({
       search: normalizedSearch,
       has_price_history: false,
-      capability: isParticipantFlowDataset(dataset) ? dataset : undefined,
+      capability: isVnExactDataset(dataset) ? dataset : undefined,
       limit: 20,
     }),
     enabled: scopeType === "instrument" && normalizedSearch.length >= 3,
   })
   const preview = useQuery({
-    queryKey: ["data-operation-preview", scopeType, scopeId, dataset],
-    queryFn: () => dataOperationPreviewApi({ scope_type: scopeType, scope_id: scopeId, dataset }),
-    enabled: scopeId.length > 0,
+    queryKey: ["data-operation-preview", scopeType, scopeId, dataset, periodStart, periodEnd],
+    queryFn: () => dataOperationPreviewApi({
+      scope_type: scopeType, scope_id: scopeId, dataset,
+      period_start: dataset === "session_stats" ? periodStart : undefined,
+      period_end: dataset === "session_stats" ? periodEnd : undefined,
+    }),
+    enabled: scopeId.length > 0 && (dataset !== "session_stats" || (
+      periodStart.length > 0 && periodEnd.length > 0 && periodStart <= periodEnd
+    )),
   })
   const coverage = useQuery({
     queryKey: [
@@ -239,7 +249,11 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   }
   const run = () => {
     if (!preview.data?.can_run) return
-    start.mutate({ scope_type: scopeType, scope_id: scopeId, dataset, mode })
+    start.mutate({
+      scope_type: scopeType, scope_id: scopeId, dataset, mode,
+      period_start: dataset === "session_stats" ? periodStart : null,
+      period_end: dataset === "session_stats" ? periodEnd : null,
+    })
   }
   const running = operationRunning
   const checkingActiveJob = scopeId.length > 0
@@ -308,7 +322,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   <button
                     key={option.value}
                     onClick={() => chooseScope(option.value)}
-                    disabled={isParticipantFlowDataset(dataset) && option.value !== "instrument"}
+                    disabled={isVnExactDataset(dataset) && option.value !== "instrument"}
                     className={cn(
                       "rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35",
                       scopeType === option.value
@@ -394,20 +408,24 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ["fundamentals", "Fundamentals"],
                   ["foreign_flow", "Foreign flow"],
                   ["proprietary_flow", "Proprietary flow"],
+                  ["session_stats", "Session statistics"],
                 ]}
                 value={dataset}
                 onChange={value => {
                   const next = value as DataOperationDataset
                   setDataset(next)
-                  if (isParticipantFlowDataset(next) && scopeType !== "instrument") {
+                  if (isVnExactDataset(next) && scopeType !== "instrument") {
                     chooseScope("instrument")
                   }
+                  if (next === "session_stats") setMode("full")
                   setStartedJob(null)
                 }}
               />
               <ChoiceGroup
                 label="Mode"
-                options={[
+                options={dataset === "session_stats" ? [
+                  ["full", "Selected period"],
+                ] : [
                   ["incremental", "Incremental"],
                   ["full", "Full history"],
                 ]}
@@ -415,6 +433,11 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                 onChange={value => setMode(value as DataOperationMode)}
               />
             </div>
+
+            {dataset === "session_stats" && <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DateField label="Period start" value={periodStart} onChange={setPeriodStart} />
+              <DateField label="Period end" value={periodEnd} onChange={setPeriodEnd} />
+            </div>}
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
@@ -438,6 +461,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                 {dataset === "foreign_flow" ? "Foreign" : "Proprietary"} flow updates stored VCI observations for one exact eligible Vietnam equity. It is not available for universes, watchlists, or unsupported instruments.
               </p>
             )}
+            {dataset === "session_stats" && <p className="mt-3 text-xs text-muted-foreground">Fetches one immutable VCI aggregate snapshot for this exact Instrument and period. Full mode is required.</p>}
           </section>
 
           <div className="space-y-5">
@@ -1060,7 +1084,7 @@ function readTrackedOperation(): TrackedOperation | null {
         value.scopeType ?? "",
       )
       || typeof value.scopeId !== "string"
-      || !(["prices", "fundamentals", "foreign_flow", "proprietary_flow"] as const).includes(
+      || !(["prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"] as const).includes(
         value.dataset as DataOperationDataset,
       )
       || !(["incremental", "full"] as const).includes(
@@ -1091,4 +1115,29 @@ function isParticipantFlowDataset(
   value: DataOperationDataset,
 ): value is "foreign_flow" | "proprietary_flow" {
   return value === "foreign_flow" || value === "proprietary_flow"
+}
+
+function isVnExactDataset(value: DataOperationDataset): value is "foreign_flow" | "proprietary_flow" | "session_stats" {
+  return isParticipantFlowDataset(value) || value === "session_stats"
+}
+
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <label className="text-xs font-medium">{label}<input type="date" value={value} onChange={event => onChange(event.target.value)} className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></label>
+}
+
+function parseSessionStatsPrefill(params: URLSearchParams): {
+  instrumentId: string
+  symbol: string
+  periodStart: string
+  periodEnd: string
+} | null {
+  if (params.get("dataset") !== "session_stats") return null
+  const instrumentId = params.get("instrument_id") ?? ""
+  const symbol = (params.get("symbol") ?? "").trim().toUpperCase()
+  const periodStart = params.get("period_start") ?? ""
+  const periodEnd = params.get("period_end") ?? ""
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/
+  if (!/^\d+$/.test(instrumentId) || Number(instrumentId) <= 0 || !symbol) return null
+  if (!isoDate.test(periodStart) || !isoDate.test(periodEnd) || periodStart > periodEnd) return null
+  return { instrumentId, symbol, periodStart, periodEnd }
 }

@@ -312,8 +312,16 @@ export function dataOperationPreviewApi(params: {
   scope_type: DataOperationScopeType
   scope_id: string
   dataset: DataOperationDataset
+  period_start?: string
+  period_end?: string
 }): Promise<DataOperationPreview> {
-  const query = new URLSearchParams(params)
+  const query = new URLSearchParams({
+    scope_type: params.scope_type,
+    scope_id: params.scope_id,
+    dataset: params.dataset,
+  })
+  if (params.period_start) query.set("period_start", params.period_start)
+  if (params.period_end) query.set("period_end", params.period_end)
   return get(`/data-operations/preview?${query}`)
 }
 
