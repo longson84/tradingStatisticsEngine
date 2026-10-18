@@ -22,6 +22,7 @@ from api.routes import (
     instrument_history,
     market_flows,
     reference_rates,
+    session_statistics,
     universes,
     universe_stats,
     venues,
@@ -48,6 +49,7 @@ app.include_router(companies.router)
 app.include_router(instruments.router)
 app.include_router(instrument_history.router)
 app.include_router(market_flows.router)
+app.include_router(session_statistics.router)
 app.include_router(crypto.router)
 app.include_router(reference_rates.router)
 app.include_router(universes.router)
