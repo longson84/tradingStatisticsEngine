@@ -184,41 +184,60 @@ def test_wikipedia_provider_selects_the_named_constituent_table(
     assert [row.canonical_symbol for row in snapshot.constituents] == [expected]
 
 
-class _FakeListing:
+class _FakeIndexReference:
     def __init__(self) -> None:
         self.group_calls: list[str] = []
-        self.metadata_calls = 0
 
-    def symbols_by_group(self, group: str) -> pd.Series:
-        self.group_calls.append(group)
+    def list_by_group(self, group: str, *, source: str) -> pd.DataFrame:
+        self.group_calls.append(f"{group}:{source}")
         values = {
             "VN30": ["ACB", "FPT"],
             "VNMidCap": ["ANV"],
             "VNSmallCap": ["AAA", "AAM"],
         }
-        return pd.Series(values[group], name="symbol")
+        return pd.DataFrame({"symbol": values[group]})
 
-    def all_symbols(self) -> pd.DataFrame:
-        self.metadata_calls += 1
+
+class _FakeEquityReference:
+    def __init__(self) -> None:
+        self.exchange_calls = 0
+        self.industry_calls = 0
+
+    def list_by_exchange(self, *, source: str) -> pd.DataFrame:
+        assert source == "vci"
+        self.exchange_calls += 1
         return pd.DataFrame({
             "symbol": ["ACB", "FPT", "ANV", "AAA", "AAM"],
             "organ_name": ["ACB", "FPT Corporation", "ANV", "AAA", "AAM"],
+            "exchange": ["HOSE", "HOSE", "HOSE", "HOSE", "HOSE"],
         })
 
-    def symbols_by_industries(self) -> pd.DataFrame:
+    def list_by_industry(self, *, lang: str, source: str) -> pd.DataFrame:
+        assert (lang, source) == ("en", "vci")
+        self.industry_calls += 1
         return pd.DataFrame({
-            "symbol": ["ACB", "FPT"],
-            "industry_code": [11, 6],
-            "industry_name": ["Ngân hàng", "Công nghệ và thông tin"],
+            "symbol": ["ACB", "ACB", "FPT", "FPT", "FPT"],
+            "icb_level": [1, 4, 1, 3, 4],
+            "icb_code": ["8000", "8355", "9000", "9500", "9537"],
+            "icb_name": [
+                "Financials", "Banks", "Technology", "Technology Hardware",
+                "Software",
+            ],
         })
+
+
+class _FakeReference:
+    def __init__(self) -> None:
+        self.index = _FakeIndexReference()
+        self.equity = _FakeEquityReference()
 
 
 def test_vnstock_provider_derives_composite_universes_and_caches_source_calls(
     monkeypatch,
 ):
-    monkeypatch.setattr(vietnam_universes.metadata, "version", lambda name: "3.2.7")
-    listing = _FakeListing()
-    provider = VnstockUniverseProvider(lambda: listing)
+    monkeypatch.setattr(vietnam_universes.metadata, "version", lambda name: "5.1.0")
+    reference = _FakeReference()
+    provider = VnstockUniverseProvider(lambda: reference)
 
     vn100 = provider.fetch("VN100")
     vnall = provider.fetch("VNALL")
@@ -233,29 +252,32 @@ def test_vnstock_provider_derives_composite_universes_and_caches_source_calls(
     assert {row.canonical_symbol for row in vn30.constituents} <= {
         row.canonical_symbol for row in vn100.constituents
     }
-    assert listing.group_calls == ["VN30", "VNMidCap", "VNSmallCap"]
-    assert listing.metadata_calls == 1
-    assert vn30.source == "vnstock-data-3.2.7-kbs"
-    assert vn100.source == "vnstock-data-3.2.7-kbs-derived"
+    assert reference.index.group_calls == [
+        "VN30:kbs", "VNMidCap:kbs", "VNSmallCap:kbs",
+    ]
+    assert reference.equity.exchange_calls == 1
+    assert reference.equity.industry_calls == 1
+    assert vn30.source == "vnstock-5.1.0-kbs"
+    assert vn100.source == "vnstock-5.1.0-kbs-derived"
     fpt = next(row for row in vnall.constituents if row.canonical_symbol == "FPT")
-    assert fpt.sector == "Information Technology"
-    assert fpt.industry == "Công nghệ và thông tin"
+    assert fpt.company_name == "FPT Corporation"
+    assert fpt.exchange == "HOSE"
+    assert fpt.sector == "Technology"
+    assert fpt.industry == "Software"
 
 
-def test_vnstock_default_listing_uses_sponsored_package(monkeypatch):
-    listing = object()
+def test_vnstock_default_reference_uses_generation_5_package(monkeypatch):
+    reference = object()
 
     class Module:
         @staticmethod
-        def Listing(*, source: str, show_log: bool):
-            assert source == "KBS"
-            assert show_log is False
-            return listing
+        def Reference():
+            return reference
 
-    def import_sponsored(name: str):
-        assert name == "vnstock_data"
+    def import_vnstock(name: str):
+        assert name == "vnstock"
         return Module
 
-    monkeypatch.setattr(vietnam_universes, "import_module", import_sponsored)
+    monkeypatch.setattr(vietnam_universes, "import_module", import_vnstock)
 
-    assert vietnam_universes._default_listing_factory() is listing
+    assert vietnam_universes._default_reference_factory() is reference
