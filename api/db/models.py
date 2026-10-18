@@ -520,7 +520,7 @@ class DataOperationRun(Base):
             name="ck_data_operation_runs_scope_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow', 'session_stats')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow', 'session_stats', 'trade_history')",
             name="ck_data_operation_runs_dataset",
         ),
         CheckConstraint(

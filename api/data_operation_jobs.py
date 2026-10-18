@@ -23,7 +23,8 @@ from api.price_refresh_coordination import (
 
 ScopeType = Literal["category", "universe", "watchlist", "instrument"]
 Dataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats",
+    "trade_history",
 ]
 Mode = Literal["incremental", "full"]
 Status = Literal["queued", "running", "completed", "failed"]
@@ -116,7 +117,8 @@ def start_data_operation_job(
     except Exception:
         with _lock:
             _jobs.pop(job.id, None)
-            _active_keys.pop(key, None)
+            if _active_keys.get(key) == job.id:
+                _active_keys.pop(key)
         for adapter in acquired:
             release_price_refresh(adapter, job.id)
         raise
@@ -146,7 +148,7 @@ def get_active_scope_job(
     with _lock:
         for dataset in (
             "prices", "fundamentals", "foreign_flow", "proprietary_flow",
-            "session_stats",
+            "session_stats", "trade_history",
         ):
             job_id = _active_keys.get((scope_type, scope_id, dataset))
             if job_id is not None:

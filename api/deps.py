@@ -183,6 +183,7 @@ def get_data_operation_service(
         SqlAlchemyDataOperationRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
         SqlAlchemySessionStatisticsRepository(session),
+        SqlAlchemyTradeStatisticsRepository(session),
     )
 
 

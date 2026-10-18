@@ -9,9 +9,14 @@ from pydantic import BaseModel, model_validator
 
 DataOperationScopeType = Literal["category", "universe", "watchlist", "instrument"]
 DataOperationDataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats",
+    "trade_history",
 ]
 DataOperationMode = Literal["incremental", "full"]
+
+
+def is_exact_period_dataset(dataset: str) -> bool:
+    return dataset in {"session_stats", "trade_history"}
 
 
 class DataOperationRequest(BaseModel):
@@ -25,15 +30,17 @@ class DataOperationRequest(BaseModel):
     @model_validator(mode="after")
     def validate_period(self):
         has_period = self.period_start is not None or self.period_end is not None
-        if self.dataset == "session_stats":
+        if is_exact_period_dataset(self.dataset):
+            if self.scope_type != "instrument":
+                raise ValueError(f"{self.dataset} requires one exact Instrument scope")
             if self.period_start is None or self.period_end is None:
-                raise ValueError("session_stats requires period_start and period_end")
+                raise ValueError(f"{self.dataset} requires period_start and period_end")
             if self.period_start > self.period_end:
                 raise ValueError("period_start must be on or before period_end")
             if self.mode != "full":
-                raise ValueError("session_stats requires full mode")
+                raise ValueError(f"{self.dataset} requires full mode")
         elif has_period:
-            raise ValueError("period dates are only valid for session_stats")
+            raise ValueError("period dates are only valid for exact-period datasets")
         return self
 
 

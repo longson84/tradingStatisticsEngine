@@ -22,11 +22,10 @@ from api.repositories.instrument_routing_repository import (
     InstrumentRoutingRepository,
 )
 from api.repositories.session_statistics_repository import SessionStatisticsRepository
+from api.repositories.trade_statistics_repository import TradeStatisticsRepository
+from api.schemas.data_operations import DataOperationDataset, is_exact_period_dataset
 
 
-DataOperationDataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
-]
 PriceCoverageStatus = Literal["current", "stale", "missing"]
 FUNDAMENTAL_REUSE_WINDOW = timedelta(hours=12)
 
@@ -116,10 +115,12 @@ class DataOperationService:
         repository: DataOperationRepository,
         routing_repository: InstrumentRoutingRepository,
         session_statistics_repository: SessionStatisticsRepository | None = None,
+        trade_statistics_repository: TradeStatisticsRepository | None = None,
     ) -> None:
         self._repository = repository
         self._routing_repository = routing_repository
         self._session_statistics_repository = session_statistics_repository
+        self._trade_statistics_repository = trade_statistics_repository
 
     def preview(
         self,
@@ -163,9 +164,16 @@ class DataOperationService:
             missing_count = sum(
                 getattr(row, last_date_field) is None for row in eligible
             )
-        elif dataset == "session_stats":
+        elif is_exact_period_dataset(dataset):
             if period_start is None or period_end is None:
                 current_count = 0
+            elif dataset == "trade_history":
+                current_count = sum(
+                    len(self._trade_statistics_repository.list_rows(
+                        row.id, period_start, period_end
+                    ))
+                    for row in eligible
+                ) if self._trade_statistics_repository is not None else 0
             elif self._session_statistics_repository is None:
                 current_count = 0
             else:
@@ -175,7 +183,10 @@ class DataOperationService:
                     ) is not None
                     for row in eligible
                 )
-            missing_count = len(eligible) - current_count
+            missing_count = (
+                int(bool(eligible) and current_count == 0)
+                if dataset == "trade_history" else len(eligible) - current_count
+            )
         else:
             current_count = sum(
                 row.last_date is not None
@@ -184,6 +195,13 @@ class DataOperationService:
             )
             missing_count = sum(row.last_date is None for row in eligible)
         stale_count = len(eligible) - current_count - missing_count
+        message = plan.message
+        if dataset == "trade_history":
+            stale_count = 0
+            message = (
+                f"{plan.message} {current_count} stored rows in the requested range; "
+                "session completeness is not assessed."
+            )
         return DataOperationPreview(
             scope_type=scope.scope_type,
             scope_id=scope.scope_id,
@@ -196,7 +214,7 @@ class DataOperationService:
             missing_count=missing_count,
             unsupported_count=len(scope.instruments) - len(eligible),
             can_run=plan.can_run,
-            message=plan.message,
+            message=message,
         )
 
     def plan(
@@ -320,7 +338,7 @@ def _eligible(
         return False
     if dataset == "fundamentals":
         return route.fundamental_adapter is not None
-    if dataset in {"foreign_flow", "proprietary_flow", "session_stats"}:
+    if dataset in {"foreign_flow", "proprietary_flow"} or is_exact_period_dataset(dataset):
         return dataset in route.capabilities
     return True
 
@@ -408,7 +426,7 @@ def _dataset_adapter(
 ) -> str | None:
     if route is None:
         return None
-    if dataset in {"foreign_flow", "proprietary_flow", "session_stats"}:
+    if dataset in {"foreign_flow", "proprietary_flow"} or is_exact_period_dataset(dataset):
         return "vnstock" if dataset in route.capabilities else None
     return (
         route.fundamental_adapter
@@ -426,10 +444,10 @@ def _execution(
     if not scope.instruments:
         return False, "This scope has no active instruments."
     if (
-        dataset in {"foreign_flow", "proprietary_flow", "session_stats"}
+        (dataset in {"foreign_flow", "proprietary_flow"} or is_exact_period_dataset(dataset))
         and scope.scope_type != "instrument"
     ):
-        return False, "Participant flow updates require one exact Instrument scope."
+        return False, f"{dataset} updates require one exact Instrument scope."
     if not eligible_count:
         return False, f"No instruments support {dataset} updates."
     oversized = tuple(

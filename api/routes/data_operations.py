@@ -42,6 +42,7 @@ from api.schemas.data_operations import (
     DataOperationRequest,
     DataOperationScopeType,
     InstrumentPriceCoveragePageResponse,
+    is_exact_period_dataset,
 )
 from api.services.data_operation_service import (
     DataOperationService,
@@ -170,13 +171,14 @@ def preview_data_operation(
     period_end: date | None = Query(default=None),
 ) -> DataOperationPreviewResponse:
     try:
-        if dataset == "session_stats" and (
-            period_start is None or period_end is None or period_start > period_end
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail="session_stats requires an ordered period_start and period_end",
+        try:
+            DataOperationRequest(
+                scope_type=scope_type, scope_id=scope_id, dataset=dataset,
+                mode="full" if is_exact_period_dataset(dataset) else "incremental",
+                period_start=period_start, period_end=period_end,
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         preview = service.preview(
             scope_type, scope_id, dataset,
             period_start=period_start, period_end=period_end,

@@ -123,3 +123,20 @@ def test_operation_models_keep_session_stats_out_of_batch_datasets():
     assert "proprietary_flow" in str(step_constraint.sqltext)
     assert "session_stats" in str(run_constraint.sqltext)
     assert "session_stats" not in str(step_constraint.sqltext)
+
+
+@pytest.mark.parametrize("dataset", ["session_stats", "trade_history"])
+def test_operation_batch_constraint_rejects_exact_period_datasets(dataset):
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    from api.db.models import DataOperationBatchPlan
+
+    with Session(engine) as session:
+        plan = DataOperationBatchPlan(name="VN", description="")
+        session.add(plan)
+        session.flush()
+        session.add(DataOperationBatchStep(plan_id=plan.id, position=0,
+                                          target_type="instrument", target_id="42",
+                                          dataset=dataset, mode="full"))
+        with pytest.raises(IntegrityError):
+            session.commit()
