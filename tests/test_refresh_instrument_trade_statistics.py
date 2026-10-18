@@ -146,10 +146,45 @@ def test_incremental_refresh_requests_only_the_tail_after_the_latest_stored_sess
     )
 
     assert calls == [{
-        "start": "2026-10-15", "end": "2026-10-18",
+        "start": "2026-10-15", "end": "2026-10-16",
         "resolution": "1D", "source": "vci",
     }]
-    assert "incremental tail 2026-10-15 through 2026-10-18" in detail
+    assert "incremental tail 2026-10-15 through 2026-10-16" in detail
+
+
+def test_incremental_refresh_bounds_stale_future_request_to_completed_session(database, monkeypatch):
+    full_provider, _ = _provider(monkeypatch, frame=_frame().iloc[[1]])
+    refresh.refresh_instrument_trade_statistics(
+        1, START, date(2026, 10, 14), engine=database,
+        provider=full_provider, now=FETCHED_AT,
+    )
+    provider, calls = _provider(monkeypatch, frame=_frame().iloc[[0]])
+
+    detail = refresh.refresh_instrument_trade_statistics(
+        1, START, date(2026, 10, 30), mode="incremental", engine=database,
+        provider=provider, now=FETCHED_AT,
+    )
+
+    assert calls == [{
+        "start": "2026-10-15", "end": "2026-10-16",
+        "resolution": "1D", "source": "vci",
+    }]
+    assert "incremental tail 2026-10-15 through 2026-10-16" in detail
+
+
+def test_incremental_refresh_skips_period_with_no_completed_sessions(database, monkeypatch):
+    provider, calls = _provider(monkeypatch)
+
+    detail = refresh.refresh_instrument_trade_statistics(
+        1, date(2026, 10, 19), date(2026, 10, 30), mode="incremental",
+        engine=database, provider=provider, now=FETCHED_AT,
+    )
+
+    assert calls == []
+    assert detail == (
+        "LOCAL-FPT trade statistics have no completed sessions in the requested "
+        "period 2026-10-19 through 2026-10-30"
+    )
 
 
 def test_incremental_refresh_skips_provider_when_requested_period_is_current(database, monkeypatch):

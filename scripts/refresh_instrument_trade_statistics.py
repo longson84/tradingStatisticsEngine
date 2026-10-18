@@ -48,12 +48,18 @@ def refresh_instrument_trade_statistics(
             instrument_id,
         )
         fetch_start = period_start
+        fetch_end = period_end
         if mode == "incremental":
             stored = repository.list_rows(instrument_id, period_start, period_end)
             latest = stored[-1].trading_date if stored else None
             target = latest_requested_venue_session(
                 period_end, current, route.schedule,
             )
+            if target < period_start:
+                return (
+                    f"{instrument.symbol} trade statistics have no completed sessions "
+                    f"in the requested period {period_start} through {period_end}"
+                )
             if latest is not None and latest >= target:
                 return (
                     f"{instrument.symbol} trade statistics requested through {period_end} "
@@ -61,8 +67,9 @@ def refresh_instrument_trade_statistics(
                 )
             if latest is not None:
                 fetch_start = max(period_start, latest + timedelta(days=1))
+            fetch_end = target
     result = (provider or VnstockProvider()).trade_history(
-        route.provider_symbol, fetch_start, period_end,
+        route.provider_symbol, fetch_start, fetch_end,
     )
     rows = normalize_trade_history_result(result)
     fetched_at = current
@@ -80,5 +87,5 @@ def refresh_instrument_trade_statistics(
         f"{rows.iloc[0]['trading_date']} through {rows.iloc[-1]['trading_date']}"
     )
     if mode == "incremental" and fetch_start != period_start:
-        detail += f"; incremental tail {fetch_start} through {period_end}"
+        detail += f"; incremental tail {fetch_start} through {fetch_end}"
     return detail
