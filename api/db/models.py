@@ -25,6 +25,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
+
+from api.trade_statistics import TRADE_STATISTIC_STORAGE_COLUMNS
 
 
 class Base(DeclarativeBase):
@@ -32,6 +35,27 @@ class Base(DeclarativeBase):
 
 
 _ID_TYPE = BigInteger().with_variant(Integer, "sqlite")
+
+
+class _TradeStatisticFixedPoint(TypeDecorator[Decimal]):
+    """PostgreSQL fixed point; SQLite text avoids its lossy NUMERIC affinity."""
+
+    impl = Numeric(38, 6)
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "sqlite":
+            return dialect.type_descriptor(String(40))
+        return dialect.type_descriptor(Numeric(38, 6))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        decimal_value = Decimal(str(value))
+        return format(decimal_value, "f") if dialect.name == "sqlite" else decimal_value
+
+    def process_result_value(self, value, dialect):
+        return None if value is None else Decimal(str(value))
 
 
 class Company(Base):
@@ -304,6 +328,9 @@ class Instrument(Base):
     session_statistic_snapshots: Mapped[
         list[InstrumentSessionStatisticSnapshot]
     ] = relationship(back_populates="instrument", cascade="all, delete-orphan")
+    daily_trade_statistics: Mapped[list[InstrumentDailyTradeStatistic]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
     price_refresh_states: Mapped[list[PriceRefreshState]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
@@ -761,6 +788,57 @@ class InstrumentFlowCoverage(Base):
     )
 
     instrument: Mapped[Instrument] = relationship(back_populates="flow_coverages")
+
+
+class InstrumentDailyTradeStatistic(Base):
+    """Canonical provider-reported activity for one Instrument session."""
+
+    __tablename__ = "instrument_daily_trade_statistics"
+    __table_args__ = (
+        UniqueConstraint(
+            "instrument_id", "trading_date",
+            name="uq_instrument_daily_trade_statistics_identity",
+        ),
+        CheckConstraint(
+            "schema_version > 0", name="ck_daily_trade_statistics_schema_version",
+        ),
+        *(
+            CheckConstraint(
+                f"CAST({name} AS NUMERIC) >= 0",
+                name=f"ck_daily_trade_statistics_{name}",
+            )
+            for name in TRADE_STATISTIC_STORAGE_COLUMNS
+            if name != "total_net_trade_volume"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False,
+    )
+    trading_date: Mapped[date] = mapped_column(Date, nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    market_cap: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_shares: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    matched_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    matched_value: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    deal_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    deal_value: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_value: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_buy_trade: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_buy_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_sell_trade: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_sell_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_net_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_buy_unmatched_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    total_sell_unmatched_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    average_buy_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    average_sell_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+
+    instrument: Mapped[Instrument] = relationship(back_populates="daily_trade_statistics")
 
 
 class InstrumentSessionStatisticSnapshot(Base):
