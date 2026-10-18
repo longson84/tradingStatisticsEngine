@@ -301,6 +301,9 @@ class Instrument(Base):
     flow_coverages: Mapped[list[InstrumentFlowCoverage]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
+    session_statistic_snapshots: Mapped[
+        list[InstrumentSessionStatisticSnapshot]
+    ] = relationship(back_populates="instrument", cascade="all, delete-orphan")
     price_refresh_states: Mapped[list[PriceRefreshState]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
@@ -756,6 +759,71 @@ class InstrumentFlowCoverage(Base):
     )
 
     instrument: Mapped[Instrument] = relationship(back_populates="flow_coverages")
+
+
+class InstrumentSessionStatisticSnapshot(Base):
+    """One immutable VCI aggregate for an exact Instrument period."""
+
+    __tablename__ = "instrument_session_stat_snapshots"
+    __table_args__ = (
+        CheckConstraint(
+            "period_start <= period_end",
+            name="ck_instrument_session_stat_snapshots_period",
+        ),
+        CheckConstraint(
+            "schema_version > 0",
+            name="ck_instrument_session_stat_snapshots_schema_version",
+        ),
+        Index(
+            "ix_instrument_session_stat_snapshot_lookup",
+            "instrument_id", "period_start", "period_end", "fetched_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    instrument: Mapped[Instrument] = relationship(
+        back_populates="session_statistic_snapshots"
+    )
+    metrics: Mapped[list[InstrumentSessionStatisticMetric]] = relationship(
+        back_populates="snapshot", cascade="all, delete-orphan"
+    )
+
+
+class InstrumentSessionStatisticMetric(Base):
+    """One fixed-point provider metric belonging to a period snapshot."""
+
+    __tablename__ = "instrument_session_stat_metrics"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id", "metric_code",
+            name="uq_instrument_session_stat_metric_identity",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("instrument_session_stat_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    metric_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+
+    snapshot: Mapped[InstrumentSessionStatisticSnapshot] = relationship(
+        back_populates="metrics"
+    )
 
 
 class Watchlist(Base):
