@@ -295,6 +295,12 @@ class Instrument(Base):
     price_bar_coverages: Mapped[list[PriceBarCoverage]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
+    flow_observations: Mapped[list[InstrumentFlowObservation]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
+    flow_coverages: Mapped[list[InstrumentFlowCoverage]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
     price_refresh_states: Mapped[list[PriceRefreshState]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan"
     )
@@ -484,7 +490,7 @@ class DataOperationRun(Base):
             name="ck_data_operation_runs_scope_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow')",
             name="ck_data_operation_runs_dataset",
         ),
         CheckConstraint(
@@ -658,6 +664,98 @@ class PriceRefreshState(Base):
     instrument: Mapped[Instrument] = relationship(
         back_populates="price_refresh_states"
     )
+
+
+class InstrumentFlowObservation(Base):
+    """One canonical daily participant-flow observation for an Instrument."""
+
+    __tablename__ = "instrument_flow_observations"
+    __table_args__ = (
+        CheckConstraint(
+            "participant_type IN ('foreign', 'proprietary')",
+            name="ck_instrument_flow_observations_participant",
+        ),
+        CheckConstraint(
+            "buy_volume >= 0", name="ck_instrument_flow_observations_buy_volume"
+        ),
+        CheckConstraint(
+            "buy_value >= 0", name="ck_instrument_flow_observations_buy_value"
+        ),
+        CheckConstraint(
+            "sell_volume >= 0", name="ck_instrument_flow_observations_sell_volume"
+        ),
+        CheckConstraint(
+            "sell_value >= 0", name="ck_instrument_flow_observations_sell_value"
+        ),
+        UniqueConstraint(
+            "instrument_id",
+            "trading_date",
+            "participant_type",
+            name="uq_instrument_flow_observation_identity",
+        ),
+        Index("ix_instrument_flow_observations_trading_date", "trading_date"),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    trading_date: Mapped[date] = mapped_column(Date, nullable=False)
+    participant_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    buy_volume: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    buy_value: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    sell_volume: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    sell_value: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    net_volume: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    net_value: Mapped[Decimal] = mapped_column(Numeric(38, 6), nullable=False)
+    currency: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    instrument: Mapped[Instrument] = relationship(back_populates="flow_observations")
+
+
+class InstrumentFlowCoverage(Base):
+    """Pre-aggregated coverage for one Instrument participant-flow series."""
+
+    __tablename__ = "instrument_flow_coverages"
+    __table_args__ = (
+        CheckConstraint(
+            "participant_type IN ('foreign', 'proprietary')",
+            name="ck_instrument_flow_coverages_participant",
+        ),
+        CheckConstraint("row_count > 0", name="ck_instrument_flow_coverages_rows"),
+        UniqueConstraint(
+            "instrument_id",
+            "participant_type",
+            name="uq_instrument_flow_coverage_participant",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    participant_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    first_date: Mapped[date] = mapped_column(Date, nullable=False)
+    last_date: Mapped[date] = mapped_column(Date, nullable=False)
+    row_count: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    instrument: Mapped[Instrument] = relationship(back_populates="flow_coverages")
 
 
 class Watchlist(Base):
@@ -919,7 +1017,7 @@ class DataOperationBatchStep(Base):
             name="ck_data_operation_batch_steps_target_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow')",
             name="ck_data_operation_batch_steps_dataset",
         ),
         CheckConstraint(
