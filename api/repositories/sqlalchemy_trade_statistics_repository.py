@@ -24,8 +24,7 @@ from api.trade_statistics import (
 
 
 _WRITE_BATCH_SIZE = 1_000
-_FIXED_POINT_LIMIT = Decimal("1e32")
-_FIXED_POINT_QUANTUM = Decimal("0.000001")
+_AVERAGE_COLUMNS = frozenset({"average_buy_trade_volume", "average_sell_trade_volume"})
 
 
 class SqlAlchemyTradeStatisticsRepository:
@@ -114,15 +113,16 @@ class SqlAlchemyTradeStatisticsRepository:
                 raise ValueError(f"Daily trade statistics {name} must be a finite Decimal")
             if name != "total_net_trade_volume" and value < 0:
                 raise ValueError(f"Daily trade statistics {name} must be non-negative")
-            if value.copy_abs() >= _FIXED_POINT_LIMIT:
-                raise ValueError(f"Daily trade statistics {name} exceeds Numeric(38, 6)")
+            scale = 18 if name in _AVERAGE_COLUMNS else 6
+            if value.copy_abs() >= Decimal(10) ** (38 - scale):
+                raise ValueError(f"Daily trade statistics {name} exceeds Numeric(38, {scale})")
             # Do not let the process-wide Decimal precision round large values.
             with localcontext() as context:
                 # One guard digit also permits rejecting a value whose rounding
-                # would carry into a 33rd integer digit without InvalidOperation.
+                # would exceed the fixed-point integer capacity without InvalidOperation.
                 context.prec = 39
-                if value.quantize(_FIXED_POINT_QUANTUM) != value:
-                    raise ValueError(f"Daily trade statistics {name} exceeds six decimal places")
+                if value.quantize(Decimal(1).scaleb(-scale)) != value:
+                    raise ValueError(f"Daily trade statistics {name} exceeds {scale} decimal places")
             result[name] = value
         return result
 

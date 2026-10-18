@@ -37,7 +37,7 @@ def _frame():
         "highest_price_adjusted": 72000, "lowest_price_adjusted": 69000,
         "total_net_trade_volume": -20, "total_buy_unmatched_volume": 1,
         "total_sell_unmatched_volume": 2, "price_change_value": "-500 (-0.71%)",
-        "average_buy_trade_volume": "5.125", "average_sell_trade_volume": "5.833333",
+        "average_buy_trade_volume": "788.324877791", "average_sell_trade_volume": "1243.4310509554",
     }
     # Deliberately reverse sessions: the normalizer must order the whole batch.
     return pd.DataFrame([row, row | {
@@ -125,7 +125,8 @@ def test_refresh_makes_one_exact_vci_request_between_short_database_scopes(datab
     assert rows[0].market_cap == Decimal("100000000000.25")
     assert rows[0].total_value == Decimal("1200.75")
     assert rows[0].total_net_trade_volume == Decimal("-20")
-    assert rows[0].average_buy_trade_volume == Decimal("5.125")
+    assert rows[0].average_buy_trade_volume == Decimal("788.324877791")
+    assert rows[0].average_sell_trade_volume == Decimal("1243.4310509554")
     with Session(database) as session:
         bar, = session.scalars(select(PriceBar)).all()
         assert (bar.close, bar.volume, bar.source) == (2, 123, "original")

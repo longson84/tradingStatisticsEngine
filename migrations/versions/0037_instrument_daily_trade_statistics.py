@@ -36,7 +36,13 @@ def upgrade() -> None:
         sa.Column("source", sa.String(100), nullable=False),
         sa.Column("schema_version", sa.Integer(), nullable=False),
         sa.Column("fetched_at", sa.DateTime(timezone=True), nullable=False),
-        *(sa.Column(name, sa.Numeric(38, 6), nullable=False) for name in _NUMERIC_COLUMNS),
+        *(sa.Column(
+            name,
+            sa.Numeric(38, 18 if name in {
+                "average_buy_trade_volume", "average_sell_trade_volume",
+            } else 6),
+            nullable=False,
+        ) for name in _NUMERIC_COLUMNS),
         sa.CheckConstraint(
             "schema_version > 0", name="ck_daily_trade_statistics_schema_version",
         ),

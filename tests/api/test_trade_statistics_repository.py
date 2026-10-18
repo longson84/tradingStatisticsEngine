@@ -120,6 +120,34 @@ def test_repository_reads_updated_values_even_when_orm_row_was_already_loaded(da
     assert loaded is not None
 
 
+def test_repository_preserves_observed_vci_average_precision(database):
+    session, instrument_id, _, repository = database
+    record = _write(
+        instrument_id,
+        average_buy_trade_volume=Decimal("788.324877791"),
+        average_sell_trade_volume=Decimal("1243.4310509554"),
+    )
+    assert repository.upsert_rows([record]) == 1
+    session.commit()
+    row, = repository.list_rows(instrument_id, record.trading_date, record.trading_date)
+    assert row.average_buy_trade_volume == record.average_buy_trade_volume
+    assert row.average_sell_trade_volume == record.average_sell_trade_volume
+
+
+def test_repository_preserves_full_average_fixed_point_capacity(database):
+    session, instrument_id, _, repository = database
+    record = _write(
+        instrument_id,
+        average_buy_trade_volume=Decimal("99999999999999999999.999999999999999999"),
+        average_sell_trade_volume=Decimal("0.000000000000000001"),
+    )
+    assert repository.upsert_rows([record]) == 1
+    session.commit()
+    row, = repository.list_rows(instrument_id, record.trading_date, record.trading_date)
+    assert row.average_buy_trade_volume == record.average_buy_trade_volume
+    assert row.average_sell_trade_volume == record.average_sell_trade_volume
+
+
 @pytest.mark.parametrize("overrides", [
     {"schema_version": 0}, {"schema_version": 2}, {"schema_version": True},
     {"instrument_id": 0}, {"instrument_id": 99999}, {"source": ""}, {"source": "  "},
@@ -130,6 +158,9 @@ def test_repository_reads_updated_values_even_when_orm_row_was_already_loaded(da
     {"total_value": Decimal("1.0000001")},
     {"total_value": Decimal("100000000000000000000000000000000")},
     {"total_value": Decimal("99999999999999999999999999999999.9999999")},
+    {"average_buy_trade_volume": Decimal("1.0000000000000000001")},
+    {"average_sell_trade_volume": Decimal("100000000000000000000")},
+    {"average_buy_trade_volume": Decimal("99999999999999999999.9999999999999999999")},
 ])
 def test_repository_rejects_malformed_batch_before_any_writes(database, overrides):
     session, instrument_id, _, repository = database

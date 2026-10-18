@@ -55,7 +55,9 @@ def test_trade_statistics_migration_postgres_uses_fixed_point_provenance(monkeyp
     columns = {item.name: item for item in tables[0][1] if isinstance(item, sa.Column)}
     fixed_point = [item for item in columns.values() if isinstance(item.type, sa.Numeric)]
     assert len(fixed_point) == 17
-    assert all((item.type.precision, item.type.scale) == (38, 6) for item in fixed_point)
+    for item in fixed_point:
+        scale = 18 if item.name in {"average_buy_trade_volume", "average_sell_trade_volume"} else 6
+        assert (item.type.precision, item.type.scale) == (38, scale)
     assert columns["fetched_at"].type.timezone
     assert all(not columns[name].nullable for name in (
         "instrument_id", "trading_date", "source", "schema_version", "fetched_at",

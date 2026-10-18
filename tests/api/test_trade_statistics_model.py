@@ -40,21 +40,24 @@ def test_trade_statistics_model_preserves_signed_net_and_exact_fixed_point(datab
     session.add(InstrumentDailyTradeStatistic(**_values(
         instrument_id,
         market_cap=Decimal("12345678901234567890123456789012.123456"),
-        average_buy_trade_volume=Decimal("123456789012345.123456"),
+        average_buy_trade_volume=Decimal("788.324877791"),
+        average_sell_trade_volume=Decimal("1243.4310509554"),
         total_net_trade_volume=Decimal("-123.123456"),
     )))
     session.commit()
     session.expire_all()
     row = session.scalar(select(InstrumentDailyTradeStatistic))
     assert row.market_cap == Decimal("12345678901234567890123456789012.123456")
-    assert row.average_buy_trade_volume == Decimal("123456789012345.123456")
+    assert row.average_buy_trade_volume == Decimal("788.324877791")
+    assert row.average_sell_trade_volume == Decimal("1243.4310509554")
     assert row.total_net_trade_volume == Decimal("-123.123456")
     for name in TRADE_STATISTIC_STORAGE_COLUMNS:
         column = InstrumentDailyTradeStatistic.__table__.c[name]
         implementation = column.type.dialect_impl(postgresql.dialect())
         numeric = getattr(implementation, "impl", implementation)
         assert isinstance(numeric, Numeric)
-        assert (numeric.precision, numeric.scale) == (38, 6)
+        scale = 18 if name in {"average_buy_trade_volume", "average_sell_trade_volume"} else 6
+        assert (numeric.precision, numeric.scale) == (38, scale)
     assert InstrumentDailyTradeStatistic.__table__.c.fetched_at.type.timezone
 
 

@@ -40,13 +40,17 @@ _ID_TYPE = BigInteger().with_variant(Integer, "sqlite")
 class _TradeStatisticFixedPoint(TypeDecorator[Decimal]):
     """PostgreSQL fixed point; SQLite text avoids its lossy NUMERIC affinity."""
 
-    impl = Numeric(38, 6)
+    impl = Numeric
     cache_ok = True
+
+    def __init__(self, *, scale: int = 6):
+        self.scale = scale
+        super().__init__(precision=38, scale=scale)
 
     def load_dialect_impl(self, dialect):
         if dialect.name == "sqlite":
             return dialect.type_descriptor(String(40))
-        return dialect.type_descriptor(Numeric(38, 6))
+        return dialect.type_descriptor(Numeric(38, self.scale))
 
     def process_bind_param(self, value, dialect):
         if value is None:
@@ -835,8 +839,8 @@ class InstrumentDailyTradeStatistic(Base):
     total_net_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
     total_buy_unmatched_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
     total_sell_unmatched_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
-    average_buy_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
-    average_sell_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    average_buy_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(scale=18), nullable=False)
+    average_sell_trade_volume: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(scale=18), nullable=False)
 
     instrument: Mapped[Instrument] = relationship(back_populates="daily_trade_statistics")
 
