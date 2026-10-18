@@ -23,6 +23,7 @@ from api.repositories.sqlalchemy_instrument_routing_repository import (
     SqlAlchemyInstrumentRoutingRepository,
 )
 from api.services.data_operation_service import DataOperationService
+from api.schemas.data_operations import is_exact_period_dataset
 from scripts.refresh_instrument_fundamentals import (
     refresh_instrument_fundamentals,
 )
@@ -30,6 +31,9 @@ from scripts.refresh_instrument_history import refresh_instrument
 from scripts.refresh_instrument_flow import refresh_instrument_flow
 from scripts.refresh_instrument_session_statistics import (
     refresh_instrument_session_statistics,
+)
+from scripts.refresh_instrument_trade_statistics import (
+    refresh_instrument_trade_statistics,
 )
 
 
@@ -43,17 +47,7 @@ def run_data_operation(
     period_start: date | None = None,
     period_end: date | None = None,
 ) -> None:
-    if dataset == "session_stats" and (period_start is None or period_end is None):
-        raise ValueError("session_stats requires period_start and period_end")
-    if dataset == "session_stats" and mode != "full":
-        raise ValueError("session_stats requires full mode")
-    if (
-        dataset == "session_stats"
-        and period_start is not None
-        and period_end is not None
-        and period_start > period_end
-    ):
-        raise ValueError("period_start must be on or before period_end")
+    _validate_exact_period(dataset, mode, period_start, period_end)
     engine = create_db_engine(database_url)
     with Session(engine) as session:
         plan = DataOperationService(
@@ -173,7 +167,7 @@ def _dispatch_instrument(
     period_start: date | None,
     period_end: date | None,
 ):
-    if dataset == "session_stats":
+    if is_exact_period_dataset(dataset):
         return _execute_instrument(
             instrument_id, dataset, mode, engine,
             period_start=period_start, period_end=period_end,
@@ -191,6 +185,7 @@ def _execute_instrument(
     period_end: date | None = None,
 ) -> tuple[int, str, bool]:
     try:
+        _validate_exact_period(dataset, mode, period_start, period_end)
         if dataset == "prices":
             detail = refresh_instrument(
                 instrument_id,
@@ -218,10 +213,13 @@ def _execute_instrument(
             detail = refresh_instrument_flow(
                 instrument_id, mode, participant_type="proprietary", engine=engine
             )
-        elif dataset == "session_stats":
-            if period_start is None or period_end is None:
-                raise ValueError("session_stats requires period_start and period_end")
-            detail = refresh_instrument_session_statistics(
+        elif is_exact_period_dataset(dataset):
+            refresh = (
+                refresh_instrument_trade_statistics
+                if dataset == "trade_history"
+                else refresh_instrument_session_statistics
+            )
+            detail = refresh(
                 instrument_id, period_start, period_end, engine=engine
             )
         else:
@@ -229,6 +227,22 @@ def _execute_instrument(
     except Exception as exc:
         return instrument_id, f"failed instrument={instrument_id}: {exc}", True
     return instrument_id, detail, False
+
+
+def _validate_exact_period(
+    dataset: str,
+    mode: str,
+    period_start: date | None,
+    period_end: date | None,
+) -> None:
+    if not is_exact_period_dataset(dataset):
+        return
+    if period_start is None or period_end is None:
+        raise ValueError(f"{dataset} requires period_start and period_end")
+    if mode != "full":
+        raise ValueError(f"{dataset} requires full mode")
+    if period_start > period_end:
+        raise ValueError("period_start must be on or before period_end")
 
 
 class StartRateLimiter:
@@ -279,7 +293,7 @@ def main() -> None:
         "--dataset",
         choices=(
             "prices", "fundamentals", "foreign_flow", "proprietary_flow",
-            "session_stats",
+            "session_stats", "trade_history",
         ),
         required=True,
     )

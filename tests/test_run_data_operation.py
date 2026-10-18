@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import sys
 
 import pytest
 
@@ -161,10 +162,13 @@ def test_execute_instrument_dispatches_session_stats_exact_period(monkeypatch):
     [
         ("incremental", date(2026, 10, 15), date(2026, 10, 16)),
         ("full", date(2026, 10, 17), date(2026, 10, 16)),
+        ("full", None, date(2026, 10, 16)),
+        ("full", date(2026, 10, 15), None),
     ],
 )
-def test_session_stats_cli_rejects_invalid_period_before_database_work(
-    monkeypatch, mode, start, end,
+@pytest.mark.parametrize("dataset", ["session_stats", "trade_history"])
+def test_exact_period_cli_rejects_invalid_period_before_database_work(
+    monkeypatch, dataset, mode, start, end,
 ):
     monkeypatch.setattr(
         run_data_operation,
@@ -174,9 +178,72 @@ def test_session_stats_cli_rejects_invalid_period_before_database_work(
 
     with pytest.raises(ValueError):
         run_data_operation.run_data_operation(
-            "instrument", "7", "session_stats", mode,
+            "instrument", "7", dataset, mode,
             period_start=start, period_end=end,
         )
+
+
+def test_trade_history_parser_accepts_and_passes_exact_period(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sys, "argv", [
+        "run_data_operation", "--scope-type", "instrument", "--scope-id", "7",
+        "--dataset", "trade_history", "--mode", "full",
+        "--period-start", "2026-10-15", "--period-end", "2026-10-16",
+    ])
+    monkeypatch.setattr(
+        run_data_operation, "run_data_operation",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    run_data_operation.main()
+    assert calls == [(("instrument", "7", "trade_history", "full"), {
+        "database_url": None, "period_start": date(2026, 10, 15),
+        "period_end": date(2026, 10, 16),
+    })]
+
+
+def test_trade_history_paid_group_uses_shared_limiter_and_dispatches_exact_dates(monkeypatch):
+    monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "300")
+    monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "1")
+    reservations, calls = [], []
+    engine = object()
+    original_wait = run_data_operation.StartRateLimiter.wait
+
+    def reserve(limiter, request_cost=1):
+        reservations.append(request_cost)
+        return original_wait(limiter, request_cost)
+
+    def refresh(instrument_id, start, end, *, engine):
+        calls.append((instrument_id, start, end, engine))
+        return "trade history ok"
+
+    monkeypatch.setattr(run_data_operation.StartRateLimiter, "wait", reserve)
+    monkeypatch.setattr(run_data_operation, "refresh_instrument_trade_statistics", refresh, raising=False)
+    results = list(run_data_operation._execute_group(
+        "vnstock", (7,), "trade_history", "full", engine,
+        period_start=date(2026, 10, 15), period_end=date(2026, 10, 16),
+    ))
+    assert results == [(7, "trade history ok", False)]
+    assert reservations == [1]
+    assert calls == [(7, date(2026, 10, 15), date(2026, 10, 16), engine)]
+
+
+@pytest.mark.parametrize("mode,start,end", [
+    ("incremental", date(2026, 10, 15), date(2026, 10, 16)),
+    ("full", None, date(2026, 10, 16)),
+    ("full", date(2026, 10, 15), None),
+    ("full", date(2026, 10, 17), date(2026, 10, 16)),
+])
+def test_trade_history_dispatch_rejects_invalid_period_before_refresh(monkeypatch, mode, start, end):
+    monkeypatch.setattr(
+        run_data_operation, "refresh_instrument_trade_statistics",
+        lambda *args, **kwargs: pytest.fail("invalid requests must not refresh"),
+        raising=False,
+    )
+    instrument_id, detail, failed = run_data_operation._execute_instrument(
+        7, "trade_history", mode, object(), period_start=start, period_end=end,
+    )
+    assert (instrument_id, failed) == (7, True)
+    assert "requires" in detail or "on or before" in detail
 
 
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):

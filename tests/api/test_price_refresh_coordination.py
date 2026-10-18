@@ -39,7 +39,8 @@ def test_generation_4_adapter_name_is_rejected():
         acquire_price_refresh("vnstock_data", "legacy-owner", "VN30")
 
 
-def test_foreign_flow_and_price_jobs_share_the_vnstock_lease(monkeypatch):
+@pytest.mark.parametrize("dataset", ["foreign_flow", "session_stats", "trade_history"])
+def test_vietnam_activity_and_price_jobs_share_the_vnstock_lease(monkeypatch, dataset):
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
 
@@ -55,8 +56,8 @@ def test_foreign_flow_and_price_jobs_share_the_vnstock_lease(monkeypatch):
         scope_type="instrument",
         scope_id="1",
         scope_name="FPT",
-        dataset="foreign_flow",
-        mode="incremental",
+        dataset=dataset,
+        mode="full",
         adapter_keys=("vnstock",),
         total=1,
         engine=engine,
