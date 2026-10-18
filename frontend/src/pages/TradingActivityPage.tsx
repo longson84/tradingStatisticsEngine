@@ -4,6 +4,7 @@ import { Activity, Search } from "lucide-react"
 import { Link } from "react-router"
 
 import { Sidebar } from "@/components/Sidebar"
+import { useSearchableSelectKeyboard } from "@/components/forms/useSearchableSelectKeyboard"
 import { Badge } from "@/components/ui/badge"
 import {
   instrumentsApi,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/api"
 import { fmtCompactVnd, fmtDate, fmtInt, fmtNum, fmtPct, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
+import { cn } from "@/lib/utils"
 
 type AppliedPeriod = { instrument: InstrumentCatalogItem; start: string; end: string }
 type NumericField = {
@@ -52,6 +54,17 @@ export function TradingActivityPage() {
       search: debounced, capability: "trade_history", has_price_history: false, limit: 20,
     }),
     enabled: selected == null && debounced.length >= 3,
+  })
+  const selectInstrument = (instrument: InstrumentCatalogItem) => {
+    setSelected(instrument)
+    setSearch(instrument.symbol)
+    setRequest(null)
+  }
+  const keyboard = useSearchableSelectKeyboard({
+    items: instruments.data?.instruments ?? [],
+    open: debounced.length >= 3 && !selected,
+    resetKey: search,
+    onSelect: selectInstrument,
   })
   const activity = useQuery({
     queryKey: ["instrument-trade-statistics", request?.instrument.id, request?.start, request?.end],
@@ -107,12 +120,35 @@ export function TradingActivityPage() {
             <div className="relative">
               <label htmlFor="activity-instrument" className="mb-1 block text-xs font-medium">Instrument</label>
               <Search className="pointer-events-none absolute bottom-2.5 left-3 text-muted-foreground" size={15} />
-              <input id="activity-instrument" value={search} onChange={event => { setSearch(event.target.value); setSelected(null); setRequest(null) }} placeholder="Search FPT, VNM, ACB…" className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm" />
-              {debounced.length >= 3 && !selected && <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
+              <input
+                id="activity-instrument"
+                value={search}
+                onChange={event => { setSearch(event.target.value); setSelected(null); setRequest(null) }}
+                onFocus={keyboard.onFocus}
+                onKeyDown={keyboard.onKeyDown}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls={keyboard.listboxId}
+                aria-activedescendant={keyboard.activeOptionId}
+                aria-expanded={keyboard.isOpen}
+                placeholder="Search FPT, VNM, ACB…"
+                className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm"
+              />
+              {keyboard.isOpen && <div id={keyboard.listboxId} role="listbox" aria-label="Instrument results" className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
                 {instruments.isFetching && <p className="p-3 text-xs text-muted-foreground">Searching eligible Instruments…</p>}
                 {instruments.error && <p role="alert" className="p-3 text-xs text-destructive">Instrument search failed: {instruments.error.message}</p>}
                 {!instruments.isFetching && !instruments.error && instruments.data?.instruments.length === 0 && <p className="p-3 text-xs text-muted-foreground">No eligible Vietnam equities found. Trading activity supports active Company-backed common stocks on HOSE, HNX, and UPCOM with VCI routing.</p>}
-                {instruments.data?.instruments.map(item => <button key={item.id} onClick={() => { setSelected(item); setSearch(item.symbol); setRequest(null) }} className="flex w-full justify-between px-3 py-2 text-left text-sm hover:bg-accent"><span className="font-medium">{item.symbol}</span><span className="text-xs text-muted-foreground">{item.venue_code}</span></button>)}
+                {instruments.data?.instruments.map((item, index) => <button
+                  key={item.id}
+                  id={keyboard.optionId(index)}
+                  ref={keyboard.optionRef(index)}
+                  type="button"
+                  role="option"
+                  aria-selected={keyboard.activeIndex === index}
+                  onClick={() => selectInstrument(item)}
+                  onMouseEnter={() => keyboard.setActiveIndex(index)}
+                  className={cn("flex w-full justify-between px-3 py-2 text-left text-sm hover:bg-accent", keyboard.activeIndex === index && "bg-accent")}
+                ><span className="font-medium">{item.symbol}</span><span className="text-xs text-muted-foreground">{item.venue_code}</span></button>)}
               </div>}
             </div>
             <DateInput label="Start date" value={start} onChange={value => { setStart(value); setRequest(null) }} />
