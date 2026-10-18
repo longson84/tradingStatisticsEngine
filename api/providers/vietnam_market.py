@@ -59,6 +59,13 @@ class VietnamMarketProvider(Protocol):
         end: date,
     ) -> VietnamProviderResult: ...
 
+    def foreign_flow(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult: ...
+
 
 class VnstockProvider:
     """Vnstock generation 5 adapter using explicit VCI market routes."""
@@ -112,6 +119,20 @@ class VnstockProvider:
             source=self.source.lower(),
         )
         return self._result(frame, normalized, start, end, "trade_history")
+
+    def foreign_flow(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult:
+        normalized = _request(symbol, start, end)
+        frame = self._market().equity(normalized).foreign_flow(
+            start=start.isoformat(),
+            end=end.isoformat(),
+            source=self.source.lower(),
+        )
+        return self._result(frame, normalized, start, end, "foreign_flow")
 
     def _market(self):
         try:
@@ -185,6 +206,59 @@ def normalize_ohlcv_result(result: VietnamProviderResult) -> pd.DataFrame:
         ]]
         .dropna(subset=["date", "open", "high", "low", "close"])
         .sort_values("date")
+        .drop_duplicates("date", keep="last")
+        .reset_index(drop=True)
+    )
+
+
+def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame:
+    """Normalize Gen 5 foreign-investor flow without deriving provider values."""
+    frame = result.frame.copy()
+    frame.columns = [str(column).lower() for column in frame.columns]
+    required = {
+        "time", "buy_vol", "buy_val", "sell_vol", "sell_val", "net_vol",
+        "net_val",
+    }
+    missing = required - set(frame.columns)
+    if missing:
+        raise ProviderDataError(
+            f"foreign_flow data for {result.metadata.symbol} is missing columns: "
+            f"{sorted(missing)}"
+        )
+
+    dates = pd.to_datetime(frame["time"], errors="coerce")
+    numeric_columns = (
+        "buy_vol", "buy_val", "sell_vol", "sell_val", "net_vol", "net_val",
+    )
+    for column in numeric_columns:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    if dates.isna().any() or frame[list(numeric_columns)].isna().any().any():
+        raise ProviderDataError(
+            f"foreign_flow data for {result.metadata.symbol} contains invalid values"
+        )
+    gross_columns = ("buy_vol", "buy_val", "sell_vol", "sell_val")
+    if (frame[list(gross_columns)] < 0).any().any():
+        raise ProviderDataError(
+            f"foreign_flow gross values for {result.metadata.symbol} must be non-negative"
+        )
+
+    frame["date"] = dates.dt.date
+    frame["symbol"] = result.metadata.symbol
+    frame["provider_source"] = provider_source_label(result.metadata)
+    frame = frame.rename(columns={
+        "buy_vol": "buy_volume",
+        "buy_val": "buy_value",
+        "sell_vol": "sell_volume",
+        "sell_val": "sell_value",
+        "net_vol": "net_volume",
+        "net_val": "net_value",
+    })
+    return (
+        frame[[
+            "symbol", "date", "buy_volume", "buy_value", "sell_volume",
+            "sell_value", "net_volume", "net_value", "provider_source",
+        ]]
+        .sort_values("date", kind="stable")
         .drop_duplicates("date", keep="last")
         .reset_index(drop=True)
     )
