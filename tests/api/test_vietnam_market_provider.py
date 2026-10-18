@@ -1,12 +1,45 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from api.providers import vietnam_market
+
+
+SESSION_STATISTIC_CODES = (
+    "average_match_volume", "average_match_value", "average_deal_volume",
+    "average_deal_value", "average_volume", "average_value",
+    "total_match_volume", "total_match_value", "total_deal_volume",
+    "total_deal_value", "total_volume", "total_value",
+    "fr_buy_volume_total", "fr_buy_value_total", "fr_sell_volume_total",
+    "fr_sell_value_total", "fr_net_volume_total", "fr_net_value_total",
+    "fr_buy_volume_matched", "fr_buy_value_matched",
+    "fr_sell_volume_matched", "fr_sell_value_matched",
+    "fr_buy_volume_deal", "fr_buy_value_deal", "fr_sell_volume_deal",
+    "fr_sell_value_deal", "fr_buy_volume_total_avg",
+    "fr_buy_value_total_avg", "fr_sell_volume_total_avg",
+    "fr_sell_value_total_avg", "fr_net_volume_total_avg",
+    "fr_net_value_total_avg", "fr_buy_volume_matched_avg",
+    "fr_buy_value_matched_avg", "fr_sell_volume_matched_avg",
+    "fr_sell_value_matched_avg", "fr_buy_volume_deal_avg",
+    "fr_buy_value_deal_avg", "fr_sell_volume_deal_avg",
+    "fr_sell_value_deal_avg", "fr_net_volume_matched",
+    "fr_net_value_matched", "fr_net_volume_matched_avg",
+    "fr_net_value_matched_avg", "fr_net_volume_deal", "fr_net_value_deal",
+    "fr_net_volume_deal_avg", "fr_net_value_deal_avg",
+    "total_buy_trade_volume", "total_sell_trade_volume",
+    "total_buy_trade_volume_avg", "total_sell_trade_volume_avg",
+    "total_buy_trade", "total_sell_trade", "total_buy_trade_avg",
+    "total_sell_trade_avg", "total_buy_unmatched_volume_avg",
+    "total_sell_unmatched_volume_avg", "total_buy_unmatched_volume",
+    "total_sell_unmatched_volume", "total_net_trade_volume",
+    "total_net_trade_volume_avg", "average_buy_volume_per_trade",
+    "average_sell_volume_per_trade",
+)
 
 
 def _ohlcv() -> pd.DataFrame:
@@ -40,6 +73,15 @@ def _foreign_flow() -> pd.DataFrame:
     })
 
 
+def _session_stats() -> pd.DataFrame:
+    values = {code: [float(index)] for index, code in enumerate(
+        SESSION_STATISTIC_CODES, 1
+    )}
+    values["fr_net_value_total"] = [-123.25]
+    values["fr_net_volume_deal"] = [0.0]
+    return pd.DataFrame({"symbol": ["FPT"], **values})
+
+
 class _Equity:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
@@ -59,6 +101,10 @@ class _Equity:
     def proprietary_flow(self, **kwargs):
         self.calls.append(("proprietary_flow", kwargs))
         return _foreign_flow()
+
+    def session_stats(self, **kwargs):
+        self.calls.append(("session_stats", kwargs))
+        return _session_stats()
 
 
 class _Market:
@@ -196,6 +242,85 @@ def test_provider_calls_proprietary_flow_with_explicit_vci_source(monkeypatch):
     })]
     assert result.frame.equals(_foreign_flow())
     assert result.metadata.method == "proprietary_flow"
+
+
+def test_provider_calls_session_stats_with_exact_period_and_vci(monkeypatch):
+    equity = _Equity()
+    market = _Market(equity)
+    monkeypatch.setattr(
+        vietnam_market,
+        "import_module",
+        lambda name: SimpleNamespace(Market=lambda: market),
+    )
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+
+    result = vietnam_market.VnstockProvider().session_stats(
+        "fpt", date(2026, 10, 15), date(2026, 10, 16)
+    )
+
+    assert market.calls == [("equity", "FPT")]
+    assert equity.calls == [("session_stats", {
+        "start": "2026-10-15",
+        "end": "2026-10-16",
+        "source": "vci",
+    })]
+    assert result.frame.equals(_session_stats())
+    assert result.metadata.method == "session_stats"
+
+
+def test_session_statistic_catalog_and_normalizer_are_strict_and_exact():
+    from api.session_statistics import (
+        SESSION_STATISTIC_METRICS,
+        SESSION_STATISTIC_SCHEMA_VERSION,
+    )
+
+    assert SESSION_STATISTIC_SCHEMA_VERSION == 1
+    assert tuple(metric.code for metric in SESSION_STATISTIC_METRICS) == (
+        SESSION_STATISTIC_CODES
+    )
+    assert {metric.group for metric in SESSION_STATISTIC_METRICS} == {
+        "market_activity", "foreign_activity", "trade_direction",
+        "order_imbalance",
+    }
+    assert {metric.unit for metric in SESSION_STATISTIC_METRICS} == {
+        "volume", "value", "count",
+    }
+
+    result = _flow_result(_session_stats())
+    normalized = vietnam_market.normalize_session_stats_result(result)
+
+    assert tuple(normalized) == SESSION_STATISTIC_CODES
+    assert normalized["average_match_volume"] == Decimal("1.0")
+    assert normalized["fr_net_value_total"] == Decimal("-123.25")
+    assert normalized["fr_net_volume_deal"] == Decimal("0.0")
+
+
+@pytest.mark.parametrize(
+    "frame",
+    [
+        _session_stats().iloc[0:0],
+        pd.concat([_session_stats(), _session_stats()], ignore_index=True),
+        _session_stats().assign(symbol="VNM"),
+        _session_stats().drop(columns=["total_value"]),
+        _session_stats().assign(unexpected=1),
+        _session_stats().assign(total_value=float("nan")),
+        _session_stats().assign(total_value=float("inf")),
+        _session_stats().assign(total_value="invalid"),
+    ],
+)
+def test_session_stats_normalizer_rejects_malformed_provider_frames(
+    frame: pd.DataFrame,
+):
+    with pytest.raises(vietnam_market.ProviderDataError, match="session_stats"):
+        vietnam_market.normalize_session_stats_result(_flow_result(frame))
+
+
+def test_session_stats_normalizer_rejects_duplicate_columns():
+    frame = _session_stats()
+    frame.columns = [*frame.columns[:-1], frame.columns[-2]]
+
+    with pytest.raises(vietnam_market.ProviderDataError, match="session_stats"):
+        vietnam_market.normalize_session_stats_result(_flow_result(frame))
 
 
 def _flow_result(frame: pd.DataFrame) -> vietnam_market.VietnamProviderResult:

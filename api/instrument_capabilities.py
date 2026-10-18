@@ -4,7 +4,9 @@ from __future__ import annotations
 from typing import Literal
 
 
-InstrumentCapability = Literal["foreign_flow", "proprietary_flow"]
+InstrumentCapability = Literal[
+    "foreign_flow", "proprietary_flow", "session_stats",
+]
 VN_EQUITY_VENUES = frozenset({"HOSE", "HNX", "UPCOM"})
 
 

@@ -67,14 +67,16 @@ def test_equity_provider_and_symbol_are_derived_from_venue_and_namespace():
     )
 
 
-def test_vietnam_common_stock_route_exposes_participant_flow_capabilities():
+def test_vietnam_common_stock_route_exposes_vci_market_capabilities():
     route = resolve_instrument_data_route(metadata(
         venue_code="HOSE",
         symbol="FPT",
         provider_symbols=(ProviderSymbol("listing", "FPT"),),
     ))
 
-    assert route.capabilities == frozenset({"foreign_flow", "proprietary_flow"})
+    assert route.capabilities == frozenset({
+        "foreign_flow", "proprietary_flow", "session_stats",
+    })
 
 
 def test_us_equity_index_spot_and_reference_rate_routes_do_not_expose_foreign_flow():
@@ -105,7 +107,9 @@ def test_us_equity_index_spot_and_reference_rate_routes_do_not_expose_foreign_fl
     )
 
     assert all(
-        route.capabilities.isdisjoint({"foreign_flow", "proprietary_flow"})
+        route.capabilities.isdisjoint({
+            "foreign_flow", "proprietary_flow", "session_stats",
+        })
         for route in routes
     )
 

@@ -3,12 +3,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from importlib import import_module, metadata
 from typing import Literal, Protocol
 
 import pandas as pd
 
 from api.config import load_env_file
+from api.session_statistics import (
+    SESSION_STATISTIC_METRIC_CODES,
+    SessionStatisticMetricCode,
+)
 
 
 AccessMode = Literal["sponsored"]
@@ -67,6 +72,13 @@ class VietnamMarketProvider(Protocol):
     ) -> VietnamProviderResult: ...
 
     def proprietary_flow(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult: ...
+
+    def session_stats(
         self,
         symbol: str,
         start: date,
@@ -155,6 +167,20 @@ class VnstockProvider:
         )
         return self._result(frame, normalized, start, end, "proprietary_flow")
 
+    def session_stats(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult:
+        normalized = _request(symbol, start, end)
+        frame = self._market().equity(normalized).session_stats(
+            start=start.isoformat(),
+            end=end.isoformat(),
+            source=self.source.lower(),
+        )
+        return self._result(frame, normalized, start, end, "session_stats")
+
     def _market(self):
         try:
             module = import_module(self.package)
@@ -240,6 +266,44 @@ def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame
 def normalize_proprietary_flow_result(result: VietnamProviderResult) -> pd.DataFrame:
     """Normalize Gen 5 proprietary-trading flow without deriving net values."""
     return _normalize_participant_flow_result(result, "proprietary_flow")
+
+
+def normalize_session_stats_result(
+    result: VietnamProviderResult,
+) -> dict[SessionStatisticMetricCode, Decimal]:
+    """Validate one complete VCI aggregate and preserve provider values."""
+    frame = result.frame.copy()
+    columns = [str(column).lower() for column in frame.columns]
+    expected = ("symbol", *SESSION_STATISTIC_METRIC_CODES)
+    if len(columns) != len(set(columns)):
+        raise ProviderDataError(
+            f"session_stats data for {result.metadata.symbol} has duplicate columns"
+        )
+    if len(frame) != 1 or tuple(columns) != expected:
+        raise ProviderDataError(
+            f"session_stats data for {result.metadata.symbol} must contain one "
+            "row with the exact supported schema"
+        )
+    frame.columns = columns
+    symbol = str(frame.iloc[0]["symbol"]).upper().strip()
+    if symbol != result.metadata.symbol:
+        raise ProviderDataError(
+            f"session_stats data for {result.metadata.symbol} returned symbol {symbol}"
+        )
+    values: dict[SessionStatisticMetricCode, Decimal] = {}
+    for code in SESSION_STATISTIC_METRIC_CODES:
+        try:
+            value = Decimal(str(frame.iloc[0][code]))
+        except (InvalidOperation, ValueError) as exc:
+            raise ProviderDataError(
+                f"session_stats data for {result.metadata.symbol} contains invalid values"
+            ) from exc
+        if not value.is_finite():
+            raise ProviderDataError(
+                f"session_stats data for {result.metadata.symbol} contains invalid values"
+            )
+        values[code] = value
+    return values
 
 
 def _normalize_participant_flow_result(

@@ -180,6 +180,37 @@ def test_proprietary_flow_discovery_filters_out_unsupported_instruments():
     assert {row.venue_code for row in result.rows} == {"HOSE"}
 
 
+def test_session_stats_discovery_filters_before_count_and_pagination():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    seed_company_catalog(session)
+    service = InstrumentAnalysisService(
+        SqlAlchemyInstrumentAnalysisRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+    try:
+        first = service.list_instruments(
+            capability="session_stats",
+            has_price_history=False,
+            offset=0,
+            limit=4,
+        )
+        second = service.list_instruments(
+            capability="session_stats",
+            has_price_history=False,
+            offset=4,
+            limit=4,
+        )
+    finally:
+        session.close()
+
+    assert first.total == 6
+    assert len(first.rows) == 4
+    assert len(second.rows) == 2
+    assert {row.venue_code for row in (*first.rows, *second.rows)} == {"HOSE"}
+
+
 def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():
     service, session, instrument_id = _service_with_msft_history()
     try:

@@ -273,7 +273,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             filters.append(Company.industry == industry)
         if venue_code:
             filters.append(Venue.code == venue_code)
-        if capability in {"foreign_flow", "proprietary_flow"}:
+        if capability in {"foreign_flow", "proprietary_flow", "session_stats"}:
             filters.extend((
                 Instrument.instrument_type == "common_stock",
                 Instrument.company_id.is_not(None),
