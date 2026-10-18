@@ -1,42 +1,41 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pandas as pd
 
 from api.fundamental_provider import normalize_fundamentals
-from scripts.canary_vnstock_fundamentals import latest_value_changes, parity_errors
+from scripts.canary_vnstock_fundamentals import snapshot_errors
 
 
 def _frame() -> pd.DataFrame:
     return normalize_fundamentals(pd.DataFrame({
-        "effective_date": ["2026-04-29"],
-        "period_end": ["2026-03-31"],
-        "period": ["2026-Q1"],
+        "effective_date": ["2026-10-19"],
+        "period_end": ["2026-09-30"],
+        "period": ["2026-Q3"],
         "eps_ttm": [5.25],
         "reported_pe": [12.4],
     }))
 
 
-def test_canary_accepts_equivalent_provider_frame():
-    assert parity_errors(_frame(), _frame().copy()) == []
+def test_canary_accepts_one_current_acquisition_dated_snapshot():
+    assert snapshot_errors(
+        _frame(), observed_at=datetime(2026, 10, 18, 5, tzinfo=UTC)
+    ) == []
 
 
-def test_canary_rejects_point_in_time_drift():
-    fetched = _frame()
-    fetched.loc[0, "effective_date"] = pd.Timestamp("2026-04-28")
+def test_canary_rejects_multiple_backfilled_snapshots():
+    frame = pd.concat([_frame(), _frame()], ignore_index=True)
 
-    assert parity_errors(_frame(), fetched) == [
-        "identity differs in effective_date"
-    ]
+    assert snapshot_errors(
+        frame, observed_at=datetime(2026, 10, 18, 5, tzinfo=UTC)
+    ) == ["expected one current snapshot, received 2"]
 
 
-def test_canary_allows_and_reports_latest_provider_revision():
-    existing = pd.concat([_frame(), _frame().assign(
-        effective_date=pd.Timestamp("2026-07-29"),
-        period_end=pd.Timestamp("2026-06-30"),
-        period="2026-Q2",
-    )], ignore_index=True)
-    fetched = existing.copy()
-    fetched.loc[1, "reported_pe"] = 13.1
+def test_canary_rejects_historical_effective_date():
+    frame = _frame()
+    frame.loc[0, "effective_date"] = pd.Timestamp("2026-04-29")
 
-    assert parity_errors(existing, fetched) == []
-    assert latest_value_changes(existing, fetched) == ["reported_pe"]
+    assert snapshot_errors(
+        frame, observed_at=datetime(2026, 10, 18, 5, tzinfo=UTC)
+    ) == ["effective_date is not the day after acquisition"]

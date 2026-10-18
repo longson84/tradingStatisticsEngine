@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta, timezone
+
 import pandas as pd
+import pytest
 
 from api import fundamental_provider
+from api.providers.vietnam_fundamentals import (
+    VietnamFundamentalMetadata,
+    VietnamFundamentalResult,
+)
+from api.providers.vietnam_market import ProviderDataError
 
 
 def test_fetch_provider_fundamentals_selects_market_source(monkeypatch):
@@ -22,7 +30,7 @@ def test_fetch_provider_fundamentals_selects_market_source(monkeypatch):
         fundamental_provider.fetch_provider_fundamentals("aapl", "yfinance")
     )
     vn_frame, vn_source, vn_method = (
-        fundamental_provider.fetch_provider_fundamentals("fpt", "vnstock_data")
+        fundamental_provider.fetch_provider_fundamentals("fpt", "vnstock")
     )
 
     assert us_frame is frame
@@ -53,42 +61,101 @@ def test_merge_provider_rows_prefers_new_non_null_values():
     assert merged["book_value_per_share"].tolist() == [20.0]
 
 
-def test_sponsored_vci_reports_preserve_point_in_time_quarters():
-    ratios = pd.DataFrame({
-        "ratioTtmId": [101, 102, 199, 201],
-        "ratioYearId": [pd.NA, pd.NA, 199, pd.NA],
-        "ratioType": ["RATIO_TTM", "RATIO_TTM", "RATIO_YEAR", "RATIO_TTM"],
-        "year": [2025, 2025, 2025, 2026],
-        "quarter": [1, 3, 5, 1],
-        "yearReport": [2025, 2025, 2025, 2026],
-        "numberOfSharesMktCap": [100.0, 100.0, 100.0, 110.0],
-        "marketCap": [1_000.0, 1_200.0, 1_100.0, 1_430.0],
-        "pe": [10.0, 12.0, 11.0, 13.0],
-        "pb": [2.0, 2.4, 2.2, 2.6],
-        "ps": [1.0, 1.2, 1.1, 1.3],
-        "roe": [0.20, 0.21, 0.20, 0.22],
-    })
-    income = pd.DataFrame({
-        "yearReport": [2025, 2025, 2025, 2025, 2026],
-        "lengthReport": [1, 2, 3, 4, 1],
-        "publicDate": [
-            "2025-04-20", "2025-07-20", "2025-10-20", "2026-03-20",
-            "2026-04-28",
-        ],
-    })
-
-    frame = fundamental_provider._normalize_vn_fundamental_reports(
-        ratios, income
+def _result(ratios: pd.DataFrame, acquired_at) -> VietnamFundamentalResult:
+    return VietnamFundamentalResult(
+        ratios=ratios,
+        acquired_at=acquired_at,
+        metadata=VietnamFundamentalMetadata(
+            package="vnstock",
+            package_version="5.1.0",
+            quant_package="vnstock-quant",
+            quant_package_version="0.4.0",
+            access_mode="sponsored",
+            upstream_source="VCI",
+            method="quarterly_quant_ratios",
+            symbol="FPT",
+        ),
     )
 
-    assert frame["period"].tolist() == ["2025-Q1", "2025-Q3", "2026-Q1"]
+
+def _ratio_rows(period: str, *, complete: bool = True) -> list[dict[str, object]]:
+    values = {
+        "RT_VALUE_PE": 10.0,
+        "RT_VALUE_PB": 2.0,
+        "RT_VALUE_PS": 1.25,
+        "RT_VALUE_EV_EBITDA": 8.0,
+        "RT_VALUE_MARKET_CAP": 1_000.0,
+        "RT_VALUE_OUTSTANDING_SHARES": 100.0,
+        "RT_VALUE_EPS": 1.0,
+        "RT_VALUE_BVPS": 5.0,
+        "RT_VALUE_EQUITY": 500.0,
+        "RT_PRT_ROE": 0.2,
+        "RT_PRT_ROA": 0.1,
+        "RT_PRT_GROSS_MARGIN": 0.4,
+        "RT_PRT_EBIT_MARGIN": 0.2,
+        "RT_PRT_NET_MARGIN": 0.1,
+        "RT_LQD_CR": 1.5,
+        "RT_LQD_QR": 1.1,
+        "RT_LEV_LOAN_EQUITY": 0.3,
+    }
+    if not complete:
+        values.pop("RT_VALUE_PB")
+    return [
+        {
+            "symbol": "FPT",
+            "period": period,
+            "id": ratio_id,
+            "value": value,
+            "unit": "ratio",
+            "reason": None,
+        }
+        for ratio_id, value in values.items()
+    ]
+
+
+def test_quant_ratios_select_latest_complete_period_and_map_values():
+    ratios = pd.DataFrame([
+        *_ratio_rows("2026-Q1"),
+        *_ratio_rows("2026-Q2", complete=False),
+        *_ratio_rows("2026-Q3"),
+    ])
+    acquired_at = datetime(
+        2026, 10, 18, 10, 0, tzinfo=timezone(timedelta(hours=7))
+    )
+
+    frame = fundamental_provider._normalize_vn_quant_ratios(
+        _result(ratios, acquired_at)
+    )
+
+    assert frame["period"].tolist() == ["2026-Q3"]
+    assert frame["period_end"].dt.strftime("%Y-%m-%d").tolist() == ["2026-09-30"]
     assert frame["effective_date"].dt.strftime("%Y-%m-%d").tolist() == [
-        "2025-04-21", "2025-10-21", "2026-04-29"
+        "2026-10-19"
     ]
-    # Output is ordered by effective availability, not fiscal period.
-    assert frame.sort_values("effective_date")["period"].tolist() == [
-        "2025-Q1", "2025-Q3", "2026-Q1"
-    ]
-    q3 = frame.loc[frame["period"] == "2025-Q3"].iloc[0]
-    assert q3["eps_ttm"] == 1.0
-    assert q3["book_value_per_share"] == 5.0
+    row = frame.iloc[0]
+    assert row["eps_ttm"] == 1.0
+    assert row["book_value_per_share"] == 5.0
+    assert row["market_cap"] == 1_000.0
+    assert row["shares_outstanding"] == 100.0
+    assert row["revenue_ttm"] == 800.0
+    assert row["gross_profit_ttm"] == 320.0
+    assert row["operating_income_ttm"] == 160.0
+    assert row["net_income_ttm"] == 100.0
+    assert row["total_assets"] == 1_000.0
+    assert row["total_debt"] == 150.0
+
+
+def test_quant_ratios_reject_periods_without_required_identity():
+    ratios = pd.DataFrame(_ratio_rows("2026-Q2", complete=False))
+
+    with pytest.raises(ProviderDataError, match="complete quarterly ratio"):
+        fundamental_provider._normalize_vn_quant_ratios(
+            _result(ratios, datetime(2026, 10, 18, tzinfo=UTC))
+        )
+
+
+def test_quant_ratios_reject_missing_acquisition_timestamp():
+    ratios = pd.DataFrame(_ratio_rows("2026-Q2"))
+
+    with pytest.raises(ProviderDataError, match="acquisition timestamp"):
+        fundamental_provider._normalize_vn_quant_ratios(_result(ratios, None))

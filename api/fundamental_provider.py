@@ -1,16 +1,18 @@
 """Provider adapters producing normalized point-in-time fundamental frames."""
 from __future__ import annotations
 
-import re
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
 
 from api.providers.vietnam_fundamentals import (
-    VnstockDataFundamentalProvider,
+    VietnamFundamentalResult,
+    VnstockFundamentalProvider,
     fundamental_methodology,
     fundamental_source_label,
 )
+from api.providers.vietnam_market import ProviderDataError
 
 IDENTITY_COLUMNS = ["effective_date", "period_end", "period"]
 VALUE_COLUMNS = [
@@ -46,11 +48,11 @@ def fetch_provider_fundamentals(
     symbol: str,
     adapter: str,
     *,
-    vn_provider: VnstockDataFundamentalProvider | None = None,
+    vn_provider: VnstockFundamentalProvider | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
     """Fetch normalized snapshots without reading or writing local files."""
     normalized = symbol.upper().strip()
-    if adapter == "vnstock_data":
+    if adapter in {"vnstock", "vnstock_data"}:
         return _fetch_vn_fundamentals(normalized, provider=vn_provider)
     if adapter != "yfinance":
         raise ValueError(f"Unsupported fundamental adapter: {adapter}")
@@ -218,10 +220,10 @@ def _series_value(series: pd.Series, period: Any) -> float | None:
 def _fetch_vn_fundamentals(
     symbol: str,
     *,
-    provider: VnstockDataFundamentalProvider | None = None,
+    provider: VnstockFundamentalProvider | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
-    result = (provider or VnstockDataFundamentalProvider()).fetch(symbol)
-    frame = _normalize_vn_fundamental_reports(result.ratios, result.income)
+    result = (provider or VnstockFundamentalProvider()).fetch(symbol)
+    frame = _normalize_vn_quant_ratios(result)
     return (
         frame,
         fundamental_source_label(result.metadata),
@@ -229,148 +231,96 @@ def _fetch_vn_fundamentals(
     )
 
 
-def _normalize_vn_fundamental_reports(
-    ratios: pd.DataFrame,
-    income: pd.DataFrame,
+_QUANT_REQUIRED_IDS = {
+    "RT_VALUE_PE",
+    "RT_VALUE_PB",
+    "RT_VALUE_MARKET_CAP",
+    "RT_VALUE_OUTSTANDING_SHARES",
+    "RT_VALUE_EPS",
+    "RT_VALUE_BVPS",
+}
+_QUANT_VALUE_IDS = {
+    "eps_ttm": "RT_VALUE_EPS",
+    "book_value_per_share": "RT_VALUE_BVPS",
+    "shares_outstanding": "RT_VALUE_OUTSTANDING_SHARES",
+    "equity": "RT_VALUE_EQUITY",
+    "market_cap": "RT_VALUE_MARKET_CAP",
+    "roe": "RT_PRT_ROE",
+    "roa": "RT_PRT_ROA",
+    "debt_to_equity": "RT_LEV_LOAN_EQUITY",
+    "gross_margin": "RT_PRT_GROSS_MARGIN",
+    "operating_margin": "RT_PRT_EBIT_MARGIN",
+    "net_margin": "RT_PRT_NET_MARGIN",
+    "current_ratio": "RT_LQD_CR",
+    "quick_ratio": "RT_LQD_QR",
+    "reported_pe": "RT_VALUE_PE",
+    "reported_pb": "RT_VALUE_PB",
+    "reported_ps": "RT_VALUE_PS",
+    "reported_ev_ebitda": "RT_VALUE_EV_EBITDA",
+}
+
+
+def _normalize_vn_quant_ratios(
+    result: VietnamFundamentalResult,
 ) -> pd.DataFrame:
-    ratios = _canonicalize_columns(ratios)
-    income = _canonicalize_columns(income)
-    required = {"pe", "pb", "marketcap", "numberofsharesmktcap"}
-    if ratios.empty or not required.issubset(ratios.columns):
-        return empty_fundamentals()
-
-    publications = _vn_publications(income)
-    ratios = _vn_quarterly_ratios(ratios, publications)
-    if ratios.empty or publications.empty:
-        return empty_fundamentals()
-    publication_column = next(
-        (column for column in ("publicdate", "updatedate", "createdate") if column in income.columns),
-        None,
+    acquired_at = result.acquired_at
+    if not isinstance(acquired_at, datetime):
+        raise ProviderDataError("Vnstock acquisition timestamp is missing or invalid")
+    acquired_at = (
+        acquired_at.replace(tzinfo=UTC)
+        if acquired_at.tzinfo is None
+        else acquired_at.astimezone(UTC)
     )
-    if publication_column is None:
-        return empty_fundamentals()
-    rows = ratios.merge(publications, on=["year", "quarter"], how="left")
-    shares = _numeric_column(rows, "numberofsharesmktcap")
-    market_cap = _numeric_column(rows, "marketcap")
-    reported_pe = _numeric_column(rows, "pe")
-    reported_pb = _numeric_column(rows, "pb")
-    reported_ps = _numeric_column(rows, "ps")
-    price_per_share = market_cap / shares
-    rows["effective_date"] = (
-        pd.to_datetime(rows["published_at"], errors="coerce").dt.normalize()
-        + pd.Timedelta(days=1)
-    )
-    rows["period_end"] = rows.apply(
-        lambda row: pd.Period(
-            year=int(row["year"]), quarter=int(row["quarter"]), freq="Q"
-        ).end_time.normalize(),
-        axis=1,
-    )
-    rows["period"] = rows["year"].astype(str) + "-Q" + rows["quarter"].astype(str)
-    rows["eps_ttm"] = price_per_share / reported_pe
-    rows["book_value_per_share"] = price_per_share / reported_pb
-    rows["revenue_ttm"] = market_cap / reported_ps
-    rows["net_income_ttm"] = market_cap / reported_pe
-    rows["shares_outstanding"] = shares
-    rows["market_cap"] = market_cap
-    rows["equity"] = rows["book_value_per_share"] * shares
-    mappings = {
-        "roe": "roe",
-        "roa": "roa",
-        "debt_to_equity": "debtperequity",
-        "gross_margin": "grossmargin",
-        "operating_margin": "ebitmargin",
-        "net_margin": "aftertaxprofitmargin",
-        "current_ratio": "currentratio",
-        "quick_ratio": "quickratio",
-        "dividend_yield": "dividendyield",
-        "reported_pe": "pe",
-        "reported_pb": "pb",
-        "reported_ps": "ps",
-        "reported_ev_ebitda": "evtoebitda",
-    }
-    for target, source in mappings.items():
-        rows[target] = _numeric_column(rows, source)
-    return normalize_fundamentals(rows)
-
-
-def _canonicalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
-    result = frame.copy()
-    result.columns = [
-        re.sub(r"[^a-z0-9]", "", str(column).lower())
-        for column in result.columns
+    ratios = result.ratios.copy()
+    required_columns = {"period", "id", "value"}
+    if ratios.empty or not required_columns.issubset(ratios.columns):
+        raise ProviderDataError(
+            f"No complete quarterly ratio period returned for {result.metadata.symbol}"
+        )
+    ratios["value"] = pd.to_numeric(ratios["value"], errors="coerce")
+    ratios = ratios[
+        ratios["period"].astype(str).str.fullmatch(r"\d{4}-Q[1-4]")
+    ].dropna(subset=["value"])
+    complete_periods = [
+        period
+        for period, group in ratios.groupby("period")
+        if _QUANT_REQUIRED_IDS.issubset(set(group["id"]))
     ]
-    return result
-
-
-def _vn_publications(income: pd.DataFrame) -> pd.DataFrame:
-    year_column = "yearreport" if "yearreport" in income else "year"
-    quarter_column = "lengthreport" if "lengthreport" in income else "quarter"
-    publication_column = next(
-        (column for column in ("publicdate", "updatedate", "createdate") if column in income),
-        None,
+    if not complete_periods:
+        raise ProviderDataError(
+            f"No complete quarterly ratio period returned for {result.metadata.symbol}"
+        )
+    period = max(complete_periods, key=lambda value: pd.Period(value, freq="Q"))
+    values = (
+        ratios.loc[ratios["period"] == period]
+        .drop_duplicates("id", keep="last")
+        .set_index("id")["value"]
     )
-    if publication_column is None or year_column not in income or quarter_column not in income:
-        return pd.DataFrame(columns=["year", "quarter", "published_at"])
-    result = income[[year_column, quarter_column, publication_column]].rename(
-        columns={
-            year_column: "year",
-            quarter_column: "quarter",
-            publication_column: "published_at",
-        }
+    row: dict[str, Any] = {
+        "effective_date": pd.Timestamp(acquired_at.date()) + pd.Timedelta(days=1),
+        "period_end": pd.Period(period, freq="Q").end_time.normalize(),
+        "period": period,
+    }
+    for target, ratio_id in _QUANT_VALUE_IDS.items():
+        row[target] = values.get(ratio_id, pd.NA)
+    row["net_income_ttm"] = _product(row["eps_ttm"], row["shares_outstanding"])
+    row["revenue_ttm"] = _division(row["market_cap"], row["reported_ps"])
+    row["gross_profit_ttm"] = _product(row["revenue_ttm"], row["gross_margin"])
+    row["operating_income_ttm"] = _product(
+        row["revenue_ttm"], row["operating_margin"]
     )
-    for key in ("year", "quarter"):
-        result[key] = pd.to_numeric(result[key], errors="coerce").astype("Int64")
-    return (
-        result.dropna(subset=["year", "quarter", "published_at"])
-        .sort_values(["year", "quarter"])
-        .drop_duplicates(["year", "quarter"], keep="last")
-        .reset_index(drop=True)
-    )
+    row["total_assets"] = _division(row["net_income_ttm"], row["roa"])
+    row["total_debt"] = _product(row["debt_to_equity"], row["equity"])
+    return normalize_fundamentals(pd.DataFrame([row]))
 
 
-def _vn_quarterly_ratios(
-    ratios: pd.DataFrame,
-    publications: pd.DataFrame,
-) -> pd.DataFrame:
-    result = ratios.copy()
-    if "ratiotype" in result and result["ratiotype"].notna().any():
-        result = result[
-            result["ratiotype"].astype(str).str.upper() == "RATIO_TTM"
-        ].copy()
-    elif "ratioyearid" in result:
-        result = result[result["ratioyearid"].isna()].copy()
-
-    year_column = "year" if "year" in result else "yearreport"
-    if year_column not in result:
-        return result.iloc[0:0]
-    result["year"] = pd.to_numeric(result[year_column], errors="coerce").astype("Int64")
-    if "quarter" in result:
-        result["quarter"] = pd.to_numeric(
-            result["quarter"], errors="coerce"
-        ).astype("Int64")
-        return result.dropna(subset=["year", "quarter"])
-
-    # Sponsored VCI omits the quarter field from its public ratio result while
-    # retaining rows in chronological order. Align each year's ratio rows to
-    # the latest N published quarters for that same year. This handles partial
-    # first years without inventing an unavailable quarter.
-    parts: list[pd.DataFrame] = []
-    for year, group in result.dropna(subset=["year"]).groupby("year", sort=True):
-        available = publications.loc[
-            publications["year"] == year, "quarter"
-        ].dropna().sort_values()
-        if len(group) > len(available):
-            continue
-        aligned = group.copy()
-        aligned["quarter"] = available.iloc[-len(group):].to_numpy()
-        parts.append(aligned)
-    if not parts:
-        return result.iloc[0:0]
-    return pd.concat(parts, ignore_index=True)
+def _product(left: object, right: object) -> float | None:
+    if pd.isna(left) or pd.isna(right):
+        return None
+    return float(left) * float(right)
 
 
-def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:
-    if column not in frame.columns:
-        return pd.Series(float("nan"), index=frame.index, dtype=float)
-    return pd.to_numeric(frame[column], errors="coerce")
+def _division(numerator: object, denominator: object) -> float | None:
+    if pd.isna(numerator) or pd.isna(denominator) or float(denominator) == 0:
+        return None
+    return float(numerator) / float(denominator)

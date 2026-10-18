@@ -11,7 +11,7 @@ from typing import Callable
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
-from api.providers.vietnam_fundamentals import VnstockDataFundamentalProvider
+from api.providers.vietnam_fundamentals import VnstockFundamentalProvider
 from api.repositories.sqlalchemy_data_operation_repository import (
     SqlAlchemyDataOperationRepository,
 )
@@ -147,7 +147,7 @@ def _execute_instrument(
             )
         else:
             provider = (
-                VnstockDataFundamentalProvider()
+                VnstockFundamentalProvider()
                 if dataset == "fundamentals"
                 else None
             )

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from api.db.session import create_db_engine
 from api.fundamental_provider import fetch_provider_fundamentals
 from api.instrument_data_routing import resolve_instrument_data_route
-from api.providers.vietnam_fundamentals import VnstockDataFundamentalProvider
+from api.providers.vietnam_fundamentals import VnstockFundamentalProvider
 from api.repositories.sqlalchemy_fundamental_repository import (
     SqlAlchemyFundamentalRepository,
 )
@@ -28,7 +28,7 @@ def refresh_instrument_fundamentals(
     mode: str,
     *,
     engine: Engine | None = None,
-    vn_provider: VnstockDataFundamentalProvider | None = None,
+    vn_provider: VnstockFundamentalProvider | None = None,
 ) -> str:
     db_engine = engine or create_db_engine()
     fetched_at = datetime.now(UTC)
@@ -54,7 +54,7 @@ def refresh_instrument_fundamentals(
             return "reused recent canonical fundamentals"
 
     provider = (
-        vn_provider or VnstockDataFundamentalProvider()
+        vn_provider or VnstockFundamentalProvider()
         if adapter == "vnstock_data"
         else None
     )
