@@ -10,6 +10,7 @@ const sections = [
     links: [
       { to: "/vietnam-market/investor-flow", label: "Investor Flow", icon: Activity },
       { to: "/vietnam-market/session-statistics", label: "Session Statistics", icon: BarChart3 },
+      { to: "/vietnam-market/trading-activity", label: "Trading Activity", icon: ChartNoAxesCombined },
     ],
   },
   {

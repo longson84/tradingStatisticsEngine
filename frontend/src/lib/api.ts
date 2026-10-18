@@ -140,6 +140,8 @@ export type InstrumentFlowPoint = components["schemas"]["InstrumentFlowPointResp
 export type InstrumentFlowResponse = components["schemas"]["InstrumentFlowResponse"]
 export type SessionStatisticMetric = components["schemas"]["SessionStatisticMetricResponse"]
 export type InstrumentSessionStatisticsResponse = components["schemas"]["InstrumentSessionStatisticsResponse"]
+export type DailyTradeStatistic = components["schemas"]["DailyTradeStatisticResponse"]
+export type InstrumentTradeStatisticsResponse = components["schemas"]["InstrumentTradeStatisticsResponse"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -308,17 +310,13 @@ export function deleteWatchlistApi(id: number): Promise<WatchlistDeleteResponse>
   return del(`/watchlists/${id}`)
 }
 
-export function dataOperationPreviewApi(params: {
-  scope_type: DataOperationScopeType
-  scope_id: string
-  dataset: DataOperationDataset
-  period_start?: string
-  period_end?: string
-}): Promise<DataOperationPreview> {
+export function dataOperationPreviewApi(
+  params: NonNullable<operations["previewDataOperation"]["parameters"]["query"]>,
+): Promise<DataOperationPreview> {
   const query = new URLSearchParams({
     scope_type: params.scope_type,
     scope_id: params.scope_id,
-    dataset: params.dataset,
+    dataset: params.dataset ?? "prices",
   })
   if (params.period_start) query.set("period_start", params.period_start)
   if (params.period_end) query.set("period_end", params.period_end)
@@ -423,6 +421,14 @@ export function instrumentSessionStatisticsApi(params: {
 }): Promise<InstrumentSessionStatisticsResponse> {
   const query = new URLSearchParams({ start: params.start, end: params.end })
   return get(`/instruments/${params.instrument_id}/session-statistics?${query}`)
+}
+
+export function instrumentTradeStatisticsApi(params:
+  operations["getInstrumentTradeStatistics"]["parameters"]["path"]
+  & NonNullable<operations["getInstrumentTradeStatistics"]["parameters"]["query"]>,
+): Promise<InstrumentTradeStatisticsResponse> {
+  const query = new URLSearchParams({ start: params.start, end: params.end })
+  return get(`/instruments/${params.instrument_id}/trade-statistics?${query}`)
 }
 
 export function newLowDeepApi(

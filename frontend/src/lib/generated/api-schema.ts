@@ -400,6 +400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}/trade-statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Instrument Trade Statistics */
+        get: operations["getInstrumentTradeStatistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe-stats/run": {
         parameters: {
             query?: never;
@@ -841,6 +858,57 @@ export interface components {
             /** Unrealized Return Pct */
             unrealized_return_pct: number | null;
         };
+        /** DailyTradeStatisticResponse */
+        DailyTradeStatisticResponse: {
+            /** Average Buy Trade Volume */
+            average_buy_trade_volume: number;
+            /** Average Sell Trade Volume */
+            average_sell_trade_volume: number;
+            /** Deal Value */
+            deal_value: number;
+            /** Deal Volume */
+            deal_volume: number;
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /** Market Cap */
+            market_cap: number;
+            /** Matched Value */
+            matched_value: number;
+            /** Matched Volume */
+            matched_volume: number;
+            /** Schema Version */
+            schema_version: number;
+            /** Source */
+            source: string;
+            /** Total Buy Trade */
+            total_buy_trade: number;
+            /** Total Buy Trade Volume */
+            total_buy_trade_volume: number;
+            /** Total Buy Unmatched Volume */
+            total_buy_unmatched_volume: number;
+            /** Total Net Trade Volume */
+            total_net_trade_volume: number;
+            /** Total Sell Trade */
+            total_sell_trade: number;
+            /** Total Sell Trade Volume */
+            total_sell_trade_volume: number;
+            /** Total Sell Unmatched Volume */
+            total_sell_unmatched_volume: number;
+            /** Total Shares */
+            total_shares: number;
+            /** Total Value */
+            total_value: number;
+            /** Total Volume */
+            total_volume: number;
+            /**
+             * Trading Date
+             * Format: date
+             */
+            trading_date: string;
+        };
         /** DataOperationHistoryResponse */
         DataOperationHistoryResponse: {
             /** Runs */
@@ -858,7 +926,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history";
             /** Error */
             error: string | null;
             /** Failed */
@@ -911,7 +979,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history";
             /** Eligible Count */
             eligible_count: number;
             /** Instrument Count */
@@ -941,7 +1009,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history";
             /**
              * Mode
              * @default incremental
@@ -1334,6 +1402,43 @@ export interface components {
             snapshot_id: number;
             /** Source */
             source: string;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code: string | null;
+        };
+        /** InstrumentTradeStatisticsResponse */
+        InstrumentTradeStatisticsResponse: {
+            /** Currency */
+            currency: string;
+            /**
+             * First Date
+             * Format: date
+             */
+            first_date: string;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /**
+             * Requested End
+             * Format: date
+             */
+            requested_end: string;
+            /**
+             * Requested Start
+             * Format: date
+             */
+            requested_start: string;
+            /** Row Count */
+            row_count: number;
+            /** Rows */
+            rows: components["schemas"]["DailyTradeStatisticResponse"][];
             /** Symbol */
             symbol: string;
             /** Venue Code */
@@ -2991,7 +3096,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history";
             };
             header?: never;
             path?: never;
@@ -3055,7 +3160,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history";
                 period_start?: string | null;
                 period_end?: string | null;
             };
@@ -3215,7 +3320,7 @@ export interface operations {
                 sector?: string | null;
                 industry?: string | null;
                 venue?: string | null;
-                capability?: ("foreign_flow" | "proprietary_flow" | "session_stats") | null;
+                capability?: ("foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history") | null;
                 has_price_history?: boolean;
                 offset?: number;
                 limit?: number;
@@ -3405,6 +3510,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentSessionStatisticsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstrumentTradeStatistics: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTradeStatisticsResponse"];
                 };
             };
             /** @description Validation Error */

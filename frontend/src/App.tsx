@@ -16,6 +16,7 @@ import { VenuesPage } from "@/pages/VenuesPage"
 import { UniverseStatsPage } from "@/pages/UniverseStatsPage"
 import { InvestorFlowPage } from "@/pages/InvestorFlowPage"
 import { SessionStatisticsPage } from "@/pages/SessionStatisticsPage"
+import { TradingActivityPage } from "@/pages/TradingActivityPage"
 import { AnalysisContextProvider } from "@/lib/analysis-provider"
 
 const qc = new QueryClient({
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />
           <Route path="/vietnam-market/investor-flow" element={<InvestorFlowPage />} />
           <Route path="/vietnam-market/session-statistics" element={<SessionStatisticsPage />} />
+          <Route path="/vietnam-market/trading-activity" element={<TradingActivityPage />} />
           </Routes>
         </BrowserRouter>
       </AnalysisContextProvider>

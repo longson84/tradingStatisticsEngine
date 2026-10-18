@@ -84,14 +84,14 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [prefill] = useState(() => parseSessionStatsPrefill(searchParams))
+  const [prefill] = useState(() => parseExactPeriodPrefill(searchParams))
   const [restoredOperation] = useState(readTrackedOperation)
   const [scopeType, setScopeType] = useState<SingleOperationScopeType>(
     prefill ? "instrument" : restoredOperation?.scopeType ?? "universe",
   )
   const [scopeId, setScopeId] = useState(prefill?.instrumentId ?? restoredOperation?.scopeId ?? "")
   const [dataset, setDataset] = useState<DataOperationDataset>(
-    prefill ? "session_stats" : restoredOperation?.dataset ?? "prices",
+    prefill?.dataset ?? restoredOperation?.dataset ?? "prices",
   )
   const [mode, setMode] = useState<DataOperationMode>(
     prefill ? "full" : restoredOperation?.mode ?? "incremental",
@@ -123,11 +123,11 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     queryKey: ["data-operation-preview", scopeType, scopeId, dataset, periodStart, periodEnd],
     queryFn: () => dataOperationPreviewApi({
       scope_type: scopeType, scope_id: scopeId, dataset,
-      period_start: dataset === "session_stats" ? periodStart : undefined,
-      period_end: dataset === "session_stats" ? periodEnd : undefined,
+      period_start: isExactPeriodDataset(dataset) ? periodStart : undefined,
+      period_end: isExactPeriodDataset(dataset) ? periodEnd : undefined,
     }),
-    enabled: scopeId.length > 0 && (dataset !== "session_stats" || (
-      periodStart.length > 0 && periodEnd.length > 0 && periodStart <= periodEnd
+    enabled: scopeId.length > 0 && (!isExactPeriodDataset(dataset) || (
+      isIsoDate(periodStart) && isIsoDate(periodEnd) && periodStart <= periodEnd
     )),
   })
   const coverage = useQuery({
@@ -249,10 +249,15 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
   }
   const run = () => {
     if (!preview.data?.can_run) return
+    if (isExactPeriodDataset(dataset) && (
+      scopeType !== "instrument" || !isIsoDate(periodStart) || !isIsoDate(periodEnd)
+      || periodStart > periodEnd
+    )) return
     start.mutate({
-      scope_type: scopeType, scope_id: scopeId, dataset, mode,
-      period_start: dataset === "session_stats" ? periodStart : null,
-      period_end: dataset === "session_stats" ? periodEnd : null,
+      scope_type: scopeType, scope_id: scopeId, dataset,
+      mode: isExactPeriodDataset(dataset) ? "full" : mode,
+      period_start: isExactPeriodDataset(dataset) ? periodStart : null,
+      period_end: isExactPeriodDataset(dataset) ? periodEnd : null,
     })
   }
   const running = operationRunning
@@ -267,7 +272,9 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     setScopeType(run.scope_type)
     setScopeId(run.scope_id)
     setDataset(run.dataset)
-    setMode(run.mode)
+    setMode(isExactPeriodDataset(run.dataset) ? "full" : run.mode)
+    setPeriodStart(run.period_start ?? "")
+    setPeriodEnd(run.period_end ?? "")
     setStartedJob(null)
     setCoverageOffset(0)
     if (run.scope_type === "instrument") {
@@ -409,6 +416,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ["foreign_flow", "Foreign flow"],
                   ["proprietary_flow", "Proprietary flow"],
                   ["session_stats", "Session statistics"],
+                  ["trade_history", "Trading activity"],
                 ]}
                 value={dataset}
                 onChange={value => {
@@ -417,13 +425,13 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   if (isVnExactDataset(next) && scopeType !== "instrument") {
                     chooseScope("instrument")
                   }
-                  if (next === "session_stats") setMode("full")
+                  if (isExactPeriodDataset(next)) setMode("full")
                   setStartedJob(null)
                 }}
               />
               <ChoiceGroup
                 label="Mode"
-                options={dataset === "session_stats" ? [
+                options={isExactPeriodDataset(dataset) ? [
                   ["full", "Selected period"],
                 ] : [
                   ["incremental", "Incremental"],
@@ -434,7 +442,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
               />
             </div>
 
-            {dataset === "session_stats" && <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {isExactPeriodDataset(dataset) && <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <DateField label="Period start" value={periodStart} onChange={setPeriodStart} />
               <DateField label="Period end" value={periodEnd} onChange={setPeriodEnd} />
             </div>}
@@ -449,7 +457,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ? "Checking active job…"
                   : running
                     ? "Update in progress"
-                    : dataset === "session_stats"
+                    : isExactPeriodDataset(dataset)
                       ? "Fetch selected period"
                       : mode === "full" ? "Build full history" : "Update data"}
               </Button>
@@ -466,6 +474,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
               </p>
             )}
             {dataset === "session_stats" && <p className="mt-3 text-xs text-muted-foreground">Fetches one immutable VCI aggregate snapshot for this exact Instrument and period. Full mode is required.</p>}
+            {dataset === "trade_history" && <p className="mt-3 text-xs text-muted-foreground">Fetches stored daily VCI trading activity for this exact Instrument and selected period. Full mode replaces/upserts the requested range; it does not rebuild all history.</p>}
           </section>
 
           <div className="space-y-5">
@@ -1088,12 +1097,14 @@ function readTrackedOperation(): TrackedOperation | null {
         value.scopeType ?? "",
       )
       || typeof value.scopeId !== "string"
-      || !(["prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"] as const).includes(
+      || !(["prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats", "trade_history"] as const).includes(
         value.dataset as DataOperationDataset,
       )
       || !(["incremental", "full"] as const).includes(
         value.mode as DataOperationMode,
       )
+      || (isVnExactDataset(value.dataset as DataOperationDataset) && value.scopeType !== "instrument")
+      || (isExactPeriodDataset(value.dataset as DataOperationDataset) && value.mode !== "full")
     ) {
       window.sessionStorage.removeItem(TRACKED_OPERATION_KEY)
       return null
@@ -1121,27 +1132,38 @@ function isParticipantFlowDataset(
   return value === "foreign_flow" || value === "proprietary_flow"
 }
 
-function isVnExactDataset(value: DataOperationDataset): value is "foreign_flow" | "proprietary_flow" | "session_stats" {
-  return isParticipantFlowDataset(value) || value === "session_stats"
+function isExactPeriodDataset(value: DataOperationDataset): value is "session_stats" | "trade_history" {
+  return value === "session_stats" || value === "trade_history"
+}
+
+function isVnExactDataset(value: DataOperationDataset): value is "foreign_flow" | "proprietary_flow" | "session_stats" | "trade_history" {
+  return isParticipantFlowDataset(value) || isExactPeriodDataset(value)
 }
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="text-xs font-medium">{label}<input type="date" value={value} onChange={event => onChange(event.target.value)} className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></label>
 }
 
-function parseSessionStatsPrefill(params: URLSearchParams): {
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) return false
+  const date = new Date(`${value}T00:00:00Z`)
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+function parseExactPeriodPrefill(params: URLSearchParams): {
+  dataset: "session_stats" | "trade_history"
   instrumentId: string
   symbol: string
   periodStart: string
   periodEnd: string
 } | null {
-  if (params.get("dataset") !== "session_stats") return null
+  const dataset = params.get("dataset")
+  if (dataset !== "session_stats" && dataset !== "trade_history") return null
   const instrumentId = params.get("instrument_id") ?? ""
   const symbol = (params.get("symbol") ?? "").trim().toUpperCase()
   const periodStart = params.get("period_start") ?? ""
   const periodEnd = params.get("period_end") ?? ""
-  const isoDate = /^\d{4}-\d{2}-\d{2}$/
-  if (!/^\d+$/.test(instrumentId) || Number(instrumentId) <= 0 || !symbol) return null
-  if (!isoDate.test(periodStart) || !isoDate.test(periodEnd) || periodStart > periodEnd) return null
-  return { instrumentId, symbol, periodStart, periodEnd }
+  if (!/^\d+$/.test(instrumentId) || !Number.isSafeInteger(Number(instrumentId)) || Number(instrumentId) <= 0 || !symbol) return null
+  if (!isIsoDate(periodStart) || !isIsoDate(periodEnd) || periodStart > periodEnd) return null
+  return { dataset, instrumentId, symbol, periodStart, periodEnd }
 }

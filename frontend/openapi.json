@@ -1000,6 +1000,240 @@
         "title": "CurrentPositionResponse",
         "type": "object"
       },
+      "DailyTradeStatisticResponse": {
+        "properties": {
+          "average_buy_trade_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Average Buy Trade Volume"
+          },
+          "average_sell_trade_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Average Sell Trade Volume"
+          },
+          "deal_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Deal Value"
+          },
+          "deal_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Deal Volume"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "market_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Market Cap"
+          },
+          "matched_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Matched Value"
+          },
+          "matched_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Matched Volume"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "total_buy_trade": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Buy Trade"
+          },
+          "total_buy_trade_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Buy Trade Volume"
+          },
+          "total_buy_unmatched_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Buy Unmatched Volume"
+          },
+          "total_net_trade_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Net Trade Volume"
+          },
+          "total_sell_trade": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Sell Trade"
+          },
+          "total_sell_trade_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Sell Trade Volume"
+          },
+          "total_sell_unmatched_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Sell Unmatched Volume"
+          },
+          "total_shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Shares"
+          },
+          "total_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Value"
+          },
+          "total_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Volume"
+          },
+          "trading_date": {
+            "format": "date",
+            "title": "Trading Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trading_date",
+          "source",
+          "schema_version",
+          "fetched_at",
+          "market_cap",
+          "total_shares",
+          "matched_volume",
+          "matched_value",
+          "deal_volume",
+          "deal_value",
+          "total_volume",
+          "total_value",
+          "total_buy_trade",
+          "total_buy_trade_volume",
+          "total_sell_trade",
+          "total_sell_trade_volume",
+          "total_net_trade_volume",
+          "total_buy_unmatched_volume",
+          "total_sell_unmatched_volume",
+          "average_buy_trade_volume",
+          "average_sell_trade_volume"
+        ],
+        "title": "DailyTradeStatisticResponse",
+        "type": "object"
+      },
       "DataOperationHistoryResponse": {
         "properties": {
           "runs": {
@@ -1046,7 +1280,8 @@
               "fundamentals",
               "foreign_flow",
               "proprietary_flow",
-              "session_stats"
+              "session_stats",
+              "trade_history"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1211,7 +1446,8 @@
               "fundamentals",
               "foreign_flow",
               "proprietary_flow",
-              "session_stats"
+              "session_stats",
+              "trade_history"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1285,7 +1521,8 @@
               "fundamentals",
               "foreign_flow",
               "proprietary_flow",
-              "session_stats"
+              "session_stats",
+              "trade_history"
             ],
             "title": "Dataset",
             "type": "string"
@@ -2646,6 +2883,83 @@
           "metrics"
         ],
         "title": "InstrumentSessionStatisticsResponse",
+        "type": "object"
+      },
+      "InstrumentTradeStatisticsResponse": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "first_date": {
+            "format": "date",
+            "title": "First Date",
+            "type": "string"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "last_date": {
+            "format": "date",
+            "title": "Last Date",
+            "type": "string"
+          },
+          "requested_end": {
+            "format": "date",
+            "title": "Requested End",
+            "type": "string"
+          },
+          "requested_start": {
+            "format": "date",
+            "title": "Requested Start",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/DailyTradeStatisticResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "instrument_type",
+          "venue_code",
+          "currency",
+          "requested_start",
+          "requested_end",
+          "first_date",
+          "last_date",
+          "row_count",
+          "rows"
+        ],
+        "title": "InstrumentTradeStatisticsResponse",
         "type": "object"
       },
       "MonthlyStatRowResponse": {
@@ -6830,7 +7144,8 @@
                 "fundamentals",
                 "foreign_flow",
                 "proprietary_flow",
-                "session_stats"
+                "session_stats",
+                "trade_history"
               ],
               "title": "Dataset",
               "type": "string"
@@ -6956,7 +7271,8 @@
                 "fundamentals",
                 "foreign_flow",
                 "proprietary_flow",
-                "session_stats"
+                "session_stats",
+                "trade_history"
               ],
               "title": "Dataset",
               "type": "string"
@@ -7289,7 +7605,8 @@
                   "enum": [
                     "foreign_flow",
                     "proprietary_flow",
-                    "session_stats"
+                    "session_stats",
+                    "trade_history"
                   ],
                   "type": "string"
                 },
@@ -7795,6 +8112,68 @@
           }
         },
         "summary": "Get Instrument Session Statistics",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/instruments/{instrument_id}/trade-statistics": {
+      "get": {
+        "operationId": "getInstrumentTradeStatistics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_id",
+            "required": true,
+            "schema": {
+              "title": "Instrument Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentTradeStatisticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instrument Trade Statistics",
         "tags": [
           "instruments"
         ]
