@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 
 DataOperationScopeType = Literal["category", "universe", "watchlist", "instrument"]
-DataOperationDataset = Literal["prices", "fundamentals"]
+DataOperationDataset = Literal["prices", "fundamentals", "foreign_flow"]
 DataOperationMode = Literal["incremental", "full"]
 
 

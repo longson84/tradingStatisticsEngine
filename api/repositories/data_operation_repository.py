@@ -30,6 +30,11 @@ class DataOperationInstrumentRecord:
     refresh_detail: str | None
     attempted_at: datetime | None
     fundamental_fetched_at: datetime | None = None
+    flow_first_date: date | None = None
+    flow_last_date: date | None = None
+    flow_row_count: int = 0
+    flow_source: str | None = None
+    flow_fetched_at: datetime | None = None
     display_name: str | None = None
 
 

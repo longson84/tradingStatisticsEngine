@@ -23,7 +23,7 @@ from api.repositories.instrument_routing_repository import (
 )
 
 
-DataOperationDataset = Literal["prices", "fundamentals"]
+DataOperationDataset = Literal["prices", "fundamentals", "foreign_flow"]
 PriceCoverageStatus = Literal["current", "stale", "missing"]
 FUNDAMENTAL_REUSE_WINDOW = timedelta(hours=12)
 
@@ -141,6 +141,13 @@ class DataOperationService:
             missing_count = sum(
                 row.fundamental_fetched_at is None for row in eligible
             )
+        elif dataset == "foreign_flow":
+            current_count = sum(
+                row.flow_last_date is not None
+                and row.flow_last_date >= _expected_session(routes[row.id], current)
+                for row in eligible
+            )
+            missing_count = sum(row.flow_last_date is None for row in eligible)
         else:
             current_count = sum(
                 row.last_date is not None
@@ -285,6 +292,8 @@ def _eligible(
         return False
     if dataset == "fundamentals":
         return route.fundamental_adapter is not None
+    if dataset == "foreign_flow":
+        return "foreign_flow" in route.capabilities
     return True
 
 
@@ -371,6 +380,8 @@ def _dataset_adapter(
 ) -> str | None:
     if route is None:
         return None
+    if dataset == "foreign_flow":
+        return "vnstock" if "foreign_flow" in route.capabilities else None
     return (
         route.fundamental_adapter
         if dataset == "fundamentals"
@@ -386,6 +397,8 @@ def _execution(
 ) -> tuple[bool, str]:
     if not scope.instruments:
         return False, "This scope has no active instruments."
+    if dataset == "foreign_flow" and scope.scope_type != "instrument":
+        return False, "Foreign flow updates require one exact Instrument scope."
     if not eligible_count:
         return False, f"No instruments support {dataset} updates."
     oversized = tuple(
@@ -418,6 +431,7 @@ def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
         ("prices", "binance_spot"): 100,
         ("fundamentals", "yfinance"): 5_000,
         ("fundamentals", "vnstock"): 1_000,
+        ("foreign_flow", "vnstock"): 1,
     }
     default = defaults.get((dataset, adapter), 1)
     key = f"DATA_OPERATION_{dataset}_{adapter}_MAX_INSTRUMENTS".upper()

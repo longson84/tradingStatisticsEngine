@@ -22,7 +22,7 @@ from api.price_refresh_coordination import (
 
 
 ScopeType = Literal["category", "universe", "watchlist", "instrument"]
-Dataset = Literal["prices", "fundamentals"]
+Dataset = Literal["prices", "fundamentals", "foreign_flow"]
 Mode = Literal["incremental", "full"]
 Status = Literal["queued", "running", "completed", "failed"]
 _PROGRESS = re.compile(r"DATA_OPERATION:\s+(\d+)/(\d+)")
@@ -90,14 +90,17 @@ def start_data_operation_job(
                     f"This {scope_type} already has an active {dataset} update"
                 )
             _active_keys[key] = job.id
-        if dataset == "prices":
-            for adapter in job.adapter_keys:
-                acquire_price_refresh(
-                    adapter,
-                    job.id,
-                    f"{scope_type} {scope_name}",
-                )
-                acquired.append(adapter)
+        lease_adapters = tuple(
+            adapter for adapter in job.adapter_keys
+            if dataset == "prices" or adapter == "vnstock"
+        )
+        for adapter in lease_adapters:
+            acquire_price_refresh(
+                adapter,
+                job.id,
+                f"{scope_type} {scope_name}",
+            )
+            acquired.append(adapter)
         _insert_job(engine, job)
         with _lock:
             _jobs[job.id] = job
@@ -133,7 +136,7 @@ def get_active_scope_job(
     scope_id: str,
 ) -> DataOperationJob | None:
     with _lock:
-        for dataset in ("prices", "fundamentals"):
+        for dataset in ("prices", "fundamentals", "foreign_flow"):
             job_id = _active_keys.get((scope_type, scope_id, dataset))
             if job_id is not None:
                 return _jobs.get(job_id)
@@ -238,9 +241,10 @@ def _run_job(job_id: str, engine: Engine) -> None:
             _active_keys.pop(
                 (current.scope_type, current.scope_id, current.dataset), None
             )
-        if job.dataset == "prices":
-            for adapter in job.adapter_keys:
-                release_price_refresh(adapter, job.id)
+        for adapter in job.adapter_keys:
+            if job.dataset != "prices" and adapter != "vnstock":
+                continue
+            release_price_refresh(adapter, job.id)
 
 
 def _now() -> str:

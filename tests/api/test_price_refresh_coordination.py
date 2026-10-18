@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import create_engine
+
+from api import data_operation_jobs
+from api.db.models import Base
 
 from api.price_refresh_coordination import (
     acquire_price_refresh,
@@ -33,3 +37,43 @@ def test_only_owner_can_release_refresh_lease():
 def test_generation_4_adapter_name_is_rejected():
     with pytest.raises(ValueError, match="Unsupported price refresh adapter"):
         acquire_price_refresh("vnstock_data", "legacy-owner", "VN30")
+
+
+def test_foreign_flow_and_price_jobs_share_the_vnstock_lease(monkeypatch):
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    class DormantThread:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(data_operation_jobs, "Thread", DormantThread)
+    flow = data_operation_jobs.start_data_operation_job(
+        scope_type="instrument",
+        scope_id="1",
+        scope_name="FPT",
+        dataset="foreign_flow",
+        mode="incremental",
+        adapter_keys=("vnstock",),
+        total=1,
+        engine=engine,
+    )
+    try:
+        with pytest.raises(RuntimeError, match="FPT"):
+            data_operation_jobs.start_data_operation_job(
+                scope_type="instrument",
+                scope_id="2",
+                scope_name="VN30",
+                dataset="prices",
+                mode="incremental",
+                adapter_keys=("vnstock",),
+                total=1,
+                engine=engine,
+            )
+    finally:
+        release_price_refresh("vnstock", flow.id)
+        data_operation_jobs._active_keys.clear()
+        data_operation_jobs._jobs.clear()

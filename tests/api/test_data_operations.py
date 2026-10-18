@@ -271,6 +271,41 @@ def test_watchlist_fundamentals_are_planned_by_eligible_instrument():
     assert "yfinance" in preview.message
 
 
+def test_foreign_flow_requires_one_exact_eligible_vietnam_instrument():
+    eligible = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="2",
+        name="FPT",
+        instruments=(instrument(2, "FPT", country_code="VN", venue_code="HOSE"),),
+    )
+    plan = data_operation_service(eligible).plan("instrument", "2", "foreign_flow")
+    assert plan.can_run is True
+    assert plan.groups[0].adapter == "vnstock"
+    assert plan.groups[0].instrument_ids == (2,)
+
+    collection = DataOperationScopeRecord(
+        scope_type="watchlist",
+        scope_id="9",
+        name="VN",
+        instruments=eligible.instruments,
+    )
+    rejected = data_operation_service(collection).plan("watchlist", "9", "foreign_flow")
+    assert rejected.can_run is False
+    assert "exact Instrument" in rejected.message
+
+
+def test_foreign_flow_rejects_us_equity():
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="1",
+        name="MSFT",
+        instruments=(instrument(1, "MSFT"),),
+    )
+    preview = data_operation_service(scope).preview("instrument", "1", "foreign_flow")
+    assert preview.eligible_count == 0
+    assert preview.can_run is False
+
+
 def test_fundamental_preview_uses_fundamental_fetch_state_not_price_dates():
     now = datetime(2026, 8, 11, 18, tzinfo=UTC)
     scope = DataOperationScopeRecord(

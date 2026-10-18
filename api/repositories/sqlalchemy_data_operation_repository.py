@@ -9,6 +9,7 @@ from api.db.models import (
     Company,
     Instrument,
     FundamentalReport,
+    InstrumentFlowCoverage,
     PriceBarCoverage,
     PriceRefreshState,
     Universe,
@@ -193,6 +194,11 @@ class SqlAlchemyDataOperationRepository:
                 PriceRefreshState.detail.label("refresh_detail"),
                 PriceRefreshState.attempted_at,
                 fundamental_coverage.c.fundamental_fetched_at,
+                InstrumentFlowCoverage.first_date.label("flow_first_date"),
+                InstrumentFlowCoverage.last_date.label("flow_last_date"),
+                InstrumentFlowCoverage.row_count.label("flow_row_count"),
+                InstrumentFlowCoverage.source.label("flow_source"),
+                InstrumentFlowCoverage.fetched_at.label("flow_fetched_at"),
             )
             .select_from(Instrument)
             .outerjoin(Company, Company.id == Instrument.company_id)
@@ -212,6 +218,11 @@ class SqlAlchemyDataOperationRepository:
             .outerjoin(
                 fundamental_coverage,
                 fundamental_coverage.c.instrument_id == Instrument.id,
+            )
+            .outerjoin(
+                InstrumentFlowCoverage,
+                (InstrumentFlowCoverage.instrument_id == Instrument.id)
+                & (InstrumentFlowCoverage.participant_type == "foreign"),
             )
         )
 
@@ -238,6 +249,11 @@ class SqlAlchemyDataOperationRepository:
                 refresh_detail=row.refresh_detail,
                 attempted_at=row.attempted_at,
                 fundamental_fetched_at=row.fundamental_fetched_at,
+                flow_first_date=row.flow_first_date,
+                flow_last_date=row.flow_last_date,
+                flow_row_count=int(row.flow_row_count or 0),
+                flow_source=row.flow_source,
+                flow_fetched_at=row.flow_fetched_at,
             )
             for row in self._session.execute(statement)
         )

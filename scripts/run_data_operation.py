@@ -26,6 +26,7 @@ from scripts.refresh_instrument_fundamentals import (
     refresh_instrument_fundamentals,
 )
 from scripts.refresh_instrument_history import refresh_instrument
+from scripts.refresh_instrument_flow import refresh_instrument_flow
 
 
 def run_data_operation(
@@ -148,7 +149,7 @@ def _execute_instrument(
                 engine=engine,
                 emit_progress=False,
             )
-        else:
+        elif dataset == "fundamentals":
             provider = (
                 VnstockFundamentalProvider()
                 if dataset == "fundamentals"
@@ -160,6 +161,12 @@ def _execute_instrument(
                 engine=engine,
                 vn_provider=provider,
             )
+        elif dataset == "foreign_flow":
+            detail = refresh_instrument_flow(
+                instrument_id, mode, engine=engine
+            )
+        else:
+            raise ValueError(f"Unsupported dataset: {dataset}")
     except Exception as exc:
         return instrument_id, f"failed instrument={instrument_id}: {exc}", True
     return instrument_id, detail, False
@@ -209,7 +216,9 @@ def main() -> None:
         "--scope-type", choices=("category", "universe", "watchlist", "instrument"), required=True
     )
     parser.add_argument("--scope-id", required=True)
-    parser.add_argument("--dataset", choices=("prices", "fundamentals"), required=True)
+    parser.add_argument(
+        "--dataset", choices=("prices", "fundamentals", "foreign_flow"), required=True
+    )
     parser.add_argument("--mode", choices=("incremental", "full"), required=True)
     parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
