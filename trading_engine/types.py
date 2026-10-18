@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 from typing import Any, Literal, Protocol, runtime_checkable
 
 import pandas as pd
@@ -65,6 +66,50 @@ class PriceFrame:
 class DataLoader(Protocol):
     """Protocol for all data sources."""
     def load(self, symbol: str, start: date, end: date) -> PriceFrame: ...
+
+
+# =============================================================================
+# Stored trading activity analytics
+# =============================================================================
+
+NumericObservation = Decimal | float | int
+TurnoverIntensityUnavailableReason = Literal[
+    "invalid_total_value",
+    "invalid_market_cap",
+    "non_positive_market_cap",
+    "insufficient_history",
+    "invalid_baseline_window",
+    "zero_baseline_variance",
+]
+
+
+@dataclass(frozen=True)
+class TradingActivityObservation:
+    """Provider-neutral end-of-session inputs for activity analytics."""
+
+    session: date
+    total_value: NumericObservation
+    market_cap: NumericObservation
+
+
+@dataclass(frozen=True)
+class TurnoverIntensityPoint:
+    """One session of turnover intensity and its prior-window context."""
+
+    session: date
+    intensity: float | None
+    baseline: float | None
+    anomaly_score: float | None
+    unavailable_reason: TurnoverIntensityUnavailableReason | None
+
+
+@dataclass(frozen=True)
+class TurnoverIntensityAnalysis:
+    """Versioned turnover-intensity result in chronological session order."""
+
+    formula_version: str
+    baseline_sessions: int
+    points: tuple[TurnoverIntensityPoint, ...]
 
 
 # =============================================================================
