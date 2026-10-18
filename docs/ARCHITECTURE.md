@@ -2458,3 +2458,43 @@ installer, no generation 4 fallback, and no runtime alias for the former
 provider token. New market provenance is `vnstock-<version>-vci`; universe
 provenance is `vnstock-<version>-kbs`. Historical source labels remain
 displayable but are never rewritten.
+
+### 2026-10-18 — Store Vietnam equity participant flows by exact Instrument
+
+Context: Vnstock generation 5 exposes foreign-investor flow for Vietnam
+equities, but this dataset is not meaningful for every Instrument category.
+Treating it as a universal instrument field would produce empty or misleading
+screens for US equities, indices, crypto spot pairs, and reference rates.
+
+Decision: application routing derives a `foreign_flow` capability only for
+active common stocks with an issuer and a HOSE, HNX, or UPCOM Venue. Discovery,
+Data Operations planning, write services, and read services each enforce that
+capability independently. The frontend uses a dedicated Vietnam Market page
+whose selector asks for capable Instruments rather than pretending every
+Instrument has the same datasets.
+
+Canonical observations are keyed by `(instrument_id, trading_date,
+participant_type)`. Symbol and Venue remain descriptive routing inputs, never
+flow identity. Gross and provider-reported net values use fixed-point
+`Numeric(38, 6)` fields; the application preserves VCI net values rather than
+recalculating them. Source and timezone-aware fetch time are stored on every
+observation, with a derived coverage row per Instrument and participant type.
+The schema reserves `proprietary`, but the first public API and UI slice expose
+only `foreign`.
+
+Provider access occurs only through an explicit exact-Instrument Data
+Operation. Incremental refresh overlaps seven calendar days, normalizes the
+complete provider result, and atomically upserts it. Foreign-flow jobs share
+the `vnstock` adapter lease with price and fundamental jobs. Opening or
+filtering the Investor Flow page reads PostgreSQL only and reports stored
+coverage and session-based staleness; it never triggers an implicit network
+request. Session aggregates and KBS live volume profile remain separate future
+datasets because their availability, time grain, and provider semantics differ
+from daily participant flow.
+
+Consequences: equal ticker text on different Venues cannot cross-write or
+cross-read flow data, provider failure leaves prior observations intact, and
+unsupported Instruments fail explicitly instead of returning an ambiguous
+empty series. Future participant types or flow-capable markets require an
+explicit capability, provider adapter, persistence semantics, and UI choice;
+they do not inherit support merely from sharing the Instrument model.
