@@ -596,7 +596,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             /**
              * Mode
              * @default incremental
@@ -618,7 +618,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             /**
              * Mode
              * @default incremental
@@ -841,7 +841,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             /** Error */
             error: string | null;
             /** Failed */
@@ -890,7 +890,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             /** Eligible Count */
             eligible_count: number;
             /** Instrument Count */
@@ -920,7 +920,7 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             /**
              * Mode
              * @default incremental
@@ -1098,8 +1098,11 @@ export interface components {
             last_date: string;
             /** Observations */
             observations: components["schemas"]["InstrumentFlowPointResponse"][];
-            /** Participant Type */
-            participant_type: string;
+            /**
+             * Participant Type
+             * @enum {string}
+             */
+            participant_type: "foreign" | "proprietary";
             /** Row Count */
             row_count: number;
             /** Source */
@@ -2903,7 +2906,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             };
             header?: never;
             path?: never;
@@ -2967,7 +2970,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
             };
             header?: never;
             path?: never;
@@ -3125,7 +3128,7 @@ export interface operations {
                 sector?: string | null;
                 industry?: string | null;
                 venue?: string | null;
-                capability?: "foreign_flow" | null;
+                capability?: ("foreign_flow" | "proprietary_flow") | null;
                 has_price_history?: boolean;
                 offset?: number;
                 limit?: number;
@@ -3262,7 +3265,7 @@ export interface operations {
     getInstrumentMarketFlows: {
         parameters: {
             query?: {
-                participant_type?: "foreign";
+                participant_type?: "foreign" | "proprietary";
                 start?: string | null;
                 end?: string | null;
             };

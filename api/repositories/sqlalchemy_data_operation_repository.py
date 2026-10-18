@@ -133,6 +133,12 @@ class SqlAlchemyDataOperationRepository:
     def _instrument_rows():
         base_asset = aliased(Asset, name="data_operation_base_asset")
         quote_asset = aliased(Asset, name="data_operation_quote_asset")
+        foreign_coverage = aliased(
+            InstrumentFlowCoverage, name="foreign_flow_coverage"
+        )
+        proprietary_coverage = aliased(
+            InstrumentFlowCoverage, name="proprietary_flow_coverage"
+        )
         equity_name = Company.display_name + case(
             (Instrument.share_class.is_not(None), " " + Instrument.share_class),
             else_="",
@@ -194,11 +200,16 @@ class SqlAlchemyDataOperationRepository:
                 PriceRefreshState.detail.label("refresh_detail"),
                 PriceRefreshState.attempted_at,
                 fundamental_coverage.c.fundamental_fetched_at,
-                InstrumentFlowCoverage.first_date.label("flow_first_date"),
-                InstrumentFlowCoverage.last_date.label("flow_last_date"),
-                InstrumentFlowCoverage.row_count.label("flow_row_count"),
-                InstrumentFlowCoverage.source.label("flow_source"),
-                InstrumentFlowCoverage.fetched_at.label("flow_fetched_at"),
+                foreign_coverage.first_date.label("flow_first_date"),
+                foreign_coverage.last_date.label("flow_last_date"),
+                foreign_coverage.row_count.label("flow_row_count"),
+                foreign_coverage.source.label("flow_source"),
+                foreign_coverage.fetched_at.label("flow_fetched_at"),
+                proprietary_coverage.first_date.label("proprietary_flow_first_date"),
+                proprietary_coverage.last_date.label("proprietary_flow_last_date"),
+                proprietary_coverage.row_count.label("proprietary_flow_row_count"),
+                proprietary_coverage.source.label("proprietary_flow_source"),
+                proprietary_coverage.fetched_at.label("proprietary_flow_fetched_at"),
             )
             .select_from(Instrument)
             .outerjoin(Company, Company.id == Instrument.company_id)
@@ -220,9 +231,14 @@ class SqlAlchemyDataOperationRepository:
                 fundamental_coverage.c.instrument_id == Instrument.id,
             )
             .outerjoin(
-                InstrumentFlowCoverage,
-                (InstrumentFlowCoverage.instrument_id == Instrument.id)
-                & (InstrumentFlowCoverage.participant_type == "foreign"),
+                foreign_coverage,
+                (foreign_coverage.instrument_id == Instrument.id)
+                & (foreign_coverage.participant_type == "foreign"),
+            )
+            .outerjoin(
+                proprietary_coverage,
+                (proprietary_coverage.instrument_id == Instrument.id)
+                & (proprietary_coverage.participant_type == "proprietary"),
             )
         )
 
@@ -254,6 +270,11 @@ class SqlAlchemyDataOperationRepository:
                 flow_row_count=int(row.flow_row_count or 0),
                 flow_source=row.flow_source,
                 flow_fetched_at=row.flow_fetched_at,
+                proprietary_flow_first_date=row.proprietary_flow_first_date,
+                proprietary_flow_last_date=row.proprietary_flow_last_date,
+                proprietary_flow_row_count=int(row.proprietary_flow_row_count or 0),
+                proprietary_flow_source=row.proprietary_flow_source,
+                proprietary_flow_fetched_at=row.proprietary_flow_fetched_at,
             )
             for row in self._session.execute(statement)
         )

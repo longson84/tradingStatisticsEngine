@@ -31,6 +31,16 @@ class Provider:
             ),
         )
 
+    def proprietary_flow(self, symbol, start, end):
+        self.calls.append((symbol, start, end, "proprietary"))
+        result = self.foreign_flow(symbol, start, end)
+        return VietnamProviderResult(
+            frame=result.frame.assign(net_val=77),
+            metadata=VietnamProviderMetadata(
+                **{**result.metadata.__dict__, "method": "proprietary_flow"}
+            ),
+        )
+
 
 def _database():
     engine = create_engine("sqlite+pysqlite:///:memory:")
@@ -83,3 +93,36 @@ def test_provider_failure_preserves_existing_flow():
         coverage = session.scalar(select(InstrumentFlowCoverage))
         assert coverage is not None
         assert coverage.row_count == 1
+
+
+def test_proprietary_refresh_uses_independent_coverage_and_participant_identity():
+    engine = _database()
+    provider = Provider()
+    now = datetime(2026, 10, 16, 9, tzinfo=UTC)
+    refresh_instrument_flow(
+        1, "full", participant_type="foreign", engine=engine, provider=provider, now=now
+    )
+
+    detail = refresh_instrument_flow(
+        1,
+        "incremental",
+        participant_type="proprietary",
+        engine=engine,
+        provider=provider,
+        now=now,
+    )
+
+    proprietary_call = next(call for call in provider.calls if len(call) == 4)
+    assert proprietary_call == (
+        "FPT", date(2000, 1, 1), date(2026, 10, 16), "proprietary"
+    )
+    assert "proprietary flow through 2026-10-15" in detail
+    with Session(engine) as session:
+        coverages = session.scalars(
+            select(InstrumentFlowCoverage).order_by(
+                InstrumentFlowCoverage.participant_type
+            )
+        ).all()
+        assert [(row.participant_type, row.row_count) for row in coverages] == [
+            ("foreign", 1), ("proprietary", 1),
+        ]

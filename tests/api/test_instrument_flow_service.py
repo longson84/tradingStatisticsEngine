@@ -173,6 +173,42 @@ def test_services_keep_same_symbol_instruments_separate_and_filter_inclusively()
     assert result.observations[0].net_value == Decimal("-456.0")
 
 
+def test_services_store_and_read_proprietary_flow_independently():
+    repository = FlowRepositoryStub((_instrument(),))
+    routing = RoutingRepositoryStub((_metadata(),))
+    writer = InstrumentFlowWriteService(repository, routing)
+    fetched_at = datetime(2026, 10, 18, tzinfo=UTC)
+
+    writer.store_observations(
+        1,
+        "foreign",
+        _frame(),
+        source="vnstock-5.1.0-vci",
+        fetched_at=fetched_at,
+    )
+    proprietary = _frame().assign(net_value=[10.0, 20.0])
+    writer.store_observations(
+        1,
+        "proprietary",
+        proprietary,
+        source="vnstock-5.1.0-vci",
+        fetched_at=fetched_at,
+    )
+
+    result = InstrumentFlowService(repository, routing).get_stored_flow(
+        1,
+        "proprietary",
+        now=datetime(2026, 10, 16, 9, tzinfo=UTC),
+    )
+
+    assert result.participant_type == "proprietary"
+    assert result.coverage.row_count == 2
+    assert [row.net_value for row in result.observations] == [
+        Decimal("10.0"), Decimal("20.0"),
+    ]
+    assert repository.get_coverage(1, "foreign").row_count == 2
+
+
 @pytest.mark.parametrize(
     "metadata",
     [

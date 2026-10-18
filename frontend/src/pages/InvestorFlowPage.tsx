@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 
 export function InvestorFlowPage() {
+  const [participant, setParticipant] = useState<"foreign" | "proprietary">("foreign")
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<InstrumentCatalogItem | null>(null)
   const [start, setStart] = useState("")
@@ -23,20 +24,20 @@ export function InvestorFlowPage() {
   const [range, setRange] = useState({ start: "", end: "" })
   const debounced = useDebouncedValue(search.trim(), 300)
   const instruments = useQuery({
-    queryKey: ["foreign-flow-instruments", debounced],
+    queryKey: ["participant-flow-instruments", participant, debounced],
     queryFn: () => instrumentsApi({
       search: debounced,
-      capability: "foreign_flow",
+      capability: participant === "foreign" ? "foreign_flow" : "proprietary_flow",
       has_price_history: false,
       limit: 20,
     }),
     enabled: debounced.length >= 3,
   })
   const flow = useQuery({
-    queryKey: ["instrument-foreign-flow", selected?.id, range.start, range.end],
+    queryKey: ["instrument-participant-flow", selected?.id, participant, range.start, range.end],
     queryFn: () => instrumentMarketFlowsApi({
       instrument_id: selected!.id,
-      participant_type: "foreign",
+      participant_type: participant,
       start: range.start || undefined,
       end: range.end || undefined,
     }),
@@ -65,11 +66,30 @@ export function InvestorFlowPage() {
             <h1 className="text-2xl font-bold tracking-tight">Vietnam Investor Flow</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Stored daily foreign-investor buy, sell, and net activity for eligible Vietnam equities.
+            Stored daily foreign-investor and proprietary-trading activity for eligible Vietnam equities.
           </p>
         </header>
 
         <section className="mb-5 rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex gap-1 border-b border-border">
+            {([
+              ["foreign", "Foreign investors"],
+              ["proprietary", "Proprietary trading"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setParticipant(value)}
+                className={`border-b-2 px-4 py-2 text-sm font-medium ${
+                  participant === value
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-end">
             <div className="relative">
               <label className="mb-1 block text-xs font-medium">Instrument</label>
@@ -112,7 +132,7 @@ export function InvestorFlowPage() {
         </section>
 
         {!selected && (
-          <EmptyState text="Choose a Vietnam-listed equity to inspect its stored foreign flow." />
+          <EmptyState text={`Choose a Vietnam-listed equity to inspect its stored ${participant === "foreign" ? "foreign-investor" : "proprietary-trading"} flow.`} />
         )}
         {flow.isFetching && <div className="h-1 animate-pulse rounded bg-primary/50" />}
         {flow.error && (
@@ -120,7 +140,7 @@ export function InvestorFlowPage() {
             <div>{flow.error.message}</div>
             {missingStoredData && (
               <Link className="mt-2 inline-block font-semibold underline" to="/data-operations/single">
-                Open Data Operations and select this exact Instrument with Foreign flow.
+                Open Data Operations and select this exact Instrument with {participant === "foreign" ? "Foreign flow" : "Proprietary flow"}.
               </Link>
             )}
           </div>
@@ -134,6 +154,9 @@ export function InvestorFlowPage() {
           <>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-bold">{flow.data.symbol}</h2>
+              <Badge variant="outline">
+                {participant === "foreign" ? "Foreign investors" : "Proprietary trading"}
+              </Badge>
               <Badge variant="outline">{flow.data.venue_code}</Badge>
               <Badge variant="secondary">{fmtProviderSource(flow.data.source)}</Badge>
               <span className="text-xs text-muted-foreground">

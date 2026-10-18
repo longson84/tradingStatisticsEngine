@@ -97,6 +97,7 @@ def instrument(
     refresh_outcome: str | None = None,
     attempted_through: date | None = None,
     fundamental_fetched_at: datetime | None = None,
+    proprietary_flow_last_date: date | None = None,
 ) -> DataOperationInstrumentRecord:
     if venue_code is None and company_id is not None:
         venue_code = "NASDAQ" if country_code == "US" else "HOSE"
@@ -130,6 +131,7 @@ def instrument(
             if refresh_outcome is not None else None
         ),
         fundamental_fetched_at=fundamental_fetched_at,
+        proprietary_flow_last_date=proprietary_flow_last_date,
     )
 
 
@@ -304,6 +306,58 @@ def test_foreign_flow_rejects_us_equity():
     preview = data_operation_service(scope).preview("instrument", "1", "foreign_flow")
     assert preview.eligible_count == 0
     assert preview.can_run is False
+
+
+def test_proprietary_flow_requires_one_exact_eligible_vietnam_instrument():
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="2",
+        name="FPT",
+        instruments=(instrument(2, "FPT", country_code="VN", venue_code="HOSE"),),
+    )
+
+    plan = data_operation_service(scope).plan(
+        "instrument", "2", "proprietary_flow"
+    )
+
+    assert plan.can_run is True
+    assert plan.groups[0].adapter == "vnstock"
+    assert plan.groups[0].instrument_ids == (2,)
+
+    collection = DataOperationScopeRecord(
+        scope_type="watchlist",
+        scope_id="7",
+        name="VN",
+        instruments=scope.instruments,
+    )
+    rejected = data_operation_service(collection).plan(
+        "watchlist", "7", "proprietary_flow"
+    )
+    assert rejected.can_run is False
+    assert "exact Instrument" in rejected.message
+
+
+def test_proprietary_flow_preview_uses_its_own_coverage():
+    now = datetime(2026, 10, 16, 9, tzinfo=UTC)
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="2",
+        name="FPT",
+        instruments=(instrument(
+            2,
+            "FPT",
+            country_code="VN",
+            venue_code="HOSE",
+            proprietary_flow_last_date=date(2026, 10, 16),
+        ),),
+    )
+
+    preview = data_operation_service(scope).preview(
+        "instrument", "2", "proprietary_flow", now=now
+    )
+
+    assert preview.current_count == 1
+    assert preview.missing_count == 0
 
 
 def test_fundamental_preview_uses_fundamental_fetch_state_not_price_dates():

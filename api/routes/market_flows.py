@@ -28,7 +28,8 @@ def get_instrument_market_flows(
     instrument_id: int,
     service: Annotated[InstrumentFlowService, Depends(get_instrument_flow_service)],
     participant_type: Annotated[
-        Literal["foreign"], Query(json_schema_extra={"enum": ["foreign"]})
+        Literal["foreign", "proprietary"],
+        Query(json_schema_extra={"enum": ["foreign", "proprietary"]}),
     ] = "foreign",
     start: date | None = None,
     end: date | None = None,

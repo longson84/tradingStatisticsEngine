@@ -396,7 +396,7 @@ export function instrumentPriceHistoryApi(
 
 export function instrumentMarketFlowsApi(params: {
   instrument_id: number
-  participant_type: "foreign"
+  participant_type: "foreign" | "proprietary"
   start?: string
   end?: string
 }): Promise<InstrumentFlowResponse> {

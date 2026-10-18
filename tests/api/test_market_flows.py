@@ -34,7 +34,7 @@ class ServiceStub:
         return self.result
 
 
-def _result():
+def _result(participant_type="foreign"):
     fetched_at = datetime(2026, 10, 18, tzinfo=UTC)
     return InstrumentFlowData(
         instrument=FlowInstrumentRecord(
@@ -44,10 +44,10 @@ def _result():
             venue_code="HOSE",
             currency="VND",
         ),
-        participant_type="foreign",
+        participant_type=participant_type,
         coverage=InstrumentFlowCoverageRecord(
             instrument_id=42,
-            participant_type="foreign",
+            participant_type=participant_type,
             first_date=date(2026, 10, 14),
             last_date=date(2026, 10, 16),
             row_count=2,
@@ -57,7 +57,7 @@ def _result():
         observations=(InstrumentFlowRecord(
             instrument_id=42,
             trading_date=date(2026, 10, 16),
-            participant_type="foreign",
+            participant_type=participant_type,
             buy_volume=Decimal("100"),
             buy_value=Decimal("1000"),
             sell_volume=Decimal("40"),
@@ -89,6 +89,17 @@ def test_market_flow_route_serializes_stored_provenance_and_provider_net_values(
     assert response.observations[0].net_value == 123.0
 
 
+def test_market_flow_route_reads_proprietary_participant_separately():
+    service = ServiceStub(result=_result("proprietary"))
+
+    response = get_instrument_market_flows(
+        42, service, participant_type="proprietary", start=None, end=None
+    )
+
+    assert service.calls == [(42, "proprietary", None, None)]
+    assert response.participant_type == "proprietary"
+
+
 @pytest.mark.parametrize(
     ("error", "status_code"),
     [
@@ -109,10 +120,10 @@ def test_market_flow_route_maps_domain_errors(error, status_code):
     assert exc_info.value.detail == str(error)
 
 
-def test_market_flow_openapi_advertises_only_foreign_participant_in_first_slice():
+def test_market_flow_openapi_advertises_both_supported_participants():
     operation = app.openapi()["paths"]["/instruments/{instrument_id}/market-flows"]["get"]
     assert operation["operationId"] == "getInstrumentMarketFlows"
     participant = next(
         item for item in operation["parameters"] if item["name"] == "participant_type"
     )
-    assert participant["schema"]["enum"] == ["foreign"]
+    assert participant["schema"]["enum"] == ["foreign", "proprietary"]

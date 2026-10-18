@@ -7,14 +7,17 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine, session_scope
+from api.instrument_capabilities import participant_flow_capability
 from api.instrument_data_routing import resolve_instrument_data_route
 from api.market_sessions import latest_completed_venue_session
 from api.providers.vietnam_market import (
     VietnamMarketProvider,
     VnstockProvider,
     normalize_foreign_flow_result,
+    normalize_proprietary_flow_result,
     provider_source_label,
 )
+from api.repositories.instrument_flow_repository import ParticipantType
 from api.repositories.sqlalchemy_instrument_flow_repository import (
     SqlAlchemyInstrumentFlowRepository,
 )
@@ -31,6 +34,7 @@ def refresh_instrument_flow(
     instrument_id: int,
     mode: str,
     *,
+    participant_type: ParticipantType = "foreign",
     engine: Engine | None = None,
     provider: VietnamMarketProvider | None = None,
     now: datetime | None = None,
@@ -44,12 +48,13 @@ def refresh_instrument_flow(
         metadata = SqlAlchemyInstrumentRoutingRepository(
             session
         ).get_instrument_route_metadata(instrument_id)
-        coverage = repository.get_coverage(instrument_id, "foreign")
+        coverage = repository.get_coverage(instrument_id, participant_type)
     if instrument is None or metadata is None:
         raise RuntimeError(f"Unknown instrument: {instrument_id}")
     route = resolve_instrument_data_route(metadata)
-    if "foreign_flow" not in route.capabilities:
-        raise RuntimeError(f"Instrument {instrument_id} does not support foreign_flow")
+    capability = participant_flow_capability(participant_type)
+    if capability not in route.capabilities:
+        raise RuntimeError(f"Instrument {instrument_id} does not support {capability}")
 
     fetched_at = now or datetime.now(UTC)
     if fetched_at.tzinfo is None:
@@ -60,10 +65,13 @@ def refresh_instrument_flow(
         if mode == "full" or coverage is None
         else coverage.last_date - timedelta(days=OVERLAP_DAYS)
     )
-    result = (provider or VnstockProvider()).foreign_flow(
-        route.provider_symbol, start, end
-    )
-    frame = normalize_foreign_flow_result(result)
+    market_provider = provider or VnstockProvider()
+    if participant_type == "foreign":
+        result = market_provider.foreign_flow(route.provider_symbol, start, end)
+        frame = normalize_foreign_flow_result(result)
+    else:
+        result = market_provider.proprietary_flow(route.provider_symbol, start, end)
+        frame = normalize_proprietary_flow_result(result)
     source = provider_source_label(result.metadata)
     with session_scope(db_engine) as session:
         InstrumentFlowWriteService(
@@ -71,10 +79,13 @@ def refresh_instrument_flow(
             SqlAlchemyInstrumentRoutingRepository(session),
         ).store_observations(
             instrument_id,
-            "foreign",
+            participant_type,
             frame,
             source=source,
             fetched_at=fetched_at,
         )
     returned = None if frame.empty else frame["date"].max()
-    return f"updated {instrument.symbol} foreign flow through {returned or 'none'}"
+    return (
+        f"updated {instrument.symbol} {participant_type} flow "
+        f"through {returned or 'none'}"
+    )

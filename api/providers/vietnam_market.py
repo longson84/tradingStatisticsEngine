@@ -66,6 +66,13 @@ class VietnamMarketProvider(Protocol):
         end: date,
     ) -> VietnamProviderResult: ...
 
+    def proprietary_flow(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult: ...
+
 
 class VnstockProvider:
     """Vnstock generation 5 adapter using explicit VCI market routes."""
@@ -133,6 +140,20 @@ class VnstockProvider:
             source=self.source.lower(),
         )
         return self._result(frame, normalized, start, end, "foreign_flow")
+
+    def proprietary_flow(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult:
+        normalized = _request(symbol, start, end)
+        frame = self._market().equity(normalized).proprietary_flow(
+            start=start.isoformat(),
+            end=end.isoformat(),
+            source=self.source.lower(),
+        )
+        return self._result(frame, normalized, start, end, "proprietary_flow")
 
     def _market(self):
         try:
@@ -213,6 +234,18 @@ def normalize_ohlcv_result(result: VietnamProviderResult) -> pd.DataFrame:
 
 def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame:
     """Normalize Gen 5 foreign-investor flow without deriving provider values."""
+    return _normalize_participant_flow_result(result, "foreign_flow")
+
+
+def normalize_proprietary_flow_result(result: VietnamProviderResult) -> pd.DataFrame:
+    """Normalize Gen 5 proprietary-trading flow without deriving net values."""
+    return _normalize_participant_flow_result(result, "proprietary_flow")
+
+
+def _normalize_participant_flow_result(
+    result: VietnamProviderResult,
+    dataset: str,
+) -> pd.DataFrame:
     frame = result.frame.copy()
     frame.columns = [str(column).lower() for column in frame.columns]
     required = {
@@ -222,7 +255,7 @@ def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame
     missing = required - set(frame.columns)
     if missing:
         raise ProviderDataError(
-            f"foreign_flow data for {result.metadata.symbol} is missing columns: "
+            f"{dataset} data for {result.metadata.symbol} is missing columns: "
             f"{sorted(missing)}"
         )
 
@@ -234,12 +267,12 @@ def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     if dates.isna().any() or frame[list(numeric_columns)].isna().any().any():
         raise ProviderDataError(
-            f"foreign_flow data for {result.metadata.symbol} contains invalid values"
+            f"{dataset} data for {result.metadata.symbol} contains invalid values"
         )
     gross_columns = ("buy_vol", "buy_val", "sell_vol", "sell_val")
     if (frame[list(gross_columns)] < 0).any().any():
         raise ProviderDataError(
-            f"foreign_flow gross values for {result.metadata.symbol} must be non-negative"
+            f"{dataset} gross values for {result.metadata.symbol} must be non-negative"
         )
 
     frame["date"] = dates.dt.date

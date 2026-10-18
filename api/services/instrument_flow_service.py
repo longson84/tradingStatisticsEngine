@@ -8,6 +8,7 @@ from api.instrument_data_routing import (
     UnsupportedInstrumentRouteError,
     resolve_instrument_data_route,
 )
+from api.instrument_capabilities import participant_flow_capability
 from api.market_sessions import latest_completed_venue_session
 from api.repositories.instrument_flow_repository import (
     FlowInstrumentRecord,
@@ -66,15 +67,16 @@ class InstrumentFlowService:
         metadata = self._routing_repository.get_instrument_route_metadata(instrument_id)
         if instrument is None or metadata is None:
             raise UnknownFlowInstrumentError(f"Unknown instrument: {instrument_id}")
+        capability = participant_flow_capability(participant_type)
         try:
             route = resolve_instrument_data_route(metadata)
         except UnsupportedInstrumentRouteError as exc:
             raise InstrumentFlowCapabilityError(
-                f"Instrument {instrument_id} does not support foreign_flow"
+                f"Instrument {instrument_id} does not support {capability}"
             ) from exc
-        if participant_type != "foreign" or "foreign_flow" not in route.capabilities:
+        if capability not in route.capabilities:
             raise InstrumentFlowCapabilityError(
-                f"Instrument {instrument_id} does not support foreign_flow"
+                f"Instrument {instrument_id} does not support {capability}"
             )
         coverage = self._repository.get_coverage(instrument_id, participant_type)
         if coverage is None:

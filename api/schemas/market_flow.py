@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -22,7 +23,7 @@ class InstrumentFlowResponse(BaseModel):
     instrument_type: str
     venue_code: str | None
     currency: str
-    participant_type: str
+    participant_type: Literal["foreign", "proprietary"]
     first_date: date
     last_date: date
     expected_last_session: date

@@ -104,13 +104,34 @@ def test_execute_instrument_dispatches_foreign_flow(monkeypatch):
     monkeypatch.setattr(
         run_data_operation,
         "refresh_instrument_flow",
-        lambda instrument_id, mode, *, engine: calls.append((instrument_id, mode, engine)) or "flow ok",
+        lambda instrument_id, mode, *, participant_type, engine: calls.append(
+            (instrument_id, mode, participant_type, engine)
+        ) or "flow ok",
         raising=False,
     )
     engine = object()
     result = run_data_operation._execute_instrument(7, "foreign_flow", "full", engine)
     assert result == (7, "flow ok", False)
-    assert calls == [(7, "full", engine)]
+    assert calls == [(7, "full", "foreign", engine)]
+
+
+def test_execute_instrument_dispatches_proprietary_flow_participant(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        run_data_operation,
+        "refresh_instrument_flow",
+        lambda instrument_id, mode, *, participant_type, engine: calls.append(
+            (instrument_id, mode, participant_type, engine)
+        ) or "flow ok",
+    )
+    engine = object()
+
+    result = run_data_operation._execute_instrument(
+        7, "proprietary_flow", "incremental", engine
+    )
+
+    assert result == (7, "flow ok", False)
+    assert calls == [(7, "incremental", "proprietary", engine)]
 
 
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):

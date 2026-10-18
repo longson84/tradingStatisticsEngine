@@ -163,7 +163,11 @@ def _execute_instrument(
             )
         elif dataset == "foreign_flow":
             detail = refresh_instrument_flow(
-                instrument_id, mode, engine=engine
+                instrument_id, mode, participant_type="foreign", engine=engine
+            )
+        elif dataset == "proprietary_flow":
+            detail = refresh_instrument_flow(
+                instrument_id, mode, participant_type="proprietary", engine=engine
             )
         else:
             raise ValueError(f"Unsupported dataset: {dataset}")
@@ -217,7 +221,9 @@ def main() -> None:
     )
     parser.add_argument("--scope-id", required=True)
     parser.add_argument(
-        "--dataset", choices=("prices", "fundamentals", "foreign_flow"), required=True
+        "--dataset",
+        choices=("prices", "fundamentals", "foreign_flow", "proprietary_flow"),
+        required=True,
     )
     parser.add_argument("--mode", choices=("incremental", "full"), required=True)
     parser.add_argument("--database-url", default=None)

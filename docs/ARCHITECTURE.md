@@ -2479,13 +2479,15 @@ flow identity. Gross and provider-reported net values use fixed-point
 `Numeric(38, 6)` fields; the application preserves VCI net values rather than
 recalculating them. Source and timezone-aware fetch time are stored on every
 observation, with a derived coverage row per Instrument and participant type.
-The schema reserves `proprietary`, but the first public API and UI slice expose
-only `foreign`.
+The public API and Investor Flow page expose `foreign` and `proprietary` as
+separate participant views with shared Instrument and date-range selection.
 
 Provider access occurs only through an explicit exact-Instrument Data
-Operation. Incremental refresh overlaps seven calendar days, normalizes the
-complete provider result, and atomically upserts it. Foreign-flow jobs share
-the `vnstock` adapter lease with price and fundamental jobs. Opening or
+Operation. Foreign and proprietary flows are separate Data Operation datasets
+because they are independent VCI requests with independent coverage and
+failure outcomes. Incremental refresh overlaps seven calendar days, normalizes
+the complete provider result, and atomically upserts it. Participant-flow jobs
+share the `vnstock` adapter lease with price and fundamental jobs. Opening or
 filtering the Investor Flow page reads PostgreSQL only and reports stored
 coverage and session-based staleness; it never triggers an implicit network
 request. Session aggregates and KBS live volume profile remain separate future

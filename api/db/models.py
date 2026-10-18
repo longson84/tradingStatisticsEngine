@@ -490,7 +490,7 @@ class DataOperationRun(Base):
             name="ck_data_operation_runs_scope_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals', 'foreign_flow')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow')",
             name="ck_data_operation_runs_dataset",
         ),
         CheckConstraint(
@@ -1017,7 +1017,7 @@ class DataOperationBatchStep(Base):
             name="ck_data_operation_batch_steps_target_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals', 'foreign_flow')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow')",
             name="ck_data_operation_batch_steps_dataset",
         ),
         CheckConstraint(

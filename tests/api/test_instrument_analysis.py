@@ -158,6 +158,28 @@ def test_foreign_flow_discovery_does_not_require_stored_price_history():
     assert result.rows[0].stored_sessions == 0
 
 
+def test_proprietary_flow_discovery_filters_out_unsupported_instruments():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    seed_company_catalog(session)
+    service = InstrumentAnalysisService(
+        SqlAlchemyInstrumentAnalysisRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+    try:
+        result = service.list_instruments(
+            capability="proprietary_flow",
+            has_price_history=False,
+            limit=20,
+        )
+    finally:
+        session.close()
+
+    assert result.total == 6
+    assert {row.venue_code for row in result.rows} == {"HOSE"}
+
+
 def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():
     service, session, instrument_id = _service_with_msft_history()
     try:

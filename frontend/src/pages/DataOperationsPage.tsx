@@ -110,7 +110,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     queryFn: () => instrumentsApi({
       search: normalizedSearch,
       has_price_history: false,
-      capability: dataset === "foreign_flow" ? "foreign_flow" : undefined,
+      capability: isParticipantFlowDataset(dataset) ? dataset : undefined,
       limit: 20,
     }),
     enabled: scopeType === "instrument" && normalizedSearch.length >= 3,
@@ -308,7 +308,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   <button
                     key={option.value}
                     onClick={() => chooseScope(option.value)}
-                    disabled={dataset === "foreign_flow" && option.value !== "instrument"}
+                    disabled={isParticipantFlowDataset(dataset) && option.value !== "instrument"}
                     className={cn(
                       "rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35",
                       scopeType === option.value
@@ -393,12 +393,13 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ["prices", "Prices"],
                   ["fundamentals", "Fundamentals"],
                   ["foreign_flow", "Foreign flow"],
+                  ["proprietary_flow", "Proprietary flow"],
                 ]}
                 value={dataset}
                 onChange={value => {
                   const next = value as DataOperationDataset
                   setDataset(next)
-                  if (next === "foreign_flow" && scopeType !== "instrument") {
+                  if (isParticipantFlowDataset(next) && scopeType !== "instrument") {
                     chooseScope("instrument")
                   }
                   setStartedJob(null)
@@ -432,9 +433,9 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
               </span>
             </div>
             {start.error && <ErrorMessage message={start.error.message} />}
-            {dataset === "foreign_flow" && (
+            {isParticipantFlowDataset(dataset) && (
               <p className="mt-3 text-xs text-muted-foreground">
-                Foreign flow updates stored VCI observations for one exact eligible Vietnam equity. It is not available for universes, watchlists, or unsupported instruments.
+                {dataset === "foreign_flow" ? "Foreign" : "Proprietary"} flow updates stored VCI observations for one exact eligible Vietnam equity. It is not available for universes, watchlists, or unsupported instruments.
               </p>
             )}
           </section>
@@ -1059,7 +1060,7 @@ function readTrackedOperation(): TrackedOperation | null {
         value.scopeType ?? "",
       )
       || typeof value.scopeId !== "string"
-      || !(["prices", "fundamentals", "foreign_flow"] as const).includes(
+      || !(["prices", "fundamentals", "foreign_flow", "proprietary_flow"] as const).includes(
         value.dataset as DataOperationDataset,
       )
       || !(["incremental", "full"] as const).includes(
@@ -1083,4 +1084,11 @@ function writeTrackedOperation(value: TrackedOperation): void {
   } catch {
     // PostgreSQL history still retains the job when browser storage is unavailable.
   }
+}
+
+
+function isParticipantFlowDataset(
+  value: DataOperationDataset,
+): value is "foreign_flow" | "proprietary_flow" {
+  return value === "foreign_flow" || value === "proprietary_flow"
 }

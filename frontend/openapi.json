@@ -289,7 +289,8 @@
             "enum": [
               "prices",
               "fundamentals",
-              "foreign_flow"
+              "foreign_flow",
+              "proprietary_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -334,7 +335,8 @@
             "enum": [
               "prices",
               "fundamentals",
-              "foreign_flow"
+              "foreign_flow",
+              "proprietary_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1042,7 +1044,8 @@
             "enum": [
               "prices",
               "fundamentals",
-              "foreign_flow"
+              "foreign_flow",
+              "proprietary_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1181,7 +1184,8 @@
             "enum": [
               "prices",
               "fundamentals",
-              "foreign_flow"
+              "foreign_flow",
+              "proprietary_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1253,7 +1257,8 @@
             "enum": [
               "prices",
               "fundamentals",
-              "foreign_flow"
+              "foreign_flow",
+              "proprietary_flow"
             ],
             "title": "Dataset",
             "type": "string"
@@ -1802,6 +1807,10 @@
             "type": "array"
           },
           "participant_type": {
+            "enum": [
+              "foreign",
+              "proprietary"
+            ],
             "title": "Participant Type",
             "type": "string"
           },
@@ -6572,7 +6581,8 @@
               "enum": [
                 "prices",
                 "fundamentals",
-                "foreign_flow"
+                "foreign_flow",
+                "proprietary_flow"
               ],
               "title": "Dataset",
               "type": "string"
@@ -6696,7 +6706,8 @@
               "enum": [
                 "prices",
                 "fundamentals",
-                "foreign_flow"
+                "foreign_flow",
+                "proprietary_flow"
               ],
               "title": "Dataset",
               "type": "string"
@@ -6992,7 +7003,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "const": "foreign_flow",
+                  "enum": [
+                    "foreign_flow",
+                    "proprietary_flow"
+                  ],
                   "type": "string"
                 },
                 {
@@ -7368,10 +7382,10 @@
             "name": "participant_type",
             "required": false,
             "schema": {
-              "const": "foreign",
               "default": "foreign",
               "enum": [
-                "foreign"
+                "foreign",
+                "proprietary"
               ],
               "title": "Participant Type",
               "type": "string"

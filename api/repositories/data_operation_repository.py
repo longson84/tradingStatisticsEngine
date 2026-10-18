@@ -35,6 +35,11 @@ class DataOperationInstrumentRecord:
     flow_row_count: int = 0
     flow_source: str | None = None
     flow_fetched_at: datetime | None = None
+    proprietary_flow_first_date: date | None = None
+    proprietary_flow_last_date: date | None = None
+    proprietary_flow_row_count: int = 0
+    proprietary_flow_source: str | None = None
+    proprietary_flow_fetched_at: datetime | None = None
     display_name: str | None = None
 
 

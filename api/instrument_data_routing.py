@@ -190,7 +190,7 @@ def resolve_instrument_data_route(
             schedule=instrument_observation_schedule(instrument),
             full_history_start=date(2000, 1, 1),
             fundamental_adapter="vnstock",
-            capabilities=frozenset({"foreign_flow"}),
+            capabilities=frozenset({"foreign_flow", "proprietary_flow"}),
         )
     raise UnsupportedInstrumentRouteError(
         f"No equity adapter for venue {venue_code or 'none'}"

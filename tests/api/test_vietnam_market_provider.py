@@ -56,6 +56,10 @@ class _Equity:
         self.calls.append(("foreign_flow", kwargs))
         return _foreign_flow()
 
+    def proprietary_flow(self, **kwargs):
+        self.calls.append(("proprietary_flow", kwargs))
+        return _foreign_flow()
+
 
 class _Market:
     def __init__(self, equity: _Equity) -> None:
@@ -171,6 +175,29 @@ def test_provider_calls_foreign_flow_with_explicit_vci_source(monkeypatch):
     assert result.metadata.method == "foreign_flow"
 
 
+def test_provider_calls_proprietary_flow_with_explicit_vci_source(monkeypatch):
+    equity = _Equity()
+    market = _Market(equity)
+    monkeypatch.setattr(
+        vietnam_market,
+        "import_module",
+        lambda name: SimpleNamespace(Market=lambda: market),
+    )
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+
+    result = vietnam_market.VnstockProvider().proprietary_flow(
+        "fpt", date(2026, 10, 1), date(2026, 10, 18)
+    )
+
+    assert equity.calls == [("proprietary_flow", {
+        "start": "2026-10-01",
+        "end": "2026-10-18",
+        "source": "vci",
+    })]
+    assert result.frame.equals(_foreign_flow())
+    assert result.metadata.method == "proprietary_flow"
+
+
 def _flow_result(frame: pd.DataFrame) -> vietnam_market.VietnamProviderResult:
     return vietnam_market.VietnamProviderResult(
         frame=frame,
@@ -199,6 +226,25 @@ def test_foreign_flow_normalization_maps_gen5_columns_and_vietnam_dates():
     assert normalized.loc[0, "date"] == date(2026, 10, 16)
     assert normalized.loc[0, "buy_volume"] == 1_390_717.0
     assert normalized.loc[0, "provider_source"] == "vnstock-5.1.0-vci"
+
+
+def test_proprietary_flow_normalization_uses_shared_strict_daily_schema():
+    result = _flow_result(_foreign_flow())
+    result = vietnam_market.VietnamProviderResult(
+        frame=result.frame,
+        metadata=vietnam_market.VietnamProviderMetadata(
+            **{**result.metadata.__dict__, "method": "proprietary_flow"}
+        ),
+    )
+
+    normalized = vietnam_market.normalize_proprietary_flow_result(result)
+
+    assert normalized.columns.tolist() == [
+        "symbol", "date", "buy_volume", "buy_value", "sell_volume",
+        "sell_value", "net_volume", "net_value", "provider_source",
+    ]
+    assert normalized.loc[0, "date"] == date(2026, 10, 16)
+    assert normalized.loc[0, "net_value"] == 47_932_500_000.0
 
 
 def test_foreign_flow_normalization_keeps_provider_net_values_and_last_duplicate():

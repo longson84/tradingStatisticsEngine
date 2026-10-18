@@ -12,7 +12,9 @@ from api.schemas.data_operations import DataOperationJobResponse
 class BatchOperationStepRequest(BaseModel):
     target_type: Literal["category", "universe", "watchlist", "instrument"]
     target_id: str = Field(min_length=1, max_length=64)
-    dataset: Literal["prices", "fundamentals", "foreign_flow"] = "prices"
+    dataset: Literal[
+        "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+    ] = "prices"
     mode: Literal["incremental", "full"] = "incremental"
 
 

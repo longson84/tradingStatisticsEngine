@@ -22,7 +22,9 @@ from api.price_refresh_coordination import (
 
 
 ScopeType = Literal["category", "universe", "watchlist", "instrument"]
-Dataset = Literal["prices", "fundamentals", "foreign_flow"]
+Dataset = Literal[
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+]
 Mode = Literal["incremental", "full"]
 Status = Literal["queued", "running", "completed", "failed"]
 _PROGRESS = re.compile(r"DATA_OPERATION:\s+(\d+)/(\d+)")
@@ -136,7 +138,9 @@ def get_active_scope_job(
     scope_id: str,
 ) -> DataOperationJob | None:
     with _lock:
-        for dataset in ("prices", "fundamentals", "foreign_flow"):
+        for dataset in (
+            "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+        ):
             job_id = _active_keys.get((scope_type, scope_id, dataset))
             if job_id is not None:
                 return _jobs.get(job_id)
