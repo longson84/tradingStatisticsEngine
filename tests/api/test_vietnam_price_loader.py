@@ -23,8 +23,8 @@ class Provider:
                 "volume": [4_301_800, 1_000],
             }),
             metadata=VietnamProviderMetadata(
-                package="vnstock_data",
-                package_version="3.2.7",
+                package="vnstock",
+                package_version="5.1.0",
                 access_mode="sponsored",
                 upstream_source="VCI",
                 method="ohlcv",
@@ -38,12 +38,12 @@ class Provider:
         raise AssertionError("not used")
 
 
-def test_loader_normalizes_sponsored_data_and_keeps_end_exclusive():
+def test_loader_normalizes_vnstock_data_and_keeps_end_exclusive():
     result = VietnamPriceLoader(Provider()).load(
         "fpt", date(2026, 8, 1), date(2026, 8, 8)
     )
 
     assert result.symbol == "FPT"
-    assert result.source == "vnstock-data-3.2.7-vci"
+    assert result.source == "vnstock-5.1.0-vci"
     assert result.data.index.date.tolist() == [date(2026, 8, 7)]
     assert result.data.loc["2026-08-07", "close"] == 70.8

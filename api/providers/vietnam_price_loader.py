@@ -7,7 +7,7 @@ from api.providers.vietnam_market import (
     ProviderDataError,
     ProviderUnavailableError,
     VietnamMarketProvider,
-    VnstockDataProvider,
+    VnstockProvider,
     normalize_ohlcv_result,
 )
 from trading_engine.types import DataLoadError, PriceFrame
@@ -20,12 +20,12 @@ class VietnamPriceLoader:
         self._provider = provider
 
     def load(self, symbol: str, start: date, end: date) -> PriceFrame:
-        provider = self._provider or VnstockDataProvider()
+        provider = self._provider or VnstockProvider()
         try:
             result = provider.ohlcv(symbol, start, end)
             normalized = normalize_ohlcv_result(result)
         except (ProviderDataError, ProviderUnavailableError, ValueError) as exc:
-            raise DataLoadError(f"Failed to load {symbol} from vnstock_data: {exc}") from exc
+            raise DataLoadError(f"Failed to load {symbol} from vnstock: {exc}") from exc
 
         # DataLoader ranges are end-exclusive even though sponsored VCI ranges
         # are inclusive. Slice explicitly so strategies see one contract.

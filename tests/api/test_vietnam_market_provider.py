@@ -28,31 +28,7 @@ def _trade_history() -> pd.DataFrame:
     })
 
 
-class _SponsoredEquity:
-    def ohlcv(self, **kwargs):
-        return _ohlcv()
-
-    def trade_history(self, **kwargs):
-        return _trade_history()
-
-
-class _Market:
-    def equity(self, symbol: str):
-        assert symbol == "FPT"
-        return _SponsoredEquity()
-
-
-class _Quote:
-    def __init__(self, *, source: str, symbol: str, show_log: bool):
-        assert source == "VCI"
-        assert symbol == "FPT"
-        assert show_log is False
-
-    def history(self, **kwargs):
-        return _ohlcv()
-
-
-class _Gen5Equity:
+class _Equity:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
 
@@ -65,8 +41,8 @@ class _Gen5Equity:
         return _trade_history()
 
 
-class _Gen5Market:
-    def __init__(self, equity: _Gen5Equity) -> None:
+class _Market:
+    def __init__(self, equity: _Equity) -> None:
         self._equity = equity
         self.symbols: list[str] = []
 
@@ -75,42 +51,13 @@ class _Gen5Market:
         return self._equity
 
 
-def test_sponsored_provider_returns_frames_with_dynamic_provenance(monkeypatch):
-    module = SimpleNamespace(Market=_Market, Quote=_Quote)
-    monkeypatch.setattr(vietnam_market, "import_module", lambda name: module)
-    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "3.2.7")
-    provider = vietnam_market.VnstockDataProvider()
-
-    ohlcv = provider.ohlcv(
-        "fpt", date(2026, 8, 1), date(2026, 8, 8)
-    )
-    trades = provider.trade_history(
-        "fpt", date(2026, 8, 1), date(2026, 8, 8)
-    )
-
-    assert ohlcv.frame.equals(_ohlcv())
-    assert trades.frame.equals(_trade_history())
-    assert ohlcv.metadata.package == "vnstock_data"
-    assert ohlcv.metadata.package_version == "3.2.7"
-    assert ohlcv.metadata.access_mode == "sponsored"
-    assert ohlcv.metadata.upstream_source == "VCI"
-
-    normalized = vietnam_market.normalize_ohlcv_result(ohlcv)
-
-    assert normalized["symbol"].tolist() == ["FPT"]
-    assert normalized["date"].dt.date.tolist() == [date(2026, 8, 7)]
-    assert normalized["provider_source"].tolist() == [
-        "vnstock-data-3.2.7-vci"
-    ]
-
-
-def test_gen5_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
-    equity = _Gen5Equity()
-    market = _Gen5Market(equity)
+def test_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
+    equity = _Equity()
+    market = _Market(equity)
     module = SimpleNamespace(Market=lambda: market)
     monkeypatch.setattr(vietnam_market, "import_module", lambda name: module)
     monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
-    provider = vietnam_market.Vnstock5Provider()
+    provider = vietnam_market.VnstockProvider()
 
     ohlcv = provider.ohlcv(
         "fpt", date(2026, 10, 1), date(2026, 10, 18), interval="1D"
@@ -149,18 +96,23 @@ def test_gen5_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
         "vnstock-5.1.0-vci"
     )
 
+    normalized = vietnam_market.normalize_ohlcv_result(ohlcv)
+    assert normalized["symbol"].tolist() == ["FPT"]
+    assert normalized["date"].dt.date.tolist() == [date(2026, 8, 7)]
+    assert normalized["provider_source"].tolist() == ["vnstock-5.1.0-vci"]
 
-def test_gen5_provider_refuses_an_older_vnstock_runtime(monkeypatch):
+
+def test_provider_refuses_an_older_vnstock_runtime(monkeypatch):
     monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "4.0.5")
 
     with pytest.raises(
         vietnam_market.ProviderUnavailableError,
-        match="requires vnstock generation 5",
+        match="requires vnstock 5.1.x",
     ):
-        vietnam_market.Vnstock5Provider()
+        vietnam_market.VnstockProvider()
 
 
-def test_gen5_provider_does_not_relabel_market_constructor_errors(monkeypatch):
+def test_provider_does_not_relabel_market_constructor_errors(monkeypatch):
     class BrokenMarket:
         def __init__(self) -> None:
             raise AttributeError("internal constructor failure")
@@ -168,7 +120,12 @@ def test_gen5_provider_does_not_relabel_market_constructor_errors(monkeypatch):
     module = SimpleNamespace(Market=BrokenMarket)
     monkeypatch.setattr(vietnam_market, "import_module", lambda name: module)
     monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
-    provider = vietnam_market.Vnstock5Provider()
+    provider = vietnam_market.VnstockProvider()
 
     with pytest.raises(AttributeError, match="internal constructor failure"):
         provider.ohlcv("FPT", date(2026, 10, 1), date(2026, 10, 18))
+
+
+def test_module_has_no_generation_specific_provider_exports():
+    assert not hasattr(vietnam_market, "VnstockDataProvider")
+    assert not hasattr(vietnam_market, "Vnstock5Provider")

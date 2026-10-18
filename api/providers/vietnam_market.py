@@ -58,96 +58,8 @@ class VietnamMarketProvider(Protocol):
     ) -> VietnamProviderResult: ...
 
 
-class VnstockDataProvider:
-    """Sponsored adapter with an explicit VCI OHLCV route.
-
-    The Unified UI routes ``equity(...).ohlcv`` to KBS, whose available history
-    is shorter than the application's canonical VCI series. Use the sponsored
-    package's public Quote adapter explicitly so refreshes retain full-history
-    and adjusted-price continuity. Trading statistics remain on Unified UI,
-    where the package explicitly routes that method to VCI.
-    """
-
-    package = "vnstock_data"
-    access_mode: AccessMode = "sponsored"
-    source = "VCI"
-
-    def __init__(self) -> None:
-        load_env_file()
-
-    def ohlcv(
-        self,
-        symbol: str,
-        start: date,
-        end: date,
-        *,
-        interval: str = "1D",
-    ) -> VietnamProviderResult:
-        normalized = _request(symbol, start, end)
-        frame = self._quote(normalized).history(
-            start=start.isoformat(),
-            end=end.isoformat(),
-            interval=interval,
-        )
-        return self._result(frame, normalized, start, end, "ohlcv")
-
-    def trade_history(
-        self,
-        symbol: str,
-        start: date,
-        end: date,
-    ) -> VietnamProviderResult:
-        normalized = _request(symbol, start, end)
-        frame = self._market().equity(normalized).trade_history(
-            start=start.isoformat(),
-            end=end.isoformat(),
-        )
-        return self._result(frame, normalized, start, end, "trade_history")
-
-    def _market(self):
-        try:
-            module = import_module(self.package)
-            return module.Market()
-        except Exception as exc:
-            raise ProviderUnavailableError(
-                "vnstock_data could not be loaded or authenticated"
-            ) from exc
-
-    def _quote(self, symbol: str):
-        try:
-            module = import_module(self.package)
-            return module.Quote(source=self.source, symbol=symbol, show_log=False)
-        except Exception as exc:
-            raise ProviderUnavailableError(
-                "vnstock_data VCI quote adapter could not be loaded or authenticated"
-            ) from exc
-
-    def _result(
-        self,
-        frame: pd.DataFrame | None,
-        symbol: str,
-        start: date,
-        end: date,
-        method: str,
-    ) -> VietnamProviderResult:
-        clean = _require_frame(frame, symbol, method)
-        return VietnamProviderResult(
-            frame=clean,
-            metadata=VietnamProviderMetadata(
-                package=self.package,
-                package_version=_package_version(self.package),
-                access_mode=self.access_mode,
-                upstream_source=self.source,
-                method=method,
-                symbol=symbol,
-                requested_start=start,
-                requested_end=end,
-            ),
-        )
-
-
-class Vnstock5Provider:
-    """Opt-in generation 5 adapter using explicit VCI market routes."""
+class VnstockProvider:
+    """Vnstock generation 5 adapter using explicit VCI market routes."""
 
     package = "vnstock"
     access_mode: AccessMode = "sponsored"
@@ -156,9 +68,9 @@ class Vnstock5Provider:
     def __init__(self) -> None:
         load_env_file()
         self.package_version = _package_version(self.package)
-        if not self.package_version.startswith("5."):
+        if not self.package_version.startswith("5.1."):
             raise ProviderUnavailableError(
-                "Vnstock5Provider requires vnstock generation 5 in its runtime"
+                "VnstockProvider requires vnstock 5.1.x in its runtime"
             )
 
     def ohlcv(
