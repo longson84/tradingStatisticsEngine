@@ -5,6 +5,7 @@ import { Link } from "react-router"
 
 import { Sidebar } from "@/components/Sidebar"
 import { VietnamInstrumentSelector } from "@/components/forms/VietnamInstrumentSelector"
+import { TurnoverIntensityAnalytics } from "@/components/trading-activity/TurnoverIntensityAnalytics"
 import { Badge } from "@/components/ui/badge"
 import {
   instrumentsApi,
@@ -162,6 +163,7 @@ export function TradingActivityPage() {
               <Datum label={`Latest market capitalization · ${fmtDate(latest?.trading_date)}`} value={latest ? fmtCompactVnd(latest.market_cap) : "—"} />
               <Datum label={`Latest VCI net trade volume · ${fmtDate(latest?.trading_date)}`} value={latest ? fmtInt(latest.total_net_trade_volume) : "—"} />
             </div>
+            <TurnoverIntensityAnalytics analysis={data.turnover_intensity} />
             <ActivityChart rows={rows} kind="stacked" />
             <ActivityChart rows={rows} kind="net" />
             <DailyTable rows={rows} />

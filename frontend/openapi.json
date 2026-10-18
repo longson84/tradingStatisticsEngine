@@ -2934,6 +2934,9 @@
             "title": "Symbol",
             "type": "string"
           },
+          "turnover_intensity": {
+            "$ref": "#/components/schemas/TurnoverIntensityAnalysisResponse"
+          },
           "venue_code": {
             "anyOf": [
               {
@@ -2957,7 +2960,8 @@
           "first_date",
           "last_date",
           "row_count",
-          "rows"
+          "rows",
+          "turnover_intensity"
         ],
         "title": "InstrumentTradeStatisticsResponse",
         "type": "object"
@@ -5220,6 +5224,102 @@
           "retracement_pct"
         ],
         "title": "TradeRowResponse",
+        "type": "object"
+      },
+      "TurnoverIntensityAnalysisResponse": {
+        "properties": {
+          "baseline_sessions": {
+            "title": "Baseline Sessions",
+            "type": "integer"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TurnoverIntensityPointResponse"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "formula_version",
+          "baseline_sessions",
+          "points"
+        ],
+        "title": "TurnoverIntensityAnalysisResponse",
+        "type": "object"
+      },
+      "TurnoverIntensityPointResponse": {
+        "properties": {
+          "anomaly_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Score"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "intensity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity"
+          },
+          "trading_date": {
+            "format": "date",
+            "title": "Trading Date",
+            "type": "string"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "invalid_total_value",
+                  "invalid_market_cap",
+                  "non_positive_market_cap",
+                  "insufficient_history",
+                  "invalid_baseline_window",
+                  "zero_baseline_variance"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "trading_date",
+          "intensity",
+          "baseline",
+          "anomaly_score",
+          "unavailable_reason"
+        ],
+        "title": "TurnoverIntensityPointResponse",
         "type": "object"
       },
       "UndercutDistributionRowResponse": {

@@ -1441,6 +1441,7 @@ export interface components {
             rows: components["schemas"]["DailyTradeStatisticResponse"][];
             /** Symbol */
             symbol: string;
+            turnover_intensity: components["schemas"]["TurnoverIntensityAnalysisResponse"];
             /** Venue Code */
             venue_code: string | null;
         };
@@ -2248,6 +2249,31 @@ export interface components {
             return_pct: number | null;
             /** Symbol */
             symbol: string;
+        };
+        /** TurnoverIntensityAnalysisResponse */
+        TurnoverIntensityAnalysisResponse: {
+            /** Baseline Sessions */
+            baseline_sessions: number;
+            /** Formula Version */
+            formula_version: string;
+            /** Points */
+            points: components["schemas"]["TurnoverIntensityPointResponse"][];
+        };
+        /** TurnoverIntensityPointResponse */
+        TurnoverIntensityPointResponse: {
+            /** Anomaly Score */
+            anomaly_score: number | null;
+            /** Baseline */
+            baseline: number | null;
+            /** Intensity */
+            intensity: number | null;
+            /**
+             * Trading Date
+             * Format: date
+             */
+            trading_date: string;
+            /** Unavailable Reason */
+            unavailable_reason: ("invalid_total_value" | "invalid_market_cap" | "non_positive_market_cap" | "insufficient_history" | "invalid_baseline_window" | "zero_baseline_variance") | null;
         };
         /** UndercutDistributionRowResponse */
         UndercutDistributionRowResponse: {
