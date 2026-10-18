@@ -103,3 +103,26 @@ def test_session_statistic_metric_identity_is_unique_per_snapshot():
         with pytest.raises(IntegrityError):
             session.commit()
 
+
+def test_session_statistic_snapshot_identity_rejects_duplicate_fetch():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        instrument = _instrument()
+        session.add(instrument)
+        session.flush()
+        values = {
+            "instrument_id": instrument.id,
+            "period_start": date(2026, 10, 15),
+            "period_end": date(2026, 10, 16),
+            "source": "vnstock-5.1.0-vci",
+            "schema_version": 1,
+            "fetched_at": datetime(2026, 10, 18, tzinfo=UTC),
+        }
+        session.add_all([
+            InstrumentSessionStatisticSnapshot(**values),
+            InstrumentSessionStatisticSnapshot(**values),
+        ])
+        with pytest.raises(IntegrityError):
+            session.commit()
+

@@ -45,6 +45,15 @@ def run_data_operation(
 ) -> None:
     if dataset == "session_stats" and (period_start is None or period_end is None):
         raise ValueError("session_stats requires period_start and period_end")
+    if dataset == "session_stats" and mode != "full":
+        raise ValueError("session_stats requires full mode")
+    if (
+        dataset == "session_stats"
+        and period_start is not None
+        and period_end is not None
+        and period_start > period_end
+    ):
+        raise ValueError("period_start must be on or before period_end")
     engine = create_db_engine(database_url)
     with Session(engine) as session:
         plan = DataOperationService(

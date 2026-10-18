@@ -2500,3 +2500,38 @@ unsupported Instruments fail explicitly instead of returning an ambiguous
 empty series. Future participant types or flow-capable markets require an
 explicit capability, provider adapter, persistence semantics, and UI choice;
 they do not inherit support merely from sharing the Instrument model.
+
+### 2026-10-18 — Store VCI session statistics as exact-period snapshots
+
+Context: Vnstock Gen 5 `session_stats` returns one 65-column row for an entire
+requested period: `symbol` plus 64 numeric totals and averages. It is not a
+daily series and must not be stored as participant flow or presented as a
+time-series chart.
+
+Decision: application routing derives `session_stats` for the same active,
+Company-backed HOSE, HNX, and UPCOM common stocks supported by the VCI market
+adapter. A closed, schema-versioned catalog classifies all 64 metrics into
+market activity, foreign activity, trade direction, and order imbalance/trade
+size, with explicit display label, unit, and order. Provider responses must be
+one complete finite row with exactly that schema; values are preserved as
+`Numeric(38, 6)` rather than recomputed.
+
+Each successful fetch creates an immutable snapshot identified by Instrument,
+requested start/end dates, source, schema version, and timezone-aware fetch
+time. Metric rows are uniquely keyed inside the snapshot. The read service
+selects the newest fetch for the exact requested period while retaining older
+snapshots so upstream revisions remain observable.
+
+Provider access occurs only through a single exact-Instrument Data Operation
+with explicit `period_start`, `period_end`, and full mode. `session_stats` is
+not available to Batch Operations. Its jobs share the existing `vnstock`
+adapter lease. Opening, filtering, or applying a period on the standalone
+Session Statistics page reads PostgreSQL only; a missing snapshot links to a
+prefilled operation but never starts work implicitly.
+
+Consequences: session aggregates retain their real period grain and
+provenance, failed fetches cannot erase prior snapshots, unsupported
+Instruments fail explicitly, and adding or reclassifying a provider metric
+requires a deliberate catalog/schema-version change. Reusable analytical
+formulas remain outside this application acquisition boundary and belong in
+`trading_engine` only when such analytics are designed.

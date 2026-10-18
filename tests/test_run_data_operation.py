@@ -156,6 +156,29 @@ def test_execute_instrument_dispatches_session_stats_exact_period(monkeypatch):
     assert calls == [(7, date(2026, 10, 15), date(2026, 10, 16), engine)]
 
 
+@pytest.mark.parametrize(
+    ("mode", "start", "end"),
+    [
+        ("incremental", date(2026, 10, 15), date(2026, 10, 16)),
+        ("full", date(2026, 10, 17), date(2026, 10, 16)),
+    ],
+)
+def test_session_stats_cli_rejects_invalid_period_before_database_work(
+    monkeypatch, mode, start, end,
+):
+    monkeypatch.setattr(
+        run_data_operation,
+        "create_db_engine",
+        lambda *args, **kwargs: pytest.fail("database should not be opened"),
+    )
+
+    with pytest.raises(ValueError):
+        run_data_operation.run_data_operation(
+            "instrument", "7", "session_stats", mode,
+            period_start=start, period_end=end,
+        )
+
+
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):
     monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "invalid")
     monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "0")

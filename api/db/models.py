@@ -776,6 +776,10 @@ class InstrumentSessionStatisticSnapshot(Base):
             "schema_version > 0",
             name="ck_instrument_session_stat_snapshots_schema_version",
         ),
+        UniqueConstraint(
+            "instrument_id", "period_start", "period_end", "source", "fetched_at",
+            name="uq_instrument_session_stat_snapshot_identity",
+        ),
         Index(
             "ix_instrument_session_stat_snapshot_lookup",
             "instrument_id", "period_start", "period_end", "fetched_at",
