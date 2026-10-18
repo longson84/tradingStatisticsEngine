@@ -125,4 +125,3 @@ def test_session_statistic_snapshot_identity_rejects_duplicate_fetch():
         ])
         with pytest.raises(IntegrityError):
             session.commit()
-
