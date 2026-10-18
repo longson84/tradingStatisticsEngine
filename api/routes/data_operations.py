@@ -1,6 +1,7 @@
 """Instrument-centered data update endpoints."""
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -165,9 +166,21 @@ def preview_data_operation(
     scope_type: DataOperationScopeType = Query(...),
     scope_id: str = Query(..., min_length=1, max_length=64),
     dataset: DataOperationDataset = Query(default="prices"),
+    period_start: date | None = Query(default=None),
+    period_end: date | None = Query(default=None),
 ) -> DataOperationPreviewResponse:
     try:
-        preview = service.preview(scope_type, scope_id, dataset)
+        if dataset == "session_stats" and (
+            period_start is None or period_end is None or period_start > period_end
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="session_stats requires an ordered period_start and period_end",
+            )
+        preview = service.preview(
+            scope_type, scope_id, dataset,
+            period_start=period_start, period_end=period_end,
+        )
     except UnknownDataOperationScopeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return DataOperationPreviewResponse(**preview.__dict__)
@@ -230,6 +243,8 @@ def start_data_operation(
             adapter_keys=tuple(group.adapter for group in plan.groups),
             total=plan.eligible_count,
             engine=engine,
+            period_start=request.period_start,
+            period_end=request.period_end,
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -107,7 +107,7 @@ def test_instrument_flow_rejects_unsupported_participants_and_negative_gross_val
             session.commit()
 
 
-def test_operation_models_accept_both_participant_flow_datasets():
+def test_operation_models_keep_session_stats_out_of_batch_datasets():
     run_constraint = next(
         constraint for constraint in DataOperationRun.__table__.constraints
         if constraint.name == "ck_data_operation_runs_dataset"
@@ -121,3 +121,5 @@ def test_operation_models_accept_both_participant_flow_datasets():
     assert "foreign_flow" in str(step_constraint.sqltext)
     assert "proprietary_flow" in str(run_constraint.sqltext)
     assert "proprietary_flow" in str(step_constraint.sqltext)
+    assert "session_stats" in str(run_constraint.sqltext)
+    assert "session_stats" not in str(step_constraint.sqltext)

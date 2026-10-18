@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
 
+import pytest
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,8 @@ from api.db.models import (
     Venue,
 )
 from api.main import app
+from api.schemas.batch_operations import BatchOperationStepRequest
+from api.schemas.data_operations import DataOperationRequest
 from api.repositories.data_operation_repository import (
     DataOperationInstrumentRecord,
     DataOperationScopeRecord,
@@ -358,6 +362,56 @@ def test_proprietary_flow_preview_uses_its_own_coverage():
 
     assert preview.current_count == 1
     assert preview.missing_count == 0
+
+
+def test_session_stats_requires_exact_instrument_and_period():
+    scope = DataOperationScopeRecord(
+        scope_type="instrument",
+        scope_id="2",
+        name="FPT",
+        instruments=(instrument(2, "FPT", country_code="VN", venue_code="HOSE"),),
+    )
+    plan = data_operation_service(scope).plan("instrument", "2", "session_stats")
+    assert plan.can_run is True
+    assert plan.groups[0].adapter == "vnstock"
+
+    collection = DataOperationScopeRecord(
+        scope_type="watchlist", scope_id="7", name="VN", instruments=scope.instruments
+    )
+    assert data_operation_service(collection).plan(
+        "watchlist", "7", "session_stats"
+    ).can_run is False
+
+
+def test_session_stats_request_validates_period_and_full_mode():
+    valid = DataOperationRequest(
+        scope_type="instrument", scope_id="2", dataset="session_stats",
+        mode="full", period_start=date(2026, 10, 15),
+        period_end=date(2026, 10, 16),
+    )
+    assert valid.period_start == date(2026, 10, 15)
+
+    invalid = [
+        {"mode": "full"},
+        {"mode": "incremental", "period_start": date(2026, 10, 15), "period_end": date(2026, 10, 16)},
+        {"mode": "full", "period_start": date(2026, 10, 17), "period_end": date(2026, 10, 16)},
+    ]
+    for values in invalid:
+        with pytest.raises(ValidationError):
+            DataOperationRequest(
+                scope_type="instrument", scope_id="2", dataset="session_stats",
+                **values,
+            )
+    with pytest.raises(ValidationError):
+        DataOperationRequest(
+            scope_type="instrument", scope_id="2", dataset="prices",
+            period_start=date(2026, 10, 15), period_end=date(2026, 10, 16),
+        )
+    with pytest.raises(ValidationError):
+        BatchOperationStepRequest(
+            target_type="instrument", target_id="2", dataset="session_stats",
+            mode="full",
+        )
 
 
 def test_fundamental_preview_uses_fundamental_fetch_state_not_price_dates():

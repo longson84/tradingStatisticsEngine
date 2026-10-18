@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 import re
 import subprocess
 import sys
@@ -23,7 +23,7 @@ from api.price_refresh_coordination import (
 
 ScopeType = Literal["category", "universe", "watchlist", "instrument"]
 Dataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
 ]
 Mode = Literal["incremental", "full"]
 Status = Literal["queued", "running", "completed", "failed"]
@@ -39,6 +39,8 @@ class DataOperationJob:
     dataset: Dataset
     mode: Mode
     adapter_keys: tuple[str, ...]
+    period_start: date | None = None
+    period_end: date | None = None
     status: Status = "queued"
     current: int = 0
     total: int = 0
@@ -71,6 +73,8 @@ def start_data_operation_job(
     adapter_keys: tuple[str, ...],
     total: int,
     engine: Engine,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> DataOperationJob:
     job = DataOperationJob(
         id=uuid4().hex,
@@ -81,6 +85,8 @@ def start_data_operation_job(
         mode=mode,
         adapter_keys=tuple(sorted(set(adapter_keys))),
         total=total,
+        period_start=period_start,
+        period_end=period_end,
         created_at=_now(),
     )
     key = (scope_type, scope_id, dataset)
@@ -139,7 +145,8 @@ def get_active_scope_job(
 ) -> DataOperationJob | None:
     with _lock:
         for dataset in (
-            "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+            "prices", "fundamentals", "foreign_flow", "proprietary_flow",
+            "session_stats",
         ):
             job_id = _active_keys.get((scope_type, scope_id, dataset))
             if job_id is not None:
@@ -184,6 +191,10 @@ def _run_job(job_id: str, engine: Engine) -> None:
         "--mode",
         mode,
     ]
+    if job.period_start is not None:
+        command.extend(["--period-start", job.period_start.isoformat()])
+    if job.period_end is not None:
+        command.extend(["--period-end", job.period_end.isoformat()])
     lines: list[str] = []
     try:
         process = subprocess.Popen(
@@ -264,6 +275,8 @@ def _insert_job(engine: Engine, job: DataOperationJob) -> None:
             scope_name=job.scope_name,
             dataset=job.dataset,
             mode=job.mode,
+            period_start=job.period_start,
+            period_end=job.period_end,
             adapter_keys=list(job.adapter_keys),
             status=job.status,
             current=job.current,
@@ -310,6 +323,8 @@ def _from_row(row: DataOperationRun) -> DataOperationJob:
         scope_name=row.scope_name,
         dataset=row.dataset,  # type: ignore[arg-type]
         mode=row.mode,  # type: ignore[arg-type]
+        period_start=row.period_start,
+        period_end=row.period_end,
         adapter_keys=tuple(row.adapter_keys),
         status=row.status,  # type: ignore[arg-type]
         current=row.current,

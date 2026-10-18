@@ -493,7 +493,7 @@ class DataOperationRun(Base):
             name="ck_data_operation_runs_scope_type",
         ),
         CheckConstraint(
-            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow')",
+            "dataset IN ('prices', 'fundamentals', 'foreign_flow', 'proprietary_flow', 'session_stats')",
             name="ck_data_operation_runs_dataset",
         ),
         CheckConstraint(
@@ -513,6 +513,8 @@ class DataOperationRun(Base):
     scope_name: Mapped[str] = mapped_column(String(255), nullable=False)
     dataset: Mapped[str] = mapped_column(String(16), nullable=False)
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    period_start: Mapped[date | None] = mapped_column(Date)
+    period_end: Mapped[date | None] = mapped_column(Date)
     adapter_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     current: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

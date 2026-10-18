@@ -4,12 +4,12 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 DataOperationScopeType = Literal["category", "universe", "watchlist", "instrument"]
 DataOperationDataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
 ]
 DataOperationMode = Literal["incremental", "full"]
 
@@ -19,6 +19,22 @@ class DataOperationRequest(BaseModel):
     scope_id: str
     dataset: DataOperationDataset = "prices"
     mode: DataOperationMode = "incremental"
+    period_start: date | None = None
+    period_end: date | None = None
+
+    @model_validator(mode="after")
+    def validate_period(self):
+        has_period = self.period_start is not None or self.period_end is not None
+        if self.dataset == "session_stats":
+            if self.period_start is None or self.period_end is None:
+                raise ValueError("session_stats requires period_start and period_end")
+            if self.period_start > self.period_end:
+                raise ValueError("period_start must be on or before period_end")
+            if self.mode != "full":
+                raise ValueError("session_stats requires full mode")
+        elif has_period:
+            raise ValueError("period dates are only valid for session_stats")
+        return self
 
 
 class DataOperationPreviewResponse(BaseModel):
@@ -80,6 +96,8 @@ class DataOperationJobResponse(BaseModel):
     scope_name: str
     dataset: DataOperationDataset
     mode: DataOperationMode
+    period_start: date | None = None
+    period_end: date | None = None
     adapter_keys: list[str]
     status: Literal["queued", "running", "completed", "failed"]
     current: int

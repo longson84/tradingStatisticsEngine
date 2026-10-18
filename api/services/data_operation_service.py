@@ -21,10 +21,11 @@ from api.repositories.data_operation_repository import (
 from api.repositories.instrument_routing_repository import (
     InstrumentRoutingRepository,
 )
+from api.repositories.session_statistics_repository import SessionStatisticsRepository
 
 
 DataOperationDataset = Literal[
-    "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow", "session_stats"
 ]
 PriceCoverageStatus = Literal["current", "stale", "missing"]
 FUNDAMENTAL_REUSE_WINDOW = timedelta(hours=12)
@@ -114,9 +115,11 @@ class DataOperationService:
         self,
         repository: DataOperationRepository,
         routing_repository: InstrumentRoutingRepository,
+        session_statistics_repository: SessionStatisticsRepository | None = None,
     ) -> None:
         self._repository = repository
         self._routing_repository = routing_repository
+        self._session_statistics_repository = session_statistics_repository
 
     def preview(
         self,
@@ -125,6 +128,8 @@ class DataOperationService:
         dataset: DataOperationDataset,
         *,
         now: datetime | None = None,
+        period_start: date | None = None,
+        period_end: date | None = None,
     ) -> DataOperationPreview:
         plan, scope, routes = self._plan(scope_type, scope_id, dataset)
         eligible = tuple(
@@ -158,6 +163,19 @@ class DataOperationService:
             missing_count = sum(
                 getattr(row, last_date_field) is None for row in eligible
             )
+        elif dataset == "session_stats":
+            if period_start is None or period_end is None:
+                current_count = 0
+            elif self._session_statistics_repository is None:
+                current_count = 0
+            else:
+                current_count = sum(
+                    self._session_statistics_repository.get_latest_snapshot(
+                        row.id, period_start, period_end
+                    ) is not None
+                    for row in eligible
+                )
+            missing_count = len(eligible) - current_count
         else:
             current_count = sum(
                 row.last_date is not None
@@ -302,7 +320,7 @@ def _eligible(
         return False
     if dataset == "fundamentals":
         return route.fundamental_adapter is not None
-    if dataset in {"foreign_flow", "proprietary_flow"}:
+    if dataset in {"foreign_flow", "proprietary_flow", "session_stats"}:
         return dataset in route.capabilities
     return True
 
@@ -390,7 +408,7 @@ def _dataset_adapter(
 ) -> str | None:
     if route is None:
         return None
-    if dataset in {"foreign_flow", "proprietary_flow"}:
+    if dataset in {"foreign_flow", "proprietary_flow", "session_stats"}:
         return "vnstock" if dataset in route.capabilities else None
     return (
         route.fundamental_adapter
@@ -408,7 +426,7 @@ def _execution(
     if not scope.instruments:
         return False, "This scope has no active instruments."
     if (
-        dataset in {"foreign_flow", "proprietary_flow"}
+        dataset in {"foreign_flow", "proprietary_flow", "session_stats"}
         and scope.scope_type != "instrument"
     ):
         return False, "Participant flow updates require one exact Instrument scope."
@@ -446,6 +464,7 @@ def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
         ("fundamentals", "vnstock"): 1_000,
         ("foreign_flow", "vnstock"): 1,
         ("proprietary_flow", "vnstock"): 1,
+        ("session_stats", "vnstock"): 1,
     }
     default = defaults.get((dataset, adapter), 1)
     key = f"DATA_OPERATION_{dataset}_{adapter}_MAX_INSTRUMENTS".upper()
