@@ -139,10 +139,31 @@ class SqlAlchemyTradeStatisticsRepository:
             .order_by(InstrumentDailyTradeStatistic.trading_date)
             .execution_options(populate_existing=True)
         )
-        return tuple(DailyTradeStatisticRecord(
+        return tuple(self._record(row) for row in rows)
+
+    def list_rows_before(
+        self, instrument_id: int, before: date, limit: int,
+    ) -> tuple[DailyTradeStatisticRecord, ...]:
+        if limit < 1:
+            return ()
+        rows = tuple(self._session.scalars(
+            select(InstrumentDailyTradeStatistic)
+            .where(
+                InstrumentDailyTradeStatistic.instrument_id == instrument_id,
+                InstrumentDailyTradeStatistic.trading_date < before,
+            )
+            .order_by(InstrumentDailyTradeStatistic.trading_date.desc())
+            .limit(limit)
+            .execution_options(populate_existing=True)
+        ))
+        return tuple(self._record(row) for row in reversed(rows))
+
+    @staticmethod
+    def _record(row: InstrumentDailyTradeStatistic) -> DailyTradeStatisticRecord:
+        return DailyTradeStatisticRecord(
             instrument_id=row.instrument_id, trading_date=row.trading_date,
             source=row.source, schema_version=row.schema_version,
             fetched_at=(row.fetched_at.replace(tzinfo=UTC)
                         if row.fetched_at.tzinfo is None else row.fetched_at.astimezone(UTC)),
             **{name: getattr(row, name) for name in TRADE_STATISTIC_STORAGE_COLUMNS},
-        ) for row in rows)
+        )

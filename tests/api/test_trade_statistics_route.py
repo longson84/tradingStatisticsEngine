@@ -17,6 +17,7 @@ from api.services.trade_statistics_service import (
     UnknownTradeStatisticsInstrumentError,
 )
 from api.trade_statistics import TRADE_STATISTIC_STORAGE_COLUMNS
+from trading_engine.types import TurnoverIntensityAnalysis, TurnoverIntensityPoint
 
 
 class Service:
@@ -45,6 +46,22 @@ class Service:
                 (date(2026, 10, 14), "vnstock-5.1.0-vci"),
                 (date(2026, 10, 16), "later-source"),
             )),
+            turnover_intensity=TurnoverIntensityAnalysis(
+                formula_version="turnover_intensity_v1",
+                baseline_sessions=20,
+                points=(
+                    TurnoverIntensityPoint(
+                        session=date(2026, 10, 14), intensity=0.01,
+                        baseline=None, anomaly_score=None,
+                        unavailable_reason="insufficient_history",
+                    ),
+                    TurnoverIntensityPoint(
+                        session=date(2026, 10, 16), intensity=None,
+                        baseline=0.015, anomaly_score=None,
+                        unavailable_reason="non_positive_market_cap",
+                    ),
+                ),
+            ),
         )
 
 
@@ -76,6 +93,22 @@ def test_route_returns_instrument_requested_range_actual_dates_order_and_row_pro
     assert [row["source"] for row in body["rows"]] == ["vnstock-5.1.0-vci", "later-source"]
     assert all(row["schema_version"] == 1 and row["fetched_at"] == "2026-10-18T00:00:00Z" for row in body["rows"])
     assert "is_complete" not in body
+    assert body["turnover_intensity"] == {
+        "formula_version": "turnover_intensity_v1",
+        "baseline_sessions": 20,
+        "points": [
+            {
+                "trading_date": "2026-10-14", "intensity": 0.01,
+                "baseline": None, "anomaly_score": None,
+                "unavailable_reason": "insufficient_history",
+            },
+            {
+                "trading_date": "2026-10-16", "intensity": None,
+                "baseline": 0.015, "anomaly_score": None,
+                "unavailable_reason": "non_positive_market_cap",
+            },
+        ],
+    }
 
 
 def test_route_serializes_large_integer_exactly_and_fractional_averages_as_numbers(client):
@@ -123,6 +156,13 @@ def test_openapi_declares_required_dates_and_numeric_activity_contract():
     daily = schema["components"]["schemas"]["DailyTradeStatisticResponse"]
     assert daily["properties"]["market_cap"]["anyOf"] == [{"type": "integer"}, {"type": "number"}]
     assert set(TRADE_STATISTIC_STORAGE_COLUMNS) <= set(daily["required"])
+    analysis = schema["components"]["schemas"]["TurnoverIntensityAnalysisResponse"]
+    assert set(analysis["required"]) == {"formula_version", "baseline_sessions", "points"}
+    point = schema["components"]["schemas"]["TurnoverIntensityPointResponse"]
+    assert point["properties"]["unavailable_reason"]["anyOf"][0]["enum"] == [
+        "invalid_total_value", "invalid_market_cap", "non_positive_market_cap",
+        "insufficient_history", "invalid_baseline_window", "zero_baseline_variance",
+    ]
 
 
 def test_read_route_dependency_graph_has_database_dependencies_and_no_provider():

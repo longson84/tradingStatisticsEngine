@@ -9,6 +9,8 @@ from api.deps import get_trade_statistics_service
 from api.schemas.trade_statistics import (
     DailyTradeStatisticResponse,
     InstrumentTradeStatisticsResponse,
+    TurnoverIntensityAnalysisResponse,
+    TurnoverIntensityPointResponse,
 )
 from api.services.trade_statistics_service import (
     TradeStatisticsCapabilityError,
@@ -71,4 +73,15 @@ def get_instrument_trade_statistics(
             fetched_at=row.fetched_at,
             **{name: _json_number(getattr(row, name)) for name in TRADE_STATISTIC_STORAGE_COLUMNS},
         ) for row in result.rows],
+        turnover_intensity=TurnoverIntensityAnalysisResponse(
+            formula_version=result.turnover_intensity.formula_version,
+            baseline_sessions=result.turnover_intensity.baseline_sessions,
+            points=[TurnoverIntensityPointResponse(
+                trading_date=point.session,
+                intensity=point.intensity,
+                baseline=point.baseline,
+                anomaly_score=point.anomaly_score,
+                unavailable_reason=point.unavailable_reason,
+            ) for point in result.turnover_intensity.points],
+        ),
     )

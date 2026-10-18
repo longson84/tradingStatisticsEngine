@@ -15,6 +15,11 @@ from api.repositories.trade_statistics_repository import (
     TradeStatisticInstrumentRecord,
     TradeStatisticsRepository,
 )
+from trading_engine.activity import analyze_turnover_intensity
+from trading_engine.types import TradingActivityObservation, TurnoverIntensityAnalysis
+
+
+TURNOVER_INTENSITY_BASELINE_SESSIONS = 20
 
 
 class UnknownTradeStatisticsInstrumentError(ValueError):
@@ -37,6 +42,7 @@ class TradeStatisticsData:
     first_date: date
     last_date: date
     rows: tuple[DailyTradeStatisticRecord, ...]
+    turnover_intensity: TurnoverIntensityAnalysis
 
 
 def resolve_trade_statistics_instrument(
@@ -85,8 +91,26 @@ class TradeStatisticsService:
                 f"No stored daily trade statistics for instrument {instrument_id} "
                 f"from {start} through {end}"
             )
+        context_rows = self._repository.list_rows_before(
+            instrument_id,
+            before=start,
+            limit=TURNOVER_INTENSITY_BASELINE_SESSIONS,
+        )
+        analysis = analyze_turnover_intensity(tuple(
+            TradingActivityObservation(
+                session=row.trading_date,
+                total_value=row.total_value,
+                market_cap=row.market_cap,
+            )
+            for row in (*context_rows, *rows)
+        ))
         return TradeStatisticsData(
             instrument=instrument, requested_start=start, requested_end=end,
             first_date=rows[0].trading_date, last_date=rows[-1].trading_date,
             rows=rows,
+            turnover_intensity=TurnoverIntensityAnalysis(
+                formula_version=analysis.formula_version,
+                baseline_sessions=analysis.baseline_sessions,
+                points=analysis.points[len(context_rows):],
+            ),
         )

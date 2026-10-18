@@ -1,5 +1,5 @@
 from dataclasses import asdict, replace
-from datetime import UTC, date, datetime, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -55,15 +55,16 @@ def database():
     engine.dispose()
 
 
-def _record(instrument_id, day):
+def _record(instrument_id, day, **overrides):
+    values = {name: Decimal("10") for name in TRADE_STATISTIC_STORAGE_COLUMNS} | {
+        "market_cap": Decimal("9007199254740993"),
+        "average_buy_trade_volume": Decimal("1.25"),
+        "total_net_trade_volume": Decimal("-3.125"),
+    }
     return DailyTradeStatisticWriteRecord(
         instrument_id=instrument_id, trading_date=day, source="vnstock-5.1.0-vci",
         schema_version=1, fetched_at=FETCHED_AT,
-        **({name: Decimal("10") for name in TRADE_STATISTIC_STORAGE_COLUMNS} | {
-            "market_cap": Decimal("9007199254740993"),
-            "average_buy_trade_volume": Decimal("1.25"),
-            "total_net_trade_volume": Decimal("-3.125"),
-        }),
+        **(values | overrides),
     )
 
 
@@ -93,6 +94,36 @@ def test_read_service_reads_only_requested_range_in_order_and_reports_actual_par
     assert result.instrument.symbol == "FPT"
     assert result.rows[0].market_cap == Decimal("9007199254740993")
     assert result.rows[0].average_buy_trade_volume == Decimal("1.25")
+
+
+def test_read_service_uses_twenty_prior_stored_rows_only_as_analytics_context(database):
+    repository, instrument_id, routing = database
+    first = date(2026, 1, 1)
+    repository.upsert_rows([
+        _record(
+            instrument_id,
+            first + timedelta(days=index),
+            total_value=Decimal(index + 1),
+            market_cap=Decimal("1"),
+        )
+        for index in range(21)
+    ])
+
+    result = TradeStatisticsService(repository, routing).get_stored_range(
+        instrument_id,
+        first + timedelta(days=20),
+        first + timedelta(days=20),
+    )
+
+    assert [row.trading_date for row in result.rows] == [first + timedelta(days=20)]
+    assert result.first_date == result.last_date == first + timedelta(days=20)
+    assert result.turnover_intensity.formula_version == "turnover_intensity_v1"
+    point, = result.turnover_intensity.points
+    assert point.session == first + timedelta(days=20)
+    assert point.intensity == 21.0
+    assert point.baseline == pytest.approx(10.5)
+    assert point.anomaly_score is not None
+    assert point.unavailable_reason is None
 
 
 @pytest.mark.parametrize("case", ["unknown", "unsupported", "reversed", "no-data"])

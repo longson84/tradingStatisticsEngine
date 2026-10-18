@@ -3,6 +3,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from trading_engine.types import TurnoverIntensityUnavailableReason
+
 
 class DailyTradeStatisticResponse(BaseModel):
     trading_date: date
@@ -28,6 +30,20 @@ class DailyTradeStatisticResponse(BaseModel):
     average_sell_trade_volume: int | float
 
 
+class TurnoverIntensityPointResponse(BaseModel):
+    trading_date: date
+    intensity: float | None
+    baseline: float | None
+    anomaly_score: float | None
+    unavailable_reason: TurnoverIntensityUnavailableReason | None
+
+
+class TurnoverIntensityAnalysisResponse(BaseModel):
+    formula_version: str
+    baseline_sessions: int
+    points: list[TurnoverIntensityPointResponse]
+
+
 class InstrumentTradeStatisticsResponse(BaseModel):
     instrument_id: int
     symbol: str
@@ -40,3 +56,4 @@ class InstrumentTradeStatisticsResponse(BaseModel):
     last_date: date
     row_count: int
     rows: list[DailyTradeStatisticResponse]
+    turnover_intensity: TurnoverIntensityAnalysisResponse

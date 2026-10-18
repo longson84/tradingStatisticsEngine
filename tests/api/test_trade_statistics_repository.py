@@ -77,6 +77,29 @@ def test_repository_upserts_all_rows_and_reads_inclusive_ordered_instrument_rang
     assert repository.upsert_rows([]) == 0
 
 
+def test_repository_reads_only_the_latest_limited_rows_before_a_session(database):
+    session, instrument_id, other_id, repository = database
+    first = date(2026, 9, 1)
+    repository.upsert_rows([
+        _write(instrument_id, first + timedelta(days=index))
+        for index in range(25)
+    ])
+    repository.upsert_rows([_write(other_id, first + timedelta(days=23))])
+    session.commit()
+
+    rows = repository.list_rows_before(
+        instrument_id,
+        before=first + timedelta(days=24),
+        limit=20,
+    )
+
+    assert [row.trading_date for row in rows] == [
+        first + timedelta(days=index) for index in range(4, 24)
+    ]
+    assert repository.list_rows_before(instrument_id, before=first, limit=20) == ()
+    assert repository.list_rows_before(instrument_id, before=first, limit=0) == ()
+
+
 def test_repository_canonical_upsert_rejects_older_and_accepts_equal_fetch_time(database):
     session, instrument_id, _, repository = database
     record = _write(instrument_id)
