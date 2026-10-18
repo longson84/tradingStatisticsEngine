@@ -383,6 +383,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}/session-statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Instrument Session Statistics */
+        get: operations["getInstrumentSessionStatistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe-stats/run": {
         parameters: {
             query?: never;
@@ -841,7 +858,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
             /** Error */
             error: string | null;
             /** Failed */
@@ -859,6 +876,10 @@ export interface components {
             mode: "incremental" | "full";
             /** Output */
             output: string[];
+            /** Period End */
+            period_end?: string | null;
+            /** Period Start */
+            period_start?: string | null;
             /** Scope Id */
             scope_id: string;
             /** Scope Name */
@@ -890,7 +911,7 @@ export interface components {
              * Dataset
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
             /** Eligible Count */
             eligible_count: number;
             /** Instrument Count */
@@ -920,13 +941,17 @@ export interface components {
              * @default prices
              * @enum {string}
              */
-            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
+            dataset: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
             /**
              * Mode
              * @default incremental
              * @enum {string}
              */
             mode: "incremental" | "full";
+            /** Period End */
+            period_end?: string | null;
+            /** Period Start */
+            period_start?: string | null;
             /** Scope Id */
             scope_id: string;
             /**
@@ -1277,6 +1302,42 @@ export interface components {
             trailing_pe: number | null;
             /** Volume */
             volume: number | null;
+        };
+        /** InstrumentSessionStatisticsResponse */
+        InstrumentSessionStatisticsResponse: {
+            /** Currency */
+            currency: string;
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Metrics */
+            metrics: components["schemas"]["SessionStatisticMetricResponse"][];
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Snapshot Id */
+            snapshot_id: number;
+            /** Source */
+            source: string;
+            /** Symbol */
+            symbol: string;
+            /** Venue Code */
+            venue_code: string | null;
         };
         /** MonthlyStatRowResponse */
         MonthlyStatRowResponse: {
@@ -1935,6 +1996,30 @@ export interface components {
             latest_session?: string | null;
             /** With History Count */
             with_history_count: number;
+        };
+        /** SessionStatisticMetricResponse */
+        SessionStatisticMetricResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "average_match_volume" | "average_match_value" | "average_deal_volume" | "average_deal_value" | "average_volume" | "average_value" | "total_match_volume" | "total_match_value" | "total_deal_volume" | "total_deal_value" | "total_volume" | "total_value" | "fr_buy_volume_total" | "fr_buy_value_total" | "fr_sell_volume_total" | "fr_sell_value_total" | "fr_net_volume_total" | "fr_net_value_total" | "fr_buy_volume_matched" | "fr_buy_value_matched" | "fr_sell_volume_matched" | "fr_sell_value_matched" | "fr_buy_volume_deal" | "fr_buy_value_deal" | "fr_sell_volume_deal" | "fr_sell_value_deal" | "fr_buy_volume_total_avg" | "fr_buy_value_total_avg" | "fr_sell_volume_total_avg" | "fr_sell_value_total_avg" | "fr_net_volume_total_avg" | "fr_net_value_total_avg" | "fr_buy_volume_matched_avg" | "fr_buy_value_matched_avg" | "fr_sell_volume_matched_avg" | "fr_sell_value_matched_avg" | "fr_buy_volume_deal_avg" | "fr_buy_value_deal_avg" | "fr_sell_volume_deal_avg" | "fr_sell_value_deal_avg" | "fr_net_volume_matched" | "fr_net_value_matched" | "fr_net_volume_matched_avg" | "fr_net_value_matched_avg" | "fr_net_volume_deal" | "fr_net_value_deal" | "fr_net_volume_deal_avg" | "fr_net_value_deal_avg" | "total_buy_trade_volume" | "total_sell_trade_volume" | "total_buy_trade_volume_avg" | "total_sell_trade_volume_avg" | "total_buy_trade" | "total_sell_trade" | "total_buy_trade_avg" | "total_sell_trade_avg" | "total_buy_unmatched_volume_avg" | "total_sell_unmatched_volume_avg" | "total_buy_unmatched_volume" | "total_sell_unmatched_volume" | "total_net_trade_volume" | "total_net_trade_volume_avg" | "average_buy_volume_per_trade" | "average_sell_volume_per_trade";
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "market_activity" | "foreign_activity" | "trade_direction" | "order_imbalance";
+            /** Label */
+            label: string;
+            /** Order */
+            order: number;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "volume" | "value" | "count";
+            /** Value */
+            value: number;
         };
         /** SingleInstrumentAnalysisResponse */
         SingleInstrumentAnalysisResponse: {
@@ -2906,7 +2991,7 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
             };
             header?: never;
             path?: never;
@@ -2970,7 +3055,9 @@ export interface operations {
             query: {
                 scope_type: "category" | "universe" | "watchlist" | "instrument";
                 scope_id: string;
-                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow";
+                dataset?: "prices" | "fundamentals" | "foreign_flow" | "proprietary_flow" | "session_stats";
+                period_start?: string | null;
+                period_end?: string | null;
             };
             header?: never;
             path?: never;
@@ -3128,7 +3215,7 @@ export interface operations {
                 sector?: string | null;
                 industry?: string | null;
                 venue?: string | null;
-                capability?: ("foreign_flow" | "proprietary_flow") | null;
+                capability?: ("foreign_flow" | "proprietary_flow" | "session_stats") | null;
                 has_price_history?: boolean;
                 offset?: number;
                 limit?: number;
@@ -3284,6 +3371,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentFlowResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstrumentSessionStatistics: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentSessionStatisticsResponse"];
                 };
             };
             /** @description Validation Error */

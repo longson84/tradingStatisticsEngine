@@ -138,6 +138,8 @@ export type InstrumentPricePoint = components["schemas"]["InstrumentPricePointRe
 export type InstrumentPriceHistoryResponse = components["schemas"]["InstrumentPriceHistoryResponse"]
 export type InstrumentFlowPoint = components["schemas"]["InstrumentFlowPointResponse"]
 export type InstrumentFlowResponse = components["schemas"]["InstrumentFlowResponse"]
+export type SessionStatisticMetric = components["schemas"]["SessionStatisticMetricResponse"]
+export type InstrumentSessionStatisticsResponse = components["schemas"]["InstrumentSessionStatisticsResponse"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -404,6 +406,15 @@ export function instrumentMarketFlowsApi(params: {
   if (params.start) query.set("start", params.start)
   if (params.end) query.set("end", params.end)
   return get(`/instruments/${params.instrument_id}/market-flows?${query}`)
+}
+
+export function instrumentSessionStatisticsApi(params: {
+  instrument_id: number
+  start: string
+  end: string
+}): Promise<InstrumentSessionStatisticsResponse> {
+  const query = new URLSearchParams({ start: params.start, end: params.end })
+  return get(`/instruments/${params.instrument_id}/session-statistics?${query}`)
 }
 
 export function newLowDeepApi(

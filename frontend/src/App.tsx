@@ -15,6 +15,7 @@ import { ReferenceRatesPage } from "@/pages/ReferenceRatesPage"
 import { VenuesPage } from "@/pages/VenuesPage"
 import { UniverseStatsPage } from "@/pages/UniverseStatsPage"
 import { InvestorFlowPage } from "@/pages/InvestorFlowPage"
+import { SessionStatisticsPage } from "@/pages/SessionStatisticsPage"
 import { AnalysisContextProvider } from "@/lib/analysis-provider"
 
 const qc = new QueryClient({
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/venues" element={<VenuesPage />} />
           <Route path="/strategy/sma" element={<SmaStrategyPage />} />
           <Route path="/vietnam-market/investor-flow" element={<InvestorFlowPage />} />
+          <Route path="/vietnam-market/session-statistics" element={<SessionStatisticsPage />} />
           </Routes>
         </BrowserRouter>
       </AnalysisContextProvider>
