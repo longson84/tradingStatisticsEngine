@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { BarChart3, Search } from "lucide-react"
+import { BarChart3 } from "lucide-react"
 import { Link } from "react-router"
 
 import { Sidebar } from "@/components/Sidebar"
+import { VietnamInstrumentSelector } from "@/components/forms/VietnamInstrumentSelector"
 import { Badge } from "@/components/ui/badge"
 import {
   instrumentSessionStatisticsApi,
@@ -31,6 +32,7 @@ export function SessionStatisticsPage() {
   const instruments = useQuery({
     queryKey: ["session-statistics-instruments", debounced],
     queryFn: () => instrumentsApi({
+      scope: "equity",
       search: debounced,
       capability: "session_stats",
       has_price_history: false,
@@ -75,15 +77,27 @@ export function SessionStatisticsPage() {
       </header>
       <section className="mb-5 rounded-xl border border-border bg-card p-5">
         <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-end">
-          <div className="relative">
-            <label className="mb-1 block text-xs font-medium">Instrument</label>
-            <Search className="pointer-events-none absolute bottom-2.5 left-3 text-muted-foreground" size={15} />
-            <input value={search} onChange={event => { setSearch(event.target.value); setSelected(null); setRequest(null) }} placeholder="Search FPT, VNM, ACB…" className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm" />
-            {debounced.length >= 3 && selected == null && <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
-              {instruments.isFetching && <div className="p-3 text-xs text-muted-foreground">Searching…</div>}
-              {instruments.data?.instruments.map(item => <button key={item.id} onClick={() => { setSelected(item); setSearch(item.symbol); setRequest(null) }} className="flex w-full justify-between px-3 py-2 text-left text-sm hover:bg-accent"><span className="font-medium">{item.symbol}</span><span className="text-xs text-muted-foreground">{item.venue_code}</span></button>)}
-            </div>}
-          </div>
+          <VietnamInstrumentSelector
+            search={search}
+            instruments={instruments.data?.instruments ?? []}
+            selectedInstrument={selected}
+            total={instruments.data?.total}
+            isPending={debounced.length >= 3 && instruments.isFetching}
+            onSearchChange={value => {
+              setSearch(value)
+              setRequest(null)
+            }}
+            onInstrumentChange={instrument => {
+              setSelected(instrument)
+              if (instrument) setSearch(instrument.symbol)
+              setRequest(null)
+            }}
+            onSubmit={() => {
+              if (selected && start && end && start <= end) {
+                setRequest({ id: selected.id, start, end })
+              }
+            }}
+          />
           <DateInput label="Start date" value={start} onChange={value => { setStart(value); setRequest(null) }} />
           <DateInput label="End date" value={end} onChange={value => { setEnd(value); setRequest(null) }} />
           <button disabled={!selected || !start || !end || start > end || stats.isFetching} onClick={() => setRequest({ id: selected!.id, start, end })} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Apply period</button>

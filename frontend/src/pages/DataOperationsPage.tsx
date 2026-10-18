@@ -1040,7 +1040,7 @@ function ChoiceGroup({
   return (
     <div>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         {options.map(([option, text]) => (
           <button
             key={option}

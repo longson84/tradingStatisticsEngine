@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Activity, Search } from "lucide-react"
+import { Activity } from "lucide-react"
 import { Link } from "react-router"
 
 import { Sidebar } from "@/components/Sidebar"
+import { VietnamInstrumentSelector } from "@/components/forms/VietnamInstrumentSelector"
 import { InvestorFlowChart } from "@/components/market/InvestorFlowChart"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -26,6 +27,7 @@ export function InvestorFlowPage() {
   const instruments = useQuery({
     queryKey: ["participant-flow-instruments", participant, debounced],
     queryFn: () => instrumentsApi({
+      scope: "equity",
       search: debounced,
       capability: participant === "foreign" ? "foreign_flow" : "proprietary_flow",
       has_price_history: false,
@@ -91,34 +93,19 @@ export function InvestorFlowPage() {
             ))}
           </div>
           <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-end">
-            <div className="relative">
-              <label className="mb-1 block text-xs font-medium">Instrument</label>
-              <Search className="pointer-events-none absolute bottom-2.5 left-3 text-muted-foreground" size={15} />
-              <input
-                value={search}
-                onChange={event => { setSearch(event.target.value); setSelected(null) }}
-                placeholder="Search FPT, VNM, ACB…"
-                className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm"
-              />
-              {debounced.length >= 3 && selected == null && (
-                <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
-                  {instruments.isFetching && <div className="p-3 text-xs text-muted-foreground">Searching…</div>}
-                  {!instruments.isFetching && instruments.data?.instruments.length === 0 && (
-                    <div className="p-3 text-xs text-muted-foreground">No eligible Vietnam equities found.</div>
-                  )}
-                  {instruments.data?.instruments.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => { setSelected(item); setSearch(item.symbol) }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
-                    >
-                      <span className="font-medium">{item.symbol}</span>
-                      <span className="text-xs text-muted-foreground">{item.venue_code}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <VietnamInstrumentSelector
+              search={search}
+              instruments={instruments.data?.instruments ?? []}
+              selectedInstrument={selected}
+              total={instruments.data?.total}
+              isPending={debounced.length >= 3 && instruments.isFetching}
+              onSearchChange={setSearch}
+              onInstrumentChange={instrument => {
+                setSelected(instrument)
+                if (instrument) setSearch(instrument.symbol)
+              }}
+              onSubmit={() => setRange({ start, end })}
+            />
             <DateInput label="Start date" value={start} onChange={setStart} />
             <DateInput label="End date" value={end} onChange={setEnd} />
             <button

@@ -25,6 +25,7 @@ export function AnalysisInstrumentSelector({
   onSubmit,
   helperText,
   hideHelperText = false,
+  hideScope = false,
 }: {
   scope: InstrumentScope
   search: string
@@ -38,6 +39,7 @@ export function AnalysisInstrumentSelector({
   onSubmit?: () => void
   helperText?: string
   hideHelperText?: boolean
+  hideScope?: boolean
 }) {
   const canSearch = search.trim().length >= 3
   const showResults = canSearch && !selectedInstrument && instruments.length > 0
@@ -56,14 +58,16 @@ export function AnalysisInstrumentSelector({
   })
   return (
     <>
-      <div>
-        <FormLabel>Instrument scope</FormLabel>
-        <FormSelect
-          value={scope}
-          onChange={onScopeChange}
-          options={SCOPE_OPTIONS}
-        />
-      </div>
+      {!hideScope && (
+        <div>
+          <FormLabel>Instrument scope</FormLabel>
+          <FormSelect
+            value={scope}
+            onChange={onScopeChange}
+            options={SCOPE_OPTIONS}
+          />
+        </div>
+      )}
 
       <div>
         <FormLabel>Instrument</FormLabel>
