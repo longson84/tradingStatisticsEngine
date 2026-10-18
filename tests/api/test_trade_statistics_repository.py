@@ -1,6 +1,7 @@
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, event, func, select
@@ -94,6 +95,37 @@ def test_repository_canonical_upsert_rejects_older_and_accepts_equal_fetch_time(
     session.commit()
     assert repository.list_rows(instrument_id, record.trading_date, record.trading_date)[0].source == "equal"
     assert session.scalar(select(func.count()).select_from(InstrumentDailyTradeStatistic)) == 1
+
+
+def test_repository_counts_written_rows_when_driver_rowcount_is_unknown(database, monkeypatch):
+    session, instrument_id, _, repository = database
+    original = _write(instrument_id)
+    assert repository.upsert_rows([original]) == 1
+    session.commit()
+    execute = session.execute
+
+    def execute_with_unknown_rowcount(statement, *args, **kwargs):
+        result = execute(statement, *args, **kwargs)
+        if statement.is_insert:
+            # PostgreSQL/psycopg can return unknown rowcount for a real upsert.
+            # Preserve actual execution and returned rows, replacing metadata only.
+            return SimpleNamespace(rowcount=-1, scalars=result.scalars)
+        return result
+
+    monkeypatch.setattr(session, "execute", execute_with_unknown_rowcount)
+    older = replace(original, fetched_at=FETCHED_AT - timedelta(hours=1))
+    assert repository.upsert_rows([
+        older, _write(instrument_id, date(2026, 10, 15)),
+    ]) == 1
+    assert repository.upsert_rows([older]) == 0
+    assert repository.upsert_rows([original]) == 1
+    assert repository.upsert_rows([
+        replace(original, fetched_at=FETCHED_AT + timedelta(hours=1)),
+    ]) == 1
+    session.commit()
+    rows = repository.list_rows(instrument_id, date(2026, 10, 15), date(2026, 10, 16))
+    assert len(rows) == 2
+    assert rows[-1].fetched_at == FETCHED_AT + timedelta(hours=1)
 
 
 def test_repository_leaves_transaction_commit_and_rollback_to_caller(database):

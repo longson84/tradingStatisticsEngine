@@ -85,9 +85,9 @@ class SqlAlchemyTradeStatisticsRepository:
                     "source", "schema_version", "fetched_at", *TRADE_STATISTIC_STORAGE_COLUMNS,
                 )},
                 where=statement.excluded.fetched_at >= InstrumentDailyTradeStatistic.fetched_at,
-            )
+            ).returning(InstrumentDailyTradeStatistic.id)
             result = self._session.execute(statement)
-            affected += int(result.rowcount)
+            affected += len(result.scalars().all())
         return affected
 
     @staticmethod
