@@ -96,6 +96,68 @@ def test_analysis_instrument_search_returns_stable_id_and_issuer_metadata():
     assert row.stored_sessions == 1
 
 
+def test_foreign_flow_discovery_filters_before_count_and_pagination():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    seed_company_catalog(session)
+    service = InstrumentAnalysisService(
+        SqlAlchemyInstrumentAnalysisRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+    try:
+        first = service.list_instruments(
+            capability="foreign_flow",
+            has_price_history=False,
+            offset=0,
+            limit=3,
+        )
+        second = service.list_instruments(
+            capability="foreign_flow",
+            has_price_history=False,
+            offset=3,
+            limit=3,
+        )
+    finally:
+        session.close()
+
+    assert first.total == 6
+    assert first.facets.all_count == 6
+    assert len(first.rows) == 3
+    assert len(second.rows) == 3
+    assert {row.venue_code for row in (*first.rows, *second.rows)} == {"HOSE"}
+    assert {row.symbol for row in (*first.rows, *second.rows)} == {
+        "FPT", "V00", "V01", "V02", "V03", "V04",
+    }
+    assert {(row.value, row.count) for row in first.facets.sectors} == {
+        ("Industrials", 5),
+        ("Information Technology", 1),
+    }
+
+
+def test_foreign_flow_discovery_does_not_require_stored_price_history():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    instruments = seed_company_catalog(session)
+    service = InstrumentAnalysisService(
+        SqlAlchemyInstrumentAnalysisRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+    try:
+        result = service.list_instruments(
+            capability="foreign_flow",
+            search="FPT",
+            has_price_history=False,
+        )
+    finally:
+        session.close()
+
+    assert result.total == 1
+    assert result.rows[0].id == instruments["FPT"].id
+    assert result.rows[0].stored_sessions == 0
+
+
 def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():
     service, session, instrument_id = _service_with_msft_history()
     try:

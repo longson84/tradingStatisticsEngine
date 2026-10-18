@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 
 import pandas as pd
 
+from api.instrument_capabilities import InstrumentCapability
 from api.instrument_data_routing import instrument_observation_schedule
 from api.market_sessions import latest_completed_venue_session
 from api.repositories.instrument_analysis_repository import (
@@ -70,6 +71,7 @@ class InstrumentAnalysisService:
         sector: str | None = None,
         industry: str | None = None,
         venue_code: str | None = None,
+        capability: InstrumentCapability | None = None,
         has_price_history: bool = True,
         offset: int = 0,
         limit: int = 20,
@@ -81,6 +83,7 @@ class InstrumentAnalysisService:
             sector=sector,
             industry=industry,
             venue_code=venue_code,
+            capability=capability,
             has_price_history=has_price_history,
             offset=offset,
             limit=limit,

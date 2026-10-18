@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Iterable, Protocol
 
+from api.instrument_capabilities import InstrumentCapability
 from api.repositories.price_bar_repository import PriceBarRecord
 
 
@@ -22,6 +23,7 @@ class AnalysisInstrumentQuery:
     sector: str | None = None
     industry: str | None = None
     venue_code: str | None = None
+    capability: InstrumentCapability | None = None
     has_price_history: bool = True
     offset: int = 0
     limit: int = 20

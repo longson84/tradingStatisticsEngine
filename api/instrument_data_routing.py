@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, time
 from typing import Literal
 
+from api.instrument_capabilities import InstrumentCapability, VN_EQUITY_VENUES
 from api.repositories.instrument_analysis_repository import (
     DEFAULT_CANONICAL_PRICE_BASIS,
     MARKET_INDEX_PRICE_BASIS,
@@ -25,9 +26,6 @@ FundamentalAdapter = Literal["yfinance", "vnstock"]
 US_EQUITY_VENUES = frozenset({
     "NASDAQ", "NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "CBOE_BZX", "IEX",
 })
-VN_EQUITY_VENUES = frozenset({"HOSE", "HNX", "UPCOM"})
-
-
 @dataclass(frozen=True)
 class ProviderSymbol:
     namespace: str
@@ -60,6 +58,7 @@ class InstrumentDataRoute:
     schedule: VenueCalendarMetadata
     full_history_start: date
     fundamental_adapter: FundamentalAdapter | None = None
+    capabilities: frozenset[InstrumentCapability] = frozenset()
 
 class UnsupportedInstrumentRouteError(ValueError):
     pass
@@ -191,6 +190,7 @@ def resolve_instrument_data_route(
             schedule=instrument_observation_schedule(instrument),
             full_history_start=date(2000, 1, 1),
             fundamental_adapter="vnstock",
+            capabilities=frozenset({"foreign_flow"}),
         )
     raise UnsupportedInstrumentRouteError(
         f"No equity adapter for venue {venue_code or 'none'}"

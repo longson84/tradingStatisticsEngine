@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from api.instrument_capabilities import InstrumentCapability
+
 
 InstrumentScope = Literal[
     "equity", "crypto_spot", "reference_rate", "market_index"

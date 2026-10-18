@@ -4,6 +4,7 @@ from __future__ import annotations
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
+from api.instrument_capabilities import VN_EQUITY_VENUES
 from api.db.models import (
     Asset,
     Company,
@@ -44,6 +45,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             query.sector,
             query.industry,
             query.venue_code,
+            query.capability,
         )
         if query.has_price_history:
             filters.append(PriceBarCoverage.instrument_id.is_not(None))
@@ -64,6 +66,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
             None,
             query.industry,
             query.venue_code,
+            query.capability,
         )
         if query.has_price_history:
             facet_filters.append(PriceBarCoverage.instrument_id.is_not(None))
@@ -201,6 +204,7 @@ class SqlAlchemyInstrumentAnalysisRepository:
         sector: str | None = None,
         industry: str | None = None,
         venue_code: str | None = None,
+        capability: str | None = None,
     ):
         base_asset = aliased(Asset, name="analysis_base_asset")
         quote_asset = aliased(Asset, name="analysis_quote_asset")
@@ -269,6 +273,12 @@ class SqlAlchemyInstrumentAnalysisRepository:
             filters.append(Company.industry == industry)
         if venue_code:
             filters.append(Venue.code == venue_code)
+        if capability == "foreign_flow":
+            filters.extend((
+                Instrument.instrument_type == "common_stock",
+                Instrument.company_id.is_not(None),
+                Venue.code.in_(VN_EQUITY_VENUES),
+            ))
         return statement, filters
 
     @staticmethod

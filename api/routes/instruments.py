@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
+from api.instrument_capabilities import InstrumentCapability
 from api.deps import get_instrument_analysis_service
 from api.schemas.instrument import (
     InstrumentCatalogResponse,
@@ -35,6 +36,7 @@ def list_instruments(
     sector: str | None = Query(default=None, max_length=255),
     industry: str | None = Query(default=None, max_length=255),
     venue: str | None = Query(default=None, max_length=64),
+    capability: InstrumentCapability | None = Query(default=None),
     has_price_history: bool = Query(default=True),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
@@ -46,6 +48,7 @@ def list_instruments(
         sector=sector,
         industry=industry,
         venue_code=venue,
+        capability=capability,
         has_price_history=has_price_history,
         offset=offset,
         limit=limit,

@@ -67,6 +67,46 @@ def test_equity_provider_and_symbol_are_derived_from_venue_and_namespace():
     )
 
 
+def test_vietnam_common_stock_route_exposes_foreign_flow_capability():
+    route = resolve_instrument_data_route(metadata(
+        venue_code="HOSE",
+        symbol="FPT",
+        provider_symbols=(ProviderSymbol("listing", "FPT"),),
+    ))
+
+    assert route.capabilities == frozenset({"foreign_flow"})
+
+
+def test_us_equity_index_spot_and_reference_rate_routes_do_not_expose_foreign_flow():
+    routes = (
+        resolve_instrument_data_route(metadata()),
+        resolve_instrument_data_route(metadata(
+            instrument_type="market_index",
+            company_id=None,
+            venue_code=None,
+            symbol="SPX",
+            provider_symbols=(ProviderSymbol("yfinance", "^GSPC"),),
+        )),
+        resolve_instrument_data_route(metadata(
+            instrument_type="spot",
+            company_id=None,
+            venue_code="BINANCE_SPOT",
+            symbol="BTCUSDT",
+            provider_symbols=(ProviderSymbol("binance_spot", "BTCUSDT"),),
+        )),
+        resolve_instrument_data_route(metadata(
+            instrument_type="reference_rate",
+            company_id=None,
+            venue_code=None,
+            source="yahoo_finance",
+            symbol="BTC-USD",
+            provider_symbols=(ProviderSymbol("yahoo_finance", "BTC-USD"),),
+        )),
+    )
+
+    assert all("foreign_flow" not in route.capabilities for route in routes)
+
+
 def test_spot_and_reference_rate_routes_keep_venue_and_source_distinct():
     spot = resolve_instrument_data_route(metadata(
         instrument_type="spot",
