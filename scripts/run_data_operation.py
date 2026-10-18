@@ -11,7 +11,10 @@ from typing import Callable
 from sqlalchemy.orm import Session
 
 from api.db.session import create_db_engine
-from api.providers.vietnam_fundamentals import VnstockFundamentalProvider
+from api.providers.vietnam_fundamentals import (
+    VnstockFundamentalProvider,
+    fundamental_request_cost,
+)
 from api.repositories.sqlalchemy_data_operation_repository import (
     SqlAlchemyDataOperationRepository,
 )
@@ -98,7 +101,7 @@ def _execute_group(
         _positive_env_int("VNSTOCK_MAX_WORKERS", 5),
     )
     limiter = StartRateLimiter(requests_per_minute)
-    request_cost = 2 if dataset == "fundamentals" else 1
+    request_cost = fundamental_request_cost() if dataset == "fundamentals" else 1
     with ThreadPoolExecutor(
         max_workers=workers,
         thread_name_prefix="vnstock-data",

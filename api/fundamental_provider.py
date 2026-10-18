@@ -309,7 +309,6 @@ def _normalize_vn_quant_ratios(
     row["operating_income_ttm"] = _product(
         row["revenue_ttm"], row["operating_margin"]
     )
-    row["total_assets"] = _division(row["net_income_ttm"], row["roa"])
     row["total_debt"] = _product(row["debt_to_equity"], row["equity"])
     return normalize_fundamentals(pd.DataFrame([row]))
 

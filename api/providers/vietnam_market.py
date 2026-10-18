@@ -12,6 +12,7 @@ from api.config import load_env_file
 
 
 AccessMode = Literal["sponsored"]
+InstrumentKind = Literal["equity", "index"]
 
 
 class ProviderUnavailableError(RuntimeError):
@@ -48,6 +49,7 @@ class VietnamMarketProvider(Protocol):
         end: date,
         *,
         interval: str = "1D",
+        instrument_kind: InstrumentKind = "equity",
     ) -> VietnamProviderResult: ...
 
     def trade_history(
@@ -80,9 +82,16 @@ class VnstockProvider:
         end: date,
         *,
         interval: str = "1D",
+        instrument_kind: InstrumentKind = "equity",
     ) -> VietnamProviderResult:
         normalized = _request(symbol, start, end)
-        frame = self._market().equity(normalized).ohlcv(
+        market = self._market()
+        instrument = (
+            market.index(normalized)
+            if instrument_kind == "index"
+            else market.equity(normalized)
+        )
+        frame = instrument.ohlcv(
             start=start.isoformat(),
             end=end.isoformat(),
             interval=interval,

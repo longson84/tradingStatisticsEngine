@@ -49,6 +49,33 @@ def test_paid_group_uses_bounded_workers_and_returns_every_result(monkeypatch):
     assert sorted(row[0] for row in results) == [1, 2, 3]
 
 
+def test_vnstock_fundamentals_reserve_all_seven_sdk_requests(monkeypatch):
+    monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "60000")
+    monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "1")
+    costs: list[int] = []
+
+    class Limiter:
+        def __init__(self, requests_per_minute):
+            pass
+
+        def wait(self, request_cost=1):
+            costs.append(request_cost)
+
+    monkeypatch.setattr(run_data_operation, "StartRateLimiter", Limiter)
+    monkeypatch.setattr(run_data_operation, "fundamental_request_cost", lambda: 7)
+    monkeypatch.setattr(
+        run_data_operation,
+        "_execute_instrument",
+        lambda instrument_id, dataset, mode, engine: (instrument_id, "ok", False),
+    )
+
+    list(run_data_operation._execute_group(
+        "vnstock", (1,), "fundamentals", "incremental", object()
+    ))
+
+    assert costs == [7]
+
+
 def test_invalid_paid_limits_fall_back_to_silver_defaults(monkeypatch):
     monkeypatch.setenv("VNSTOCK_REQUESTS_PER_MINUTE", "invalid")
     monkeypatch.setenv("VNSTOCK_MAX_WORKERS", "0")

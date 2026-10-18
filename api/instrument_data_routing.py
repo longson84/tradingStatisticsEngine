@@ -69,6 +69,14 @@ def resolve_instrument_data_route(
     instrument: InstrumentRoutingMetadata,
 ) -> InstrumentDataRoute:
     """Resolve one deterministic adapter without consulting legacy market."""
+    obsolete_namespace = "vnstock" + "_data"
+    if any(
+        row.namespace.lower().strip() == obsolete_namespace
+        for row in instrument.provider_symbols
+    ):
+        raise UnsupportedInstrumentRouteError(
+            "Instrument contains an obsolete Vnstock provider namespace"
+        )
     venue_code = instrument.venue_code.upper() if instrument.venue_code else None
     if instrument.instrument_type == "market_index":
         if venue_code is not None or instrument.company_id is not None:

@@ -141,7 +141,7 @@ def test_quant_ratios_select_latest_complete_period_and_map_values():
     assert row["gross_profit_ttm"] == 320.0
     assert row["operating_income_ttm"] == 160.0
     assert row["net_income_ttm"] == 100.0
-    assert row["total_assets"] == 1_000.0
+    assert pd.isna(row["total_assets"])
     assert row["total_debt"] == 150.0
 
 

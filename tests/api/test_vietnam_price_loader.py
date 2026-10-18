@@ -12,7 +12,13 @@ from api.providers.vietnam_price_loader import VietnamPriceLoader
 
 
 class Provider:
-    def ohlcv(self, symbol, start, end, *, interval="1D"):
+    def __init__(self):
+        self.instrument_kind = None
+
+    def ohlcv(
+        self, symbol, start, end, *, interval="1D", instrument_kind="equity"
+    ):
+        self.instrument_kind = instrument_kind
         return VietnamProviderResult(
             frame=pd.DataFrame({
                 "time": pd.to_datetime(["2026-08-07", "2026-08-08"]),
@@ -39,7 +45,8 @@ class Provider:
 
 
 def test_loader_normalizes_vnstock_and_keeps_end_exclusive():
-    result = VietnamPriceLoader(Provider()).load(
+    provider = Provider()
+    result = VietnamPriceLoader(provider).load(
         "fpt", date(2026, 8, 1), date(2026, 8, 8)
     )
 
@@ -47,3 +54,17 @@ def test_loader_normalizes_vnstock_and_keeps_end_exclusive():
     assert result.source == "vnstock-5.1.0-vci"
     assert result.data.index.date.tolist() == [date(2026, 8, 7)]
     assert result.data.loc["2026-08-07", "close"] == 70.8
+    assert provider.instrument_kind == "equity"
+
+
+def test_loader_forwards_market_index_kind():
+    provider = Provider()
+
+    VietnamPriceLoader(provider).load(
+        "VN30",
+        date(2026, 8, 1),
+        date(2026, 8, 8),
+        instrument_kind="index",
+    )
+
+    assert provider.instrument_kind == "index"

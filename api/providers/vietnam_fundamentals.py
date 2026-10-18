@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from importlib import import_module, metadata
 from typing import Callable
 
@@ -49,20 +49,52 @@ class VnstockFundamentalProvider:
         normalized = symbol.upper().strip()
         if not normalized:
             raise ValueError("Vietnam fundamental symbol must not be empty")
+        acquired_at = self._clock()
+        if not isinstance(acquired_at, datetime):
+            raise ProviderDataError("Vnstock acquisition timestamp is invalid")
+        if acquired_at.tzinfo is None:
+            acquired_at = acquired_at.replace(tzinfo=UTC)
+        else:
+            acquired_at = acquired_at.astimezone(UTC)
         try:
-            module = import_module("vnstock_quant")
-            dataset_factory = module.Dataset
-            ratio_api = module.fa.ratios
+            quant_module = import_module("vnstock_quant")
+            vnstock_module = import_module("vnstock")
+            dataset_factory = quant_module.Dataset
+            ratio_api = quant_module.fa.ratios
+            fundamental = vnstock_module.Fundamental().equity(normalized)
+            market = vnstock_module.Market().equity(normalized)
         except (ImportError, AttributeError) as exc:
             raise ProviderUnavailableError(
-                "vnstock-quant 0.4.x could not be loaded"
+                "vnstock generation 5 and vnstock-quant 0.4.x could not be loaded"
             ) from exc
-        dataset = dataset_factory.load(
-            normalized,
-            period="quarter",
-            prices=True,
-            notes=False,
-            source=self.source.lower(),
+        source = self.source.lower()
+        statements = [
+            getattr(fundamental, report)(
+                None,
+                period="quarter",
+                source=source,
+                drop_empty=False,
+            )
+            for report in ("income_statement", "balance_sheet", "cash_flow")
+        ]
+        trade_frames = [
+            market.trade_history(start=start, end=end, source=source)
+            for start, end in _price_windows(acquired_at.date())
+        ]
+        usable_trade_frames = [
+            frame for frame in trade_frames
+            if isinstance(frame, pd.DataFrame) and not frame.empty
+        ]
+        prices = (
+            pd.concat(usable_trade_frames, ignore_index=True)
+            .drop_duplicates("trading_date", keep="last")
+            .sort_values("trading_date")
+            if usable_trade_frames
+            else pd.DataFrame(columns=["trading_date", "close", "total_shares"])
+        )
+        dataset = dataset_factory.from_frames(
+            {normalized: statements},
+            {normalized: prices},
         )
         ratios = ratio_api(
             dataset,
@@ -74,13 +106,6 @@ class VnstockFundamentalProvider:
             raise ProviderDataError(
                 f"vnstock-quant returned no ratios for {normalized}"
             )
-        acquired_at = self._clock()
-        if not isinstance(acquired_at, datetime):
-            raise ProviderDataError("Vnstock acquisition timestamp is invalid")
-        if acquired_at.tzinfo is None:
-            acquired_at = acquired_at.replace(tzinfo=UTC)
-        else:
-            acquired_at = acquired_at.astimezone(UTC)
         return VietnamFundamentalResult(
             ratios=ratios.copy(),
             acquired_at=acquired_at,
@@ -108,6 +133,32 @@ def fundamental_methodology(metadata: VietnamFundamentalMetadata) -> str:
         f"acquired via {metadata.package} {metadata.package_version} and "
         f"{metadata.quant_package} {metadata.quant_package_version}"
     )
+
+
+def fundamental_request_cost(as_of: date | None = None) -> int:
+    """Return the outbound SDK calls made by one fundamental refresh."""
+    return 3 + len(_price_windows(as_of or datetime.now(UTC).date()))
+
+
+def _price_windows(
+    end: date,
+    *,
+    start: date = date(2017, 1, 1),
+) -> list[tuple[str, str]]:
+    """Split an inclusive range into the provider's three-year windows."""
+    if end < start:
+        return []
+    cursor = pd.Timestamp(start)
+    final = pd.Timestamp(end)
+    windows: list[tuple[str, str]] = []
+    while cursor <= final:
+        window_end = min(
+            cursor + pd.DateOffset(years=3) - pd.Timedelta(days=1),
+            final,
+        )
+        windows.append((cursor.date().isoformat(), window_end.date().isoformat()))
+        cursor = window_end + pd.Timedelta(days=1)
+    return windows
 
 
 def _package_version(package: str) -> str:

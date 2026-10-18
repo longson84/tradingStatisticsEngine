@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date
 
 from api.providers.vietnam_market import (
+    InstrumentKind,
     ProviderDataError,
     ProviderUnavailableError,
     VietnamMarketProvider,
@@ -19,10 +20,19 @@ class VietnamPriceLoader:
     def __init__(self, provider: VietnamMarketProvider | None = None) -> None:
         self._provider = provider
 
-    def load(self, symbol: str, start: date, end: date) -> PriceFrame:
+    def load(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+        *,
+        instrument_kind: InstrumentKind = "equity",
+    ) -> PriceFrame:
         provider = self._provider or VnstockProvider()
         try:
-            result = provider.ohlcv(symbol, start, end)
+            result = provider.ohlcv(
+                symbol, start, end, instrument_kind=instrument_kind
+            )
             normalized = normalize_ohlcv_result(result)
         except (ProviderDataError, ProviderUnavailableError, ValueError) as exc:
             raise DataLoadError(f"Failed to load {symbol} from vnstock: {exc}") from exc

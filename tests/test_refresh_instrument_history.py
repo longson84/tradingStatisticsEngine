@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from datetime import time
+from contextlib import contextmanager
+from datetime import date, time
+from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from api.db.models import Base, Company, Instrument, PriceRefreshState, Venue
+from trading_engine.types import PriceFrame
 from scripts import refresh_instrument_history
 
 
@@ -61,3 +65,63 @@ def test_failed_exact_price_refresh_records_instrument_state(monkeypatch):
     assert state.outcome == "failed"
     assert state.primary_source == "yfinance"
     assert state.detail == "provider unavailable"
+
+
+def test_vn30_refresh_uses_index_acquisition_before_persistence(monkeypatch):
+    calls: list[tuple[str, object]] = []
+    prices = PriceFrame(
+        symbol="VN30",
+        data=pd.DataFrame({
+            "open": [1_850.0],
+            "high": [1_860.0],
+            "low": [1_845.0],
+            "close": [1_855.41],
+            "volume": [100.0],
+        }, index=pd.to_datetime(["2026-10-16"])),
+        source="vnstock-5.1.0-vci",
+    )
+
+    class Loader:
+        def load(self, symbol, start, end, **kwargs):
+            calls.append(("load", (symbol, start, end, kwargs)))
+            return prices
+
+    class Writer:
+        def __init__(self, *args):
+            pass
+
+        def store_history(self, instrument_id, value, *, fetched_at):
+            calls.append(("store", (instrument_id, value)))
+
+    @contextmanager
+    def fake_session_scope(engine):
+        yield object()
+
+    monkeypatch.setattr(refresh_instrument_history, "VietnamPriceLoader", Loader)
+    monkeypatch.setattr(refresh_instrument_history, "InstrumentPriceWriteService", Writer)
+    monkeypatch.setattr(refresh_instrument_history, "session_scope", fake_session_scope)
+    monkeypatch.setattr(
+        refresh_instrument_history,
+        "latest_completed_venue_session",
+        lambda now, schedule: date(2026, 10, 16),
+    )
+    instrument = SimpleNamespace(id=30, last_date=None)
+    route = SimpleNamespace(
+        price_adapter="vnstock",
+        provider_symbol="VN30",
+        full_history_start=date(2012, 2, 6),
+        schedule=object(),
+    )
+
+    source = refresh_instrument_history._refresh_market_index(
+        object(), instrument, route, "full"
+    )
+
+    assert calls[0] == (
+        "load",
+        ("VN30", date(2012, 2, 6), date(2026, 10, 17), {
+            "instrument_kind": "index"
+        }),
+    )
+    assert calls[1] == ("store", (30, prices))
+    assert source == "vnstock-5.1.0-vci"

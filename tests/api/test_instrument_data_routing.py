@@ -114,6 +114,17 @@ def test_market_indices_are_venue_less_but_use_market_session_schedules():
     assert vn30.schedule.trading_calendar_code == "VN_EQUITIES"
 
 
+def test_obsolete_vnstock_symbol_namespace_fails_visibly():
+    with pytest.raises(UnsupportedInstrumentRouteError, match="obsolete"):
+        resolve_instrument_data_route(metadata(
+            instrument_type="market_index",
+            company_id=None,
+            venue_code=None,
+            symbol="VN30",
+            provider_symbols=(ProviderSymbol("vnstock_data", "VN30"),),
+        ))
+
+
 def test_missing_equity_venue_is_not_silently_routed_by_market_hint():
     with pytest.raises(UnsupportedInstrumentRouteError, match="venue none"):
         resolve_instrument_data_route(metadata(venue_code=None))

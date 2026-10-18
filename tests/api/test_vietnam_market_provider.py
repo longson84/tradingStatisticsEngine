@@ -44,10 +44,14 @@ class _Equity:
 class _Market:
     def __init__(self, equity: _Equity) -> None:
         self._equity = equity
-        self.symbols: list[str] = []
+        self.calls: list[tuple[str, str]] = []
 
     def equity(self, symbol: str):
-        self.symbols.append(symbol)
+        self.calls.append(("equity", symbol))
+        return self._equity
+
+    def index(self, symbol: str):
+        self.calls.append(("index", symbol))
         return self._equity
 
 
@@ -66,7 +70,7 @@ def test_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
         "fpt", date(2026, 10, 1), date(2026, 10, 18)
     )
 
-    assert market.symbols == ["FPT", "FPT"]
+    assert market.calls == [("equity", "FPT"), ("equity", "FPT")]
     assert equity.calls == [
         (
             "ohlcv",
@@ -100,6 +104,31 @@ def test_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
     assert normalized["symbol"].tolist() == ["FPT"]
     assert normalized["date"].dt.date.tolist() == [date(2026, 8, 7)]
     assert normalized["provider_source"].tolist() == ["vnstock-5.1.0-vci"]
+
+
+def test_provider_routes_market_indices_through_index_api(monkeypatch):
+    index = _Equity()
+    market = _Market(index)
+    module = SimpleNamespace(Market=lambda: market)
+    monkeypatch.setattr(vietnam_market, "import_module", lambda name: module)
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+
+    result = vietnam_market.VnstockProvider().ohlcv(
+        "VN30",
+        date(2026, 10, 16),
+        date(2026, 10, 17),
+        interval="1D",
+        instrument_kind="index",
+    )
+
+    assert market.calls == [("index", "VN30")]
+    assert index.calls == [("ohlcv", {
+        "start": "2026-10-16",
+        "end": "2026-10-17",
+        "interval": "1D",
+        "source": "vci",
+    })]
+    assert result.metadata.symbol == "VN30"
 
 
 def test_provider_refuses_an_older_vnstock_runtime(monkeypatch):

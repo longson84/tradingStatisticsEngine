@@ -984,7 +984,7 @@ provenance and end-exclusive engine date semantics. Public-package access is
 limited to the deliberately explicit community recovery adapter and is not an
 automatic production fallback.
 
-### 2026-08-08 — Reproducible private sponsor installation
+### 2026-08-08 — Reproducible private sponsor installation (superseded 2026-10-18)
 
 Context: `vnstock_data` is distributed through Vnstock's authenticated member
 installer rather than the public package index. Its installed distribution
@@ -2381,7 +2381,7 @@ Consequences: mixed-Instrument tables can display and search one consistent
 name without denormalizing type-specific names onto Instrument or making names
 part of update routing and observation identity.
 
-### 2026-10-18 — Isolate the Vnstock generation 5 migration
+### 2026-10-18 — Isolate the Vnstock generation 5 migration (superseded after parity)
 
 Context: Vnstock generation 5 replaces both the public `vnstock` 4.x client and
 the sponsored `vnstock_data` 3.x client with one entitlement-aware `vnstock`
@@ -2426,6 +2426,12 @@ complete fiscal quarter, and persist exactly one current observation effective
 on the day after its UTC acquisition timestamp. They do not infer or backfill
 historical publication dates. Existing historical observations remain valid
 and available for analysis.
+
+The fundamentals adapter builds the quant dataset from three explicit VCI
+statement requests and explicit VCI trade-history windows. Worker rate limiting
+reserves the full outbound fan-out. `total_assets` remains unavailable because
+the published ROA denominator is average assets and cannot be represented as
+the canonical period-end reported balance without changing its meaning.
 
 Consequences: setup is a normal exact `uv sync`; there is no downloaded
 installer, no generation 4 fallback, and no runtime alias for the former
