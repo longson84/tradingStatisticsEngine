@@ -2403,3 +2403,32 @@ provenance such as `vnstock-5.1.0-vci`, distinct from the existing
 `vnstock-data-3.2.7-vci` baseline. Production selection, generation 5 setup
 replacement, fundamentals, and Universe membership remain separate cutover
 decisions with their own parity evidence.
+
+### 2026-10-18 — Cut over fully to Vnstock generation 5
+
+Context: bounded price parity and direct inspection of the generation 5 market,
+reference, and quantitative APIs completed the staged comparison above. The
+parallel generation 4 runtime required installer-specific dependency handling,
+duplicated provider identities, and could not remain the production path.
+Generation 5 financial statements no longer expose the historical publication
+date previously used for Vietnam point-in-time backfill.
+
+Decision: `vnstock` 5.1.x and `vnstock-quant` 0.4.x are locked through uv and
+are the only active Vietnam provider packages. The canonical routing identity
+is `vnstock`; migration `0031` changes only active Instrument Symbol namespace
+and source values. Existing price and fundamental provenance is immutable and
+continues to name the package that created each historical row.
+
+Market requests use explicit VCI routes. Universe membership uses KBS index
+groups, while company, exchange, and ICB metadata use VCI reference routes.
+Vietnam fundamental refreshes compute official quant ratios, select the latest
+complete fiscal quarter, and persist exactly one current observation effective
+on the day after its UTC acquisition timestamp. They do not infer or backfill
+historical publication dates. Existing historical observations remain valid
+and available for analysis.
+
+Consequences: setup is a normal exact `uv sync`; there is no downloaded
+installer, no generation 4 fallback, and no runtime alias for the former
+provider token. New market provenance is `vnstock-<version>-vci`; universe
+provenance is `vnstock-<version>-kbs`. Historical source labels remain
+displayable but are never rewritten.

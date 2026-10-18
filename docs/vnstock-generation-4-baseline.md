@@ -1,5 +1,9 @@
 # Vnstock Generation 4 Comparison Baseline
 
+> Superseded on 2026-10-18 by the generation 5 cutover. This document is
+> retained only as migration evidence; none of its commands are active setup
+> instructions.
+
 Captured on 2026-10-18 before creating the isolated generation 5 environment.
 The project `.venv` remains the executable comparison baseline and must not be
 updated during generation 5 parity work.

@@ -38,7 +38,7 @@ class Provider:
         raise AssertionError("not used")
 
 
-def test_loader_normalizes_vnstock_data_and_keeps_end_exclusive():
+def test_loader_normalizes_vnstock_and_keeps_end_exclusive():
     result = VietnamPriceLoader(Provider()).load(
         "fpt", date(2026, 8, 1), date(2026, 8, 8)
     )

@@ -58,10 +58,10 @@ export function fmtProviderSource(source: string | null | undefined): string {
     return "Mixed provider history"
   }
 
-  const sponsored = source.match(/^vnstock-data-(.+)-(vci|kbs)$/i)
+  const sponsored = source.match(/^vnstock-(?:data-)?(.+)-(vci|kbs)$/i)
   if (sponsored) {
     const [, version, upstream] = sponsored
-    return `${upstream.toUpperCase()} · vnstock_data ${version}`
+    return `${upstream.toUpperCase()} · vnstock ${version}`
   }
 
   return source
