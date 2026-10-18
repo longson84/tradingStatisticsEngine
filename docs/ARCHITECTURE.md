@@ -248,11 +248,27 @@ explicit migration and a source capable of providing reliable membership dates.
 - UI matched/deal shares are presentation ratios over stored totals. Buy,
   sell, and net fields are labelled as VCI trade classifications, not foreign
   flow, proprietary flow, capital inflow, or investment recommendations.
-- Future reusable turnover, imbalance, liquidity, and anomaly formulas belong
-  in provider-neutral `trading_engine` inputs with explicit formula versions.
-  Strategies must lag end-of-session activity to the next tradable session;
-  same-close use is prohibited by default. Any independently justified
-  execution convention requires look-ahead diagnostics and tests.
+- Turnover intensity analytics are provider-neutral and derived rather than
+  persisted. Formula `turnover_intensity_v1` is `total_value / market_cap`.
+  Its baseline is the arithmetic mean of the 20 immediately preceding stored
+  session intensities, excluding the current session; its anomaly is the
+  current intensity minus that mean, divided by the prior window's population
+  standard deviation. The first possible anomaly is the 21st stored session.
+  Non-finite or negative total value, non-finite or non-positive market cap,
+  fewer than 20 prior sessions, an invalid prior-window observation, and zero
+  prior-window variance produce explicit unavailable reasons rather than
+  infinity or a fabricated zero. A requested read may load at most 20 earlier
+  PostgreSQL rows as calculation context, but those rows never enter the raw
+  requested-range response, its boundaries, or its count. This read path does
+  not instantiate Vnstock or persist derived values and does not claim that
+  stored sessions are exchange-calendar complete.
+- `turnover_intensity_factor_series` is the only current factor conversion and
+  shifts raw intensity by one observed session before returning `FactorSeries`.
+  Strategies must likewise consume end-of-session activity no earlier than the
+  next observed tradable session; same-close use is prohibited by default. Any
+  independently justified execution convention requires look-ahead diagnostics
+  and tests. Future reusable imbalance and liquidity formulas follow the same
+  provider-neutral, explicitly versioned boundary.
 
 ### Binance Spot ingestion
 
@@ -2633,6 +2649,25 @@ requests. The numeric JSON display boundary is deliberately separate from exact
 Decimal persistence; SQLite's lossless-text ORM test adaptation is not the
 production storage schema. End-of-session activity cannot silently become a
 same-close strategy input.
+
+### 2026-10-18 — Derive turnover intensity from stored activity
+
+Context: the activity table already stores daily total traded value and market
+capitalization, but raw rows alone do not show whether trading was unusually
+large relative to company scale. Fetching a second provider dataset or storing
+an unversioned ratio would add acquisition and point-in-time ambiguity.
+
+Decision: calculate `turnover_intensity_v1` in `trading_engine` from stored
+activity only. Compare each session with the prior 20 stored sessions using a
+population-standard-deviation anomaly score. FastAPI may read 20 pre-range rows
+as context but returns only requested raw rows and matching analytical points.
+Derived values remain unpersisted, unavailable states stay explicit, and factor
+conversion shifts intensity by one observed session.
+
+Consequences: the Trading Activity page can chart scale-adjusted activity and
+anomalies without touching Vnstock, while short, invalid, or constant histories
+remain visibly unavailable. A factor or strategy cannot use the current close's
+activity on that same session through the supported conversion boundary.
 
 A completed-session FPT smoke on 2026-10-16 exposed VCI averages of
 `788.324877791` and `1243.4310509554`. The two average-volume columns therefore
