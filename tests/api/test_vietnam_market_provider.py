@@ -55,9 +55,45 @@ def _ohlcv() -> pd.DataFrame:
 
 def _trade_history() -> pd.DataFrame:
     return pd.DataFrame({
-        "trading_date": pd.to_datetime(["2026-08-07"]),
+        "trading_date": [pd.Timestamp("2026-10-16T00:00:00+07:00")],
+        "end_trading_date": ["2026-10-16T00:00:00"],
+        "market_cap": [100_000_000_000.25],
+        "total_shares": [1_000_000.0],
+        "ceiling_price": [75_000.0],
+        "floor_price": [65_000.0],
+        "reference_price": [70_000.0],
+        "open": [71_000.0],
+        "close": [70_500.0],
+        "match_price": [70_500.0],
+        "price_change": [-500.0],
+        "percent_price_change": [-0.71],
+        "high": [72_000.0],
+        "low": [69_000.0],
+        "average_price": [70_500.0],
+        "average_price_adjusted": [70_500.0],
         "matched_volume": [4_319_872.0],
+        "matched_value": [300_000_000_000.25],
         "deal_volume": [40_679.0],
+        "deal_value": [2_000_000_000.5],
+        "total_volume": [4_360_551.0],
+        "total_value": [302_000_000_000.75],
+        "total_buy_trade": [1_000.0],
+        "total_buy_trade_volume": [2_000_000.0],
+        "total_sell_trade": [1_100.0],
+        "total_sell_trade_volume": [2_360_551.0],
+        "reference_price_adjusted": [70_000.0],
+        "open_price_adjusted": [71_000.0],
+        "close_price_adjusted": [70_500.0],
+        "price_change_adjusted": [-500.0],
+        "percent_price_change_adjusted": [-0.71],
+        "highest_price_adjusted": [72_000.0],
+        "lowest_price_adjusted": [69_000.0],
+        "total_net_trade_volume": [-360_551.0],
+        "total_buy_unmatched_volume": [100.0],
+        "total_sell_unmatched_volume": [200.0],
+        "price_change_value": ["-500 (-0.71%)"],
+        "average_buy_trade_volume": [2_000.125],
+        "average_sell_trade_volume": [2_145.955455],
     })
 
 
@@ -152,6 +188,7 @@ def test_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
             {
                 "start": "2026-10-01",
                 "end": "2026-10-18",
+                "resolution": "1D",
                 "source": "vci",
             },
         ),
@@ -170,6 +207,201 @@ def test_provider_uses_explicit_vci_routes_and_provenance(monkeypatch):
     assert normalized["symbol"].tolist() == ["FPT"]
     assert normalized["date"].dt.date.tolist() == [date(2026, 8, 7)]
     assert normalized["provider_source"].tolist() == ["vnstock-5.1.0-vci"]
+
+
+TRADE_STORAGE_COLUMNS = (
+    "market_cap", "total_shares", "matched_volume", "matched_value",
+    "deal_volume", "deal_value", "total_volume", "total_value",
+    "total_buy_trade", "total_buy_trade_volume", "total_sell_trade",
+    "total_sell_trade_volume", "total_net_trade_volume",
+    "total_buy_unmatched_volume", "total_sell_unmatched_volume",
+    "average_buy_trade_volume", "average_sell_trade_volume",
+)
+
+
+def test_trade_history_normalizer_preserves_exact_values_and_approved_columns():
+    from api.trade_statistics import (
+        TRADE_HISTORY_PROVIDER_COLUMNS,
+        TRADE_STATISTIC_SCHEMA_VERSION,
+        TRADE_STATISTIC_STORAGE_COLUMNS,
+    )
+
+    frame = _trade_history()
+    earlier = frame.copy()
+    earlier["trading_date"] = "2026-10-15T17:00:00Z"
+    earlier["end_trading_date"] = "2026-10-16T00:00:00+07:00"
+    later = frame.copy()
+    later["trading_date"] = "2026-10-17"
+    later["end_trading_date"] = "2026-10-17"
+    normalized = vietnam_market.normalize_trade_history_result(
+        _flow_result(pd.concat([later, earlier], ignore_index=True))
+    )
+
+    assert TRADE_STATISTIC_SCHEMA_VERSION == 1
+    assert tuple(frame.columns) == TRADE_HISTORY_PROVIDER_COLUMNS
+    assert TRADE_STATISTIC_STORAGE_COLUMNS == TRADE_STORAGE_COLUMNS
+    assert tuple(normalized.columns) == (
+        "symbol", "trading_date", *TRADE_STORAGE_COLUMNS, "provider_source",
+    )
+    assert normalized["trading_date"].tolist() == [
+        date(2026, 10, 16), date(2026, 10, 17),
+    ]
+    assert normalized["symbol"].tolist() == ["FPT", "FPT"]
+    assert normalized["provider_source"].tolist() == ["vnstock-5.1.0-vci"] * 2
+    assert normalized.loc[0, "matched_value"] == Decimal("300000000000.25")
+    assert normalized.loc[0, "average_buy_trade_volume"] == Decimal("2000.125")
+    assert normalized.loc[0, "total_net_trade_volume"] == Decimal("-360551.0")
+    assert all(isinstance(normalized.loc[0, column], Decimal)
+               for column in TRADE_STORAGE_COLUMNS)
+
+
+def test_trade_history_normalizer_accepts_zero_gross_and_signed_net_values():
+    frame = _trade_history()
+    frame[list(TRADE_STORAGE_COLUMNS)] = 0
+    frame["total_net_trade_volume"] = -1
+
+    normalized = vietnam_market.normalize_trade_history_result(_flow_result(frame))
+
+    assert normalized.loc[0, "total_volume"] == Decimal("0")
+    assert normalized.loc[0, "total_net_trade_volume"] == Decimal("-1")
+
+
+def test_trade_history_normalizer_checks_totals_without_decimal_rounding():
+    frame = _trade_history().assign(
+        matched_value="99999999999999999999999999999999.123456",
+        deal_value="0.000001",
+        total_value="99999999999999999999999999999999.123457",
+    )
+
+    normalized = vietnam_market.normalize_trade_history_result(_flow_result(frame))
+
+    assert normalized.loc[0, "total_value"] == Decimal(
+        "99999999999999999999999999999999.123457"
+    )
+
+
+@pytest.mark.parametrize("day", ["2026-09-30", "2026-10-19"])
+def test_trade_history_normalizer_rejects_dates_outside_requested_period(day):
+    frame = _trade_history().assign(trading_date=day, end_trading_date=day)
+    with pytest.raises(vietnam_market.ProviderDataError, match="outside the requested period"):
+        vietnam_market.normalize_trade_history_result(_flow_result(frame))
+
+
+@pytest.mark.parametrize("column", list(_trade_history().columns))
+def test_trade_history_normalizer_rejects_missing_columns(column):
+    with pytest.raises(vietnam_market.ProviderDataError, match="trade_history"):
+        vietnam_market.normalize_trade_history_result(
+            _flow_result(_trade_history().drop(columns=[column]))
+        )
+
+
+@pytest.mark.parametrize("frame", [
+    _trade_history().assign(unexpected=1),
+    pd.concat([_trade_history(), _trade_history()], ignore_index=True),
+    _trade_history().assign(trading_date="not-a-date"),
+    _trade_history().assign(trading_date=None),
+    _trade_history().assign(end_trading_date="not-a-date"),
+    _trade_history().assign(end_trading_date="2026-10-17"),
+    _trade_history().assign(price_change_value=None),
+    _trade_history().assign(price_change_value=""),
+    _trade_history().assign(price_change_value=123),
+    _trade_history().assign(price_change_value="invalid"),
+    _trade_history().assign(total_volume=1),
+    _trade_history().assign(total_value=1),
+])
+def test_trade_history_normalizer_rejects_malformed_provider_frames(frame):
+    with pytest.raises(vietnam_market.ProviderDataError, match="trade_history"):
+        vietnam_market.normalize_trade_history_result(_flow_result(frame))
+
+
+def test_trade_history_normalizer_rejects_duplicate_columns():
+    frame = _trade_history()
+    frame.columns = [*frame.columns[:-1], frame.columns[-2]]
+    with pytest.raises(vietnam_market.ProviderDataError, match="trade_history"):
+        vietnam_market.normalize_trade_history_result(_flow_result(frame))
+
+
+@pytest.mark.parametrize("column", [
+    column for column in _trade_history().columns
+    if column not in {"trading_date", "end_trading_date", "price_change_value"}
+])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), "invalid"])
+def test_trade_history_normalizer_rejects_invalid_numeric_values(column, value):
+    with pytest.raises(vietnam_market.ProviderDataError, match="trade_history"):
+        vietnam_market.normalize_trade_history_result(
+            _flow_result(_trade_history().assign(**{column: value}))
+        )
+
+
+@pytest.mark.parametrize("column", [
+    column for column in TRADE_STORAGE_COLUMNS
+    if column != "total_net_trade_volume"
+])
+def test_trade_history_normalizer_rejects_negative_gross_values(column):
+    with pytest.raises(vietnam_market.ProviderDataError, match="non-negative"):
+        vietnam_market.normalize_trade_history_result(
+            _flow_result(_trade_history().assign(**{column: -1}))
+        )
+
+
+@pytest.mark.parametrize("frame", [None, pd.DataFrame(), _trade_history().iloc[:0]])
+def test_trade_history_provider_rejects_empty_responses(monkeypatch, frame):
+    equity = SimpleNamespace(trade_history=lambda **kwargs: frame)
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+    monkeypatch.setattr(vietnam_market.VnstockProvider, "_market", lambda self: _Market(equity))
+
+    with pytest.raises(vietnam_market.ProviderDataError, match="no data"):
+        vietnam_market.VnstockProvider().trade_history(
+            "FPT", date(2026, 10, 1), date(2026, 10, 18)
+        )
+
+
+def test_trade_history_provider_translates_typed_errors_with_safe_context(monkeypatch):
+    from vnstock.core.exceptions import VnstockError
+
+    error = VnstockError("credential=super-secret-token")
+    error.code = "VNSTOCK_SOURCE_RATE_LIMITED"
+    error.action = "Wait and retry."
+
+    def fail(**kwargs):
+        raise error
+
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+    monkeypatch.setattr(
+        vietnam_market.VnstockProvider, "_market",
+        lambda self: _Market(SimpleNamespace(trade_history=fail)),
+    )
+    with pytest.raises(vietnam_market.ProviderDataError) as caught:
+        vietnam_market.VnstockProvider().trade_history(
+            "FPT", date(2026, 10, 1), date(2026, 10, 18)
+        )
+
+    assert "VNSTOCK_SOURCE_RATE_LIMITED" in str(caught.value)
+    assert "Wait and retry." in str(caught.value)
+    assert "super-secret-token" not in str(caught.value)
+
+
+def test_trade_history_provider_omits_unsafe_error_action(monkeypatch):
+    from vnstock.core.exceptions import VnstockError
+
+    error = VnstockError("request failed")
+    error.code = "VNSTOCK_AUTH_INVALID"
+    error.action = "Retry using api_key=super-secret-token"
+
+    def fail(**kwargs):
+        raise error
+
+    monkeypatch.setattr(vietnam_market, "_package_version", lambda name: "5.1.0")
+    monkeypatch.setattr(vietnam_market.VnstockProvider, "_market", lambda self: _Market(
+        SimpleNamespace(trade_history=fail)
+    ))
+    with pytest.raises(vietnam_market.ProviderDataError) as caught:
+        vietnam_market.VnstockProvider().trade_history(
+            "FPT", date(2026, 10, 1), date(2026, 10, 18)
+        )
+
+    assert "VNSTOCK_AUTH_INVALID" in str(caught.value)
+    assert "super-secret-token" not in str(caught.value)
 
 
 def test_provider_routes_market_indices_through_index_api(monkeypatch):

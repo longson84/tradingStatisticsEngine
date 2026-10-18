@@ -1,9 +1,10 @@
 """Typed adapter for authenticated sponsored Vietnam market data."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from importlib import import_module, metadata
 from typing import Literal, Protocol
 
@@ -13,6 +14,10 @@ from api.config import load_env_file
 from api.session_statistics import (
     SESSION_STATISTIC_METRIC_CODES,
     SessionStatisticMetricCode,
+)
+from api.trade_statistics import (
+    TRADE_HISTORY_PROVIDER_COLUMNS,
+    TRADE_STATISTIC_STORAGE_COLUMNS,
 )
 
 
@@ -131,12 +136,40 @@ class VnstockProvider:
         start: date,
         end: date,
     ) -> VietnamProviderResult:
+        from vnstock.core.exceptions import VnstockError
+
         normalized = _request(symbol, start, end)
-        frame = self._market().equity(normalized).trade_history(
-            start=start.isoformat(),
-            end=end.isoformat(),
-            source=self.source.lower(),
-        )
+        try:
+            frame = self._market().equity(normalized).trade_history(
+                start=start.isoformat(),
+                end=end.isoformat(),
+                resolution="1D",
+                source=self.source.lower(),
+            )
+        except VnstockError as exc:
+            # Raw messages can contain credentials or request URLs. Expose only
+            # stable codes and action text without credential-bearing content.
+            context = []
+            code = getattr(exc, "code", None)
+            if isinstance(code, str) and re.fullmatch(r"VNSTOCK_[A-Z0-9_]+", code):
+                context.append(f"code={code}")
+            action = getattr(exc, "action", None)
+            if (
+                isinstance(action, str)
+                and action.strip()
+                and len(action) <= 500
+                and not re.search(
+                    r"https?://|api[_ -]?key|token|secret|credential|password|"
+                    r"authorization|bearer|[\x00-\x1f]",
+                    action,
+                    flags=re.IGNORECASE,
+                )
+            ):
+                context.append(f"action={action.strip()}")
+            suffix = f" ({'; '.join(context)})" if context else ""
+            raise ProviderDataError(
+                f"trade_history request failed for {normalized}{suffix}"
+            ) from None
         return self._result(frame, normalized, start, end, "trade_history")
 
     def foreign_flow(
@@ -261,6 +294,97 @@ def normalize_ohlcv_result(result: VietnamProviderResult) -> pd.DataFrame:
 def normalize_foreign_flow_result(result: VietnamProviderResult) -> pd.DataFrame:
     """Normalize Gen 5 foreign-investor flow without deriving provider values."""
     return _normalize_participant_flow_result(result, "foreign_flow")
+
+
+def normalize_trade_history_result(result: VietnamProviderResult) -> pd.DataFrame:
+    """Validate the whole daily provider response before projecting activity."""
+    frame = _require_frame(result.frame, result.metadata.symbol, "trade_history")
+    prefix = f"trade_history data for {result.metadata.symbol}"
+    columns = tuple(frame.columns)
+    if len(columns) != len(set(columns)):
+        raise ProviderDataError(f"{prefix} has duplicate columns")
+    if columns != TRADE_HISTORY_PROVIDER_COLUMNS:
+        raise ProviderDataError(f"{prefix} must contain the exact supported schema")
+    if result.metadata.requested_start > result.metadata.requested_end:
+        raise ProviderDataError(f"{prefix} has an invalid requested period")
+
+    numeric_columns = tuple(
+        column for column in TRADE_HISTORY_PROVIDER_COLUMNS
+        if column not in {"trading_date", "end_trading_date", "price_change_value"}
+    )
+    gross_columns = tuple(
+        column for column in TRADE_STATISTIC_STORAGE_COLUMNS
+        if column != "total_net_trade_volume"
+    )
+    for column in numeric_columns:
+        try:
+            values = [Decimal(str(value)) for value in frame[column]]
+        except (InvalidOperation, ValueError) as exc:
+            raise ProviderDataError(f"{prefix} contains invalid numeric values") from exc
+        if any(not value.is_finite() for value in values):
+            raise ProviderDataError(f"{prefix} contains invalid numeric values")
+        if column in gross_columns and any(value < 0 for value in values):
+            raise ProviderDataError(f"{prefix} gross values must be non-negative")
+        frame[column] = values
+
+    dates = [_trade_history_date(value, prefix) for value in frame["trading_date"]]
+    end_dates = [
+        _trade_history_date(value, prefix) for value in frame["end_trading_date"]
+    ]
+    if len(dates) != len(set(dates)):
+        raise ProviderDataError(f"{prefix} has duplicate trading dates")
+    if dates != end_dates:
+        raise ProviderDataError(f"{prefix} has inconsistent end trading dates")
+    if any(
+        day < result.metadata.requested_start or day > result.metadata.requested_end
+        for day in dates
+    ):
+        raise ProviderDataError(f"{prefix} contains dates outside the requested period")
+    for value in frame["price_change_value"]:
+        if not isinstance(value, str) or re.fullmatch(
+            r"[+-]?\d+(?:,\d{3})*(?:\.\d+)?\s+"
+            r"\([+-]?\d+(?:\.\d+)?%\)", value.strip()
+        ) is None:
+            raise ProviderDataError(f"{prefix} contains invalid price-change display values")
+    for unit in ("volume", "value"):
+        for amounts in zip(
+            frame[f"matched_{unit}"], frame[f"deal_{unit}"], frame[f"total_{unit}"],
+        ):
+            matched, deal, total = amounts
+            with localcontext() as context:
+                # Decimal's default 28 digits would round valid wide DB values.
+                context.prec = max(
+                    1,
+                    max(value.adjusted() for value in amounts)
+                    - min(value.as_tuple().exponent for value in amounts) + 2,
+                )
+                if matched + deal != total:
+                    raise ProviderDataError(f"{prefix} contains inconsistent total {unit}")
+
+    frame["symbol"] = result.metadata.symbol
+    frame["trading_date"] = dates
+    frame["provider_source"] = provider_source_label(result.metadata)
+    return (
+        frame[["symbol", "trading_date", *TRADE_STATISTIC_STORAGE_COLUMNS, "provider_source"]]
+        .sort_values("trading_date", kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def _trade_history_date(value: object, prefix: str) -> date:
+    try:
+        # Timestamps expressed in UTC must still identify the Vietnam session.
+        # Naive provider dates already refer to that venue's local calendar.
+        if not isinstance(value, (str, date)):
+            raise ValueError("unsupported date type")
+        stamp = pd.Timestamp(value)
+        if pd.isna(stamp):
+            raise ValueError("missing date")
+        if stamp.tzinfo is not None:
+            stamp = stamp.tz_convert("Asia/Ho_Chi_Minh")
+        return stamp.date()
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ProviderDataError(f"{prefix} contains invalid trading dates") from exc
 
 
 def normalize_proprietary_flow_result(result: VietnamProviderResult) -> pd.DataFrame:

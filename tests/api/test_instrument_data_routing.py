@@ -67,15 +67,16 @@ def test_equity_provider_and_symbol_are_derived_from_venue_and_namespace():
     )
 
 
-def test_vietnam_common_stock_route_exposes_vci_market_capabilities():
+@pytest.mark.parametrize("venue_code", ["HOSE", "HNX", "UPCOM"])
+def test_vietnam_common_stock_route_exposes_vci_market_capabilities(venue_code):
     route = resolve_instrument_data_route(metadata(
-        venue_code="HOSE",
+        venue_code=venue_code,
         symbol="FPT",
         provider_symbols=(ProviderSymbol("listing", "FPT"),),
     ))
 
     assert route.capabilities == frozenset({
-        "foreign_flow", "proprietary_flow", "session_stats",
+        "foreign_flow", "proprietary_flow", "session_stats", "trade_history",
     })
 
 
@@ -88,6 +89,13 @@ def test_us_equity_index_spot_and_reference_rate_routes_do_not_expose_foreign_fl
             venue_code=None,
             symbol="SPX",
             provider_symbols=(ProviderSymbol("yfinance", "^GSPC"),),
+        )),
+        resolve_instrument_data_route(metadata(
+            instrument_type="market_index",
+            company_id=None,
+            venue_code=None,
+            symbol="VN30",
+            provider_symbols=(ProviderSymbol("vnstock", "VN30"),),
         )),
         resolve_instrument_data_route(metadata(
             instrument_type="spot",
@@ -108,7 +116,7 @@ def test_us_equity_index_spot_and_reference_rate_routes_do_not_expose_foreign_fl
 
     assert all(
         route.capabilities.isdisjoint({
-            "foreign_flow", "proprietary_flow", "session_stats",
+            "foreign_flow", "proprietary_flow", "session_stats", "trade_history",
         })
         for route in routes
     )

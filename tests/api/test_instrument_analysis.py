@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
 
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
+from api.deps import get_instrument_analysis_service
 from api.db.models import (
     Asset,
     Base,
@@ -209,6 +212,50 @@ def test_session_stats_discovery_filters_before_count_and_pagination():
     assert len(first.rows) == 4
     assert len(second.rows) == 2
     assert {row.venue_code for row in (*first.rows, *second.rows)} == {"HOSE"}
+
+
+def test_trade_history_http_discovery_filters_before_count_facets_and_pagination():
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        instruments = seed_company_catalog(session)
+        instruments["V04"].is_active = False
+        session.flush()
+        service = InstrumentAnalysisService(
+            SqlAlchemyInstrumentAnalysisRepository(session),
+            SqlAlchemyInstrumentRoutingRepository(session),
+        )
+        app.dependency_overrides[get_instrument_analysis_service] = lambda: service
+        try:
+            with TestClient(app) as client:
+                first = client.get("/instruments", params={
+                    "capability": "trade_history", "has_price_history": "false",
+                    "offset": 0, "limit": 3,
+                })
+                second = client.get("/instruments", params={
+                    "capability": "trade_history", "has_price_history": "false",
+                    "offset": 3, "limit": 3,
+                })
+        finally:
+            app.dependency_overrides.pop(get_instrument_analysis_service, None)
+
+    assert first.status_code == second.status_code == 200
+    first_page, second_page = first.json(), second.json()
+    assert first_page["total"] == second_page["total"] == 5
+    assert first_page["facets"]["all_count"] == 5
+    assert len(first_page["instruments"]) == 3
+    assert len(second_page["instruments"]) == 2
+    rows = [*first_page["instruments"], *second_page["instruments"]]
+    assert [row["symbol"] for row in rows] == ["FPT", "V00", "V01", "V02", "V03"]
+    assert {row["venue_code"] for row in rows} == {"HOSE"}
+    assert all(row["stored_sessions"] == 0 for row in rows)
+    assert {(row["value"], row["count"]) for row in first_page["facets"]["sectors"]} == {
+        ("Industrials", 4), ("Information Technology", 1),
+    }
 
 
 def test_instrument_price_history_is_read_from_storage_by_exact_instrument_id():

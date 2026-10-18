@@ -5,7 +5,7 @@ from typing import Literal
 
 
 InstrumentCapability = Literal[
-    "foreign_flow", "proprietary_flow", "session_stats",
+    "foreign_flow", "proprietary_flow", "session_stats", "trade_history",
 ]
 VN_EQUITY_VENUES = frozenset({"HOSE", "HNX", "UPCOM"})
 

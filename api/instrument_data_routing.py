@@ -191,7 +191,7 @@ def resolve_instrument_data_route(
             full_history_start=date(2000, 1, 1),
             fundamental_adapter="vnstock",
             capabilities=frozenset({
-                "foreign_flow", "proprietary_flow", "session_stats",
+                "foreign_flow", "proprietary_flow", "session_stats", "trade_history",
             }),
         )
     raise UnsupportedInstrumentRouteError(
