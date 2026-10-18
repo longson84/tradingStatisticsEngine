@@ -7,6 +7,7 @@ Create Date: 2026-10-18
 from typing import Sequence
 
 from alembic import op
+import sqlalchemy as sa
 
 
 revision: str = "0038"
@@ -20,6 +21,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # These audit rows belong to the removed dataset; preserve all other runs.
+    op.execute(sa.text("DELETE FROM data_operation_runs WHERE dataset = 'trade_history'"))
     _replace_run_dataset_check(include_trade_history=False)
 
 

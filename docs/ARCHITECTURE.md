@@ -233,6 +233,10 @@ explicit migration and a source capable of providing reliable membership dates.
   the existing Vnstock adapter lease. Batch Operations exclude `trade_history`
   until range sizes and provider cost are measured. `DataOperationRun` retains
   the durable period/audit; there is no activity coverage table.
+  Downgrading migration `0038` deletes only audit rows whose dataset is
+  `trade_history` before restoring the older dataset constraint. Every unrelated
+  operation audit remains intact; removing the activity table is migration
+  `0037`'s separate rollback step.
 - `GET /instruments/{instrument_id}/trade-statistics?start=...&end=...` reads
   only PostgreSQL, in ascending session order, with requested and actual stored
   ranges and per-row provenance. Unknown Instruments return `404`; unsupported
