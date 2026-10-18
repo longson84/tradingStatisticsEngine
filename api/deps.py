@@ -29,6 +29,9 @@ from api.repositories.sqlalchemy_instrument_analysis_repository import (
 from api.repositories.sqlalchemy_instrument_routing_repository import (
     SqlAlchemyInstrumentRoutingRepository,
 )
+from api.repositories.sqlalchemy_instrument_flow_repository import (
+    SqlAlchemyInstrumentFlowRepository,
+)
 from api.repositories.sqlalchemy_reference_rate_repository import (
     SqlAlchemyReferenceRateRepository,
 )
@@ -52,6 +55,7 @@ from api.services.company_catalog_service import CompanyCatalogService
 from api.services.fundamental_service import FundamentalService
 from api.services.reference_rate_service import ReferenceRateService
 from api.services.instrument_analysis_service import InstrumentAnalysisService
+from api.services.instrument_flow_service import InstrumentFlowService
 from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
 from api.services.data_operation_service import (
@@ -121,6 +125,15 @@ def get_instrument_analysis_service(
 ) -> InstrumentAnalysisService:
     return InstrumentAnalysisService(
         SqlAlchemyInstrumentAnalysisRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+
+
+def get_instrument_flow_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> InstrumentFlowService:
+    return InstrumentFlowService(
+        SqlAlchemyInstrumentFlowRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
     )
 
