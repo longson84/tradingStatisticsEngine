@@ -2380,3 +2380,26 @@ identity and Symbol remains the canonical compact code.
 Consequences: mixed-Instrument tables can display and search one consistent
 name without denormalizing type-specific names onto Instrument or making names
 part of update routing and observation identity.
+
+### 2026-10-18 — Isolate the Vnstock generation 5 migration
+
+Context: Vnstock generation 5 replaces both the public `vnstock` 4.x client and
+the sponsored `vnstock_data` 3.x client with one entitlement-aware `vnstock`
+package. Installing it over the project environment would destroy the working
+generation 4 comparison baseline before price, fundamental, and Universe
+parity had been established.
+
+Decision: retain `.venv` unchanged as the executable generation 4 baseline and
+install `vnstock` 5.1.x in the separate ignored `.venv5x` environment. Add an
+opt-in `Vnstock5Provider` beside `VnstockDataProvider`; both implement the same
+`VietnamMarketProvider` protocol, but the new adapter refuses a non-5.x runtime
+and passes `source="vci"` explicitly for OHLCV and daily trade-history calls.
+The existing `VietnamPriceLoader`, refresh jobs, diagnostics, and Universe and
+fundamental providers continue to select `VnstockDataProvider`.
+
+Consequences: generation 5 can be exercised against live data and compared
+without changing canonical writes or application behavior. Its rows carry
+provenance such as `vnstock-5.1.0-vci`, distinct from the existing
+`vnstock-data-3.2.7-vci` baseline. Production selection, generation 5 setup
+replacement, fundamentals, and Universe membership remain separate cutover
+decisions with their own parity evidence.

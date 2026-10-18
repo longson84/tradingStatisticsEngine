@@ -146,6 +146,86 @@ class VnstockDataProvider:
         )
 
 
+class Vnstock5Provider:
+    """Opt-in generation 5 adapter using explicit VCI market routes."""
+
+    package = "vnstock"
+    access_mode: AccessMode = "sponsored"
+    source = "VCI"
+
+    def __init__(self) -> None:
+        load_env_file()
+        self.package_version = _package_version(self.package)
+        if not self.package_version.startswith("5."):
+            raise ProviderUnavailableError(
+                "Vnstock5Provider requires vnstock generation 5 in its runtime"
+            )
+
+    def ohlcv(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+        *,
+        interval: str = "1D",
+    ) -> VietnamProviderResult:
+        normalized = _request(symbol, start, end)
+        frame = self._market().equity(normalized).ohlcv(
+            start=start.isoformat(),
+            end=end.isoformat(),
+            interval=interval,
+            source=self.source.lower(),
+        )
+        return self._result(frame, normalized, start, end, "ohlcv")
+
+    def trade_history(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> VietnamProviderResult:
+        normalized = _request(symbol, start, end)
+        frame = self._market().equity(normalized).trade_history(
+            start=start.isoformat(),
+            end=end.isoformat(),
+            source=self.source.lower(),
+        )
+        return self._result(frame, normalized, start, end, "trade_history")
+
+    def _market(self):
+        try:
+            module = import_module(self.package)
+            market_factory = module.Market
+        except (ImportError, AttributeError) as exc:
+            raise ProviderUnavailableError(
+                "vnstock generation 5 could not be loaded"
+            ) from exc
+        return market_factory()
+
+    def _result(
+        self,
+        frame: pd.DataFrame | None,
+        symbol: str,
+        start: date,
+        end: date,
+        method: str,
+    ) -> VietnamProviderResult:
+        clean = _require_frame(frame, symbol, method)
+        return VietnamProviderResult(
+            frame=clean,
+            metadata=VietnamProviderMetadata(
+                package=self.package,
+                package_version=self.package_version,
+                access_mode=self.access_mode,
+                upstream_source=self.source,
+                method=method,
+                symbol=symbol,
+                requested_start=start,
+                requested_end=end,
+            ),
+        )
+
+
 def provider_source_label(metadata: VietnamProviderMetadata) -> str:
     """Build stable row provenance without claiming an unknown upstream."""
     package = metadata.package.replace("_", "-").lower()
