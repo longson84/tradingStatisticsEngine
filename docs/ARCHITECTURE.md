@@ -146,6 +146,9 @@ fundamentals also use PostgreSQL.
 - `price_refresh_states` stores the latest provider-check outcome per instrument
   and price basis. `attempted_through` is independent from the latest observable
   trade date, so checked no-new-bar sessions are not mislabeled as unattempted.
+- `instrument_daily_trade_statistics` stores canonical provider-reported daily
+  activity once per Instrument and session, separately from OHLCV, participant
+  flows, and exact-period session-statistics snapshots.
 
 The initial membership table represents current saved snapshots. It is not
 historical membership data. Effective-dated membership will require a later
@@ -179,6 +182,73 @@ explicit migration and a source capable of providing reliable membership dates.
 - Provider rows with non-positive or non-finite prices, inverted high/low, or
   negative/non-finite volume are reported and omitted. The canonical table's
   constraints preserve the same minimum quality boundary for future writers.
+
+### Vietnam daily trading activity
+
+- `instrument_daily_trade_statistics` is keyed by `(instrument_id,
+  trading_date)`, where the date is the Vietnam trading session. Symbol and
+  Venue describe routing, not row identity. Deleting an Instrument cascades to
+  its activity rows. Each row records `source`, `schema_version`, and a
+  timezone-aware UTC `fetched_at`; the current schema version is `1` and a
+  stable source is `vnstock-5.1.0-vci`.
+- The 17 stored activity fields cover market capitalization, shares,
+  matched/deal/total volume and value, buy/sell trade counts and volumes,
+  signed net trade volume, unmatched volumes, and average trade volumes.
+  PostgreSQL uses `Numeric(38, 6)` except for `average_buy_trade_volume` and
+  `average_sell_trade_volume`, which use `Numeric(38, 18)` to preserve VCI's
+  observed fractional precision. Repository/service records retain `Decimal`.
+  Writers reject non-finite values, values beyond each field's precision/scale
+  (32 integer/six fractional digits, or 20 integer/18 fractional digits for
+  averages), and negative gross values/counts; net trade volume may be signed.
+  Only the isolated SQLite ORM test dialect uses lossless decimal text to avoid
+  SQLite NUMERIC affinity converting large values through floating point.
+  This exception does not change the Alembic
+  production schema or make SQLite an application persistence option.
+- The HTTP serialization boundary converts integral Decimals to JSON integers
+  and fractional Decimals to JSON floats. Generated TypeScript consumers use
+  JavaScript `number`; the public display contract is not lossless decimal
+  accounting, even though persistence and service values remain exact.
+- VCI daily `trade_history` must match the closed 39-field provider schema,
+  with unique, in-range session dates, matching `end_trading_date` identity,
+  finite numbers, non-negative gross activity, and consistent defined totals.
+  Normalized rows are ordered by session date.
+  Signed price changes and net trade volume are accepted. Raw and adjusted
+  prices are validated but never copied into this activity table; the formatted
+  `price_change_value` is validated and discarded. `price_bars` remains the
+  provider-neutral OHLCV source for `PriceFrame`, factors, strategies,
+  portfolios, and performance. Adjusted VCI bars require a separate explicit
+  price-basis decision.
+- Validate the complete provider response before a single atomic write
+  transaction. Canonical upsert accepts a replacement only when its fetch time
+  is equal to or newer than the stored observation. It creates no provider
+  duplicates and does not delete sessions absent from a later response.
+  Provider or validation failure leaves existing observations intact.
+- `trade_history` capability requires an active Company-backed `common_stock`,
+  a HOSE, HNX, or UPCOM Venue, the resolved `vnstock` adapter, and its canonical
+  VCI symbol. Discovery filters before totals/pagination; direct reads and
+  writes independently reject unsupported Instruments.
+- Refresh is an explicit single exact-Instrument Data Operation with required
+  `period_start <= period_end` and `mode = full`. Full means one complete
+  response for that requested period, not an all-history rebuild. Jobs share
+  the existing Vnstock adapter lease. Batch Operations exclude `trade_history`
+  until range sizes and provider cost are measured. `DataOperationRun` retains
+  the durable period/audit; there is no activity coverage table.
+- `GET /instruments/{instrument_id}/trade-statistics?start=...&end=...` reads
+  only PostgreSQL, in ascending session order, with requested and actual stored
+  ranges and per-row provenance. Unknown Instruments return `404`; unsupported
+  Instruments, reversed ranges, and eligible ranges without stored rows return
+  specific `422` errors. Partial coverage is returned honestly without filling
+  sessions or asserting calendar completeness. Opening, selecting, or applying
+  a range on Trading Activity never accesses Vnstock. A prefilled Data
+  Operations link still requires explicit submission to refresh.
+- UI matched/deal shares are presentation ratios over stored totals. Buy,
+  sell, and net fields are labelled as VCI trade classifications, not foreign
+  flow, proprietary flow, capital inflow, or investment recommendations.
+- Future reusable turnover, imbalance, liquidity, and anomaly formulas belong
+  in provider-neutral `trading_engine` inputs with explicit formula versions.
+  Strategies must lag end-of-session activity to the next tradable session;
+  same-close use is prohibited by default. Any independently justified
+  execution convention requires look-ahead diagnostics and tests.
 
 ### Binance Spot ingestion
 
@@ -2535,3 +2605,33 @@ Instruments fail explicitly, and adding or reclassifying a provider metric
 requires a deliberate catalog/schema-version change. Reusable analytical
 formulas remain outside this application acquisition boundary and belong in
 `trading_engine` only when such analytics are designed.
+
+### 2026-10-18 — Keep Vietnam daily trading activity separate from prices
+
+Context: VCI `trade_history` combines daily price fields with activity,
+trade-direction classifications, and company scale. Expanding `price_bars` or
+`PriceFrame` with these provider-specific fields would blur the canonical
+OHLCV boundary and imply analytical or participant-flow semantics that the
+provider contract does not establish.
+
+Decision: store only the validated activity fields in a canonical
+Instrument/session table with fixed-point values, schema and fetch provenance,
+and fetch-time-guarded atomic upserts. Keep raw/adjusted prices out of that
+table. Expose exact-range PostgreSQL reads on a standalone Trading Activity
+page, and acquire data only through explicit exact-Instrument Data Operations.
+Exclude Batch Operations, preserve VCI classification labels, and reserve
+provider-neutral versioned calculations and next-session execution rules for
+the engine's future analytical extension.
+
+Consequences: OHLCV consumers remain unchanged, failed refreshes preserve stored
+activity, and partial stored ranges remain visible without implicit provider
+requests. The numeric JSON display boundary is deliberately separate from exact
+Decimal persistence; SQLite's lossless-text ORM test adaptation is not the
+production storage schema. End-of-session activity cannot silently become a
+same-close strategy input.
+
+A completed-session FPT smoke on 2026-10-16 exposed VCI averages of
+`788.324877791` and `1243.4310509554`. The two average-volume columns therefore
+use `Numeric(38, 18)` while the other 15 activity fields retain
+`Numeric(38, 6)`; rounding those provider values to six places would violate
+the preservation rule.
