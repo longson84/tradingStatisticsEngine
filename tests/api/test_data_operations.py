@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -419,8 +420,8 @@ def test_session_stats_request_validates_period_and_full_mode():
         )
 
 
-@pytest.mark.parametrize("dataset", ["session_stats", "trade_history"])
-def test_exact_period_requests_require_one_instrument_both_ordered_dates_and_full_mode(dataset):
+def test_session_statistics_requests_require_one_instrument_both_ordered_dates_and_full_mode():
+    dataset = "session_stats"
     valid = dict(scope_type="instrument", scope_id="2", dataset=dataset,
                  mode="full", period_start="2026-10-15", period_end="2026-10-16")
     assert DataOperationRequest(**valid).period_end == date(2026, 10, 16)
@@ -438,6 +439,34 @@ def test_exact_period_requests_require_one_instrument_both_ordered_dates_and_ful
                                   dataset=dataset, mode="full")
 
 
+@pytest.mark.parametrize("scope_type", ["instrument", "watchlist", "universe"])
+def test_trade_history_requests_allow_incremental_period_refresh_for_supported_scopes(scope_type):
+    request = DataOperationRequest(
+        scope_type=scope_type,
+        scope_id="2",
+        dataset="trade_history",
+        mode="incremental",
+        period_start="2026-10-15",
+        period_end="2026-10-16",
+    )
+
+    assert request.period_start == date(2026, 10, 15)
+    assert request.period_end == date(2026, 10, 16)
+
+
+def test_trade_history_requests_reject_category_or_incomplete_period():
+    valid = dict(
+        scope_type="watchlist", scope_id="2", dataset="trade_history",
+        mode="incremental", period_start="2026-10-15", period_end="2026-10-16",
+    )
+    for overrides in (
+        {"scope_type": "category"}, {"period_start": None},
+        {"period_end": None}, {"period_start": "2026-10-17"},
+    ):
+        with pytest.raises(ValidationError):
+            DataOperationRequest(**(valid | overrides))
+
+
 @pytest.mark.parametrize("dataset", ["prices", "fundamentals", "foreign_flow", "proprietary_flow"])
 def test_non_exact_period_requests_reject_dates(dataset):
     with pytest.raises(ValidationError):
@@ -445,13 +474,32 @@ def test_non_exact_period_requests_reject_dates(dataset):
                              mode="full", period_start="2026-10-15")
 
 
-@pytest.mark.parametrize("scope_type", ["watchlist", "universe", "category"])
-def test_trade_history_planning_rejects_collection_scopes(scope_type):
+@pytest.mark.parametrize("scope_type", ["watchlist", "universe"])
+def test_trade_history_planning_accepts_supported_collection_scopes(scope_type):
     scope = DataOperationScopeRecord(scope_type=scope_type, scope_id="7", name="VN",
-                                    instruments=(instrument(2, "FPT", country_code="VN"),))
+                                    instruments=(
+                                        instrument(2, "FPT", country_code="VN"),
+                                        instrument(3, "VNM", country_code="VN"),
+                                        instrument(4, "MSFT"),
+                                    ))
     plan = data_operation_service(scope).plan(scope_type, "7", "trade_history")
+    assert plan.can_run is True
+    assert plan.eligible_count == 2
+    assert plan.unsupported_count == 1
+    assert plan.groups[0].instrument_ids == (2, 3)
+    assert "1 unsupported" in plan.message
+
+
+def test_trade_history_planning_rejects_unbounded_equity_category():
+    scope = DataOperationScopeRecord(
+        scope_type="category", scope_id="equity", name="All active equities",
+        instruments=(instrument(2, "FPT", country_code="VN"),),
+    )
+
+    plan = data_operation_service(scope).plan("category", "equity", "trade_history")
+
     assert plan.can_run is False
-    assert "exact Instrument" in plan.message
+    assert "Universe, Watchlist, or Instrument" in plan.message
 
 
 @pytest.mark.parametrize("row,eligible", [
@@ -501,12 +549,51 @@ def test_trade_history_preview_counts_only_rows_in_exact_requested_range():
         service = get_data_operation_service(session)
         preview = service.preview("instrument", str(stored.id), "trade_history",
                                   period_start=date(2026, 10, 15), period_end=date(2026, 10, 18))
-        assert (preview.current_count, preview.missing_count, preview.stale_count) == (2, 0, 0)
-        assert "2 stored rows" in preview.message
-        assert "session completeness is not assessed" in preview.message.lower()
+        assert (preview.current_count, preview.missing_count, preview.stale_count) == (1, 0, 0)
+        assert "2 stored sessions" in preview.message
+        assert "per eligible instrument" in preview.message.lower()
         empty = service.preview("instrument", str(stored.id), "trade_history",
                                 period_start=date(2026, 10, 17), period_end=date(2026, 10, 18))
         assert (empty.current_count, empty.missing_count, empty.stale_count) == (0, 1, 0)
+
+
+def test_trade_history_collection_preview_counts_instrument_coverage_states():
+    scope = DataOperationScopeRecord(
+        scope_type="universe", scope_id="VN100", name="VN100",
+        instruments=(
+            instrument(1, "FPT", country_code="VN"),
+            instrument(2, "VNM", country_code="VN"),
+            instrument(3, "HPG", country_code="VN"),
+            instrument(4, "MSFT"),
+        ),
+    )
+
+    class TradeRows:
+        def list_rows(self, instrument_id, start, end):
+            dates = {
+                1: (date(2026, 10, 15), date(2026, 10, 16)),
+                2: (date(2026, 10, 15),),
+                3: (),
+            }.get(instrument_id, ())
+            return tuple(SimpleNamespace(trading_date=value) for value in dates)
+
+    service = DataOperationService(
+        FakeRepository((scope,)), FakeRoutingRepository((scope,)),
+        trade_statistics_repository=TradeRows(),
+    )
+
+    preview = service.preview(
+        "universe", "VN100", "trade_history",
+        period_start=date(2026, 10, 12), period_end=date(2026, 10, 16),
+        now=datetime(2026, 10, 18, 8, tzinfo=UTC),
+    )
+
+    assert preview.eligible_count == 3
+    assert preview.current_count == 1
+    assert preview.stale_count == 1
+    assert preview.missing_count == 1
+    assert preview.unsupported_count == 1
+    assert "3 stored sessions" in preview.message
 
 
 @pytest.mark.parametrize("dataset", ["session_stats", "trade_history", "prices"])

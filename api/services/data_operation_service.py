@@ -168,12 +168,21 @@ class DataOperationService:
             if period_start is None or period_end is None:
                 current_count = 0
             elif dataset == "trade_history":
-                current_count = sum(
-                    len(self._trade_statistics_repository.list_rows(
+                activity_rows = {
+                    row.id: self._trade_statistics_repository.list_rows(
                         row.id, period_start, period_end
-                    ))
+                    )
                     for row in eligible
-                ) if self._trade_statistics_repository is not None else 0
+                } if self._trade_statistics_repository is not None else {
+                    row.id: () for row in eligible
+                }
+                current_count = sum(
+                    bool(activity_rows[row.id])
+                    and activity_rows[row.id][-1].trading_date >= min(
+                        period_end, _expected_session(routes[row.id], current)
+                    )
+                    for row in eligible
+                )
             elif self._session_statistics_repository is None:
                 current_count = 0
             else:
@@ -184,7 +193,7 @@ class DataOperationService:
                     for row in eligible
                 )
             missing_count = (
-                int(bool(eligible) and current_count == 0)
+                sum(not activity_rows[row.id] for row in eligible)
                 if dataset == "trade_history" else len(eligible) - current_count
             )
         else:
@@ -197,10 +206,10 @@ class DataOperationService:
         stale_count = len(eligible) - current_count - missing_count
         message = plan.message
         if dataset == "trade_history":
-            stale_count = 0
+            stored_sessions = sum(len(rows) for rows in activity_rows.values())
             message = (
-                f"{plan.message} {current_count} stored rows in the requested range; "
-                "session completeness is not assessed."
+                f"{plan.message} {stored_sessions} stored sessions in the requested "
+                "range; coverage counts are per eligible instrument."
             )
         return DataOperationPreview(
             scope_type=scope.scope_type,
@@ -443,8 +452,12 @@ def _execution(
 ) -> tuple[bool, str]:
     if not scope.instruments:
         return False, "This scope has no active instruments."
+    if dataset == "trade_history" and scope.scope_type == "category":
+        return False, (
+            "trade_history updates require a Universe, Watchlist, or Instrument scope."
+        )
     if (
-        (dataset in {"foreign_flow", "proprietary_flow"} or is_exact_period_dataset(dataset))
+        dataset in {"foreign_flow", "proprietary_flow", "session_stats"}
         and scope.scope_type != "instrument"
     ):
         return False, f"{dataset} updates require one exact Instrument scope."
@@ -483,6 +496,7 @@ def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
         ("foreign_flow", "vnstock"): 1,
         ("proprietary_flow", "vnstock"): 1,
         ("session_stats", "vnstock"): 1,
+        ("trade_history", "vnstock"): 100,
     }
     default = defaults.get((dataset, adapter), 1)
     key = f"DATA_OPERATION_{dataset}_{adapter}_MAX_INSTRUMENTS".upper()

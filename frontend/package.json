@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:data-operations-layout": "node scripts/test-data-operations-layout.mjs",
+    "test:trading-activity-batch-refresh": "node scripts/test-trading-activity-batch-refresh.mjs",
     "test:turnover-intensity-analytics": "node scripts/test-turnover-intensity-analytics.mjs",
     "test:vietnam-instrument-picker": "node scripts/test-vietnam-instrument-picker.mjs",
     "generate:api": "openapi-typescript openapi.json -o src/lib/generated/api-schema.ts",

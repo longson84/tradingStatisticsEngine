@@ -158,15 +158,15 @@ def test_execute_instrument_dispatches_session_stats_exact_period(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("mode", "start", "end"),
+    ("dataset", "mode", "start", "end"),
     [
-        ("incremental", date(2026, 10, 15), date(2026, 10, 16)),
-        ("full", date(2026, 10, 17), date(2026, 10, 16)),
-        ("full", None, date(2026, 10, 16)),
-        ("full", date(2026, 10, 15), None),
+        ("session_stats", "incremental", date(2026, 10, 15), date(2026, 10, 16)),
+        ("session_stats", "full", date(2026, 10, 17), date(2026, 10, 16)),
+        ("trade_history", "full", date(2026, 10, 17), date(2026, 10, 16)),
+        ("trade_history", "incremental", None, date(2026, 10, 16)),
+        ("trade_history", "incremental", date(2026, 10, 15), None),
     ],
 )
-@pytest.mark.parametrize("dataset", ["session_stats", "trade_history"])
 def test_exact_period_cli_rejects_invalid_period_before_database_work(
     monkeypatch, dataset, mode, start, end,
 ):
@@ -212,8 +212,8 @@ def test_trade_history_paid_group_uses_shared_limiter_and_dispatches_exact_dates
         reservations.append(request_cost)
         return original_wait(limiter, request_cost)
 
-    def refresh(instrument_id, start, end, *, engine):
-        calls.append((instrument_id, start, end, engine))
+    def refresh(instrument_id, start, end, *, mode, engine):
+        calls.append((instrument_id, start, end, mode, engine))
         return "trade history ok"
 
     monkeypatch.setattr(run_data_operation.StartRateLimiter, "wait", reserve)
@@ -224,14 +224,40 @@ def test_trade_history_paid_group_uses_shared_limiter_and_dispatches_exact_dates
     ))
     assert results == [(7, "trade history ok", False)]
     assert reservations == [1]
-    assert calls == [(7, date(2026, 10, 15), date(2026, 10, 16), engine)]
+    assert calls == [(
+        7, date(2026, 10, 15), date(2026, 10, 16), "full", engine,
+    )]
+
+
+def test_trade_history_paid_instrument_retries_one_failed_attempt_safely(monkeypatch):
+    attempts = []
+
+    class Limiter:
+        def wait(self, request_cost=1):
+            attempts.append(request_cost)
+
+    results = iter([
+        (7, "failed instrument=7: temporary provider error", True),
+        (7, "trade history ok", False),
+    ])
+    monkeypatch.setattr(
+        run_data_operation, "_dispatch_instrument", lambda *args: next(results)
+    )
+    monkeypatch.setattr(run_data_operation.time, "sleep", lambda delay: None)
+
+    result = run_data_operation._execute_paid_instrument(
+        Limiter(), 1, 7, "trade_history", "incremental", object(),
+        date(2026, 10, 15), date(2026, 10, 16),
+    )
+
+    assert result == (7, "trade history ok", False)
+    assert attempts == [1, 1]
 
 
 @pytest.mark.parametrize("mode,start,end", [
-    ("incremental", date(2026, 10, 15), date(2026, 10, 16)),
-    ("full", None, date(2026, 10, 16)),
+    ("incremental", None, date(2026, 10, 16)),
     ("full", date(2026, 10, 15), None),
-    ("full", date(2026, 10, 17), date(2026, 10, 16)),
+    ("incremental", date(2026, 10, 17), date(2026, 10, 16)),
 ])
 def test_trade_history_dispatch_rejects_invalid_period_before_refresh(monkeypatch, mode, start, end):
     monkeypatch.setattr(

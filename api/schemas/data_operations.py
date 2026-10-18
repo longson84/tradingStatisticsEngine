@@ -30,7 +30,7 @@ class DataOperationRequest(BaseModel):
     @model_validator(mode="after")
     def validate_period(self):
         has_period = self.period_start is not None or self.period_end is not None
-        if is_exact_period_dataset(self.dataset):
+        if self.dataset == "session_stats":
             if self.scope_type != "instrument":
                 raise ValueError(f"{self.dataset} requires one exact Instrument scope")
             if self.period_start is None or self.period_end is None:
@@ -39,6 +39,15 @@ class DataOperationRequest(BaseModel):
                 raise ValueError("period_start must be on or before period_end")
             if self.mode != "full":
                 raise ValueError(f"{self.dataset} requires full mode")
+        elif self.dataset == "trade_history":
+            if self.scope_type == "category":
+                raise ValueError(
+                    "trade_history requires a Universe, Watchlist, or Instrument scope"
+                )
+            if self.period_start is None or self.period_end is None:
+                raise ValueError("trade_history requires period_start and period_end")
+            if self.period_start > self.period_end:
+                raise ValueError("period_start must be on or before period_end")
         elif has_period:
             raise ValueError("period dates are only valid for exact-period datasets")
         return self

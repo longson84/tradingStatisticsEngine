@@ -14,6 +14,11 @@ import {
 
 import { Sidebar } from "@/components/Sidebar"
 import { BatchOperationsPanel } from "@/components/data-operations/BatchOperationsPanel"
+import {
+  dataOperationModeOptions,
+  effectiveDataOperationMode,
+  requiresInstrumentScope,
+} from "@/components/data-operations/dataOperationRules"
 import { useSearchableSelectKeyboard } from "@/components/forms/useSearchableSelectKeyboard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -255,7 +260,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
     )) return
     start.mutate({
       scope_type: scopeType, scope_id: scopeId, dataset,
-      mode: isExactPeriodDataset(dataset) ? "full" : mode,
+      mode: effectiveDataOperationMode(dataset, mode),
       period_start: isExactPeriodDataset(dataset) ? periodStart : null,
       period_end: isExactPeriodDataset(dataset) ? periodEnd : null,
     })
@@ -329,7 +334,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   <button
                     key={option.value}
                     onClick={() => chooseScope(option.value)}
-                    disabled={isVnExactDataset(dataset) && option.value !== "instrument"}
+                    disabled={requiresInstrumentScope(dataset) && option.value !== "instrument"}
                     className={cn(
                       "rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35",
                       scopeType === option.value
@@ -422,21 +427,16 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                 onChange={value => {
                   const next = value as DataOperationDataset
                   setDataset(next)
-                  if (isVnExactDataset(next) && scopeType !== "instrument") {
+                  if (requiresInstrumentScope(next) && scopeType !== "instrument") {
                     chooseScope("instrument")
                   }
-                  if (isExactPeriodDataset(next)) setMode("full")
+                  setMode(next === "session_stats" ? "full" : "incremental")
                   setStartedJob(null)
                 }}
               />
               <ChoiceGroup
                 label="Mode"
-                options={isExactPeriodDataset(dataset) ? [
-                  ["full", "Selected period"],
-                ] : [
-                  ["incremental", "Incremental"],
-                  ["full", "Full history"],
-                ]}
+                options={dataOperationModeOptions(dataset)}
                 value={mode}
                 onChange={value => setMode(value as DataOperationMode)}
               />
@@ -457,8 +457,10 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
                   ? "Checking active job…"
                   : running
                     ? "Update in progress"
-                    : isExactPeriodDataset(dataset)
+                    : dataset === "session_stats"
                       ? "Fetch selected period"
+                      : dataset === "trade_history"
+                        ? mode === "incremental" ? "Update activity" : "Re-fetch selected period"
                       : mode === "full" ? "Build full history" : "Update data"}
               </Button>
               <span className="text-[11px] text-muted-foreground">
@@ -474,7 +476,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
               </p>
             )}
             {dataset === "session_stats" && <p className="mt-3 text-xs text-muted-foreground">Fetches one immutable VCI aggregate snapshot for this exact Instrument and period. Full mode is required.</p>}
-            {dataset === "trade_history" && <p className="mt-3 text-xs text-muted-foreground">Fetches stored daily VCI trading activity for this exact Instrument and selected period. Full mode replaces/upserts the requested range; it does not rebuild all history.</p>}
+            {dataset === "trade_history" && <p className="mt-3 text-xs text-muted-foreground">Updates stored daily VCI trading activity for eligible Vietnam equities in the selected Universe, Watchlist, or exact Instrument. Incremental mode requests only the tail after each instrument&apos;s latest stored session; re-fetch explicitly upserts the whole selected period.</p>}
           </section>
 
           <div className="space-y-5">
@@ -1103,8 +1105,8 @@ function readTrackedOperation(): TrackedOperation | null {
       || !(["incremental", "full"] as const).includes(
         value.mode as DataOperationMode,
       )
-      || (isVnExactDataset(value.dataset as DataOperationDataset) && value.scopeType !== "instrument")
-      || (isExactPeriodDataset(value.dataset as DataOperationDataset) && value.mode !== "full")
+      || (requiresInstrumentScope(value.dataset as DataOperationDataset) && value.scopeType !== "instrument")
+      || (value.dataset === "session_stats" && value.mode !== "full")
     ) {
       window.sessionStorage.removeItem(TRACKED_OPERATION_KEY)
       return null

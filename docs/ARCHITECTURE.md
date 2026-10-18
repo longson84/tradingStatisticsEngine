@@ -227,12 +227,21 @@ explicit migration and a source capable of providing reliable membership dates.
   a HOSE, HNX, or UPCOM Venue, the resolved `vnstock` adapter, and its canonical
   VCI symbol. Discovery filters before totals/pagination; direct reads and
   writes independently reject unsupported Instruments.
-- Refresh is an explicit single exact-Instrument Data Operation with required
-  `period_start <= period_end` and `mode = full`. Full means one complete
-  response for that requested period, not an all-history rebuild. Jobs share
-  the existing Vnstock adapter lease. Batch Operations exclude `trade_history`
-  until range sizes and provider cost are measured. `DataOperationRun` retains
-  the durable period/audit; there is no activity coverage table.
+- Refresh is an explicit Instrument, Watchlist, or Universe Data Operation with
+  required `period_start <= period_end`; unbounded category refresh is
+  prohibited. Only active Vietnam equities carrying the `trade_history`
+  capability are eligible and unsupported members are skipped visibly.
+  Incremental mode requests the tail after each Instrument's latest stored
+  session in the selected range and makes no provider request when that tail is
+  already current. Full mode re-fetches and upserts the selected period; it is
+  not an all-history rebuild. Collection jobs use the shared Vnstock adapter
+  lease, configured request-rate limiter, bounded worker pool, and a default
+  maximum of 100 eligible Instruments per operation. `DataOperationRun`
+  retains the durable period/audit. Each failed trade-history attempt is
+  retried once by default (operator configurable, hard-capped at three total
+  attempts); every retry reserves the shared request budget and remains safe
+  because validation precedes atomic fetch-time-guarded upsert. There is no
+  separate activity coverage table.
   Downgrading migration `0038` deletes only audit rows whose dataset is
   `trade_history` before restoring the older dataset constraint. Every unrelated
   operation audit remains intact; removing the activity table is migration
@@ -2668,6 +2677,33 @@ Consequences: the Trading Activity page can chart scale-adjusted activity and
 anomalies without touching Vnstock, while short, invalid, or constant histories
 remain visibly unavailable. A factor or strategy cannot use the current close's
 activity on that same session through the supported conversion boundary.
+
+### 2026-10-18 — Batch-refresh stored trading activity by collection
+
+Context: exact-Instrument acquisition made Trading Activity correct but left
+Universe and Watchlist users with sparse, manually refreshed coverage. The
+existing Data Operations runner already resolves collection membership into
+exact Instrument IDs and supplies the Vnstock lease, rate limiter, bounded
+workers, durable progress, and per-Instrument failure reporting.
+
+Decision: permit `trade_history` refresh for Universe and Watchlist scopes while
+continuing to reject the unbounded equity category. Require an explicit period
+for every scope. Preview current, stale, missing, and unsupported counts per
+eligible Instrument rather than counting stored rows as Instruments; the
+message separately reports stored-session volume. Incremental refresh starts
+after the latest stored session in the requested range and skips Vnstock when
+the requested completed-session tail is already covered. Full mode remains an
+explicit re-fetch of the selected period. Limit one operation to 100 eligible
+Vnstock Instruments by default, with the existing environment override for
+operators who have measured a different safe capacity.
+
+Consequences: users can establish and maintain coherent activity coverage for
+VN100-sized collections without a second scheduler or implicit provider calls.
+Unsupported collection members and per-Instrument failures remain visible;
+failed requests preserve earlier rows and receive one bounded retry by default.
+Incremental mode repairs the missing tail, not arbitrary internal historical
+gaps, and weekday completion is only a request-avoidance heuristic rather than
+an exchange-holiday completeness claim.
 
 A completed-session FPT smoke on 2026-10-16 exposed VCI averages of
 `788.324877791` and `1243.4310509554`. The two average-volume columns therefore

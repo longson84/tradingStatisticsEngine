@@ -1,5 +1,5 @@
 """Refresh daily VCI trade statistics for one Instrument and explicit period."""
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -26,6 +26,7 @@ def refresh_instrument_trade_statistics(
     period_start: date,
     period_end: date,
     *,
+    mode: str = "full",
     engine: Engine | None = None,
     provider: VietnamMarketProvider | None = None,
     now: datetime | None = None,
@@ -34,15 +35,30 @@ def refresh_instrument_trade_statistics(
         raise ValueError("period_start must be on or before period_end")
     if now is not None and now.utcoffset() is None:
         raise ValueError("now must be timezone-aware")
+    if mode not in {"incremental", "full"}:
+        raise ValueError("mode must be incremental or full")
     db_engine = engine or create_db_engine()
     with Session(db_engine) as session:
+        repository = SqlAlchemyTradeStatisticsRepository(session)
         instrument, route = resolve_trade_statistics_instrument(
-            SqlAlchemyTradeStatisticsRepository(session),
+            repository,
             SqlAlchemyInstrumentRoutingRepository(session),
             instrument_id,
         )
+        fetch_start = period_start
+        if mode == "incremental":
+            stored = repository.list_rows(instrument_id, period_start, period_end)
+            latest = stored[-1].trading_date if stored else None
+            target = _last_weekday(period_end)
+            if latest is not None and latest >= target:
+                return (
+                    f"{instrument.symbol} trade statistics requested through {period_end} "
+                    f"are already covered through {latest}"
+                )
+            if latest is not None:
+                fetch_start = max(period_start, latest + timedelta(days=1))
     result = (provider or VnstockProvider()).trade_history(
-        route.provider_symbol, period_start, period_end,
+        route.provider_symbol, fetch_start, period_end,
     )
     rows = normalize_trade_history_result(result)
     fetched_at = now or datetime.now(UTC)
@@ -54,8 +70,17 @@ def refresh_instrument_trade_statistics(
             instrument_id, result.metadata.symbol, rows,
             source=provider_source_label(result.metadata), fetched_at=fetched_at,
         )
-    return (
+    detail = (
         f"updated {instrument.symbol} trade statistics for {period_start} "
         f"through {period_end}: stored {stored_count} rows; returned sessions "
         f"{rows.iloc[0]['trading_date']} through {rows.iloc[-1]['trading_date']}"
     )
+    if mode == "incremental" and fetch_start != period_start:
+        detail += f"; incremental tail {fetch_start} through {period_end}"
+    return detail
+
+
+def _last_weekday(value: date) -> date:
+    while value.weekday() >= 5:
+        value -= timedelta(days=1)
+    return value

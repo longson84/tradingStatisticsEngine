@@ -132,6 +132,45 @@ def test_refresh_makes_one_exact_vci_request_between_short_database_scopes(datab
         assert (bar.close, bar.volume, bar.source) == (2, 123, "original")
 
 
+def test_incremental_refresh_requests_only_the_tail_after_the_latest_stored_session(database, monkeypatch):
+    full_provider, _ = _provider(monkeypatch, frame=_frame().iloc[[1]])
+    refresh.refresh_instrument_trade_statistics(
+        1, START, date(2026, 10, 14), engine=database,
+        provider=full_provider, now=FETCHED_AT,
+    )
+    provider, calls = _provider(monkeypatch, frame=_frame().iloc[[0]])
+
+    detail = refresh.refresh_instrument_trade_statistics(
+        1, START, END, mode="incremental", engine=database,
+        provider=provider, now=FETCHED_AT,
+    )
+
+    assert calls == [{
+        "start": "2026-10-15", "end": "2026-10-18",
+        "resolution": "1D", "source": "vci",
+    }]
+    assert "incremental tail 2026-10-15 through 2026-10-18" in detail
+
+
+def test_incremental_refresh_skips_provider_when_requested_period_is_current(database, monkeypatch):
+    provider, calls = _provider(monkeypatch)
+    refresh.refresh_instrument_trade_statistics(
+        1, START, END, engine=database, provider=provider, now=FETCHED_AT,
+    )
+    calls.clear()
+
+    detail = refresh.refresh_instrument_trade_statistics(
+        1, START, END, mode="incremental", engine=database,
+        provider=provider, now=FETCHED_AT,
+    )
+
+    assert calls == []
+    assert detail == (
+        "LOCAL-FPT trade statistics requested through 2026-10-18 are already "
+        "covered through 2026-10-16"
+    )
+
+
 @pytest.mark.parametrize("case", ["unknown", "inactive", "unsupported"])
 def test_refresh_resolves_exact_instrument_capability_before_provider_work(database, monkeypatch, case):
     instrument_id = 999 if case == "unknown" else 1

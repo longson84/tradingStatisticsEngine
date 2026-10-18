@@ -153,10 +153,19 @@ def _execute_paid_instrument(
     period_start: date | None = None,
     period_end: date | None = None,
 ):
-    limiter.wait(request_cost)
-    return _dispatch_instrument(
-        instrument_id, dataset, mode, engine, period_start, period_end
+    max_attempts = (
+        min(_positive_env_int("VNSTOCK_TRADE_HISTORY_MAX_ATTEMPTS", 2), 3)
+        if dataset == "trade_history" else 1
     )
+    for attempt in range(1, max_attempts + 1):
+        limiter.wait(request_cost)
+        result = _dispatch_instrument(
+            instrument_id, dataset, mode, engine, period_start, period_end
+        )
+        if not result[2] or attempt == max_attempts:
+            return result
+        time.sleep(0.5 * attempt)
+    raise AssertionError("unreachable")
 
 
 def _dispatch_instrument(
@@ -220,7 +229,8 @@ def _execute_instrument(
                 else refresh_instrument_session_statistics
             )
             detail = refresh(
-                instrument_id, period_start, period_end, engine=engine
+                instrument_id, period_start, period_end, engine=engine,
+                **({"mode": mode} if dataset == "trade_history" else {}),
             )
         else:
             raise ValueError(f"Unsupported dataset: {dataset}")
@@ -239,7 +249,7 @@ def _validate_exact_period(
         return
     if period_start is None or period_end is None:
         raise ValueError(f"{dataset} requires period_start and period_end")
-    if mode != "full":
+    if dataset == "session_stats" and mode != "full":
         raise ValueError(f"{dataset} requires full mode")
     if period_start > period_end:
         raise ValueError("period_start must be on or before period_end")
