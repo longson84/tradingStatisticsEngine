@@ -9,13 +9,18 @@ from pydantic import BaseModel, Field, model_validator
 from api.schemas.data_operations import DataOperationJobResponse
 
 
+BatchOperationTargetType = Literal["category", "universe", "watchlist", "instrument"]
+BatchOperationDataset = Literal[
+    "prices", "fundamentals", "foreign_flow", "proprietary_flow"
+]
+BatchOperationMode = Literal["incremental", "full"]
+
+
 class BatchOperationStepRequest(BaseModel):
-    target_type: Literal["category", "universe", "watchlist", "instrument"]
+    target_type: BatchOperationTargetType
     target_id: str = Field(min_length=1, max_length=64)
-    dataset: Literal[
-        "prices", "fundamentals", "foreign_flow", "proprietary_flow"
-    ] = "prices"
-    mode: Literal["incremental", "full"] = "incremental"
+    dataset: BatchOperationDataset = "prices"
+    mode: BatchOperationMode = "incremental"
 
     @model_validator(mode="after")
     def validate_scope(self):
@@ -35,7 +40,11 @@ class BatchOperationPlanRequest(BaseModel):
     steps: list[BatchOperationStepRequest] = Field(min_length=1, max_length=20)
 
 
-class BatchOperationStepResponse(BatchOperationStepRequest):
+class BatchOperationStepResponse(BaseModel):
+    target_type: BatchOperationTargetType
+    target_id: str = Field(min_length=1, max_length=64)
+    dataset: BatchOperationDataset = "prices"
+    mode: BatchOperationMode = "incremental"
     position: int
 
 

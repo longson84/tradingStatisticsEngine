@@ -22,7 +22,10 @@ from api.db.models import (
     Venue,
 )
 from api.main import app
-from api.schemas.batch_operations import BatchOperationStepRequest
+from api.schemas.batch_operations import (
+    BatchOperationStepRequest,
+    BatchOperationStepResponse,
+)
 from api.schemas.data_operations import DataOperationRequest
 from api.repositories.data_operation_repository import (
     DataOperationInstrumentRecord,
@@ -524,6 +527,19 @@ def test_participant_flow_requests_and_plans_reject_unbounded_category(dataset):
             target_type="category", target_id="equity", dataset=dataset,
             mode="incremental",
         )
+
+
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+def test_legacy_category_flow_batch_steps_remain_serializable(dataset):
+    response = BatchOperationStepResponse(
+        target_type="category",
+        target_id="equity",
+        dataset=dataset,
+        mode="incremental",
+        position=0,
+    )
+
+    assert response.dataset == dataset
 
 
 @pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
