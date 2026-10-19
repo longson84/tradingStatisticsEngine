@@ -153,10 +153,16 @@ def _execute_paid_instrument(
     period_start: date | None = None,
     period_end: date | None = None,
 ):
-    max_attempts = (
-        min(_positive_env_int("VNSTOCK_TRADE_HISTORY_MAX_ATTEMPTS", 2), 3)
-        if dataset == "trade_history" else 1
-    )
+    if dataset == "trade_history":
+        max_attempts = min(
+            _positive_env_int("VNSTOCK_TRADE_HISTORY_MAX_ATTEMPTS", 2), 3
+        )
+    elif dataset in {"foreign_flow", "proprietary_flow"}:
+        max_attempts = min(
+            _positive_env_int("VNSTOCK_FLOW_MAX_ATTEMPTS", 2), 3
+        )
+    else:
+        max_attempts = 1
     for attempt in range(1, max_attempts + 1):
         limiter.wait(request_cost)
         result = _dispatch_instrument(

@@ -254,6 +254,59 @@ def test_trade_history_paid_instrument_retries_one_failed_attempt_safely(monkeyp
     assert attempts == [1, 1]
 
 
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+def test_participant_flow_paid_instrument_retries_once_and_reserves_each_attempt(
+    dataset, monkeypatch,
+):
+    reservations = []
+
+    class Limiter:
+        def wait(self, request_cost=1):
+            reservations.append(request_cost)
+
+    results = iter([
+        (7, "failed instrument=7: temporary provider error", True),
+        (7, "flow ok", False),
+    ])
+    monkeypatch.delenv("VNSTOCK_FLOW_MAX_ATTEMPTS", raising=False)
+    monkeypatch.setattr(
+        run_data_operation, "_dispatch_instrument", lambda *args: next(results)
+    )
+    monkeypatch.setattr(run_data_operation.time, "sleep", lambda delay: None)
+
+    result = run_data_operation._execute_paid_instrument(
+        Limiter(), 1, 7, dataset, "incremental", object(),
+    )
+
+    assert result == (7, "flow ok", False)
+    assert reservations == [1, 1]
+
+
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+def test_participant_flow_paid_instrument_returns_final_failure_after_hard_cap(
+    dataset, monkeypatch,
+):
+    reservations = []
+
+    class Limiter:
+        def wait(self, request_cost=1):
+            reservations.append(request_cost)
+
+    failure = (7, "failed instrument=7: provider unavailable", True)
+    monkeypatch.setenv("VNSTOCK_FLOW_MAX_ATTEMPTS", "99")
+    monkeypatch.setattr(
+        run_data_operation, "_dispatch_instrument", lambda *args: failure
+    )
+    monkeypatch.setattr(run_data_operation.time, "sleep", lambda delay: None)
+
+    result = run_data_operation._execute_paid_instrument(
+        Limiter(), 1, 7, dataset, "full", object(),
+    )
+
+    assert result == failure
+    assert reservations == [1, 1, 1]
+
+
 @pytest.mark.parametrize("mode,start,end", [
     ("incremental", None, date(2026, 10, 16)),
     ("full", date(2026, 10, 15), None),
