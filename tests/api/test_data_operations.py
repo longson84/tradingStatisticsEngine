@@ -283,7 +283,7 @@ def test_watchlist_fundamentals_are_planned_by_eligible_instrument():
     assert "yfinance" in preview.message
 
 
-def test_foreign_flow_requires_one_exact_eligible_vietnam_instrument():
+def test_foreign_flow_supports_exact_eligible_vietnam_instrument():
     eligible = DataOperationScopeRecord(
         scope_type="instrument",
         scope_id="2",
@@ -294,17 +294,6 @@ def test_foreign_flow_requires_one_exact_eligible_vietnam_instrument():
     assert plan.can_run is True
     assert plan.groups[0].adapter == "vnstock"
     assert plan.groups[0].instrument_ids == (2,)
-
-    collection = DataOperationScopeRecord(
-        scope_type="watchlist",
-        scope_id="9",
-        name="VN",
-        instruments=eligible.instruments,
-    )
-    rejected = data_operation_service(collection).plan("watchlist", "9", "foreign_flow")
-    assert rejected.can_run is False
-    assert "exact Instrument" in rejected.message
-
 
 def test_foreign_flow_rejects_us_equity():
     scope = DataOperationScopeRecord(
@@ -318,7 +307,7 @@ def test_foreign_flow_rejects_us_equity():
     assert preview.can_run is False
 
 
-def test_proprietary_flow_requires_one_exact_eligible_vietnam_instrument():
+def test_proprietary_flow_supports_exact_eligible_vietnam_instrument():
     scope = DataOperationScopeRecord(
         scope_type="instrument",
         scope_id="2",
@@ -333,19 +322,6 @@ def test_proprietary_flow_requires_one_exact_eligible_vietnam_instrument():
     assert plan.can_run is True
     assert plan.groups[0].adapter == "vnstock"
     assert plan.groups[0].instrument_ids == (2,)
-
-    collection = DataOperationScopeRecord(
-        scope_type="watchlist",
-        scope_id="7",
-        name="VN",
-        instruments=scope.instruments,
-    )
-    rejected = data_operation_service(collection).plan(
-        "watchlist", "7", "proprietary_flow"
-    )
-    assert rejected.can_run is False
-    assert "exact Instrument" in rejected.message
-
 
 def test_proprietary_flow_preview_uses_its_own_coverage():
     now = datetime(2026, 10, 16, 9, tzinfo=UTC)
@@ -500,6 +476,69 @@ def test_trade_history_planning_rejects_unbounded_equity_category():
 
     assert plan.can_run is False
     assert "Universe, Watchlist, or Instrument" in plan.message
+
+
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+@pytest.mark.parametrize("scope_type", ["universe", "watchlist"])
+def test_participant_flow_planning_accepts_supported_collection_scopes(
+    dataset, scope_type,
+):
+    scope = DataOperationScopeRecord(
+        scope_type=scope_type, scope_id="7", name="Vietnam candidates",
+        instruments=(
+            instrument(2, "FPT", country_code="VN"),
+            instrument(3, "VNM", country_code="VN"),
+            instrument(4, "MSFT"),
+        ),
+    )
+
+    plan = data_operation_service(scope).plan(scope_type, "7", dataset)
+
+    assert plan.can_run is True
+    assert plan.eligible_count == 2
+    assert plan.unsupported_count == 1
+    assert plan.groups[0].adapter == "vnstock"
+    assert plan.groups[0].instrument_ids == (2, 3)
+    assert "1 unsupported" in plan.message
+
+
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+def test_participant_flow_requests_and_plans_reject_unbounded_category(dataset):
+    with pytest.raises(ValidationError, match="Universe, Watchlist, or Instrument"):
+        DataOperationRequest(
+            scope_type="category", scope_id="equity", dataset=dataset,
+            mode="incremental",
+        )
+    scope = DataOperationScopeRecord(
+        scope_type="category", scope_id="equity", name="All active equities",
+        instruments=(instrument(2, "FPT", country_code="VN"),),
+    )
+
+    plan = data_operation_service(scope).plan("category", "equity", dataset)
+
+    assert plan.can_run is False
+    assert "Universe, Watchlist, or Instrument" in plan.message
+
+
+@pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
+def test_participant_flow_planning_rejects_more_than_one_hundred_eligible_members(
+    dataset, monkeypatch,
+):
+    monkeypatch.delenv(
+        f"DATA_OPERATION_{dataset}_VNSTOCK_MAX_INSTRUMENTS", raising=False,
+    )
+    scope = DataOperationScopeRecord(
+        scope_type="universe", scope_id="VNALL", name="VN All",
+        instruments=tuple(
+            instrument(index, f"VN{index}", country_code="VN")
+            for index in range(1, 102)
+        ),
+    )
+
+    plan = data_operation_service(scope).plan("universe", "VNALL", dataset)
+
+    assert plan.can_run is False
+    assert "vnstock 101/100" in plan.message
 
 
 @pytest.mark.parametrize("row,eligible", [

@@ -30,6 +30,13 @@ class DataOperationRequest(BaseModel):
     @model_validator(mode="after")
     def validate_period(self):
         has_period = self.period_start is not None or self.period_end is not None
+        if (
+            self.dataset in {"foreign_flow", "proprietary_flow"}
+            and self.scope_type == "category"
+        ):
+            raise ValueError(
+                f"{self.dataset} requires a Universe, Watchlist, or Instrument scope"
+            )
         if self.dataset == "session_stats":
             if self.scope_type != "instrument":
                 raise ValueError(f"{self.dataset} requires one exact Instrument scope")

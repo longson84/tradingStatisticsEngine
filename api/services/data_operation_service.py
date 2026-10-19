@@ -459,14 +459,14 @@ def _execution(
 ) -> tuple[bool, str]:
     if not scope.instruments:
         return False, "This scope has no active instruments."
-    if dataset == "trade_history" and scope.scope_type == "category":
-        return False, (
-            "trade_history updates require a Universe, Watchlist, or Instrument scope."
-        )
     if (
-        dataset in {"foreign_flow", "proprietary_flow", "session_stats"}
-        and scope.scope_type != "instrument"
+        dataset in {"foreign_flow", "proprietary_flow", "trade_history"}
+        and scope.scope_type == "category"
     ):
+        return False, (
+            f"{dataset} updates require a Universe, Watchlist, or Instrument scope."
+        )
+    if dataset == "session_stats" and scope.scope_type != "instrument":
         return False, f"{dataset} updates require one exact Instrument scope."
     if not eligible_count:
         return False, f"No instruments support {dataset} updates."
@@ -500,8 +500,8 @@ def _bulk_limit(dataset: DataOperationDataset, adapter: str) -> int:
         ("prices", "binance_spot"): 100,
         ("fundamentals", "yfinance"): 5_000,
         ("fundamentals", "vnstock"): 1_000,
-        ("foreign_flow", "vnstock"): 1,
-        ("proprietary_flow", "vnstock"): 1,
+        ("foreign_flow", "vnstock"): 100,
+        ("proprietary_flow", "vnstock"): 100,
         ("session_stats", "vnstock"): 1,
         ("trade_history", "vnstock"): 100,
     }
