@@ -100,6 +100,34 @@ def test_repository_reads_only_the_latest_limited_rows_before_a_session(database
     assert repository.list_rows_before(instrument_id, before=first, limit=0) == ()
 
 
+def test_repository_bulk_reads_latest_limited_rows_per_instrument(database):
+    session, instrument_id, other_id, repository = database
+    first = date(2026, 9, 1)
+    repository.upsert_rows([
+        _write(instrument_id, first + timedelta(days=index))
+        for index in range(25)
+    ])
+    repository.upsert_rows([
+        _write(other_id, first + timedelta(days=index))
+        for index in range(3)
+    ])
+    session.commit()
+
+    rows = repository.list_recent_rows(
+        (instrument_id, other_id), through=first + timedelta(days=23),
+        limit_per_instrument=20,
+    )
+
+    grouped = {
+        current_id: [row.trading_date for row in rows if row.instrument_id == current_id]
+        for current_id in (instrument_id, other_id)
+    }
+    assert grouped[instrument_id] == [first + timedelta(days=index) for index in range(4, 24)]
+    assert grouped[other_id] == [first + timedelta(days=index) for index in range(3)]
+    assert repository.list_recent_rows((), through=first, limit_per_instrument=20) == ()
+    assert repository.list_recent_rows((instrument_id,), through=first, limit_per_instrument=0) == ()
+
+
 def test_repository_canonical_upsert_rejects_older_and_accepts_equal_fetch_time(database):
     session, instrument_id, _, repository = database
     record = _write(instrument_id)

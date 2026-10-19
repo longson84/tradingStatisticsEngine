@@ -417,6 +417,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trading-activity/scanner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scan Trading Activity */
+        get: operations["scanTradingActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe-stats/run": {
         parameters: {
             query?: never;
@@ -2250,6 +2267,66 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** TradingActivityScannerCountsResponse */
+        TradingActivityScannerCountsResponse: {
+            /** Current */
+            current: number;
+            /** Insufficient History */
+            insufficient_history: number;
+            /** Stale */
+            stale: number;
+            /** Unavailable */
+            unavailable: number;
+        };
+        /** TradingActivityScannerItemResponse */
+        TradingActivityScannerItemResponse: {
+            /** Anomaly Score */
+            anomaly_score: number | null;
+            /** Baseline */
+            baseline: number | null;
+            /** Display Name */
+            display_name: string | null;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Latest Session */
+            latest_session: string | null;
+            /** Rank */
+            rank: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "stale" | "insufficient_history" | "unavailable";
+            /** Symbol */
+            symbol: string;
+            /** Turnover Intensity */
+            turnover_intensity: number | null;
+            /** Unavailable Reason */
+            unavailable_reason: ("invalid_total_value" | "invalid_market_cap" | "non_positive_market_cap" | "insufficient_history" | "invalid_baseline_window" | "zero_baseline_variance") | ("unsupported_instrument" | "no_stored_activity") | null;
+            /** Venue Code */
+            venue_code: string | null;
+        };
+        /** TradingActivityScannerResponse */
+        TradingActivityScannerResponse: {
+            /** Baseline Sessions */
+            baseline_sessions: number;
+            counts: components["schemas"]["TradingActivityScannerCountsResponse"];
+            /** Formula Version */
+            formula_version: string;
+            /** Items */
+            items: components["schemas"]["TradingActivityScannerItemResponse"][];
+            /** Scope Id */
+            scope_id: string;
+            /** Scope Name */
+            scope_name: string;
+            /**
+             * Scope Type
+             * @enum {string}
+             */
+            scope_type: "universe" | "watchlist";
+            /** Target Session */
+            target_session: string | null;
+        };
         /** TurnoverIntensityAnalysisResponse */
         TurnoverIntensityAnalysisResponse: {
             /** Baseline Sessions */
@@ -3570,6 +3647,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentTradeStatisticsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scanTradingActivity: {
+        parameters: {
+            query: {
+                scope_type: "universe" | "watchlist";
+                scope_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingActivityScannerResponse"];
                 };
             };
             /** @description Validation Error */

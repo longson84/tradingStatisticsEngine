@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Activity } from "lucide-react"
-import { Link } from "react-router"
+import { Link, useSearchParams } from "react-router"
 
 import { Sidebar } from "@/components/Sidebar"
 import { VietnamInstrumentSelector } from "@/components/forms/VietnamInstrumentSelector"
@@ -42,8 +42,11 @@ const ACTIVITY_COLUMNS: { key: NumericField; label: string; format?: "value" | "
 ]
 
 export function TradingActivityPage() {
-  const [search, setSearch] = useState("")
-  const [selected, setSelected] = useState<InstrumentCatalogItem | null>(null)
+  const [searchParams] = useSearchParams()
+  const prefillInstrumentId = Number(searchParams.get("instrument_id")) || null
+  const prefillSymbol = searchParams.get("symbol") ?? ""
+  const [search, setSearch] = useState(prefillSymbol)
+  const [selected, setSelected] = useState<InstrumentCatalogItem | null | undefined>(undefined)
   const [start, setStart] = useState("")
   const [end, setEnd] = useState("")
   const [request, setRequest] = useState<AppliedPeriod | null>(null)
@@ -55,6 +58,10 @@ export function TradingActivityPage() {
     }),
     enabled: selected == null && debounced.length >= 3,
   })
+  const prefilledSelected = prefillInstrumentId == null
+    ? null
+    : instruments.data?.instruments.find(instrument => instrument.id === prefillInstrumentId) ?? null
+  const activeSelected = selected === undefined ? prefilledSelected : selected
   const selectInstrument = (instrument: InstrumentCatalogItem) => {
     setSelected(instrument)
     setSearch(instrument.symbol)
@@ -92,11 +99,11 @@ export function TradingActivityPage() {
   const refreshLink = <Link className="font-semibold text-primary underline" to={`/data-operations/single?${operationQuery}`}>Fetch this exact period in Data Operations</Link>
 
   const apply = () => {
-    if (!selected || !start || !end || start > end) return
-    if (request?.instrument.id === selected.id && request.start === start && request.end === end) {
+    if (!activeSelected || !start || !end || start > end) return
+    if (request?.instrument.id === activeSelected.id && request.start === start && request.end === end) {
       void activity.refetch()
     } else {
-      setRequest({ instrument: selected, start, end })
+      setRequest({ instrument: activeSelected, start, end })
     }
   }
 
@@ -114,13 +121,14 @@ export function TradingActivityPage() {
             <VietnamInstrumentSelector
               search={search}
               instruments={instruments.data?.instruments ?? []}
-              selectedInstrument={selected}
+              selectedInstrument={activeSelected}
               total={instruments.data?.total}
               isPending={debounced.length >= 3 && instruments.isFetching}
               errorMessage={instruments.error?.message}
               emptyMessage="No eligible Vietnam equity matches this search."
               onSearchChange={value => {
                 setSearch(value)
+                setSelected(null)
                 setRequest(null)
               }}
               onInstrumentChange={instrument => {
@@ -134,7 +142,7 @@ export function TradingActivityPage() {
             />
             <DateInput label="Start date" value={start} onChange={value => { setStart(value); setRequest(null) }} />
             <DateInput label="End date" value={end} onChange={value => { setEnd(value); setRequest(null) }} />
-            <button disabled={!selected || !start || !end || start > end || activity.isFetching} onClick={apply} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Apply period</button>
+            <button disabled={!activeSelected || !start || !end || start > end || activity.isFetching} onClick={apply} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Apply period</button>
           </div>
           {start && end && start > end && <p role="alert" className="mt-3 text-xs text-destructive">Start date must be on or before end date.</p>}
         </section>

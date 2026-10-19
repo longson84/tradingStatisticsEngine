@@ -63,7 +63,10 @@ from api.services.reference_rate_service import ReferenceRateService
 from api.services.instrument_analysis_service import InstrumentAnalysisService
 from api.services.instrument_flow_service import InstrumentFlowService
 from api.services.session_statistics_service import SessionStatisticsService
-from api.services.trade_statistics_service import TradeStatisticsService
+from api.services.trade_statistics_service import (
+    TradeStatisticsService,
+    TradingActivityScannerService,
+)
 from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
 from api.services.data_operation_service import (
@@ -159,6 +162,16 @@ def get_trade_statistics_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> TradeStatisticsService:
     return TradeStatisticsService(
+        SqlAlchemyTradeStatisticsRepository(session),
+        SqlAlchemyInstrumentRoutingRepository(session),
+    )
+
+
+def get_trading_activity_scanner_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> TradingActivityScannerService:
+    return TradingActivityScannerService(
+        SqlAlchemyDataOperationRepository(session),
         SqlAlchemyTradeStatisticsRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
     )

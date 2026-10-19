@@ -103,6 +103,7 @@ export type Venue = components["schemas"]["VenueResponse"]
 type VenueListResponse = components["schemas"]["VenueListResponse"]
 export type InstrumentCatalogItem = components["schemas"]["InstrumentCatalogItemResponse"]
 type UniverseListResponse = components["schemas"]["UniverseListResponse"]
+export type UniverseCatalog = components["schemas"]["UniverseCatalogResponse"]
 export type UniverseSyncRun = components["schemas"]["UniverseSyncRunResponse"]
 type UniverseSyncRunPage = components["schemas"]["UniverseSyncRunPageResponse"]
 type UniverseStatsRequest = components["schemas"]["UniverseStatsRequest"]
@@ -142,6 +143,8 @@ export type SessionStatisticMetric = components["schemas"]["SessionStatisticMetr
 export type InstrumentSessionStatisticsResponse = components["schemas"]["InstrumentSessionStatisticsResponse"]
 export type DailyTradeStatistic = components["schemas"]["DailyTradeStatisticResponse"]
 export type InstrumentTradeStatisticsResponse = components["schemas"]["InstrumentTradeStatisticsResponse"]
+export type TradingActivityScannerResponse = components["schemas"]["TradingActivityScannerResponse"]
+export type TradingActivityScannerScopeType = NonNullable<operations["scanTradingActivity"]["parameters"]["query"]>["scope_type"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -429,6 +432,13 @@ export function instrumentTradeStatisticsApi(params:
 ): Promise<InstrumentTradeStatisticsResponse> {
   const query = new URLSearchParams({ start: params.start, end: params.end })
   return get(`/instruments/${params.instrument_id}/trade-statistics?${query}`)
+}
+
+export function tradingActivityScannerApi(
+  params: NonNullable<operations["scanTradingActivity"]["parameters"]["query"]>,
+): Promise<TradingActivityScannerResponse> {
+  const query = new URLSearchParams({ scope_type: params.scope_type, scope_id: params.scope_id })
+  return get(`/trading-activity/scanner?${query}`)
 }
 
 export function newLowDeepApi(

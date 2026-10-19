@@ -1,27 +1,36 @@
 """Database-only requested-range Instrument daily trading activity endpoint."""
 from datetime import date
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.deps import get_trade_statistics_service
+from api.deps import (
+    get_trade_statistics_service,
+    get_trading_activity_scanner_service,
+)
 from api.schemas.trade_statistics import (
     DailyTradeStatisticResponse,
     InstrumentTradeStatisticsResponse,
     TurnoverIntensityAnalysisResponse,
     TurnoverIntensityPointResponse,
+    TradingActivityScannerCountsResponse,
+    TradingActivityScannerItemResponse,
+    TradingActivityScannerResponse,
 )
 from api.services.trade_statistics_service import (
     TradeStatisticsCapabilityError,
     TradeStatisticsService,
     TradeStatisticsUnavailableError,
+    TradingActivityScannerService,
     UnknownTradeStatisticsInstrumentError,
+    UnknownTradingActivityScopeError,
 )
 from api.trade_statistics import TRADE_STATISTIC_STORAGE_COLUMNS
 
 
 router = APIRouter(prefix="/instruments", tags=["instruments"])
+scanner_router = APIRouter(prefix="/trading-activity", tags=["trading activity"])
 
 
 def _json_number(value: Decimal) -> int | float:
@@ -31,6 +40,47 @@ def _json_number(value: Decimal) -> int | float:
     decimal client contract. Database and service values remain Decimal.
     """
     return int(value) if value == value.to_integral_value() else float(value)
+
+
+@scanner_router.get(
+    "/scanner",
+    response_model=TradingActivityScannerResponse,
+    operation_id="scanTradingActivity",
+)
+def scan_trading_activity(
+    service: Annotated[
+        TradingActivityScannerService,
+        Depends(get_trading_activity_scanner_service),
+    ],
+    scope_type: Literal["universe", "watchlist"] = Query(...),
+    scope_id: str = Query(..., min_length=1),
+) -> TradingActivityScannerResponse:
+    try:
+        result = service.scan(scope_type, scope_id)
+    except UnknownTradingActivityScopeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return TradingActivityScannerResponse(
+        scope_type=result.scope_type,
+        scope_id=result.scope_id,
+        scope_name=result.scope_name,
+        target_session=result.target_session,
+        formula_version=result.formula_version,
+        baseline_sessions=result.baseline_sessions,
+        counts=TradingActivityScannerCountsResponse(**result.counts),
+        items=[TradingActivityScannerItemResponse(
+            instrument_id=item.instrument_id,
+            symbol=item.symbol,
+            display_name=item.display_name,
+            venue_code=item.venue_code,
+            status=item.status,
+            rank=item.rank,
+            latest_session=item.latest_session,
+            turnover_intensity=item.turnover_intensity,
+            baseline=item.baseline,
+            anomaly_score=item.anomaly_score,
+            unavailable_reason=item.unavailable_reason,
+        ) for item in result.items],
+    )
 
 
 @router.get(

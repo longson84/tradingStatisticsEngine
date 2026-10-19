@@ -62,3 +62,7 @@ class TradeStatisticsRepository(Protocol):
     def list_rows_before(
         self, instrument_id: int, before: date, limit: int,
     ) -> tuple[DailyTradeStatisticRecord, ...]: ...
+
+    def list_recent_rows(
+        self, instrument_ids: tuple[int, ...], through: date, limit_per_instrument: int,
+    ) -> tuple[DailyTradeStatisticRecord, ...]: ...

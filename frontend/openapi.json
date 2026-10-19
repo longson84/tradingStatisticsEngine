@@ -5226,6 +5226,237 @@
         "title": "TradeRowResponse",
         "type": "object"
       },
+      "TradingActivityScannerCountsResponse": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "insufficient_history": {
+            "title": "Insufficient History",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "integer"
+          },
+          "unavailable": {
+            "title": "Unavailable",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "stale",
+          "insufficient_history",
+          "unavailable"
+        ],
+        "title": "TradingActivityScannerCountsResponse",
+        "type": "object"
+      },
+      "TradingActivityScannerItemResponse": {
+        "properties": {
+          "anomaly_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Score"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "latest_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Session"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "stale",
+              "insufficient_history",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "turnover_intensity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnover Intensity"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "invalid_total_value",
+                  "invalid_market_cap",
+                  "non_positive_market_cap",
+                  "insufficient_history",
+                  "invalid_baseline_window",
+                  "zero_baseline_variance"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "unsupported_instrument",
+                  "no_stored_activity"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          }
+        },
+        "required": [
+          "instrument_id",
+          "symbol",
+          "display_name",
+          "venue_code",
+          "status",
+          "rank",
+          "latest_session",
+          "turnover_intensity",
+          "baseline",
+          "anomaly_score",
+          "unavailable_reason"
+        ],
+        "title": "TradingActivityScannerItemResponse",
+        "type": "object"
+      },
+      "TradingActivityScannerResponse": {
+        "properties": {
+          "baseline_sessions": {
+            "title": "Baseline Sessions",
+            "type": "integer"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TradingActivityScannerCountsResponse"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TradingActivityScannerItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
+          },
+          "scope_name": {
+            "title": "Scope Name",
+            "type": "string"
+          },
+          "scope_type": {
+            "enum": [
+              "universe",
+              "watchlist"
+            ],
+            "title": "Scope Type",
+            "type": "string"
+          },
+          "target_session": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Session"
+          }
+        },
+        "required": [
+          "scope_type",
+          "scope_id",
+          "scope_name",
+          "target_session",
+          "formula_version",
+          "baseline_sessions",
+          "counts",
+          "items"
+        ],
+        "title": "TradingActivityScannerResponse",
+        "type": "object"
+      },
       "TurnoverIntensityAnalysisResponse": {
         "properties": {
           "baseline_sessions": {
@@ -8276,6 +8507,62 @@
         "summary": "Get Instrument Trade Statistics",
         "tags": [
           "instruments"
+        ]
+      }
+    },
+    "/trading-activity/scanner": {
+      "get": {
+        "operationId": "scanTradingActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "universe",
+                "watchlist"
+              ],
+              "title": "Scope Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Scope Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradingActivityScannerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Trading Activity",
+        "tags": [
+          "trading activity"
         ]
       }
     },

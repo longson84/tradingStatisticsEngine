@@ -5,10 +5,10 @@ from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from decimal import Decimal, localcontext
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from api.db.models import Instrument, InstrumentDailyTradeStatistic, Venue
 from api.instrument_symbols import canonical_symbol_expression
@@ -157,6 +157,32 @@ class SqlAlchemyTradeStatisticsRepository:
             .execution_options(populate_existing=True)
         ))
         return tuple(self._record(row) for row in reversed(rows))
+
+    def list_recent_rows(
+        self, instrument_ids: tuple[int, ...], through: date, limit_per_instrument: int,
+    ) -> tuple[DailyTradeStatisticRecord, ...]:
+        """Read a bounded recent window per instrument in one database query."""
+        if not instrument_ids or limit_per_instrument < 1:
+            return ()
+        row_number = func.row_number().over(
+            partition_by=InstrumentDailyTradeStatistic.instrument_id,
+            order_by=InstrumentDailyTradeStatistic.trading_date.desc(),
+        ).label("recent_row_number")
+        ranked = (
+            select(InstrumentDailyTradeStatistic, row_number)
+            .where(
+                InstrumentDailyTradeStatistic.instrument_id.in_(instrument_ids),
+                InstrumentDailyTradeStatistic.trading_date <= through,
+            )
+            .subquery()
+        )
+        activity = aliased(InstrumentDailyTradeStatistic, ranked)
+        rows = self._session.scalars(
+            select(activity)
+            .where(ranked.c.recent_row_number <= limit_per_instrument)
+            .order_by(activity.instrument_id, activity.trading_date)
+        )
+        return tuple(self._record(row) for row in rows)
 
     @staticmethod
     def _record(row: InstrumentDailyTradeStatistic) -> DailyTradeStatisticRecord:

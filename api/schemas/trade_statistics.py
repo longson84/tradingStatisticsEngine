@@ -1,8 +1,10 @@
 """Numeric JSON contracts for stored daily Instrument trading activity."""
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
+from api.services.trade_statistics_service import TradingActivityScannerUnavailableReason
 from trading_engine.types import TurnoverIntensityUnavailableReason
 
 
@@ -57,3 +59,35 @@ class InstrumentTradeStatisticsResponse(BaseModel):
     row_count: int
     rows: list[DailyTradeStatisticResponse]
     turnover_intensity: TurnoverIntensityAnalysisResponse
+
+
+class TradingActivityScannerCountsResponse(BaseModel):
+    current: int
+    stale: int
+    insufficient_history: int
+    unavailable: int
+
+
+class TradingActivityScannerItemResponse(BaseModel):
+    instrument_id: int
+    symbol: str
+    display_name: str | None
+    venue_code: str | None
+    status: Literal["current", "stale", "insufficient_history", "unavailable"]
+    rank: int | None
+    latest_session: date | None
+    turnover_intensity: float | None
+    baseline: float | None
+    anomaly_score: float | None
+    unavailable_reason: TradingActivityScannerUnavailableReason | None
+
+
+class TradingActivityScannerResponse(BaseModel):
+    scope_type: Literal["universe", "watchlist"]
+    scope_id: str
+    scope_name: str
+    target_session: date | None
+    formula_version: str
+    baseline_sessions: int
+    counts: TradingActivityScannerCountsResponse
+    items: list[TradingActivityScannerItemResponse]

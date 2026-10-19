@@ -271,6 +271,18 @@ explicit migration and a source capable of providing reliable membership dates.
   requested-range response, its boundaries, or its count. This read path does
   not instantiate Vnstock or persist derived values and does not claim that
   stored sessions are exchange-calendar complete.
+- Collection scanning reuses that formula without persisting a ranking. It
+  resolves current Universe or Watchlist membership, bulk-reads at most 21
+  stored rows per supported member, and chooses the newest stored session that
+  is complete under each member's venue schedule as the collection target.
+  A member is `current` only when its latest usable point is on that target;
+  current members are ranked by descending intensity. Older latest points are
+  `stale`; target-session points lacking 20 prior stored observations are
+  `insufficient_history`; unsupported, missing, or invalid observations are
+  `unavailable`. These states are mutually exclusive. The target is deliberately
+  data-relative rather than today's expected session, so scan freshness is
+  visible from its date without fabricating missing exchange-calendar rows.
+  Scanner reads use PostgreSQL only and never instantiate a Vnstock provider.
 - `turnover_intensity_factor_series` is the only current factor conversion and
   shifts raw intensity by one observed session before returning `FactorSeries`.
   Strategies must likewise consume end-of-session activity no earlier than the
@@ -2704,6 +2716,29 @@ failed requests preserve earlier rows and receive one bounded retry by default.
 Incremental mode repairs the missing tail, not arbitrary internal historical
 gaps, and weekday completion is only a request-avoidance heuristic rather than
 an exchange-holiday completeness claim.
+
+### 2026-10-19 — Rank stored trading activity across collections
+
+Context: exact-Instrument turnover analytics made stored activity interpretable
+but did not help a user find unusually active equities across a Universe or
+Watchlist. Running one read per member would scale poorly, and treating today's
+date as complete would mislabel an internally consistent but older stored
+snapshot.
+
+Decision: add a PostgreSQL-only scanner over current Universe or Watchlist
+membership. Use one window-function query to read at most the current point
+plus 20 prior stored sessions per supported member. Define the target as the
+latest stored session that is complete under the supported member schedules;
+rank only usable target-session points by `turnover_intensity_v1`. Return
+current, stale, insufficient-history, and unavailable as mutually exclusive
+states, with explicit reasons and links to exact-Instrument detail. Do not
+persist derived scores or rankings and do not access Vnstock from this path.
+
+Consequences: users can compare current stored collection activity with bounded
+database work while stale, short, missing, invalid, and unsupported histories
+remain visible instead of silently dropping from the ranking. The displayed
+target date communicates data age; refreshing remains a separate explicit Data
+Operations action. This remains analysis, not a strategy or trading signal.
 
 A completed-session FPT smoke on 2026-10-16 exposed VCI averages of
 `788.324877791` and `1243.4310509554`. The two average-volume columns therefore
