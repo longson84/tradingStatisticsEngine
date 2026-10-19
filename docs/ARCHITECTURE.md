@@ -2570,7 +2570,7 @@ provider token. New market provenance is `vnstock-<version>-vci`; universe
 provenance is `vnstock-<version>-kbs`. Historical source labels remain
 displayable but are never rewritten.
 
-### 2026-10-18 — Store Vietnam equity participant flows by exact Instrument
+### 2026-10-18 — Store Vietnam equity participant flows by Instrument
 
 Context: Vnstock generation 5 exposes foreign-investor flow for Vietnam
 equities, but this dataset is not meaningful for every Instrument category.
@@ -2593,17 +2593,19 @@ observation, with a derived coverage row per Instrument and participant type.
 The public API and Investor Flow page expose `foreign` and `proprietary` as
 separate participant views with shared Instrument and date-range selection.
 
-Provider access occurs only through an explicit exact-Instrument Data
-Operation. Foreign and proprietary flows are separate Data Operation datasets
-because they are independent VCI requests with independent coverage and
-failure outcomes. Incremental refresh overlaps seven calendar days, normalizes
-the complete provider result, and atomically upserts it. Participant-flow jobs
-share the `vnstock` adapter lease with price and fundamental jobs. Opening or
-filtering the Investor Flow page reads PostgreSQL only and reports stored
-coverage and session-based staleness; it never triggers an implicit network
-request. Session aggregates and KBS live volume profile remain separate future
-datasets because their availability, time grain, and provider semantics differ
-from daily participant flow.
+Provider access occurs only through an explicit Data Operation. Foreign and
+proprietary flows are separate datasets because they are independent VCI
+requests with independent coverage and failure outcomes. A user may refresh
+one exact Instrument or the current eligible membership of a Universe or
+Watchlist; the unbounded category scope is rejected. Incremental refresh
+overlaps seven calendar days, normalizes the complete provider result, and
+atomically upserts it. Participant-flow jobs share the `vnstock` adapter lease,
+rate limiter, bounded worker pool, durable per-Instrument progress, and failure
+reporting with price and fundamental jobs. Opening or filtering the Investor
+Flow page reads PostgreSQL only and reports stored coverage and session-based
+staleness; it never triggers an implicit network request. Session aggregates
+remain exact-period, exact-Instrument snapshots because their period-wide
+semantics differ from daily participant flow.
 
 Consequences: equal ticker text on different Venues cannot cross-write or
 cross-read flow data, provider failure leaves prior observations intact, and
@@ -2611,6 +2613,32 @@ unsupported Instruments fail explicitly instead of returning an ambiguous
 empty series. Future participant types or flow-capable markets require an
 explicit capability, provider adapter, persistence semantics, and UI choice;
 they do not inherit support merely from sharing the Instrument model.
+
+### 2026-10-19 — Batch-refresh participant flows by collection
+
+Context: exact-Instrument acquisition made foreign and proprietary flow data
+correct but left Universe and Watchlist coverage sparse and manually refreshed.
+The existing Data Operations runner already resolves current collection
+membership into canonical Instrument IDs and coordinates bounded provider work.
+
+Decision: allow `foreign_flow` and `proprietary_flow` operations for Universe,
+Watchlist, and exact Instrument scopes. Continue to reject category scope in
+the public request contract, saved batch-plan contract, planner, and UI. Resolve
+collection membership at execution time, skip and report unsupported members,
+and limit each flow operation to 100 eligible Vnstock Instruments by default,
+with the dataset-specific environment override retained for measured operator
+capacity. Every provider attempt reserves the shared Vnstock rate limiter;
+failed flow requests retry once by default and remain capped at three attempts.
+Each participant dataset remains a separate operation and records its own
+per-Instrument progress and failure outcome. Preview and read paths remain
+PostgreSQL-only.
+
+Consequences: a saved batch plan can maintain coherent participant-flow
+coverage for bounded collections without introducing a scheduler or implicit
+network calls. One failed Instrument does not erase stored observations or hide
+successful peers. Session statistics stay exact-Instrument-only because one
+response is an aggregate snapshot for a requested period, not a daily series
+that can be refreshed with the flow workflow.
 
 ### 2026-10-18 — Store VCI session statistics as exact-period snapshots
 

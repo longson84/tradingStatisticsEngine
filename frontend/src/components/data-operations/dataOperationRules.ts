@@ -6,9 +6,24 @@ import type {
 
 
 export function requiresInstrumentScope(dataset: DataOperationDataset): boolean {
-  return dataset === "foreign_flow"
-    || dataset === "proprietary_flow"
-    || dataset === "session_stats"
+  return dataset === "session_stats"
+}
+
+
+export function batchDataOperationDatasetOptions(
+  scopeType: DataOperationScopeType,
+): Array<[DataOperationDataset, string]> {
+  const options: Array<[DataOperationDataset, string]> = [
+    ["prices", "Prices"],
+    ["fundamentals", "Fundamentals"],
+  ]
+  if (scopeType !== "category") {
+    options.push(
+      ["foreign_flow", "Foreign flow"],
+      ["proprietary_flow", "Proprietary flow"],
+    )
+  }
+  return options
 }
 
 
@@ -58,6 +73,10 @@ export function buildDataOperationRequest({
   periodEnd: string
 }) {
   if (requiresInstrumentScope(dataset) && scopeType !== "instrument") return null
+  if (
+    scopeType === "category"
+    && (dataset === "foreign_flow" || dataset === "proprietary_flow" || dataset === "trade_history")
+  ) return null
   const exactPeriod = dataset === "session_stats" || dataset === "trade_history"
   if (exactPeriod && (
     !isIsoDate(periodStart) || !isIsoDate(periodEnd) || periodStart > periodEnd

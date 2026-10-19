@@ -519,6 +519,12 @@ def test_participant_flow_requests_and_plans_reject_unbounded_category(dataset):
     assert plan.can_run is False
     assert "Universe, Watchlist, or Instrument" in plan.message
 
+    with pytest.raises(ValidationError, match="Universe, Watchlist, or Instrument"):
+        BatchOperationStepRequest(
+            target_type="category", target_id="equity", dataset=dataset,
+            mode="incremental",
+        )
+
 
 @pytest.mark.parametrize("dataset", ["foreign_flow", "proprietary_flow"])
 def test_participant_flow_planning_rejects_more_than_one_hundred_eligible_members(

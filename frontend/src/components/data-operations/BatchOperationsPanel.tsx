@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, GripVertical, ListPlus, Play, Plus, Trash2 }
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { batchDataOperationDatasetOptions } from "@/components/data-operations/dataOperationRules"
 import {
   batchOperationPlansApi,
   batchOperationRunApi,
@@ -174,6 +175,22 @@ function BatchPlanEditor({
     )))
   }
 
+  const updateStepTargetType = (
+    index: number,
+    step: BatchOperationStepRequest,
+    targetType: BatchOperationStepRequest["target_type"],
+  ) => {
+    const dataset = targetType === "category"
+      && (step.dataset === "foreign_flow" || step.dataset === "proprietary_flow")
+      ? "prices"
+      : step.dataset
+    updateStep(index, {
+      target_type: targetType,
+      target_id: defaultTarget(targetType),
+      dataset,
+    })
+  }
+
   return (
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
@@ -218,7 +235,7 @@ function BatchPlanEditor({
         {steps.map((step, index) => (
           <div key={index} className="grid min-w-[850px] grid-cols-[44px_160px_minmax(220px,1fr)_130px_130px_44px] items-center gap-0 border-t border-border px-3 py-2 text-xs">
             <span className="flex items-center gap-1 text-muted-foreground"><GripVertical size={13} />{index + 1}</span>
-            <select value={step.target_type} onChange={event => updateStep(index, { target_type: event.target.value as BatchOperationStepRequest["target_type"], target_id: defaultTarget(event.target.value) })} className="mr-2 h-8 rounded border border-input bg-background px-2">
+            <select value={step.target_type} onChange={event => updateStepTargetType(index, step, event.target.value as BatchOperationStepRequest["target_type"])} className="mr-2 h-8 rounded border border-input bg-background px-2">
               <option value="category">Instrument category</option>
               <option value="universe">Universe</option>
               <option value="watchlist">Watchlist</option>
@@ -230,7 +247,11 @@ function BatchPlanEditor({
               {step.target_type === "watchlist" && <option value="">Choose a watchlist…</option>}
               {step.target_type === "watchlist" && watchlists.data?.watchlists.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
             </select>
-            <select value={step.dataset} onChange={event => updateStep(index, { dataset: event.target.value as BatchOperationStepRequest["dataset"] })} className="mr-2 h-8 rounded border border-input bg-background px-2"><option value="prices">Prices</option><option value="fundamentals">Fundamentals</option></select>
+            <select value={step.dataset} onChange={event => updateStep(index, { dataset: event.target.value as BatchOperationStepRequest["dataset"] })} className="mr-2 h-8 rounded border border-input bg-background px-2">
+              {batchDataOperationDatasetOptions(step.target_type).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
             <select value={step.mode} onChange={event => updateStep(index, { mode: event.target.value as BatchOperationStepRequest["mode"] })} className="mr-2 h-8 rounded border border-input bg-background px-2"><option value="incremental">Incremental</option><option value="full">Full history</option></select>
             <button type="button" onClick={() => setSteps(current => current.filter((_, position) => position !== index))} aria-label={`Remove step ${index + 1}`} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 size={14} /></button>
           </div>

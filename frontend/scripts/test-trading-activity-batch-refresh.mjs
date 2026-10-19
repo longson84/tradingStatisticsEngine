@@ -14,7 +14,8 @@ try {
   )
 
   assert.equal(rules.requiresInstrumentScope("session_stats"), true)
-  assert.equal(rules.requiresInstrumentScope("foreign_flow"), true)
+  assert.equal(rules.requiresInstrumentScope("foreign_flow"), false)
+  assert.equal(rules.requiresInstrumentScope("proprietary_flow"), false)
   assert.equal(rules.requiresInstrumentScope("trade_history"), false)
   assert.equal(rules.effectiveDataOperationMode("session_stats", "incremental"), "full")
   assert.equal(rules.effectiveDataOperationMode("trade_history", "incremental"), "incremental")
@@ -38,6 +39,52 @@ try {
     period_start: "2026-10-01",
     period_end: "2026-10-16",
   })
+  assert.deepEqual(rules.buildDataOperationRequest({
+    scopeType: "universe",
+    scopeId: "VN100",
+    dataset: "foreign_flow",
+    mode: "incremental",
+    periodStart: "",
+    periodEnd: "",
+  }), {
+    scope_type: "universe",
+    scope_id: "VN100",
+    dataset: "foreign_flow",
+    mode: "incremental",
+    period_start: null,
+    period_end: null,
+  })
+  assert.deepEqual(rules.buildDataOperationRequest({
+    scopeType: "watchlist",
+    scopeId: "7",
+    dataset: "proprietary_flow",
+    mode: "full",
+    periodStart: "",
+    periodEnd: "",
+  }), {
+    scope_type: "watchlist",
+    scope_id: "7",
+    dataset: "proprietary_flow",
+    mode: "full",
+    period_start: null,
+    period_end: null,
+  })
+  assert.equal(rules.buildDataOperationRequest({
+    scopeType: "category",
+    scopeId: "equity",
+    dataset: "foreign_flow",
+    mode: "incremental",
+    periodStart: "",
+    periodEnd: "",
+  }), null)
+  assert.deepEqual(
+    rules.batchDataOperationDatasetOptions("universe").map(([value]) => value),
+    ["prices", "fundamentals", "foreign_flow", "proprietary_flow"],
+  )
+  assert.deepEqual(
+    rules.batchDataOperationDatasetOptions("category").map(([value]) => value),
+    ["prices", "fundamentals"],
+  )
   assert.equal(rules.buildDataOperationRequest({
     scopeType: "watchlist",
     scopeId: "7",

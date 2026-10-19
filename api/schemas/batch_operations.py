@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from api.schemas.data_operations import DataOperationJobResponse
 
@@ -16,6 +16,17 @@ class BatchOperationStepRequest(BaseModel):
         "prices", "fundamentals", "foreign_flow", "proprietary_flow"
     ] = "prices"
     mode: Literal["incremental", "full"] = "incremental"
+
+    @model_validator(mode="after")
+    def validate_scope(self):
+        if (
+            self.target_type == "category"
+            and self.dataset in {"foreign_flow", "proprietary_flow"}
+        ):
+            raise ValueError(
+                f"{self.dataset} requires a Universe, Watchlist, or Instrument scope"
+            )
+        return self
 
 
 class BatchOperationPlanRequest(BaseModel):

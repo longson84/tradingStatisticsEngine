@@ -468,7 +468,7 @@ export function DataOperationsPage({ view }: { view: "single" | "batch" }) {
             {start.error && <ErrorMessage message={start.error.message} />}
             {isParticipantFlowDataset(dataset) && (
               <p className="mt-3 text-xs text-muted-foreground">
-                {dataset === "foreign_flow" ? "Foreign" : "Proprietary"} flow updates stored VCI observations for one exact eligible Vietnam equity. It is not available for universes, watchlists, or unsupported instruments.
+                {dataset === "foreign_flow" ? "Foreign" : "Proprietary"} flow updates stored VCI observations for eligible Vietnam equities in the selected Universe, Watchlist, or exact Instrument. Unsupported instruments are reported and skipped.
               </p>
             )}
             {dataset === "session_stats" && <p className="mt-3 text-xs text-muted-foreground">Fetches one immutable VCI aggregate snapshot for this exact Instrument and period. Full mode is required.</p>}
