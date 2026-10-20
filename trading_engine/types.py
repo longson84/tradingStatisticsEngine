@@ -6,7 +6,7 @@ Every layer imports from this single file — no scattered type definitions.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal, Protocol, runtime_checkable
 
@@ -110,6 +110,44 @@ class TurnoverIntensityAnalysis:
     formula_version: str
     baseline_sessions: int
     points: tuple[TurnoverIntensityPoint, ...]
+
+
+# =============================================================================
+# Institutional position analytics
+# =============================================================================
+
+InstitutionalSecurityType = Literal["common_stock", "put", "call"]
+InstitutionalPositionAction = Literal[
+    "new", "added", "unchanged", "reduced", "exited",
+]
+
+
+@dataclass(frozen=True)
+class InstitutionalPositionSnapshot:
+    """One manager's reported position for an exact Instrument and period."""
+
+    manager_id: int
+    instrument_id: int
+    report_period: date
+    accepted_at: datetime
+    shares: Decimal
+    security_type: InstitutionalSecurityType
+
+
+@dataclass(frozen=True)
+class InstitutionalPositionChange:
+    """A versioned change inferred between two reported 13F positions."""
+
+    manager_id: int
+    instrument_id: int
+    report_period: date
+    available_at: datetime
+    previous_shares: Decimal
+    current_shares: Decimal
+    share_change: Decimal
+    percentage_change: Decimal | None
+    action: InstitutionalPositionAction
+    formula_version: str
 
 
 # =============================================================================
