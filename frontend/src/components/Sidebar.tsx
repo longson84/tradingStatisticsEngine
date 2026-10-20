@@ -6,6 +6,12 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const sections = [
   {
+    label: "US Market",
+    links: [
+      { to: "/us-market/institutional-activity", label: "Institutional Activity", icon: Landmark },
+    ],
+  },
+  {
     label: "Vietnam Market",
     links: [
       { to: "/vietnam-market/investor-flow", label: "Investor Flow", icon: Activity },

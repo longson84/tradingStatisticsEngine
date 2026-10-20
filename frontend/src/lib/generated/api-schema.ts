@@ -366,6 +366,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}/institutional-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Instrument Institutional Activity */
+        get: operations["getInstrumentInstitutionalActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments/{instrument_id}/market-flows": {
         parameters: {
             query?: never;
@@ -1090,6 +1107,119 @@ export interface components {
             trades: number;
             /** Year */
             year: number;
+        };
+        /** InstitutionalActivityChangeResponse */
+        InstitutionalActivityChangeResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "new" | "added" | "unchanged" | "reduced" | "exited";
+            /**
+             * Availability Precision
+             * @enum {string}
+             */
+            availability_precision: "accepted_at" | "filing_date_conservative";
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Current Shares */
+            current_shares: number;
+            /** Is Curated */
+            is_curated: boolean;
+            /** Manager Id */
+            manager_id: number;
+            /** Manager Name */
+            manager_name: string;
+            /** Percentage Change */
+            percentage_change: number | null;
+            /** Previous Shares */
+            previous_shares: number;
+            /**
+             * Report Period
+             * Format: date
+             */
+            report_period: string;
+            /** Share Change */
+            share_change: number;
+            /** Source Url */
+            source_url: string;
+        };
+        /** InstitutionalActivityHistoryResponse */
+        InstitutionalActivityHistoryResponse: {
+            /** Holder Count */
+            holder_count: number;
+            /**
+             * Report Period
+             * Format: date
+             */
+            report_period: string;
+            /** Total Shares */
+            total_shares: number;
+        };
+        /** InstitutionalActivityHolderResponse */
+        InstitutionalActivityHolderResponse: {
+            /**
+             * Availability Precision
+             * @enum {string}
+             */
+            availability_precision: "accepted_at" | "filing_date_conservative";
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Is Curated */
+            is_curated: boolean;
+            /** Manager Id */
+            manager_id: number;
+            /** Manager Name */
+            manager_name: string;
+            /**
+             * Report Period
+             * Format: date
+             */
+            report_period: string;
+            /** Shares */
+            shares: number;
+            /** Source Url */
+            source_url: string;
+        };
+        /** InstitutionalActivityResponse */
+        InstitutionalActivityResponse: {
+            /** Action Counts */
+            action_counts: {
+                [key: string]: number;
+            };
+            /** Changes */
+            changes: components["schemas"]["InstitutionalActivityChangeResponse"][];
+            /** Current Holders */
+            current_holders: components["schemas"]["InstitutionalActivityHolderResponse"][];
+            /** Formula Version */
+            formula_version: string;
+            /** History */
+            history: components["schemas"]["InstitutionalActivityHistoryResponse"][];
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Type */
+            instrument_type: string | null;
+            /** Latest Available At */
+            latest_available_at: string | null;
+            /** Latest Report Period */
+            latest_report_period: string | null;
+            /** Message */
+            message: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "unknown_instrument" | "unsupported_instrument" | "missing_identifier" | "no_stored_filings";
+            /** Symbol */
+            symbol: string | null;
+            /** Venue Code */
+            venue_code: string | null;
         };
         /** InstrumentCatalogFacetsResponse */
         InstrumentCatalogFacetsResponse: {
@@ -3544,6 +3674,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentPriceHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstrumentInstitutionalActivity: {
+        parameters: {
+            query?: {
+                quarters?: number;
+            };
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstitutionalActivityResponse"];
                 };
             };
             /** @description Validation Error */

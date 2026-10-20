@@ -18,6 +18,7 @@ import { InvestorFlowPage } from "@/pages/InvestorFlowPage"
 import { SessionStatisticsPage } from "@/pages/SessionStatisticsPage"
 import { TradingActivityPage } from "@/pages/TradingActivityPage"
 import { TradingActivityScannerPage } from "@/pages/TradingActivityScannerPage"
+import { InstitutionalActivityPage } from "@/pages/InstitutionalActivityPage"
 import { AnalysisContextProvider } from "@/lib/analysis-provider"
 
 const qc = new QueryClient({
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/vietnam-market/session-statistics" element={<SessionStatisticsPage />} />
           <Route path="/vietnam-market/trading-activity" element={<TradingActivityPage />} />
           <Route path="/vietnam-market/trading-activity-scanner" element={<TradingActivityScannerPage />} />
+          <Route path="/us-market/institutional-activity" element={<InstitutionalActivityPage />} />
           </Routes>
         </BrowserRouter>
       </AnalysisContextProvider>

@@ -12,6 +12,7 @@
     "test:turnover-intensity-analytics": "node scripts/test-turnover-intensity-analytics.mjs",
     "test:trading-activity-scanner": "node scripts/test-trading-activity-scanner.mjs",
     "test:vietnam-instrument-picker": "node scripts/test-vietnam-instrument-picker.mjs",
+    "test:institutional-activity": "node scripts/test-institutional-activity.mjs",
     "generate:api": "openapi-typescript openapi.json -o src/lib/generated/api-schema.ts",
     "preview": "vite preview",
     "type-check": "tsc -b"

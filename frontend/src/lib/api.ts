@@ -145,6 +145,7 @@ export type DailyTradeStatistic = components["schemas"]["DailyTradeStatisticResp
 export type InstrumentTradeStatisticsResponse = components["schemas"]["InstrumentTradeStatisticsResponse"]
 export type TradingActivityScannerResponse = components["schemas"]["TradingActivityScannerResponse"]
 export type TradingActivityScannerScopeType = NonNullable<operations["scanTradingActivity"]["parameters"]["query"]>["scope_type"]
+export type InstitutionalActivityResponse = components["schemas"]["InstitutionalActivityResponse"]
 
 // ── New Low Episode Analysis ────────────────────────────────────────────────
 
@@ -432,6 +433,14 @@ export function instrumentTradeStatisticsApi(params:
 ): Promise<InstrumentTradeStatisticsResponse> {
   const query = new URLSearchParams({ start: params.start, end: params.end })
   return get(`/instruments/${params.instrument_id}/trade-statistics?${query}`)
+}
+
+export function instrumentInstitutionalActivityApi(
+  params: operations["getInstrumentInstitutionalActivity"]["parameters"]["path"]
+    & NonNullable<operations["getInstrumentInstitutionalActivity"]["parameters"]["query"]>,
+): Promise<InstitutionalActivityResponse> {
+  const query = new URLSearchParams({ quarters: String(params.quarters ?? 8) })
+  return get(`/instruments/${params.instrument_id}/institutional-activity?${query}`)
 }
 
 export function tradingActivityScannerApi(

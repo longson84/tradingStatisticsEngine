@@ -1762,6 +1762,346 @@
         "title": "HealthRowResponse",
         "type": "object"
       },
+      "InstitutionalActivityChangeResponse": {
+        "properties": {
+          "action": {
+            "enum": [
+              "new",
+              "added",
+              "unchanged",
+              "reduced",
+              "exited"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "availability_precision": {
+            "enum": [
+              "accepted_at",
+              "filing_date_conservative"
+            ],
+            "title": "Availability Precision",
+            "type": "string"
+          },
+          "available_at": {
+            "format": "date-time",
+            "title": "Available At",
+            "type": "string"
+          },
+          "current_shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Current Shares"
+          },
+          "is_curated": {
+            "title": "Is Curated",
+            "type": "boolean"
+          },
+          "manager_id": {
+            "title": "Manager Id",
+            "type": "integer"
+          },
+          "manager_name": {
+            "title": "Manager Name",
+            "type": "string"
+          },
+          "percentage_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage Change"
+          },
+          "previous_shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Previous Shares"
+          },
+          "report_period": {
+            "format": "date",
+            "title": "Report Period",
+            "type": "string"
+          },
+          "share_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Share Change"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manager_id",
+          "manager_name",
+          "is_curated",
+          "action",
+          "previous_shares",
+          "current_shares",
+          "share_change",
+          "percentage_change",
+          "report_period",
+          "available_at",
+          "availability_precision",
+          "source_url"
+        ],
+        "title": "InstitutionalActivityChangeResponse",
+        "type": "object"
+      },
+      "InstitutionalActivityHistoryResponse": {
+        "properties": {
+          "holder_count": {
+            "title": "Holder Count",
+            "type": "integer"
+          },
+          "report_period": {
+            "format": "date",
+            "title": "Report Period",
+            "type": "string"
+          },
+          "total_shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Total Shares"
+          }
+        },
+        "required": [
+          "report_period",
+          "holder_count",
+          "total_shares"
+        ],
+        "title": "InstitutionalActivityHistoryResponse",
+        "type": "object"
+      },
+      "InstitutionalActivityHolderResponse": {
+        "properties": {
+          "availability_precision": {
+            "enum": [
+              "accepted_at",
+              "filing_date_conservative"
+            ],
+            "title": "Availability Precision",
+            "type": "string"
+          },
+          "available_at": {
+            "format": "date-time",
+            "title": "Available At",
+            "type": "string"
+          },
+          "is_curated": {
+            "title": "Is Curated",
+            "type": "boolean"
+          },
+          "manager_id": {
+            "title": "Manager Id",
+            "type": "integer"
+          },
+          "manager_name": {
+            "title": "Manager Name",
+            "type": "string"
+          },
+          "report_period": {
+            "format": "date",
+            "title": "Report Period",
+            "type": "string"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Shares"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manager_id",
+          "manager_name",
+          "is_curated",
+          "shares",
+          "report_period",
+          "available_at",
+          "availability_precision",
+          "source_url"
+        ],
+        "title": "InstitutionalActivityHolderResponse",
+        "type": "object"
+      },
+      "InstitutionalActivityResponse": {
+        "properties": {
+          "action_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Action Counts",
+            "type": "object"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/InstitutionalActivityChangeResponse"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "current_holders": {
+            "items": {
+              "$ref": "#/components/schemas/InstitutionalActivityHolderResponse"
+            },
+            "title": "Current Holders",
+            "type": "array"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/InstitutionalActivityHistoryResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "integer"
+          },
+          "instrument_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instrument Type"
+          },
+          "latest_available_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Available At"
+          },
+          "latest_report_period": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Report Period"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unknown_instrument",
+              "unsupported_instrument",
+              "missing_identifier",
+              "no_stored_filings"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "venue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Code"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "instrument_id",
+          "symbol",
+          "instrument_type",
+          "venue_code",
+          "formula_version",
+          "latest_report_period",
+          "latest_available_at",
+          "action_counts",
+          "history",
+          "changes",
+          "current_holders"
+        ],
+        "title": "InstitutionalActivityResponse",
+        "type": "object"
+      },
       "InstrumentCatalogFacetsResponse": {
         "properties": {
           "all_count": {
@@ -8291,6 +8631,60 @@
           }
         },
         "summary": "Instrument Price History",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/instruments/{instrument_id}/institutional-activity": {
+      "get": {
+        "operationId": "getInstrumentInstitutionalActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_id",
+            "required": true,
+            "schema": {
+              "title": "Instrument Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quarters",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Quarters",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionalActivityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instrument Institutional Activity",
         "tags": [
           "instruments"
         ]
