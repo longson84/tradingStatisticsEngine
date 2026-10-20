@@ -349,6 +349,12 @@ class Instrument(Base):
         cascade="all, delete-orphan",
         foreign_keys="WatchlistMembership.instrument_id",
     )
+    identifiers: Mapped[list[InstrumentIdentifier]] = relationship(
+        back_populates="instrument", cascade="all, delete-orphan"
+    )
+    institutional_positions: Mapped[list[InstitutionalFilingPosition]] = relationship(
+        back_populates="instrument"
+    )
 
     @hybrid_property
     def symbol(self) -> str:
@@ -451,6 +457,171 @@ class InstrumentSymbol(Base):
     )
 
     instrument: Mapped[Instrument] = relationship(back_populates="symbols")
+
+
+class InstrumentIdentifier(Base):
+    """Verified security-level identifier for an exact Instrument."""
+
+    __tablename__ = "instrument_identifiers"
+    __table_args__ = (
+        CheckConstraint(
+            "namespace IN ('cusip', 'figi', 'share_class_figi')",
+            name="ck_instrument_identifiers_namespace",
+        ),
+        CheckConstraint(
+            "valid_to IS NULL OR valid_from IS NULL OR valid_to >= valid_from",
+            name="ck_instrument_identifiers_validity",
+        ),
+        UniqueConstraint(
+            "instrument_id", "namespace", "value", "valid_from",
+            name="uq_instrument_identifier_identity",
+        ),
+        Index(
+            "ix_instrument_identifiers_lookup",
+            "namespace", "value", "valid_from", "valid_to",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    namespace: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[str] = mapped_column(String(64), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    instrument: Mapped[Instrument] = relationship(back_populates="identifiers")
+
+
+class InstitutionalManager(Base):
+    """An SEC 13F reporting manager identified by durable CIK."""
+
+    __tablename__ = "institutional_managers"
+    __table_args__ = (
+        CheckConstraint(
+            "length(sec_cik) BETWEEN 1 AND 10",
+            name="ck_institutional_managers_cik",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    sec_cik: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
+    legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(255))
+    is_curated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    filings: Mapped[list[InstitutionalFiling]] = relationship(
+        back_populates="manager", cascade="all, delete-orphan"
+    )
+
+
+class InstitutionalFiling(Base):
+    """One immutable SEC 13F accession, including amendments."""
+
+    __tablename__ = "institutional_filings"
+    __table_args__ = (
+        CheckConstraint(
+            "form_type IN ('13F-HR', '13F-HR/A')",
+            name="ck_institutional_filings_form",
+        ),
+        CheckConstraint(
+            "amendment_type IS NULL OR amendment_type IN ('restatement', 'new_holdings')",
+            name="ck_institutional_filings_amendment",
+        ),
+        Index(
+            "ix_institutional_filings_period",
+            "manager_id", "report_period", "accepted_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    manager_id: Mapped[int] = mapped_column(
+        ForeignKey("institutional_managers.id", ondelete="CASCADE"), nullable=False
+    )
+    accession_number: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    form_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    report_period: Mapped[date] = mapped_column(Date, nullable=False)
+    filed_at: Mapped[date] = mapped_column(Date, nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    amendment_type: Mapped[str | None] = mapped_column(String(32))
+    source_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    manager: Mapped[InstitutionalManager] = relationship(back_populates="filings")
+    positions: Mapped[list[InstitutionalFilingPosition]] = relationship(
+        back_populates="filing", cascade="all, delete-orphan"
+    )
+
+
+class InstitutionalFilingPosition(Base):
+    """One immutable as-filed 13F information-table row."""
+
+    __tablename__ = "institutional_filing_positions"
+    __table_args__ = (
+        CheckConstraint("source_row_number > 0", name="ck_institutional_positions_row"),
+        CheckConstraint("CAST(reported_value AS NUMERIC) >= 0", name="ck_institutional_positions_value"),
+        CheckConstraint("CAST(shares AS NUMERIC) > 0", name="ck_institutional_positions_shares"),
+        CheckConstraint("share_type IN ('SH', 'PRN')", name="ck_institutional_positions_share_type"),
+        CheckConstraint("put_call IS NULL OR put_call IN ('PUT', 'CALL')", name="ck_institutional_positions_put_call"),
+        CheckConstraint(
+            "CAST(voting_sole AS NUMERIC) >= 0 AND CAST(voting_shared AS NUMERIC) >= 0 AND CAST(voting_none AS NUMERIC) >= 0",
+            name="ck_institutional_positions_voting",
+        ),
+        UniqueConstraint(
+            "filing_id", "source_row_number",
+            name="uq_institutional_position_source_row",
+        ),
+        Index("ix_institutional_positions_instrument", "instrument_id", "filing_id"),
+        Index("ix_institutional_positions_cusip", "raw_cusip"),
+    )
+
+    id: Mapped[int] = mapped_column(_ID_TYPE, primary_key=True, autoincrement=True)
+    filing_id: Mapped[int] = mapped_column(
+        ForeignKey("institutional_filings.id", ondelete="CASCADE"), nullable=False
+    )
+    source_row_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    instrument_id: Mapped[int | None] = mapped_column(
+        ForeignKey("instruments.id", ondelete="SET NULL"), index=True
+    )
+    raw_cusip: Mapped[str] = mapped_column(String(16), nullable=False)
+    issuer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    title_of_class: Mapped[str] = mapped_column(String(100), nullable=False)
+    reported_value: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    reported_value_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="USD")
+    shares: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    share_type: Mapped[str] = mapped_column(String(8), nullable=False)
+    put_call: Mapped[str | None] = mapped_column(String(8))
+    investment_discretion: Mapped[str | None] = mapped_column(String(32))
+    voting_sole: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    voting_shared: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    voting_none: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    filing: Mapped[InstitutionalFiling] = relationship(back_populates="positions")
+    instrument: Mapped[Instrument | None] = relationship(
+        back_populates="institutional_positions"
+    )
 
 
 class Universe(Base):
