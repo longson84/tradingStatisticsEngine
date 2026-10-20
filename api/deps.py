@@ -38,6 +38,9 @@ from api.repositories.sqlalchemy_session_statistics_repository import (
 from api.repositories.sqlalchemy_trade_statistics_repository import (
     SqlAlchemyTradeStatisticsRepository,
 )
+from api.repositories.sqlalchemy_institutional_activity_repository import (
+    SqlAlchemyInstitutionalActivityRepository,
+)
 from api.repositories.sqlalchemy_reference_rate_repository import (
     SqlAlchemyReferenceRateRepository,
 )
@@ -67,6 +70,7 @@ from api.services.trade_statistics_service import (
     TradeStatisticsService,
     TradingActivityScannerService,
 )
+from api.services.institutional_activity_service import InstitutionalActivityService
 from api.services.watchlist_service import WatchlistService
 from api.services.universe_service import UniverseService
 from api.services.data_operation_service import (
@@ -164,6 +168,14 @@ def get_trade_statistics_service(
     return TradeStatisticsService(
         SqlAlchemyTradeStatisticsRepository(session),
         SqlAlchemyInstrumentRoutingRepository(session),
+    )
+
+
+def get_institutional_activity_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> InstitutionalActivityService:
+    return InstitutionalActivityService(
+        SqlAlchemyInstitutionalActivityRepository(session)
     )
 
 

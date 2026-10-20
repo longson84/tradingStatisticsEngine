@@ -15,9 +15,14 @@ from api.db.models import (
     InstitutionalManager,
     Instrument,
     InstrumentIdentifier,
+    Venue,
 )
+from api.instrument_symbols import canonical_symbol_expression
 from api.repositories.institutional_activity_repository import (
+    InstitutionalActivityInstrument,
     InstitutionalFilingWrite,
+    InstitutionalFilingMetadata,
+    InstitutionalManagerRecord,
     InstitutionalManagerWrite,
     InstitutionalPositionWrite,
     InstrumentIdentifierWrite,
@@ -28,6 +33,26 @@ from trading_engine.types import InstitutionalPositionSnapshot
 class SqlAlchemyInstitutionalActivityRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def get_instrument(self, instrument_id: int) -> InstitutionalActivityInstrument | None:
+        row = self._session.execute(
+            select(
+                Instrument.id,
+                canonical_symbol_expression(),
+                Instrument.instrument_type,
+                Instrument.is_active,
+                Venue.code.label("venue_code"),
+                Venue.country_code.label("venue_country_code"),
+            )
+            .outerjoin(Venue, Venue.id == Instrument.venue_id)
+            .where(Instrument.id == instrument_id)
+        ).one_or_none()
+        if row is None:
+            return None
+        return InstitutionalActivityInstrument(
+            row.id, row.symbol, row.instrument_type, row.venue_code,
+            row.venue_country_code, row.is_active,
+        )
 
     def upsert_manager(self, record: InstitutionalManagerWrite) -> int:
         cik = _cik(record.sec_cik)
@@ -92,6 +117,21 @@ class SqlAlchemyInstitutionalActivityRepository:
         if len(ids) > 1:
             raise ValueError(f"Ambiguous verified {namespace} mapping: {value}")
         return next(iter(ids), None)
+
+    def get_effective_identifier(
+        self, instrument_id: int, namespace: str, on: date,
+    ) -> str | None:
+        rows = tuple(self._session.scalars(select(InstrumentIdentifier.value).where(
+            InstrumentIdentifier.instrument_id == instrument_id,
+            InstrumentIdentifier.namespace == namespace,
+            (InstrumentIdentifier.valid_from.is_(None) | (InstrumentIdentifier.valid_from <= on)),
+            (InstrumentIdentifier.valid_to.is_(None) | (InstrumentIdentifier.valid_to >= on)),
+        )))
+        if len(set(rows)) > 1:
+            raise ValueError(
+                f"Instrument {instrument_id} has ambiguous effective {namespace} identifiers"
+            )
+        return next(iter(rows), None)
 
     def add_filing(self, record: InstitutionalFilingWrite) -> int:
         if self._session.get(InstitutionalManager, record.manager_id) is None:
@@ -227,6 +267,42 @@ class SqlAlchemyInstitutionalActivityRepository:
         for row in rows:
             accepted = _as_utc(row.accepted_at)
             result[row.manager_id] = max(result.get(row.manager_id, accepted), accepted)
+        return result
+
+    def list_managers(
+        self, manager_ids: tuple[int, ...],
+    ) -> dict[int, InstitutionalManagerRecord]:
+        if not manager_ids:
+            return {}
+        rows = self._session.scalars(select(InstitutionalManager).where(
+            InstitutionalManager.id.in_(manager_ids)
+        ))
+        return {
+            row.id: InstitutionalManagerRecord(
+                row.id, row.sec_cik, row.display_name or row.legal_name, row.is_curated,
+            )
+            for row in rows
+        }
+
+    def list_effective_filing_metadata(
+        self, manager_ids: tuple[int, ...], report_period: date,
+    ) -> dict[int, InstitutionalFilingMetadata]:
+        if not manager_ids:
+            return {}
+        rows = self._session.scalars(
+            select(InstitutionalFiling)
+            .where(
+                InstitutionalFiling.manager_id.in_(manager_ids),
+                InstitutionalFiling.report_period == report_period,
+            )
+            .order_by(InstitutionalFiling.accepted_at)
+        )
+        result = {}
+        for row in rows:
+            result[row.manager_id] = InstitutionalFilingMetadata(
+                row.manager_id, row.report_period, _as_utc(row.accepted_at),
+                row.availability_precision, row.source_url,
+            )
         return result
 
     def _position_values(self, record: InstitutionalPositionWrite) -> dict[str, object]:

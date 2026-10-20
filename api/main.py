@@ -20,6 +20,7 @@ from api.routes import (
     factors,
     instruments,
     instrument_history,
+    institutional_activity,
     market_flows,
     reference_rates,
     session_statistics,
@@ -49,6 +50,7 @@ app.include_router(events.router)
 app.include_router(companies.router)
 app.include_router(instruments.router)
 app.include_router(instrument_history.router)
+app.include_router(institutional_activity.router)
 app.include_router(market_flows.router)
 app.include_router(session_statistics.router)
 app.include_router(trade_statistics.router)
