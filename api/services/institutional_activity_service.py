@@ -145,7 +145,7 @@ class InstitutionalActivityService:
         }))
         managers = self._repository.list_managers(manager_ids)
         metadata = self._repository.list_effective_filing_metadata(
-            manager_ids, latest_period,
+            manager_ids, latest_period, instrument_id,
         )
         changes = tuple(
             InstitutionalActivityPositionChange(
@@ -183,7 +183,11 @@ class InstitutionalActivityService:
         for row in changes:
             counts[row.action] += 1
         latest_available = max(
-            (row.accepted_at for row in current), default=None,
+            (
+                *(row.accepted_at for row in current),
+                *(row.available_at for row in calculated),
+            ),
+            default=None,
         )
         return InstitutionalActivityData(
             status="available", message=None,

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from api.db.models import (
     InstitutionalFiling,
     InstitutionalFilingPosition,
+    InstitutionalPositionRejection,
     InstitutionalManager,
     Instrument,
     InstrumentIdentifier,
@@ -19,12 +20,14 @@ from api.db.models import (
 )
 from api.instrument_symbols import canonical_symbol_expression
 from api.repositories.institutional_activity_repository import (
+    AmbiguousInstrumentIdentifierError,
     InstitutionalActivityInstrument,
     InstitutionalFilingWrite,
     InstitutionalFilingMetadata,
     InstitutionalManagerRecord,
     InstitutionalManagerWrite,
     InstitutionalPositionWrite,
+    InstitutionalPositionRejectionWrite,
     InstrumentIdentifierWrite,
 )
 from trading_engine.types import InstitutionalPositionSnapshot
@@ -115,7 +118,9 @@ class SqlAlchemyInstitutionalActivityRepository:
         )))
         ids = {row.instrument_id for row in rows}
         if len(ids) > 1:
-            raise ValueError(f"Ambiguous verified {namespace} mapping: {value}")
+            raise AmbiguousInstrumentIdentifierError(
+                f"Ambiguous verified {namespace} mapping: {value}"
+            )
         return next(iter(ids), None)
 
     def get_effective_identifier(
@@ -157,12 +162,21 @@ class SqlAlchemyInstitutionalActivityRepository:
             accepted_at=accepted_at,
             availability_precision=record.availability_precision,
             amendment_type=record.amendment_type,
+            amendment_number=record.amendment_number,
+            is_complete=record.is_complete,
             source_url=_required(record.source_url, "filing source_url", 1000),
             source=_required(record.source, "filing source", 100),
             fetched_at=fetched_at,
         )
         if existing is not None:
-            if any(_utc_if_datetime(getattr(existing, name)) != value for name, value in values.items()):
+            immutable_values = {
+                name: value for name, value in values.items()
+                if name not in {"fetched_at", "is_complete"}
+            }
+            if any(
+                _utc_if_datetime(getattr(existing, name)) != value
+                for name, value in immutable_values.items()
+            ):
                 raise ValueError(f"Filing accession conflicts with stored record: {accession}")
             return existing.id
         row = InstitutionalFiling(**values)
@@ -179,7 +193,13 @@ class SqlAlchemyInstitutionalActivityRepository:
                 InstitutionalFilingPosition.source_row_number == record.source_row_number,
             ))
             if existing is not None:
-                if any(_utc_if_datetime(getattr(existing, name)) != value for name, value in values.items()):
+                immutable_values = {
+                    name: value for name, value in values.items() if name != "fetched_at"
+                }
+                if any(
+                    _utc_if_datetime(getattr(existing, name)) != value
+                    for name, value in immutable_values.items()
+                ):
                     raise ValueError("Institutional position conflicts with stored source row")
                 continue
             self._session.add(InstitutionalFilingPosition(**values))
@@ -187,11 +207,42 @@ class SqlAlchemyInstitutionalActivityRepository:
         self._session.flush()
         return added
 
+    def add_position_rejections(
+        self, records: Iterable[InstitutionalPositionRejectionWrite],
+    ) -> int:
+        added = 0
+        for record in records:
+            existing = self._session.scalar(select(InstitutionalPositionRejection).where(
+                InstitutionalPositionRejection.filing_id == record.filing_id,
+                InstitutionalPositionRejection.accession_number == record.accession_number,
+                InstitutionalPositionRejection.source_row_number == record.source_row_number,
+            ))
+            if existing is not None:
+                continue
+            self._session.add(InstitutionalPositionRejection(
+                filing_id=record.filing_id,
+                accession_number=_optional(record.accession_number, 32),
+                source_row_number=record.source_row_number,
+                reason=_required(record.reason, "rejection reason", 1000),
+                raw_payload=record.raw_payload,
+                source=_required(record.source, "rejection source", 100),
+                fetched_at=_aware(record.fetched_at, "rejection fetched_at"),
+            ))
+            added += 1
+        self._session.flush()
+        return added
+
+    def set_filing_completeness(self, filing_id: int, is_complete: bool) -> None:
+        filing = self._session.get(InstitutionalFiling, filing_id)
+        if filing is None:
+            raise ValueError(f"Unknown institutional filing: {filing_id}")
+        filing.is_complete = is_complete
+
     def list_report_periods(self, instrument_id: int, limit: int) -> tuple[date, ...]:
         if limit < 1:
             return ()
-        return tuple(self._session.scalars(
-            select(distinct(InstitutionalFiling.report_period))
+        prior_holder_managers = (
+            select(InstitutionalFiling.manager_id)
             .join(
                 InstitutionalFilingPosition,
                 InstitutionalFilingPosition.filing_id == InstitutionalFiling.id,
@@ -201,6 +252,14 @@ class SqlAlchemyInstitutionalActivityRepository:
                 InstitutionalFilingPosition.put_call.is_(None),
                 InstitutionalFilingPosition.share_type == "SH",
             )
+            .distinct()
+        )
+        return tuple(self._session.scalars(
+            select(distinct(InstitutionalFiling.report_period))
+            .where(
+                InstitutionalFiling.manager_id.in_(prior_holder_managers),
+                InstitutionalFiling.is_complete.is_(True),
+            )
             .order_by(InstitutionalFiling.report_period.desc())
             .limit(limit)
         ))
@@ -208,25 +267,10 @@ class SqlAlchemyInstitutionalActivityRepository:
     def list_effective_common_stock_positions(
         self, instrument_id: int, report_period: date,
     ) -> tuple[InstitutionalPositionSnapshot, ...]:
-        filings = tuple(self._session.scalars(
-            select(InstitutionalFiling)
-            .where(InstitutionalFiling.report_period == report_period)
-            .order_by(InstitutionalFiling.manager_id, InstitutionalFiling.accepted_at)
-        ))
-        effective_ids: set[int] = set()
-        by_manager: dict[int, list[InstitutionalFiling]] = defaultdict(list)
-        for filing in filings:
-            by_manager[filing.manager_id].append(filing)
-        for manager_filings in by_manager.values():
-            reset = [row for row in manager_filings if row.amendment_type != "new_holdings"]
-            if not reset:
-                continue
-            base = max(reset, key=lambda row: row.accepted_at)
-            effective_ids.add(base.id)
-            effective_ids.update(
-                row.id for row in manager_filings
-                if row.amendment_type == "new_holdings" and row.accepted_at > base.accepted_at
-            )
+        effective_by_manager = self._effective_filings(report_period)
+        effective_ids = {
+            row.id for rows in effective_by_manager.values() for row in rows
+        }
         if not effective_ids:
             return ()
         rows = tuple(self._session.execute(
@@ -254,6 +298,43 @@ class SqlAlchemyInstitutionalActivityRepository:
             for manager_id, values in sorted(grouped.items())
         )
 
+    def _effective_filings(
+        self, report_period: date,
+    ) -> dict[int, tuple[InstitutionalFiling, ...]]:
+        filings = tuple(self._session.scalars(
+            select(InstitutionalFiling)
+            .where(
+                InstitutionalFiling.report_period == report_period,
+                InstitutionalFiling.is_complete.is_(True),
+            )
+            .order_by(
+                InstitutionalFiling.manager_id,
+                InstitutionalFiling.accepted_at,
+                InstitutionalFiling.amendment_number,
+                InstitutionalFiling.id,
+            )
+        ))
+        by_manager: dict[int, list[InstitutionalFiling]] = defaultdict(list)
+        for filing in filings:
+            by_manager[filing.manager_id].append(filing)
+        result: dict[int, tuple[InstitutionalFiling, ...]] = {}
+        for manager_id, manager_filings in by_manager.items():
+            reset = [row for row in manager_filings if row.amendment_type != "new_holdings"]
+            if not reset:
+                continue
+            revision_key = lambda row: (
+                _as_utc(row.accepted_at), row.amendment_number, row.id,
+            )
+            base = max(reset, key=revision_key)
+            selected = [base]
+            selected.extend(
+                row for row in manager_filings
+                if row.amendment_type == "new_holdings"
+                and revision_key(row) > revision_key(base)
+            )
+            result[manager_id] = tuple(selected)
+        return result
+
     def list_filing_acceptance(
         self, manager_ids: tuple[int, ...], report_period: date,
     ) -> dict[int, datetime]:
@@ -262,6 +343,7 @@ class SqlAlchemyInstitutionalActivityRepository:
         rows = self._session.scalars(select(InstitutionalFiling).where(
             InstitutionalFiling.manager_id.in_(manager_ids),
             InstitutionalFiling.report_period == report_period,
+            InstitutionalFiling.is_complete.is_(True),
         ))
         result: dict[int, datetime] = {}
         for row in rows:
@@ -285,20 +367,31 @@ class SqlAlchemyInstitutionalActivityRepository:
         }
 
     def list_effective_filing_metadata(
-        self, manager_ids: tuple[int, ...], report_period: date,
+        self, manager_ids: tuple[int, ...], report_period: date, instrument_id: int,
     ) -> dict[int, InstitutionalFilingMetadata]:
         if not manager_ids:
             return {}
-        rows = self._session.scalars(
-            select(InstitutionalFiling)
-            .where(
-                InstitutionalFiling.manager_id.in_(manager_ids),
-                InstitutionalFiling.report_period == report_period,
-            )
-            .order_by(InstitutionalFiling.accepted_at)
-        )
+        effective = self._effective_filings(report_period)
         result = {}
-        for row in rows:
+        for manager_id in manager_ids:
+            manager_filings = effective.get(manager_id, ())
+            if not manager_filings:
+                continue
+            filing_ids = tuple(row.id for row in manager_filings)
+            contributing_ids = set(self._session.scalars(
+                select(InstitutionalFilingPosition.filing_id).where(
+                    InstitutionalFilingPosition.filing_id.in_(filing_ids),
+                    InstitutionalFilingPosition.instrument_id == instrument_id,
+                    InstitutionalFilingPosition.put_call.is_(None),
+                    InstitutionalFilingPosition.share_type == "SH",
+                )
+            ))
+            candidates = [
+                row for row in manager_filings if row.id in contributing_ids
+            ] or list(manager_filings)
+            row = max(candidates, key=lambda item: (
+                _as_utc(item.accepted_at), item.amendment_number, item.id,
+            ))
             result[row.manager_id] = InstitutionalFilingMetadata(
                 row.manager_id, row.report_period, _as_utc(row.accepted_at),
                 row.availability_precision, row.source_url,
@@ -325,6 +418,7 @@ class SqlAlchemyInstitutionalActivityRepository:
             filing_id=record.filing_id,
             source_row_number=record.source_row_number,
             instrument_id=record.instrument_id,
+            mapping_status=record.mapping_status,
             raw_cusip=_required(record.raw_cusip, "position CUSIP", 16).upper(),
             raw_figi=_optional(record.raw_figi, 32),
             issuer_name=_required(record.issuer_name, "position issuer", 255),

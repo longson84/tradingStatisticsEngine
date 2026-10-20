@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from api.adapters.sec_13f import Sec13FArchive
+from api.adapters.sec_13f import Sec13FArchive, Sec13FRejectedPosition
 from api.repositories.institutional_activity_repository import (
+    AmbiguousInstrumentIdentifierError,
     InstitutionalActivityRepository,
     InstitutionalFilingWrite,
     InstitutionalPositionWrite,
+    InstitutionalPositionRejectionWrite,
 )
 
 
@@ -18,6 +20,8 @@ class InstitutionalActivityImportResult:
     positions_added: int
     mapped_positions: int
     unmapped_positions: int
+    ambiguous_positions: int
+    rejected_positions: int
     option_positions: int
 
 
@@ -38,31 +42,70 @@ class InstitutionalActivityWriteService:
                 filed_at=submission.filed_at,
                 accepted_at=submission.accepted_at,
                 amendment_type=submission.amendment_type,
+                amendment_number=submission.amendment_number,
                 source_url=submission.source_url,
                 source=submission.source,
                 fetched_at=submission.fetched_at,
                 availability_precision=submission.availability_precision,
+                is_complete=False,
             ))
             filing_ids[submission.accession_number] = (filing_id, submission)
             submissions += 1
 
         writes: list[InstitutionalPositionWrite] = []
-        mapped = unmapped = options = 0
-        for position in archive.iter_positions():
+        rejections: list[InstitutionalPositionRejectionWrite] = []
+        incomplete_filing_ids: set[int] = set()
+        mapped = unmapped = ambiguous = rejected = options = added = seen = 0
+        for position in archive.iter_position_records():
+            seen += 1
+            if isinstance(position, Sec13FRejectedPosition):
+                filing = (
+                    filing_ids.get(position.accession_number)
+                    if position.accession_number is not None else None
+                )
+                filing_id = filing[0] if filing is not None else None
+                if filing_id is None:
+                    incomplete_filing_ids.update(row[0] for row in filing_ids.values())
+                else:
+                    incomplete_filing_ids.add(filing_id)
+                fetched_at = (
+                    filing[1].fetched_at if filing is not None else archive.fetched_at
+                )
+                rejections.append(InstitutionalPositionRejectionWrite(
+                    filing_id=filing_id,
+                    accession_number=position.accession_number,
+                    source_row_number=position.source_row_number,
+                    reason=position.reason,
+                    raw_payload=position.raw_payload,
+                    source="sec-13f",
+                    fetched_at=fetched_at,
+                ))
+                rejected += 1
+                if len(rejections) >= 1000:
+                    self._repository.add_position_rejections(rejections)
+                    rejections.clear()
+                continue
             filing = filing_ids.get(position.accession_number)
             if filing is None:
                 continue
             filing_id, submission = filing
-            instrument_id = self._repository.resolve_instrument_id(
-                "cusip", position.raw_cusip, submission.report_period
-            )
+            try:
+                instrument_id = self._repository.resolve_instrument_id(
+                    "cusip", position.raw_cusip, submission.report_period
+                )
+                mapping_status = "mapped" if instrument_id is not None else "unmapped"
+            except AmbiguousInstrumentIdentifierError:
+                instrument_id = None
+                mapping_status = "ambiguous"
+                ambiguous += 1
             mapped += instrument_id is not None
-            unmapped += instrument_id is None
+            unmapped += mapping_status == "unmapped"
             options += position.put_call is not None
             writes.append(InstitutionalPositionWrite(
                 filing_id=filing_id,
                 source_row_number=position.source_row_number,
                 instrument_id=instrument_id,
+                mapping_status=mapping_status,
                 raw_cusip=position.raw_cusip,
                 raw_figi=position.raw_figi,
                 issuer_name=position.issuer_name,
@@ -79,12 +122,22 @@ class InstitutionalActivityWriteService:
                 source="sec-13f",
                 fetched_at=submission.fetched_at,
             ))
-        added = self._repository.add_positions(writes)
+            if len(writes) >= 1000:
+                added += self._repository.add_positions(writes)
+                writes.clear()
+        added += self._repository.add_positions(writes)
+        self._repository.add_position_rejections(rejections)
+        for filing_id, _ in filing_ids.values():
+            self._repository.set_filing_completeness(
+                filing_id, filing_id not in incomplete_filing_ids,
+            )
         return InstitutionalActivityImportResult(
             submissions=submissions,
-            positions_seen=len(writes),
+            positions_seen=seen,
             positions_added=added,
             mapped_positions=mapped,
             unmapped_positions=unmapped,
+            ambiguous_positions=ambiguous,
+            rejected_positions=rejected,
             option_positions=options,
         )

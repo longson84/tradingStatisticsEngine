@@ -26,6 +26,7 @@ class Sec13FSubmission:
     accepted_at: datetime
     availability_precision: str
     amendment_type: str | None
+    amendment_number: int
     source_url: str
     source: str
     fetched_at: datetime
@@ -50,6 +51,14 @@ class Sec13FPosition:
     voting_none: Decimal
 
 
+@dataclass(frozen=True)
+class Sec13FRejectedPosition:
+    accession_number: str | None
+    source_row_number: int
+    reason: str
+    raw_payload: dict[str, str]
+
+
 class Sec13FArchive:
     """Re-openable, bounded-memory view over SEC SUBMISSION/COVERPAGE/INFOTABLE."""
 
@@ -65,6 +74,10 @@ class Sec13FArchive:
         self._stream = stream
         self._fetched_at = fetched_at.astimezone(UTC)
         self._acceptance_times = dict(acceptance_times or {})
+
+    @property
+    def fetched_at(self) -> datetime:
+        return self._fetched_at
 
     def iter_submissions(self) -> Iterator[Sec13FSubmission]:
         with self._zip() as archive:
@@ -114,18 +127,56 @@ class Sec13FArchive:
                     accepted_at=accepted_at,
                     availability_precision=precision,
                     amendment_type=_amendment_type(cover.get("AMENDMENTTYPE", "")),
+                    amendment_number=_optional_non_negative_integer(
+                        cover.get("AMENDMENTNO", ""), "COVERPAGE", row_number,
+                    ),
                     source_url=_filing_url(cik, accession),
                     source="sec-13f",
                     fetched_at=self._fetched_at,
                 )
 
     def iter_positions(self) -> Iterator[Sec13FPosition]:
+        for record in self.iter_position_records():
+            if isinstance(record, Sec13FRejectedPosition):
+                raise Sec13FArchiveError(record.reason)
+            yield record
+
+    def iter_position_records(
+        self,
+    ) -> Iterator[Sec13FPosition | Sec13FRejectedPosition]:
         with self._zip() as archive:
+            filing_dates = {
+                self._required(row, "ACCESSION_NUMBER", "SUBMISSION", row_number):
+                self._date(row, "FILING_DATE", "SUBMISSION", row_number)
+                for row_number, row in self._rows(archive, "SUBMISSION.tsv")
+            }
             for row_number, row in self._rows(archive, "INFOTABLE.tsv"):
-                yield Sec13FPosition(
-                    accession_number=self._required(
-                        row, "ACCESSION_NUMBER", "INFOTABLE", row_number
-                    ),
+                try:
+                    yield self._parse_position(row, row_number, filing_dates)
+                except Sec13FArchiveError as error:
+                    yield Sec13FRejectedPosition(
+                        accession_number=(row.get("ACCESSION_NUMBER") or "").strip() or None,
+                        source_row_number=row_number,
+                        reason=str(error),
+                        raw_payload={key: value or "" for key, value in row.items()},
+                    )
+
+    def _parse_position(
+        self,
+        row: Mapping[str, str | None],
+        row_number: int,
+        filing_dates: Mapping[str, date],
+    ) -> Sec13FPosition:
+        accession = self._required(
+            row, "ACCESSION_NUMBER", "INFOTABLE", row_number
+        )
+        filed_at = filing_dates.get(accession)
+        if filed_at is None:
+            raise Sec13FArchiveError(
+                f"INFOTABLE row {row_number}: missing SUBMISSION for {accession}"
+            )
+        return Sec13FPosition(
+                    accession_number=accession,
                     source_row_number=self._integer(
                         row, "INFOTABLE_SK", "INFOTABLE", row_number
                     ),
@@ -140,7 +191,9 @@ class Sec13FArchive:
                     reported_value=self._decimal(
                         row, "VALUE", "INFOTABLE", row_number, allow_zero=True
                     ),
-                    reported_value_unit="USD_thousands",
+                    reported_value_unit=(
+                        "USD" if filed_at >= date(2023, 1, 3) else "USD_thousands"
+                    ),
                     shares=self._decimal(
                         row, "SSHPRNAMT", "INFOTABLE", row_number, allow_zero=False
                     ),
@@ -160,7 +213,7 @@ class Sec13FArchive:
                     voting_none=self._decimal(
                         row, "VOTING_AUTH_NONE", "INFOTABLE", row_number, allow_zero=True
                     ),
-                )
+        )
 
     def _zip(self) -> ZipFile:
         try:
@@ -237,6 +290,23 @@ def _amendment_type(value: str) -> str | None:
     if "NEW HOLDINGS" in normalized:
         return "new_holdings"
     raise Sec13FArchiveError(f"Unsupported SEC 13F amendment type: {value}")
+
+
+def _optional_non_negative_integer(
+    value: str, table: str, row_number: int,
+) -> int:
+    normalized = (value or "").strip()
+    if not normalized:
+        return 0
+    try:
+        parsed = int(normalized)
+    except ValueError as error:
+        raise Sec13FArchiveError(
+            f"{table} row {row_number}: invalid AMENDMENTNO"
+        ) from error
+    if parsed < 0:
+        raise Sec13FArchiveError(f"{table} row {row_number}: invalid AMENDMENTNO")
+    return parsed
 
 
 def _filing_url(cik: str, accession: str) -> str:

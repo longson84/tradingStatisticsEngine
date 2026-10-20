@@ -53,7 +53,7 @@ class Repository:
             manager_id, str(manager_id).zfill(10), names[manager_id], manager_id == 1,
         ) for manager_id in manager_ids}
 
-    def list_effective_filing_metadata(self, manager_ids, report_period):
+    def list_effective_filing_metadata(self, manager_ids, report_period, instrument_id):
         return {manager_id: InstitutionalFilingMetadata(
             manager_id, report_period, ACCEPTED, "accepted_at",
             f"https://www.sec.gov/filing/{manager_id}",
@@ -83,6 +83,28 @@ def test_service_builds_history_latest_changes_and_current_holders_from_storage(
     ]
     assert all(row.source_url.startswith("https://www.sec.gov/") for row in result.changes)
     assert result.formula_version == "institutional_position_change_v1"
+
+
+def test_latest_availability_includes_a_zero_holder_exit_disclosure() -> None:
+    repository = Repository()
+    exit_accepted = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    repository.positions[PERIODS[0]] = ()
+    repository.list_filing_acceptance = lambda manager_ids, report_period: {
+        manager_id: exit_accepted for manager_id in manager_ids
+    }
+    repository.list_effective_filing_metadata = (
+        lambda manager_ids, report_period, instrument_id: {
+            manager_id: InstitutionalFilingMetadata(
+                manager_id, report_period, exit_accepted, "accepted_at",
+                f"https://www.sec.gov/filing/{manager_id}",
+            )
+            for manager_id in manager_ids
+        }
+    )
+
+    result = InstitutionalActivityService(repository).get_activity(42)
+
+    assert result.latest_available_at == exit_accepted
 
 
 def test_service_returns_explicit_known_instrument_unavailability_states() -> None:

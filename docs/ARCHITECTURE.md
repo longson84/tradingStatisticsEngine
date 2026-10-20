@@ -139,12 +139,17 @@ fundamentals also use PostgreSQL.
   Managers are independent from the Company issuing an Instrument.
 - `institutional_filings` preserves every supported 13F accession, including
   amendments, report period, filing and acceptance availability, source URL,
-  and fetch provenance. Restatements supersede the prior base for analytical
-  reads without deleting it; later new-holdings amendments add to that base.
+  SEC amendment sequence, completeness, and fetch provenance. Restatements
+  supersede the prior base for analytical reads without deleting it; later
+  new-holdings amendments add to that base. Incomplete filings cannot prove an
+  exit.
 - `institutional_filing_positions` preserves each as-filed information-table
   row, including unresolved CUSIP/FIGI values and put/call classification.
   Unmapped rows remain canonical evidence and common stock is never aggregated
   with options.
+- `institutional_position_rejections` retains malformed source rows and their
+  rejection reasons so one bad row does not erase otherwise valid archive
+  evidence.
 - `universes` stores system-managed named current snapshots such as US100,
   US500, US1000, US2000, US3000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
   universe has no market classification; any instrument characteristics needed
@@ -180,16 +185,18 @@ absence from storage is not evidence of an exit. Position changes are delayed
 filing-derived observations, not confirmed transactions, execution dates, or
 execution prices.
 
-Point-in-time availability is the filing's SEC acceptance timestamp. The
+Point-in-time availability is the latest SEC acceptance timestamp among every
+input used by the comparison. The
 quarterly flattened archive does not itself contain that timestamp; when an
 exact enriched timestamp is unavailable, ingestion conservatively uses 00:00
 UTC on the following day and records `filing_date_conservative`. A factor or
 strategy may consume either form only from the next eligible market session.
 The report-period date must never be used as the signal-availability date.
 
-SEC `INFOTABLE.VALUE` is retained in its documented `USD_thousands` unit rather
-than silently multiplied into dollars. Source CUSIP and FIGI are retained even
-when no verified Instrument mapping exists. The UI initially searches the
+SEC `INFOTABLE.VALUE` is retained as reported with a filing-era unit: `USD` for
+filings on or after 2023-01-03 and `USD_thousands` for older filings. Source
+CUSIP and FIGI are retained even when no verified Instrument mapping exists;
+ambiguous mappings remain explicit rather than aborting the archive. The UI initially searches the
 tracked US3000 equity universe, while the API eligibility rule is the canonical
 active US common-stock Instrument boundary.
 

@@ -36,7 +36,9 @@ def refresh_institutional_activity(
     return (
         f"imported {result.submissions} SEC 13F submissions and "
         f"{result.positions_seen} positions: {result.mapped_positions} mapped, "
-        f"{result.unmapped_positions} unmapped, {result.option_positions} options; "
+        f"{result.unmapped_positions} unmapped, "
+        f"{result.ambiguous_positions} ambiguous, "
+        f"{result.rejected_positions} rejected, {result.option_positions} options; "
         f"{result.positions_added} new source rows"
     )
 

@@ -26,6 +26,8 @@ quarter-to-quarter position changes derived from SEC Form 13F filings.
   FIGI against the exact Instrument, never against Company.
 - `institutional_filing_positions` preserves each as-filed information-table
   row, including unmapped CUSIPs, options, and source-row identity.
+- Filing completeness and rejected raw rows are preserved; incomplete filings
+  cannot be used as proof that a manager exited a position.
 - Position changes are a versioned analytical projection over effective filing
   revisions. They are not authoritative trade records.
 - Common stock, put, and call rows remain separate. V1 presents common-stock
@@ -39,7 +41,9 @@ quarter-to-quarter position changes derived from SEC Form 13F filings.
   CUSIP mapping. Issuer-name or ticker similarity never creates a mapping.
 - Amendments remain immutable and supersede earlier filings only through an
   explicit effective-revision rule.
-- Invalid or unmapped rows are retained with machine-readable quality status.
+- Invalid, ambiguous, or unmapped rows are retained with machine-readable
+  quality status. SEC VALUE remains raw with its filing-era unit (`USD` from
+  2023-01-03, `USD_thousands` before).
 
 ## UI
 

@@ -10,6 +10,10 @@ from typing import Protocol
 from trading_engine.types import InstitutionalPositionSnapshot
 
 
+class AmbiguousInstrumentIdentifierError(ValueError):
+    """Verified identifier ranges resolve to multiple Instruments."""
+
+
 @dataclass(frozen=True)
 class InstitutionalActivityInstrument:
     instrument_id: int
@@ -55,10 +59,12 @@ class InstitutionalFilingWrite:
     filed_at: date
     accepted_at: datetime
     amendment_type: str | None
+    amendment_number: int
     source_url: str
     source: str
     fetched_at: datetime
     availability_precision: str = "accepted_at"
+    is_complete: bool = True
 
 
 @dataclass(frozen=True)
@@ -77,6 +83,7 @@ class InstitutionalPositionWrite:
     filing_id: int
     source_row_number: int
     instrument_id: int | None
+    mapping_status: str
     raw_cusip: str
     issuer_name: str
     title_of_class: str
@@ -91,7 +98,18 @@ class InstitutionalPositionWrite:
     source: str
     fetched_at: datetime
     raw_figi: str | None = None
-    reported_value_unit: str = "USD_thousands"
+    reported_value_unit: str = "USD"
+
+
+@dataclass(frozen=True)
+class InstitutionalPositionRejectionWrite:
+    filing_id: int | None
+    accession_number: str | None
+    source_row_number: int
+    reason: str
+    raw_payload: dict[str, str]
+    source: str
+    fetched_at: datetime
 
 
 class InstitutionalActivityRepository(Protocol):
@@ -104,6 +122,10 @@ class InstitutionalActivityRepository(Protocol):
     ) -> str | None: ...
     def add_filing(self, record: InstitutionalFilingWrite) -> int: ...
     def add_positions(self, records: Iterable[InstitutionalPositionWrite]) -> int: ...
+    def add_position_rejections(
+        self, records: Iterable[InstitutionalPositionRejectionWrite],
+    ) -> int: ...
+    def set_filing_completeness(self, filing_id: int, is_complete: bool) -> None: ...
     def list_report_periods(self, instrument_id: int, limit: int) -> tuple[date, ...]: ...
     def list_effective_common_stock_positions(
         self, instrument_id: int, report_period: date,
@@ -115,5 +137,5 @@ class InstitutionalActivityRepository(Protocol):
         self, manager_ids: tuple[int, ...],
     ) -> Mapping[int, InstitutionalManagerRecord]: ...
     def list_effective_filing_metadata(
-        self, manager_ids: tuple[int, ...], report_period: date,
+        self, manager_ids: tuple[int, ...], report_period: date, instrument_id: int,
     ) -> Mapping[int, InstitutionalFilingMetadata]: ...

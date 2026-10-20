@@ -77,6 +77,34 @@ def test_does_not_infer_exit_without_a_current_filing_for_the_manager() -> None:
     assert result == ()
 
 
+def test_change_is_not_available_before_a_late_prior_period_restatement() -> None:
+    prior_accepted = datetime(2026, 9, 1, 12, tzinfo=UTC)
+    current_accepted = datetime(2026, 8, 1, 12, tzinfo=UTC)
+
+    result = derive_institutional_position_changes(
+        (snapshot(1, 100, period=date(2026, 3, 31), accepted_at=prior_accepted),),
+        (snapshot(1, 125, accepted_at=current_accepted),),
+        current_report_period=PERIOD,
+        current_filing_accepted_at={1: current_accepted},
+    )
+
+    assert result[0].available_at == prior_accepted
+
+
+def test_exit_is_not_available_before_a_late_prior_period_restatement() -> None:
+    prior_accepted = datetime(2026, 9, 1, 12, tzinfo=UTC)
+    current_accepted = datetime(2026, 8, 1, 12, tzinfo=UTC)
+
+    result = derive_institutional_position_changes(
+        (snapshot(1, 100, period=date(2026, 3, 31), accepted_at=prior_accepted),),
+        (),
+        current_report_period=PERIOD,
+        current_filing_accepted_at={1: current_accepted},
+    )
+
+    assert result[0].available_at == prior_accepted
+
+
 def test_excludes_put_and_call_positions_from_common_stock_changes() -> None:
     result = derive_institutional_position_changes(
         (),

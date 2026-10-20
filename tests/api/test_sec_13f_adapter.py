@@ -7,18 +7,18 @@ import pytest
 from api.adapters.sec_13f import Sec13FArchive, Sec13FArchiveError
 
 
-def archive_bytes(*, shares: str = "227917810") -> bytes:
+def archive_bytes(*, shares: str = "227917810", filing_date: str = "14-AUG-2026") -> bytes:
     buffer = BytesIO()
     with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
         archive.writestr(
             "SUBMISSION.tsv",
             "ACCESSION_NUMBER\tFILING_DATE\tSUBMISSIONTYPE\tCIK\tPERIODOFREPORT\n"
-            "0001067983-26-000001\t14-AUG-2026\t13F-HR\t0001067983\t30-JUN-2026\n",
+            f"0001067983-26-000001\t{filing_date}\t13F-HR\t0001067983\t30-JUN-2026\n",
         )
         archive.writestr(
             "COVERPAGE.tsv",
-            "ACCESSION_NUMBER\tFILINGMANAGER_NAME\tISAMENDMENT\tAMENDMENTTYPE\n"
-            "0001067983-26-000001\tBerkshire Hathaway Inc\t\t\n",
+            "ACCESSION_NUMBER\tFILINGMANAGER_NAME\tISAMENDMENT\tAMENDMENTTYPE\tAMENDMENTNO\n"
+            "0001067983-26-000001\tBerkshire Hathaway Inc\t\t\t\n",
         )
         archive.writestr(
             "INFOTABLE.tsv",
@@ -50,7 +50,7 @@ def test_archive_parses_official_submission_cover_and_information_tables() -> No
     assert position.raw_cusip == "037833100"
     assert position.raw_figi == "BBG000B9XRY4"
     assert position.reported_value == 47410000
-    assert position.reported_value_unit == "USD_thousands"
+    assert position.reported_value_unit == "USD"
     assert position.shares == 227917810
     assert position.put_call is None
 
@@ -75,3 +75,14 @@ def test_archive_rejects_non_positive_shares_with_source_context() -> None:
 
     with pytest.raises(Sec13FArchiveError, match="INFOTABLE row 2.*SSHPRNAMT"):
         tuple(source.iter_positions())
+
+
+def test_archive_preserves_pre_2023_value_unit_as_usd_thousands() -> None:
+    payload = archive_bytes(filing_date="14-AUG-2022")
+    source = Sec13FArchive(
+        BytesIO(payload), fetched_at=datetime(2026, 9, 14, 3, tzinfo=UTC),
+    )
+
+    position, = source.iter_positions()
+
+    assert position.reported_value_unit == "USD_thousands"

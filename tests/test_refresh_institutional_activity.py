@@ -22,7 +22,8 @@ def test_refresh_imports_a_local_official_archive_atomically(tmp_path) -> None:
 
     assert detail == (
         "imported 1 SEC 13F submissions and 1 positions: "
-        "0 mapped, 1 unmapped, 0 options; 1 new source rows"
+        "0 mapped, 1 unmapped, 0 ambiguous, 0 rejected, 0 options; "
+        "1 new source rows"
     )
     with Session(engine) as session:
         assert session.scalar(select(func.count()).select_from(InstitutionalFiling)) == 1

@@ -48,14 +48,18 @@ def derive_institutional_position_changes(
             if action in {"new", "exited"}
             else delta / previous_shares * Decimal(100)
         )
+        present_available_at = (
+            present.accepted_at
+            if present is not None
+            else current_filing_accepted_at[manager_id]
+        )
         changes.append(InstitutionalPositionChange(
             manager_id=manager_id,
             instrument_id=instrument_id,
             report_period=current_report_period,
-            available_at=(
-                present.accepted_at
-                if present is not None
-                else current_filing_accepted_at[manager_id]
+            available_at=max(
+                present_available_at,
+                prior.accepted_at if prior is not None else present_available_at,
             ),
             previous_shares=previous_shares,
             current_shares=current_shares,
