@@ -31,6 +31,7 @@ class InstitutionalFilingWrite:
     source_url: str
     source: str
     fetched_at: datetime
+    availability_precision: str = "accepted_at"
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,8 @@ class InstitutionalPositionWrite:
     voting_none: Decimal
     source: str
     fetched_at: datetime
-    reported_value_unit: str = "USD"
+    raw_figi: str | None = None
+    reported_value_unit: str = "USD_thousands"
 
 
 class InstitutionalActivityRepository(Protocol):

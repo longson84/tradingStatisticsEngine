@@ -56,6 +56,7 @@ def upgrade() -> None:
         sa.Column("report_period", sa.Date(), nullable=False),
         sa.Column("filed_at", sa.Date(), nullable=False),
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("availability_precision", sa.String(32), nullable=False),
         sa.Column("amendment_type", sa.String(32), nullable=True),
         sa.Column("source_url", sa.String(1000), nullable=False),
         sa.Column("source", sa.String(100), nullable=False),
@@ -63,6 +64,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("form_type IN ('13F-HR', '13F-HR/A')", name="ck_institutional_filings_form"),
         sa.CheckConstraint("amendment_type IS NULL OR amendment_type IN ('restatement', 'new_holdings')", name="ck_institutional_filings_amendment"),
+        sa.CheckConstraint("availability_precision IN ('accepted_at', 'filing_date_conservative')", name="ck_institutional_filings_availability"),
     )
     op.create_index("ix_institutional_filings_period", "institutional_filings", ["manager_id", "report_period", "accepted_at"])
 
@@ -73,10 +75,11 @@ def upgrade() -> None:
         sa.Column("source_row_number", sa.Integer(), nullable=False),
         sa.Column("instrument_id", sa.BigInteger().with_variant(sa.Integer(), "sqlite"), sa.ForeignKey("instruments.id", ondelete="SET NULL"), nullable=True),
         sa.Column("raw_cusip", sa.String(16), nullable=False),
+        sa.Column("raw_figi", sa.String(32), nullable=True),
         sa.Column("issuer_name", sa.String(255), nullable=False),
         sa.Column("title_of_class", sa.String(100), nullable=False),
         sa.Column("reported_value", sa.Numeric(38, 6), nullable=False),
-        sa.Column("reported_value_unit", sa.String(16), nullable=False, server_default="USD"),
+        sa.Column("reported_value_unit", sa.String(32), nullable=False, server_default="USD_thousands"),
         sa.Column("shares", sa.Numeric(38, 6), nullable=False),
         sa.Column("share_type", sa.String(8), nullable=False),
         sa.Column("put_call", sa.String(8), nullable=True),

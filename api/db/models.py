@@ -541,6 +541,10 @@ class InstitutionalFiling(Base):
             "amendment_type IS NULL OR amendment_type IN ('restatement', 'new_holdings')",
             name="ck_institutional_filings_amendment",
         ),
+        CheckConstraint(
+            "availability_precision IN ('accepted_at', 'filing_date_conservative')",
+            name="ck_institutional_filings_availability",
+        ),
         Index(
             "ix_institutional_filings_period",
             "manager_id", "report_period", "accepted_at",
@@ -556,6 +560,7 @@ class InstitutionalFiling(Base):
     report_period: Mapped[date] = mapped_column(Date, nullable=False)
     filed_at: Mapped[date] = mapped_column(Date, nullable=False)
     accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    availability_precision: Mapped[str] = mapped_column(String(32), nullable=False)
     amendment_type: Mapped[str | None] = mapped_column(String(32))
     source_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -601,10 +606,13 @@ class InstitutionalFilingPosition(Base):
         ForeignKey("instruments.id", ondelete="SET NULL"), index=True
     )
     raw_cusip: Mapped[str] = mapped_column(String(16), nullable=False)
+    raw_figi: Mapped[str | None] = mapped_column(String(32))
     issuer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     title_of_class: Mapped[str] = mapped_column(String(100), nullable=False)
     reported_value: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
-    reported_value_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="USD")
+    reported_value_unit: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="USD_thousands"
+    )
     shares: Mapped[Decimal] = mapped_column(_TradeStatisticFixedPoint(), nullable=False)
     share_type: Mapped[str] = mapped_column(String(8), nullable=False)
     put_call: Mapped[str | None] = mapped_column(String(8))

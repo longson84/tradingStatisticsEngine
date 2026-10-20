@@ -103,6 +103,8 @@ class SqlAlchemyInstitutionalActivityRepository:
             raise ValueError("Unsupported institutional filing form")
         if record.amendment_type not in {None, "restatement", "new_holdings"}:
             raise ValueError("Unsupported institutional amendment type")
+        if record.availability_precision not in {"accepted_at", "filing_date_conservative"}:
+            raise ValueError("Unsupported filing availability precision")
         existing = self._session.scalar(select(InstitutionalFiling).where(
             InstitutionalFiling.accession_number == accession
         ))
@@ -113,6 +115,7 @@ class SqlAlchemyInstitutionalActivityRepository:
             report_period=record.report_period,
             filed_at=record.filed_at,
             accepted_at=accepted_at,
+            availability_precision=record.availability_precision,
             amendment_type=record.amendment_type,
             source_url=_required(record.source_url, "filing source_url", 1000),
             source=_required(record.source, "filing source", 100),
@@ -247,6 +250,7 @@ class SqlAlchemyInstitutionalActivityRepository:
             source_row_number=record.source_row_number,
             instrument_id=record.instrument_id,
             raw_cusip=_required(record.raw_cusip, "position CUSIP", 16).upper(),
+            raw_figi=_optional(record.raw_figi, 32),
             issuer_name=_required(record.issuer_name, "position issuer", 255),
             title_of_class=_required(record.title_of_class, "position class", 100),
             reported_value=record.reported_value,
