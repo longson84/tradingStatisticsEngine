@@ -131,6 +131,20 @@ fundamentals also use PostgreSQL.
   ticker mappings with optional validity dates. Every Instrument has exactly
   one current primary `canonical` row. That row is the authoritative display
   and lookup symbol; provider and listing namespaces remain independent aliases.
+- `instrument_identifiers` stores verified effective-dated security identifiers
+  such as CUSIP, FIGI, and share-class FIGI against the exact Instrument.
+  Security identifiers never live on Company, and issuer-name or ticker
+  similarity never creates an identifier mapping.
+- `institutional_managers` identifies SEC Form 13F reporting managers by CIK.
+  Managers are independent from the Company issuing an Instrument.
+- `institutional_filings` preserves every supported 13F accession, including
+  amendments, report period, filing and acceptance availability, source URL,
+  and fetch provenance. Restatements supersede the prior base for analytical
+  reads without deleting it; later new-holdings amendments add to that base.
+- `institutional_filing_positions` preserves each as-filed information-table
+  row, including unresolved CUSIP/FIGI values and put/call classification.
+  Unmapped rows remain canonical evidence and common stock is never aggregated
+  with options.
 - `universes` stores system-managed named current snapshots such as US100,
   US500, US1000, US2000, US3000, US30, VN30, VNMID, VN100, VNSML, VNALL, and Binance Spot. A
   universe has no market classification; any instrument characteristics needed
@@ -149,6 +163,35 @@ fundamentals also use PostgreSQL.
 - `instrument_daily_trade_statistics` stores canonical provider-reported daily
   activity once per Instrument and session, separately from OHLCV, participant
   flows, and exact-period session-statistics snapshots.
+
+### US Institutional Activity
+
+Institutional Activity is a PostgreSQL-only read surface over official SEC
+quarterly Form 13F archives. Acquisition is an explicit write workflow; page
+loads and API reads never contact the SEC or an identifier provider. The first
+release supports active US common-stock Instruments, up to eight stored report
+periods, current holders, and latest inferred position changes.
+
+Formula `institutional_position_change_v1` compares effective common-stock
+share positions for the same manager and Instrument across consecutive report
+periods. It classifies `new`, `added`, `unchanged`, `reduced`, and `exited`.
+An exit is emitted only when a current-period filing exists for that manager;
+absence from storage is not evidence of an exit. Position changes are delayed
+filing-derived observations, not confirmed transactions, execution dates, or
+execution prices.
+
+Point-in-time availability is the filing's SEC acceptance timestamp. The
+quarterly flattened archive does not itself contain that timestamp; when an
+exact enriched timestamp is unavailable, ingestion conservatively uses 00:00
+UTC on the following day and records `filing_date_conservative`. A factor or
+strategy may consume either form only from the next eligible market session.
+The report-period date must never be used as the signal-availability date.
+
+SEC `INFOTABLE.VALUE` is retained in its documented `USD_thousands` unit rather
+than silently multiplied into dollars. Source CUSIP and FIGI are retained even
+when no verified Instrument mapping exists. The UI initially searches the
+tracked US3000 equity universe, while the API eligibility rule is the canonical
+active US common-stock Instrument boundary.
 
 The initial membership table represents current saved snapshots. It is not
 historical membership data. Effective-dated membership will require a later
