@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { useAnalysisContext } from "@/lib/use-analysis-context"
 import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
+import { fmtDate } from "@/lib/format"
 
 // ── Per-factor dynamic param config ──────────────────────────────────────────
 
@@ -273,7 +274,7 @@ export function FactorsPage() {
             <>
               {data.is_stale && (
                 <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
-                  Stored data ends at {data.data_last_session}; expected {data.expected_last_session}. Update this instrument through Data Operations before treating the analysis as current.
+                  Stored data ends at {fmtDate(data.data_last_session)}; expected {fmtDate(data.expected_last_session)}. Update this instrument through Data Operations before treating the analysis as current.
                 </div>
               )}
               <RarityResults data={data} factorType={factorType} />

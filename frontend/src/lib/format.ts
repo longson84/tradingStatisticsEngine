@@ -6,6 +6,7 @@
  *  - Percentages: 2 decimal places + "%"                 → "42.66%"
  *  - Factor vals: shown as % (×100, 2dp, signed)         → "-42.66%"
  *  - Dates:       dd/MM/yy                               → "23/03/26"
+ *  - Timestamps:  dd/MM/yy HH:mm in the user's timezone  → "23/03/26 14:05"
  *  - Plain ints:  thousand separator, no decimal         → "4,206"
  */
 
@@ -38,6 +39,19 @@ export function fmtDate(d: string | null | undefined): string {
   if (!d) return "—"
   const [year, month, day] = d.split("-")
   return `${day}/${month}/${year.slice(2)}`
+}
+
+/** ISO timestamp → local wall time "dd/MM/yy HH:mm" */
+export function fmtDateTime(d: string | null | undefined): string {
+  if (!d) return "—"
+  const value = new Date(d)
+  if (Number.isNaN(value.getTime())) return d
+  const day = String(value.getDate()).padStart(2, "0")
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const year = String(value.getFullYear()).slice(-2)
+  const hour = String(value.getHours()).padStart(2, "0")
+  const minute = String(value.getMinutes()).padStart(2, "0")
+  return `${day}/${month}/${year} ${hour}:${minute}`
 }
 
 export function fmtInt(n: number): string {

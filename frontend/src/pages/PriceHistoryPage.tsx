@@ -16,7 +16,7 @@ import {
   type InstrumentCatalogItem,
   type InstrumentPriceHistoryResponse,
 } from "@/lib/api"
-import { fmtProviderSource } from "@/lib/format"
+import { fmtDate, fmtDateTime, fmtProviderSource } from "@/lib/format"
 import { parseIndicatorLengths } from "@/lib/moving-averages"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { useAnalysisContext } from "@/lib/use-analysis-context"
@@ -165,7 +165,7 @@ export function PriceHistoryPage() {
 
         {history.data?.is_stale && (
           <div className="mb-5 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
-            Stored data ends at {history.data.last_date}; expected {history.data.expected_last_session}. Update this instrument through Data Operations to load newer observations.
+            Stored data ends at {fmtDate(history.data.last_date)}; expected {fmtDate(history.data.expected_last_session)}. Update this instrument through Data Operations to load newer observations.
           </div>
         )}
 
@@ -185,8 +185,8 @@ export function PriceHistoryPage() {
             </section>
 
             <div className="mb-5 mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
-              <Datum label="First session" value={history.data.first_date} />
-              <Datum label="Latest session" value={history.data.last_date} />
+              <Datum label="First session" value={fmtDate(history.data.first_date)} />
+              <Datum label="Latest session" value={fmtDate(history.data.last_date)} />
               <Datum label="Sessions" value={history.data.row_count.toLocaleString()} />
               <Datum label="Latest close" value={formatPrice(latest.close)} />
               <Datum label="Close range" value={`${formatPrice(lowest)} – ${formatPrice(highest)}`} />
@@ -287,7 +287,7 @@ function CursorMetricCards({
     snapshot?.indicators.map(indicator => [indicator.label, indicator.value]) ?? [],
   )
   const cards = [
-    { label: "Session", value: snapshot?.date ?? "Move cursor over chart" },
+    { label: "Session", value: snapshot ? fmtDate(snapshot.date) : "Move cursor over chart" },
     { label: "Open", value: formatExactValue(snapshot?.open ?? null) },
     { label: "High", value: formatExactValue(snapshot?.high ?? null) },
     { label: "Low", value: formatExactValue(snapshot?.low ?? null) },
@@ -356,8 +356,7 @@ function formatPrice(value: number | null): string {
 
 
 function formatTimestamp(value: string): string {
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString()
+  return fmtDateTime(value)
 }
 
 
@@ -399,7 +398,7 @@ function shareGrowthDetail(history: InstrumentPriceHistoryResponse): string {
     return "Insufficient share history"
   }
   const suffix = history.shares_growth_full_10y ? "" : " · available history"
-  return `${formatPercent(history.shares_growth_cagr_pct)} CAGR · since ${history.shares_growth_start_date}${suffix}`
+  return `${formatPercent(history.shares_growth_cagr_pct)} CAGR · since ${fmtDate(history.shares_growth_start_date)}${suffix}`
 }
 
 
@@ -415,7 +414,7 @@ function shareCagr5yLabel(history: InstrumentPriceHistoryResponse): string {
 function shareCagr5yDetail(history: InstrumentPriceHistoryResponse): string {
   if (history.shares_cagr_5y_start_date == null) return "Insufficient share history"
   const suffix = history.shares_cagr_full_5y ? "" : " · available history"
-  return `Since ${history.shares_cagr_5y_start_date}${suffix}`
+  return `Since ${fmtDate(history.shares_cagr_5y_start_date)}${suffix}`
 }
 
 

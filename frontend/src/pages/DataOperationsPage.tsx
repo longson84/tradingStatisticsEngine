@@ -43,6 +43,7 @@ import {
   type DataOperationScopeType,
   type InstrumentPriceCoverage,
 } from "@/lib/api"
+import { fmtDate, fmtDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
@@ -657,7 +658,7 @@ function isSingleOperationScope(value: DataOperationScopeType): value is SingleO
 
 
 function formatTimestamp(value: string | null | undefined) {
-  return value ? new Date(value).toLocaleString() : "—"
+  return fmtDateTime(value)
 }
 
 
@@ -811,7 +812,7 @@ function InstrumentCoverageRow({ row }: { row: InstrumentPriceCoverage }) {
       <td className="px-4 py-3">
         <div className="capitalize">{formatRefreshOutcome(row.refresh_outcome)}</div>
         <div className="mt-0.5 text-[10px] text-muted-foreground">
-          {row.last_checked_at ? new Date(row.last_checked_at).toLocaleString() : "Never checked"}
+          {row.last_checked_at ? fmtDateTime(row.last_checked_at) : "Never checked"}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -850,7 +851,7 @@ function CoverageCount({
 
 
 function formatDate(value: string | null | undefined) {
-  return value ?? "—"
+  return fmtDate(value)
 }
 
 

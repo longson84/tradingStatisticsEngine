@@ -1,5 +1,5 @@
 import type { ReferenceRateInstrument } from "@/lib/api"
-import { fmtInt } from "@/lib/format"
+import { fmtDate, fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 
@@ -68,7 +68,7 @@ export function ReferenceRateTable({
                 {instrument.first_session && instrument.last_session ? (
                   <>
                     <div className="text-xs text-foreground">
-                      {instrument.first_session} → {instrument.last_session}
+                      {fmtDate(instrument.first_session)} → {fmtDate(instrument.last_session)}
                     </div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">
                       {sourceLabel(instrument.price_source)}

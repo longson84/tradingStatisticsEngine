@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { ArrowUpDown } from "lucide-react"
 import type { InstrumentCatalogItem } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 
@@ -78,10 +79,10 @@ export function InstrumentTable({ rows }: { rows: InstrumentRow[] }) {
                 <td className="px-3 py-2 text-muted-foreground">{row.industry ?? "n/a"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.venue_code ?? "n/a"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {row.first_session ?? "—"}
+                  {fmtDate(row.first_session)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {row.last_session ?? "—"}
+                  {fmtDate(row.last_session)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {row.stored_sessions.toLocaleString()}

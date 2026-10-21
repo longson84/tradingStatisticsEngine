@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { TradeRow } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 
 interface Props {
   trades: TradeRow[]
@@ -220,7 +221,7 @@ export function ReturnVsDuration({ trades }: Props) {
           {tooltip.point.mfe != null && (
             <div className="text-muted-foreground">MFE: <span className="text-green-400 font-medium">+{tooltip.point.mfe.toFixed(2)}%</span></div>
           )}
-          <div className="mt-1 text-muted-foreground/60">{tooltip.point.entryDate} → {tooltip.point.exitDate}</div>
+          <div className="mt-1 text-muted-foreground/60">{fmtDate(tooltip.point.entryDate)} → {fmtDate(tooltip.point.exitDate)}</div>
         </div>
       )}
 

@@ -5,7 +5,7 @@ import { CryptoInstrumentTable } from "@/components/crypto/CryptoInstrumentTable
 import { Sidebar } from "@/components/Sidebar"
 import { Pagination } from "@/components/ui/Pagination"
 import { cryptoInstrumentsApi } from "@/lib/api"
-import { fmtInt } from "@/lib/format"
+import { fmtDateTime, fmtInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
@@ -255,5 +255,5 @@ function FilterButton({
 
 function catalogDate(value: string | null | undefined): string {
   if (!value) return "Catalog not synced"
-  return `Catalog synced ${new Date(value).toLocaleString()}`
+  return `Catalog synced ${fmtDateTime(value)}`
 }

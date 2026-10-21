@@ -12,7 +12,7 @@ import {
   instrumentsApi,
   type InstrumentCatalogItem,
 } from "@/lib/api"
-import { fmtCompactVnd, fmtDate, fmtInt, fmtProviderSource } from "@/lib/format"
+import { fmtCompactVnd, fmtDate, fmtDateTime, fmtInt, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 
@@ -136,7 +136,7 @@ export function InvestorFlowPage() {
         )}
         {flow.data?.is_stale && (
           <div className="mb-5 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
-            Stored data ends {flow.data.last_date}; expected {flow.data.expected_last_session}. Refresh this exact instrument in Data Operations.
+            Stored data ends {fmtDate(flow.data.last_date)}; expected {fmtDate(flow.data.expected_last_session)}. Refresh this exact instrument in Data Operations.
           </div>
         )}
         {flow.data && (
@@ -149,7 +149,7 @@ export function InvestorFlowPage() {
               <Badge variant="outline">{flow.data.venue_code}</Badge>
               <Badge variant="secondary">{fmtProviderSource(flow.data.source)}</Badge>
               <span className="text-xs text-muted-foreground">
-                {fmtDate(flow.data.first_date)}–{fmtDate(flow.data.last_date)} · {flow.data.row_count.toLocaleString()} stored rows · fetched {new Date(flow.data.fetched_at).toLocaleString()}
+                {fmtDate(flow.data.first_date)}–{fmtDate(flow.data.last_date)} · {flow.data.row_count.toLocaleString()} stored rows · fetched {fmtDateTime(flow.data.fetched_at)}
               </span>
             </div>
             {observations.length === 0 ? (

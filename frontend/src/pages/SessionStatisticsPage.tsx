@@ -12,7 +12,7 @@ import {
   type InstrumentCatalogItem,
   type SessionStatisticMetric,
 } from "@/lib/api"
-import { fmtCompactVnd, fmtInt, fmtProviderSource } from "@/lib/format"
+import { fmtCompactVnd, fmtDate, fmtDateTime, fmtInt, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 const GROUPS = [
@@ -109,7 +109,7 @@ export function SessionStatisticsPage() {
       {stats.isFetching && <div className="h-1 animate-pulse rounded bg-primary/50" />}
       {stats.error && <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"><div>{stats.error.message}</div>{missing && <Link className="mt-2 inline-block font-semibold underline" to={`/data-operations/single?${operationQuery}`}>Fetch this exact period in Data Operations.</Link>}</div>}
       {stats.data && <>
-        <div className="mb-4 flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{stats.data.symbol}</h2><Badge variant="outline">{stats.data.venue_code}</Badge><Badge variant="secondary">{fmtProviderSource(stats.data.source)}</Badge><span className="text-xs text-muted-foreground">{stats.data.period_start}–{stats.data.period_end} · schema v{stats.data.schema_version} · fetched {new Date(stats.data.fetched_at).toLocaleString()}</span></div>
+        <div className="mb-4 flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{stats.data.symbol}</h2><Badge variant="outline">{stats.data.venue_code}</Badge><Badge variant="secondary">{fmtProviderSource(stats.data.source)}</Badge><span className="text-xs text-muted-foreground">{fmtDate(stats.data.period_start)}–{fmtDate(stats.data.period_end)} · schema v{stats.data.schema_version} · fetched {fmtDateTime(stats.data.fetched_at)}</span></div>
         <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{summary.map(([label, value]) => <Datum key={label} label={label} value={value} />)}</div>
         <div className="grid gap-5 xl:grid-cols-2">{GROUPS.map(([group, title]) => <MetricGroup key={group} title={title} metrics={stats.data.metrics.filter(metric => metric.group === group)} />)}</div>
       </>}

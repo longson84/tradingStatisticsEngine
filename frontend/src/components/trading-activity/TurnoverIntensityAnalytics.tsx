@@ -108,7 +108,7 @@ function AnomalyChart({ points }: { points: Point[] }) {
     <text x={plot.left - 8} y={zero + 4} textAnchor="end" fill="currentColor" fontSize={10}>0σ</text>
     <text x={plot.left - 8} y={y(-bound) + 4} textAnchor="end" fill="currentColor" fontSize={10}>−{bound.toFixed(1)}σ</text>
     {points.map((point, index) => point.anomaly_score == null ? null : <g key={point.trading_date}>
-      <title>{`${point.trading_date}: ${formatAnomaly(point.anomaly_score)}`}</title>
+      <title>{`${fmtDate(point.trading_date)}: ${formatAnomaly(point.anomaly_score)}`}</title>
       <rect
         x={plot.x(index) - Math.max(1, plot.step - 6) / 2}
         y={Math.min(zero, y(point.anomaly_score))}
@@ -193,7 +193,7 @@ function PointTitle({ point, x }: { point: Point; x: number }) {
     ? `, anomaly Not available${reason ? ` — ${reason}` : ""}`
     : `, anomaly ${formatAnomaly(point.anomaly_score)}`
   return <circle cx={x} cy={245} r={6} fill="transparent">
-    <title>{`${point.trading_date}: ${intensity}${baseline}${anomaly}`}</title>
+    <title>{`${fmtDate(point.trading_date)}: ${intensity}${baseline}${anomaly}`}</title>
   </circle>
 }
 

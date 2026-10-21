@@ -10,6 +10,7 @@ import {
 } from "lightweight-charts"
 
 import type { UniverseStatsResult } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 
 
 const UNIVERSE_STATS_SERIES_COLORS = [
@@ -207,7 +208,7 @@ function latestLegend(results: UniverseStatsResult[]): CursorLegend {
     "",
   )
   return {
-    date: latestDate,
+    date: fmtDate(latestDate),
     high: latestPaneValues(results, "median_distance_from_high"),
     low: latestPaneValues(results, "median_distance_from_low"),
   }
@@ -236,9 +237,12 @@ function lineValue(data: unknown): number | null {
 
 
 function formatChartTime(time: Time): string {
-  if (typeof time === "string") return time
-  if (typeof time === "number") return new Date(time * 1000).toISOString().slice(0, 10)
-  return [time.year, time.month, time.day]
-    .map((value, index) => index === 0 ? String(value) : String(value).padStart(2, "0"))
-    .join("-")
+  const isoDate = typeof time === "string"
+    ? time
+    : typeof time === "number"
+      ? new Date(time * 1000).toISOString().slice(0, 10)
+      : [time.year, time.month, time.day]
+        .map((value, index) => index === 0 ? String(value) : String(value).padStart(2, "0"))
+        .join("-")
+  return fmtDate(isoDate)
 }

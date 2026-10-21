@@ -19,6 +19,7 @@ import {
   type BatchOperationStepRequest,
   type BatchOperationRun,
 } from "@/lib/api"
+import { fmtDateTime } from "@/lib/format"
 
 
 const CATEGORY_OPTIONS = [
@@ -342,7 +343,7 @@ function BatchRunHistory() {
               >
                 <div className="flex min-w-0 items-center gap-2">
                   {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                  <div><div className="font-medium">{run.plan_name}</div><div className="mt-0.5 text-muted-foreground">{new Date(run.created_at).toLocaleString()} · {run.current_step}/{run.total_steps} steps · {run.jobs.length} sessions</div></div>
+                  <div><div className="font-medium">{run.plan_name}</div><div className="mt-0.5 text-muted-foreground">{fmtDateTime(run.created_at)} · {run.current_step}/{run.total_steps} steps · {run.jobs.length} sessions</div></div>
                 </div>
                 <Badge variant={run.status === "failed" ? "destructive" : run.status === "completed" ? "secondary" : "outline"}>{run.status}</Badge>
               </button>

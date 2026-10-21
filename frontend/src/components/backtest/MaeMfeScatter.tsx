@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { TradeRow } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 
 interface Props {
   trades: TradeRow[]
@@ -210,7 +211,7 @@ export function MaeMfeScatter({ trades }: Props) {
               {(tooltip.point.ret >= 0 ? "+" : "") + tooltip.point.ret.toFixed(2)}%
             </span></div>
           )}
-          <div className="mt-1 text-muted-foreground/60">{tooltip.point.entryDate} → {tooltip.point.exitDate}</div>
+          <div className="mt-1 text-muted-foreground/60">{fmtDate(tooltip.point.entryDate)} → {fmtDate(tooltip.point.exitDate)}</div>
         </div>
       )}
 

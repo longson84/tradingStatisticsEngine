@@ -13,7 +13,7 @@ import {
   type DailyTradeStatistic,
   type InstrumentCatalogItem,
 } from "@/lib/api"
-import { fmtCompactVnd, fmtDate, fmtInt, fmtNum, fmtPct, fmtProviderSource } from "@/lib/format"
+import { fmtCompactVnd, fmtDate, fmtDateTime, fmtInt, fmtNum, fmtPct, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 
 type AppliedPeriod = { instrument: InstrumentCatalogItem; start: string; end: string }
@@ -159,7 +159,7 @@ export function TradingActivityPage() {
           <section className="mb-5 space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
             <p>Requested: {fmtDate(data.requested_start)}–{fmtDate(data.requested_end)}. Stored: {fmtDate(data.first_date)}–{fmtDate(data.last_date)} · {fmtInt(data.row_count)} rows · {data.currency}.</p>
             <p className="text-xs text-muted-foreground">Sources: {[...new Set(rows.map(row => fmtProviderSource(row.source)))].join(", ")}. Schema versions: {[...new Set(rows.map(row => row.schema_version))].join(", ")}. Fetch timestamps and source are shown per row below.</p>
-            {fetchTimes.length > 0 && <p className="text-xs text-muted-foreground">Fetched: {new Date(fetchTimes[0]).toLocaleString()}{fetchTimes.length > 1 ? `–${new Date(fetchTimes.at(-1)!).toLocaleString()}` : ""}. Stored boundaries do not establish completeness of sessions inside the range.</p>}
+            {fetchTimes.length > 0 && <p className="text-xs text-muted-foreground">Fetched: {fmtDateTime(fetchTimes[0])}{fetchTimes.length > 1 ? `–${fmtDateTime(fetchTimes.at(-1)!)}` : ""}. Stored boundaries do not establish completeness of sessions inside the range.</p>}
             <p className="text-xs">{refreshLink}. Opening this link only prefills settings.</p>
           </section>
           {partial && <div role="status" className="mb-5 rounded-md border border-amber-500/30 bg-amber-500/10 p-4 text-sm">Partial stored range: stored boundaries differ from the requested dates. Weekends and holidays may account for boundary differences. Only available rows are shown; completeness of sessions inside this range has not been verified.</div>}
@@ -221,7 +221,7 @@ function ActivityChart({ rows, kind }: { rows: DailyTradeStatistic[]; kind: "sta
           const x = 78 + index * step
           const barWidth = Math.max(1, step - 5)
           return <g key={row.trading_date}>
-            <title>{`${row.trading_date}: ${stacked ? `matched ${fmtInt(row.matched_volume)}, negotiated-deal ${fmtInt(row.deal_volume)}` : `VCI net trade volume ${fmtInt(row.total_net_trade_volume)}`}`}</title>
+            <title>{`${fmtDate(row.trading_date)}: ${stacked ? `matched ${fmtInt(row.matched_volume)}, negotiated-deal ${fmtInt(row.deal_volume)}` : `VCI net trade volume ${fmtInt(row.total_net_trade_volume)}`}`}</title>
             {stacked ? <>
               <rect x={x} y={y(row.matched_volume)} width={barWidth} height={y(0) - y(row.matched_volume)} fill="#2563eb" />
               <rect x={x} y={y(row.matched_volume + row.deal_volume)} width={barWidth} height={y(row.matched_volume) - y(row.matched_volume + row.deal_volume)} fill="#d97706" />
@@ -247,7 +247,7 @@ function DailyTable({ rows }: { rows: DailyTradeStatistic[] }) {
         <tbody>{[...rows].reverse().map(row => <tr key={row.trading_date} className="border-t border-border">
           <th scope="row" className="px-4 py-3 text-left font-medium">{fmtDate(row.trading_date)}</th>
           {ACTIVITY_COLUMNS.map(column => <td key={column.key} className="px-4 py-3 tabular-nums">{column.format === "value" ? fmtCompactVnd(row[column.key]) : column.format === "average" ? fmtNum(row[column.key]) : fmtInt(row[column.key])}</td>)}
-          <td className="px-4 py-3">{fmtProviderSource(row.source)}</td><td className="px-4 py-3">v{row.schema_version}</td><td className="px-4 py-3"><time dateTime={row.fetched_at}>{new Date(row.fetched_at).toLocaleString()}</time></td>
+          <td className="px-4 py-3">{fmtProviderSource(row.source)}</td><td className="px-4 py-3">v{row.schema_version}</td><td className="px-4 py-3"><time dateTime={row.fetched_at}>{fmtDateTime(row.fetched_at)}</time></td>
         </tr>)}</tbody>
       </table>
     </div>

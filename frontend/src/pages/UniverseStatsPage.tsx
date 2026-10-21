@@ -13,6 +13,7 @@ import {
   watchlistsApi,
   type UniverseStatsResult,
 } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel"
 import { usePersistedAnalysis } from "@/lib/use-persisted-analysis"
@@ -569,13 +570,13 @@ function InstrumentReturnsTable({ results }: { results: UniverseStatsResult[] })
                 <td className="px-4 py-2 text-xs text-muted-foreground">
                   {[...row.universeCodes].sort().join(", ")}
                 </td>
-                <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.lastDate}</td>
+                <td className="px-4 py-2 tabular-nums text-muted-foreground">{fmtDate(row.lastDate)}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{formatClose(row.latestClose)}</td>
                 <ReturnCell value={row.return1w} />
                 <ReturnCell value={row.return1m} />
                 <ReturnCell value={row.return3m} />
                 <ReturnCell value={row.distanceFromHigh200d} />
-                <td className="px-4 py-2 tabular-nums text-muted-foreground">{row.high200dDate ?? "—"}</td>
+                <td className="px-4 py-2 tabular-nums text-muted-foreground">{fmtDate(row.high200dDate)}</td>
               </tr>
             ))}
             {rows.length === 0 && (
@@ -695,8 +696,8 @@ function UniverseSummary({ result }: { result: UniverseStatsResult }) {
       <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
         <SummaryDatum label="Members" value={result.member_count.toLocaleString()} />
         <SummaryDatum label="With history" value={result.instruments_with_history.toLocaleString()} />
-        <SummaryDatum label="First chart date" value={result.first_date} />
-        <SummaryDatum label="Latest chart date" value={result.last_date} />
+        <SummaryDatum label="First chart date" value={fmtDate(result.first_date)} />
+        <SummaryDatum label="Latest chart date" value={fmtDate(result.last_date)} />
       </dl>
     </section>
   )

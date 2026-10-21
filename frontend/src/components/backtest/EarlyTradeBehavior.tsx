@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react"
 import type { TradeRow } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 import { SectionTitle } from "./SectionTitle"
 
 interface Props {
@@ -218,7 +219,7 @@ function EarlyScatter({ points, bar }: { points: ScatterPoint[]; bar: Checkpoint
           <div className="text-muted-foreground">
             Final return: <span className={`font-medium ${tooltip.point.win ? "text-green-400" : "text-red-400"}`}>{fmt(tooltip.point.final)}</span>
           </div>
-          <div className="mt-1 text-muted-foreground/60">{tooltip.point.entryDate}</div>
+          <div className="mt-1 text-muted-foreground/60">{fmtDate(tooltip.point.entryDate)}</div>
         </div>
       )}
     </div>
@@ -385,7 +386,7 @@ function WinRateTable({ bucketStats, totals, scatterPoints, openTradeBuckets }: 
 function OpenTradeBadge({ open, bar }: { open: { value: number; entryDate: string }; bar: Checkpoint }) {
   return (
     <span
-      title={`Current open trade: first ${bar}d min ${fmt(open.value)} from ${open.entryDate}`}
+      title={`Current open trade: first ${bar}d min ${fmt(open.value)} from ${fmtDate(open.entryDate)}`}
       className="inline-flex rounded bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
     >
       Open

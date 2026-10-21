@@ -11,7 +11,7 @@ import {
   type InstrumentCatalogItem,
   type UniverseSyncRun,
 } from "@/lib/api"
-import { fmtProviderSource } from "@/lib/format"
+import { fmtDate, fmtDateTime, fmtProviderSource } from "@/lib/format"
 import { useDebouncedValue } from "@/lib/useDebouncedValue"
 import { cn } from "@/lib/utils"
 
@@ -283,7 +283,7 @@ function UniverseSyncRunRow({ run }: { run: UniverseSyncRun }) {
         {formatDateTime(run.started_at)}
       </td>
       <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
-        {run.effective_date ?? "—"}
+        {fmtDate(run.effective_date)}
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
         {fmtProviderSource(run.source)}
@@ -361,7 +361,7 @@ function typeLabel(value: string): string {
 
 
 function formatDateTime(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString() : "—"
+  return fmtDateTime(value)
 }
 
 

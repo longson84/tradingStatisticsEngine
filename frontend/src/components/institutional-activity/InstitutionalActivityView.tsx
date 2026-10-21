@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import type { InstitutionalActivityResponse } from "@/lib/api"
-import { fmtDate, fmtInt, fmtPct } from "@/lib/format"
+import { fmtDate, fmtDateTime, fmtInt, fmtPct } from "@/lib/format"
 
 
 const ACTION_LABELS: Record<string, string> = {
@@ -36,7 +36,7 @@ export function InstitutionalActivityView({
           <Badge variant="secondary">SEC Form 13F</Badge>
         </div>
         <p className="mt-2 text-sm">
-          Holdings as of <strong>{fmtDate(result.latest_report_period)}</strong>. Filed data available {result.latest_available_at ? new Date(result.latest_available_at).toLocaleString() : "—"}.
+          Holdings as of <strong>{fmtDate(result.latest_report_period)}</strong>. Filed data available {fmtDateTime(result.latest_available_at)}.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Reported position changes compare consecutive quarter-end filings. They are delayed disclosures and inferred changes, not confirmed executions, trade dates, or execution prices.
@@ -109,7 +109,7 @@ function HistoryChart({ result }: { result: InstitutionalActivityResponse }) {
         const height = row.total_shares / high * 180
         const x = 45 + index * step
         return <g key={row.report_period}>
-          <title>{`${row.report_period}: ${fmtInt(row.total_shares)} shares across ${row.holder_count} holders`}</title>
+          <title>{`${fmtDate(row.report_period)}: ${fmtInt(row.total_shares)} shares across ${row.holder_count} holders`}</title>
           <rect x={x} y={205 - height} width={Math.max(20, step - 24)} height={height} fill="#2563eb" rx={2} />
           <text x={x} y={225} fontSize={10} fill="currentColor">{fmtDate(row.report_period)}</text>
         </g>

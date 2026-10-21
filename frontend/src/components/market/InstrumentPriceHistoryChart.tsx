@@ -12,6 +12,7 @@ import {
 } from "lightweight-charts"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import type { InstrumentPricePoint } from "@/lib/api"
+import { fmtDate } from "@/lib/format"
 import {
   exponentialMovingAverage,
   simpleMovingAverage,
@@ -554,14 +555,8 @@ function formatPaneAxisDate(time: Time | null, interval: ChartInterval): string 
 
 
 function formatAxisDate(date: Date, interval: ChartInterval): string {
-  if (interval === "monthly") {
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short" })
-  }
-  return date.toLocaleDateString(undefined, {
-    year: "2-digit",
-    month: "short",
-    day: "2-digit",
-  })
+  const isoDate = date.toISOString().slice(0, 10)
+  return interval === "monthly" ? fmtDate(isoDate).slice(3) : fmtDate(isoDate)
 }
 
 
