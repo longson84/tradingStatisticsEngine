@@ -103,6 +103,7 @@ export function InstrumentPriceHistoryChart({
         horzLine: { color: "#6b7280", visible: true, labelVisible: true },
       },
       rightPriceScale: { borderColor: "#374151" },
+      localization: { dateFormat: "dd/MM/yy" },
       timeScale: {
         borderColor: "#374151",
         timeVisible: false,
@@ -362,7 +363,7 @@ export function InstrumentPriceHistoryChart({
             const time = chart.timeScale().coordinateToTime(x)
             tick.style.display = "block"
             tick.style.left = `${x}px`
-            tick.textContent = formatPaneAxisDate(time, interval)
+            tick.textContent = formatPaneAxisDate(time)
           })
         }
         paneTop += paneHeight
@@ -540,23 +541,23 @@ function PaneLabel({ children }: { children: ReactNode }) {
 }
 
 
-function formatPaneAxisDate(time: Time | null, interval: ChartInterval): string {
+function formatPaneAxisDate(time: Time | null): string {
   if (time == null) return ""
   if (typeof time === "number") {
-    return formatAxisDate(new Date(time * 1000), interval)
+    return formatAxisDate(new Date(time * 1000))
   }
   const value = typeof time === "string"
     ? time
     : `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`
   const date = new Date(`${value}T00:00:00Z`)
   if (Number.isNaN(date.getTime())) return value
-  return formatAxisDate(date, interval)
+  return formatAxisDate(date)
 }
 
 
-function formatAxisDate(date: Date, interval: ChartInterval): string {
+function formatAxisDate(date: Date): string {
   const isoDate = date.toISOString().slice(0, 10)
-  return interval === "monthly" ? fmtDate(isoDate).slice(3) : fmtDate(isoDate)
+  return fmtDate(isoDate)
 }
 
 

@@ -22,6 +22,7 @@ export function InvestorFlowChart({ observations }: { observations: InstrumentFl
         vertLines: { color: "rgba(107, 114, 128, 0.14)" },
         horzLines: { color: "rgba(107, 114, 128, 0.14)" },
       },
+      localization: { dateFormat: "dd/MM/yy" },
       timeScale: { borderColor: "#374151" },
       rightPriceScale: { borderColor: "#374151" },
     })

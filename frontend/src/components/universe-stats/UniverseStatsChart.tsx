@@ -77,7 +77,10 @@ export function UniverseStatsChart({ results }: { results: UniverseStatsResult[]
         scaleMargins: { top: 0.16, bottom: 0.12 },
       },
       timeScale: { borderColor: isDark ? "#3f3f46" : "#e2e8f0" },
-      localization: { priceFormatter: (value: number) => `${value.toFixed(1)}%` },
+      localization: {
+        dateFormat: "dd/MM/yy",
+        priceFormatter: (value: number) => `${value.toFixed(1)}%`,
+      },
     })
 
     const seriesPairs = results.map((result, index) => {

@@ -54,7 +54,7 @@ try {
   assert.match(html, /Fewer than 20 prior stored sessions/)
   assert.match(html, /Market capitalization is invalid/)
   assert.match(html, /Prior 20-session window has no variation/)
-  assert.match(html, /2026-09-03: intensity 1\.50%, baseline 1\.00%, anomaly Not available — Prior 20-session window has no variation/)
+  assert.match(html, /03\/09\/26: intensity 1\.50%, baseline 1\.00%, anomaly Not available — Prior 20-session window has no variation/)
   assert.match(html, /Calculated from stored activity only/)
 
   const isolatedHtml = renderToStaticMarkup(React.createElement(TurnoverIntensityAnalytics, {

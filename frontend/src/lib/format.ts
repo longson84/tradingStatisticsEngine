@@ -37,7 +37,15 @@ export function fmtFactor(n: number): string {
 /** ISO date string "2026-03-23" → "23/03/26" */
 export function fmtDate(d: string | null | undefined): string {
   if (!d) return "—"
-  const [year, month, day] = d.split("-")
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d)
+  if (!match) return d
+  const [, year, month, day] = match
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  if (
+    parsed.getUTCFullYear() !== Number(year)
+    || parsed.getUTCMonth() + 1 !== Number(month)
+    || parsed.getUTCDate() !== Number(day)
+  ) return d
   return `${day}/${month}/${year.slice(2)}`
 }
 

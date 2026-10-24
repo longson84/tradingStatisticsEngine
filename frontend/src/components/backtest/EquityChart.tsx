@@ -73,6 +73,7 @@ const BASE_OPTS = {
     horzLines: { color: "#1f2937" },
   },
   crosshair: { vertLine: { color: "#6b7280" }, horzLine: { color: "#6b7280" } },
+  localization: { dateFormat: "dd/MM/yy" },
   rightPriceScale: { borderColor: "#374151" },
   timeScale: { borderColor: "#374151" },
 } as const

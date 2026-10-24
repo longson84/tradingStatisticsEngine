@@ -452,6 +452,7 @@ function NewLowPriceChart({ result }: { result: NewLowAnalysisResult }) {
         vertLine: { color: textColor },
         horzLine: { color: textColor },
       },
+      localization: { dateFormat: "dd/MM/yy" },
       rightPriceScale: { borderColor },
       timeScale: { borderColor },
     })

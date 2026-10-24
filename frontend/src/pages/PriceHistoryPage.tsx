@@ -321,7 +321,12 @@ function CursorMetricCards({
 
 
 function providerRatioDetail(history: InstrumentPriceHistoryResponse): string {
-  return [history.provider_ratio_period, history.provider_ratio_effective_date]
+  return [
+    history.provider_ratio_period,
+    history.provider_ratio_effective_date
+      ? fmtDate(history.provider_ratio_effective_date)
+      : null,
+  ]
     .filter(Boolean)
     .join(" · ")
 }

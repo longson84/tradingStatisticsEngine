@@ -58,7 +58,7 @@ const entities = [
     name: "Observation",
     icon: Database,
     definition: "A dated fact collected for an instrument, with its provenance.",
-    examples: "Daily OHLCV bar for Binance BTC/USDT on 2026-08-08",
+    examples: "Daily OHLCV bar for Binance BTC/USDT on 08/08/26",
     stores: "Session, values, price basis, source and fetched time",
   },
   {
